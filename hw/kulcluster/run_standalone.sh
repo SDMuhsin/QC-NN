@@ -26,4 +26,12 @@ for app in snax-gemmx-matmul snax-gemmx-conv snax-xdma-memset; do
   # simulated time of the last retired instruction of core 0 (1 cycle = 1 ns in the TB)
   echo "[$app] end-of-test core0 cycle: $(tail -1 logs/trace_chip_00_hart_00000.dasm | awk '{print $2}')"
 done
+# same GeMM with phase timing + GeMMX/streamer hardware counters (twin of the chimera test)
+A=$T/sw/apps/snax-gemmx-matmul
+make -C $A APP=snax-gemmx-matmul-perf SRCS=$KUL_DIR/sw/standalone_gemmx_perf/gemmx_perf.c \
+  CFG_OVERRIDE=$CFG LLVM_BINROOT=$QCNN/tools/llvm17/bin >> $KUL_BUILD/sw.log 2>&1 || { tail -20 $KUL_BUILD/sw.log; exit 1; }
+d=$KUL_BUILD/run_snax-gemmx-matmul-perf; mkdir -p $d/logs; cd $d
+$T/bin/snitch_cluster.vlt $A/build/snax-gemmx-matmul-perf.elf > gemmx_perf.log 2>&1 || rc=1
+grep GEMMX_PERF gemmx_perf.log | sed "s/^/[snax-gemmx-matmul-perf] /"
+grep -q "GEMMX_PERF err=0 " gemmx_perf.log || rc=1
 exit $rc

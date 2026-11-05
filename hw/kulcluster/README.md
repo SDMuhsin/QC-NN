@@ -49,6 +49,19 @@ CVA6 (JTAG-preloaded into the memory island) releases cluster 3 from reset/clock
 snax's `snax-gemmx-matmul` (M=1,K=18,N=2: 8x144 x 144x16 int8, SIMD rescale to int8), runs it and
 compares D8 with the golden result; host returns 0 iff the kernel ran and had 0 mismatches.
 
+### Cycle measurement (`results/gemmx_cycles.txt`)
+* `kul_gemm.c` stores phase timings (mcycle) and the GeMMX/streamer hardware performance
+  counters (CSRs `GEMMX_PERFORMANCE_COUNTER`, `STREAMER_PERFORMANCE_COUNTER`) in `kul_result[]`.
+  `kul_result[2]` ("window", start CSR writes .. busy polls done) is a *software* window: core 0
+  fetches every instruction from the memory island (~25 cycles each), so it is dominated by the
+  ~13 instructions of start/poll code, not by the accelerator. Use the counters / probes instead.
+* `sim/gemmx_probe.tcl` (sourced by `run_chimera.tcl`) logs the BlockGemm / SIMD / streamer busy
+  edges and the MAC-array A/B handshakes; `chimera_vsim.sh run` then calls
+  `scripts/gemmx_cycles.py` (output in `build/kulcluster/vsim_run/gemmx_cycles.txt`).
+* Standalone twin: `sw/standalone_gemmx_perf/gemmx_perf.c`, built and run by
+  `run_standalone.sh` as `snax-gemmx-matmul-perf` (prints a `GEMMX_PERF` line); run it before
+  `chimera_vsim.sh` to get both columns in one table.
+
 ## Workarounds / limitations
 * chimera's snitch bootrom never sets `sp`; `kul_entry` sets a stack at the TCDM top.
 * Infineon HyperRAM model no longer downloadable -> stub `sim/models/s27ks0641_stub.v`

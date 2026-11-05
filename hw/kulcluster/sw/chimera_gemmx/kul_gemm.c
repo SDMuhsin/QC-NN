@@ -46,6 +46,7 @@ int32_t kul_gemm(void) {
         D32tlbound2, D32tlstride2, set_addr_remap_index_D32,
         delta_local_a, delta_local_b, delta_local_d8, delta_local_c, delta_local_d32,
         bypassSIMD, transposed_A, transposed_B, channel_en_C, broadcast_C);
+    uint32_t t1b = rdcycle();
     uint32_t subtraction_setting = gen_subtraction_config(subtraction_a, subtraction_b);
     uint32_t csr0 = gen_csr0_config(input_zp_i, output_zp_i, max_int_i, min_int_i);
     uint32_t csr1 = gen_csr1_config(double_round_i);
@@ -64,9 +65,14 @@ int32_t kul_gemm(void) {
                               : check_gemmx_result_D8(local_d8, D8, Batch, M, N, false);
     kul_result[0] = 0xC0FFEE00u;            // marker: kernel ran
     kul_result[1] = err;
-    kul_result[2] = t3 - t2;                // start..done of streamer+GeMMX (cluster clk cycles)
-    kul_result[3] = t1 - t0;                // core copy L3->TCDM
-    kul_result[4] = read_gemmx_perf_counter();
-    kul_result[5] = read_gemmx_streamer_perf_counter();
+    // All in cluster clock cycles. [2] is the software window (start CSR writes .. busy polls
+    // done): it includes the fetch of those ~13 instructions from the memory island, so it is
+    // NOT the accelerator time; [4]/[5] are the hardware busy counters (see results/).
+    kul_result[2] = t3 - t2;                // sw window: start..done of streamer+GeMMX
+    kul_result[3] = t1 - t0;                // core copy L3 (memory island) -> TCDM
+    kul_result[4] = read_gemmx_perf_counter();           // GeMMX (SIMD stage) busy cycles
+    kul_result[5] = read_gemmx_streamer_perf_counter();  // streamer busy cycles
+    kul_result[6] = t1b - t1;               // streamer CSR programming
+    kul_result[7] = t2 - t1b;               // GeMMX CSR programming
     return (int32_t)(err << 1);             // bootrom ORs in bit 0
 }

@@ -1,0 +1,65 @@
+GeMMX int8 GeMM 8x144 x 144x16 (+C, SIMD rescale to int8), KUL SNAX cluster, 8x8x8 MAC array
+ideal = M*N*K = 1*2*18 = 36 cycles (18432 MACs / 512 MAC/cycle)
+
+  [cluster clock cycles]                        in-chimera  standalone
+  GeMM core busy (BlockGemm sBUSY, probe)               40              
+    of which MAC-array A/B fires                        36              (ideal 36)
+    of which add-C fires                                 2              (= M*N = 2)
+  SIMD busy (probe)                                     51              
+  GeMM core busy, est. = GeMMX ctr - SIMD tail                      44  (standalone: no probes in Verilator; SIMD tail 11 from chimera)
+  streamer busy (probe)                                 77              
+  GeMM core counter  (BlockGemm perf ctr)               40              
+  GeMMX counter      (CSR GEMMX_PERF = SIMD)            51          55  
+  streamer counter   (CSR STREAMER_PERF)                76          56  
+  sw window start CSR .. busy polls done               330          71  
+  CSR setup: streamer                                12275        1540  
+  CSR setup: GeMMX                                    3530         444  
+  copy-in A,B,C -> TCDM                             722630         176  (chimera: core 0 byte loop from mem island; standalone: DMA)
+
+  MAC utilisation = ideal / GeMMX (SIMD-stage) counter     in-chimera  70.6%   standalone  65.5%
+  MAC utilisation = ideal / streamer counter               in-chimera  47.4%   standalone  64.3%
+  MAC utilisation = ideal / GeMM core busy (sa: est.)      in-chimera  90.0%   standalone  81.8%
+  MAC utilisation = ideal / sw window                      in-chimera  10.9%   standalone  50.7%
+
+  in-chimera timeline, cycles after t2 (mcycle read opening the sw window):
+    t2 window start            retires at     0
+    streamer_start_csr         retires at    25
+    gemmx_start_csr            retires at    50
+    first_gemmx_busy_poll      retires at   178
+    first_streamer_busy_poll   retires at   230
+    t3 window end              retires at   330
+    gemm_busy                  high          51 ..    91
+    simd_busy                  high          51 ..   102
+    str_busy                   high          26 ..   103
+    ab_fire                    high          53 ..    89
+    addc_fire                  high          51 ..    90
+    (clock period 2000 ps; core-0 trace time aligned to the probes)
+  in-chimera self-check: marker=0xc0ffee00 mismatches=0
+
+Sources: chimera = Questa 2022.1 on tau1 (sim/chimera_vsim.sh, probes sim/gemmx_probe.tcl, core-0
+trace); standalone = SNAX Verilator TB (run_standalone.sh, app snax-gemmx-matmul-perf). Both PASS
+(0 mismatches vs golden D8). Table: scripts/gemmx_cycles.py.
+
+Interpretation
+* True accelerator time in-chimera: the GeMM core is busy 40 cycles (probe == BlockGemm perf
+  counter): 36 back-to-back MAC-array A/B fires (= ideal, the array never stalls) + 2 add-C
+  cycles + 2 cycles state/drain -> 90% MAC utilisation. The SIMD rescale stage trails by 11
+  cycles (GeMMX CSR counter 51 -> 71%). Standalone the same counter reads 55 (65.5%): there the
+  GeMMX start follows the streamer start by 1 cycle, so the GeMM waits ~4 cycles for the first
+  streamer data (est. GeMM core 44 cycles, 82%). The 82-99% of the OpenGeMM/SNAX papers is for
+  larger workloads; at K=18, M*N=2 the fixed add-C/fill/SIMD-tail cycles weigh more.
+* Streamer counter 76 (chimera) vs 56 (standalone): in chimera the streamer is started 25 cycles
+  before the GeMMX (one instruction fetch apart) and is busy-waiting for it; 76 - 25 = 51 = GeMMX.
+* The 330-cycle "accelerator window" (kul_result[2] = t3 - t2) is software time. Core 0 runs
+  from the memory island and every instruction costs ~25 cycles to fetch. The window holds about
+  13 instructions (start CSR writes, call, 2 dummy streamer-CSR writes, the busy polls, a CSR
+  write, ret, mcycle read) = 13 x 25 = 325 cycles. The accelerator is done 103 cycles after t2 (GeMM
+  51..91, SIMD ..102, streamer ..103) and the first busy poll (at 178) already reads idle, so the
+  remaining ~227 cycles are instruction fetch only. The ~71-cycle standalone window is the
+  same code with ~1-cycle instruction fetch in the SNAX TB, which is close to the
+  accelerator time.
+* Setup and copy-in overhead: programming the CSRs costs 12275 (streamer) + 3530 (GeMMX) = 15805
+  cycles in chimera vs 1540 + 444 = 1984 standalone (same code, fetch-bound). The copy-in is
+  722630 cycles in chimera (core-0 byte/word loop over the narrow AXI from the memory island,
+  1152+2304 int8 + 128 int32 elements) vs 176 cycles with the cluster DMA standalone. Per run, the accelerator's
+  40-cycle GeMM is about 0.005% of the in-chimera kernel time.

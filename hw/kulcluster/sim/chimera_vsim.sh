@@ -25,11 +25,19 @@ if [ "$STEP" = compile ] || [ "$STEP" = all ]; then
   ssh $HOST "mkdir -p $R/hw/kulcluster $R/sw"
   rsync -a --delete --exclude '.git' --exclude '/.bender/git/db' --exclude 'work/' $WS/ $HOST:$R/chimera_ws/
   rsync -a $KUL_DIR/generated $HOST:$R/hw/kulcluster/
-  rsync -a $KUL_BUILD/compile.chimera_kul.tcl $KUL_DIR/sim/run_chimera.tcl $HOST:$R/
+  rsync -a $KUL_BUILD/compile.chimera_kul.tcl $HOST:$R/
   rq "rm -rf work; vlib work >& /dev/null; vsim -c -do \"source compile.chimera_kul.tcl; quit\" >& compile.log; grep -c Error: compile.log; tail -3 compile.log"
 fi
 if [ "$STEP" = run ] || [ "$STEP" = all ]; then
   rsync -a $ELF $HOST:$R/sw/
+  rsync -a $KUL_DIR/sim/run_chimera.tcl $KUL_DIR/sim/gemmx_probe.tcl $HOST:$R/
   B=$R/sw/$(basename $ELF)
   rq "vsim -c tb_chimera_soc -t 1ps -voptargs=+acc=npr -suppress 3009 -suppress 8386 -error 7 +BOOTMODE=0 +PRELMODE=0 +BINARY=$B -do run_chimera.tcl >& run.log; grep -i \"exit code\\|error\\|fatal\\|KUL\" run.log | head -20; tail -5 run.log"
+  # cycle breakdown of the GeMM (hardware probes + core-0 trace) -> $KUL_BUILD/vsim_run/
+  mkdir -p $KUL_BUILD/vsim_run
+  rsync -a $HOST:$R/run.log $HOST:$R/logs/trace_chip_00_hart_00007.dasm $KUL_BUILD/vsim_run/
+  SA=$KUL_BUILD/run_snax-gemmx-matmul-perf/gemmx_perf.log   # from run_standalone.sh, if run
+  python3 $KUL_DIR/scripts/gemmx_cycles.py --run-log $KUL_BUILD/vsim_run/run.log \
+    --trace $KUL_BUILD/vsim_run/trace_chip_00_hart_00007.dasm --elf $ELF \
+    $([ -f $SA ] && echo --standalone $SA) -o $KUL_BUILD/vsim_run/gemmx_cycles.txt
 fi
