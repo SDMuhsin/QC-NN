@@ -1,0 +1,17 @@
+kernel     : gemm_fp16
+simulator  : Questa 2022.1_2 (tau)
+cluster cfg: sim/cfg/chimera_fp.hjson
+params     : { setup_ssr: 1, parallelize_m: 0, parallelize_k: 0, m_tiles: 2, n_tiles: 1, k_tiles: 1, load_a: 1, load_b: 1, load_c: 1, transa: false, transb: true, M: 32, N: 32, K: 32, alpha: 1, beta: 0, gemm_fp: "gemm_fp16_opt" }
+self-check : PASS
+checked    : 1024 outputs, max abs err 2.344e-02, max rel err 2.416e-03
+cycles     : 5999 total (last instruction retired, any hart)
+cycles     : 2832 kernel (hart 0 regions 1,3)
+
+hart 0 regions (split at mcycle reads):
+ idx   tstart     tend   cycles    ipc  fpu_occ
+   0       41     1855     1814  0.185    0.018
+   1     1855     3264     1408  0.743    0.616 *
+   2     3264     3951      686  0.073    0.000
+   3     3951     5376     1424  0.735    0.609 *
+   4     5376     5961      585  0.092    0.000
+(* = kernel compute regions)

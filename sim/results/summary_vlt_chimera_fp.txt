@@ -1,0 +1,6 @@
+# Snitch cluster (chimera_fp) on vlt - 2026-11-05T02:57Z
+kernel     check   total_cyc   kernel_cyc  max_rel_err
+conv2d     PASS        20799        18522  1.368e-15
+gemm_fp16  PASS         5997         2832  2.416e-03
+gemm_fp32  PASS         4140         1462  2.521e-07
+gemm_fp64  PASS         9899         6518  3.994e-16

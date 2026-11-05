@@ -1,0 +1,24 @@
+kernel     : conv2d
+simulator  : Verilator 5.044 (local)
+cluster cfg: sim/cfg/chimera_fp.hjson
+params     : { channels: { out: 8, in: 32 }, input_dim: { mini_batch: 1, height: 4, width: 8 }, filter: { height: 3, width: 3, padding: 1, stride: 1 }, prec: "FP64" }
+self-check : PASS
+checked    : 256 outputs, max abs err 8.527e-14, max rel err 1.368e-15
+cycles     : 20799 total (last instruction retired, any hart)
+cycles     : 18522 kernel (hart 0 regions 1,2,3,4,5,6,7,8,9,10,11)
+
+hart 0 regions (split at mcycle reads):
+ idx   tstart     tend   cycles    ipc  fpu_occ
+   0       15     2226     2211  0.141    0.014
+   1     2226     2394      167  0.611    0.000 *
+   2     2394     2417       22  0.091    0.000 *
+   3     2417     2588      170  0.235    0.000 *
+   4     2588     4971     2382  0.001    0.000 *
+   5     4971     9054     4082  0.617    0.565 *
+   6     9054     9057        2  1.000    0.000 *
+   7     9057    12940     3882  0.638    0.594 *
+   8    12940    12943        2  1.000    0.000 *
+   9    12943    16941     3997  0.620    0.577 *
+  10    16941    16944        2  1.000    0.000 *
+  11    16944    20758     3814  0.664    0.604 *
+(* = kernel compute regions)
