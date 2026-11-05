@@ -2,3 +2,13 @@ llmdocs/
 .secret.txt
 .secrets.txt
 env/
+
+# TSMC-65 flow: build outputs, fetched results, real site files (only *.example.* templates are tracked)
+build/
+flow/tsmc65/results/
+flow/tsmc65/site/*
+!flow/tsmc65/site/*.example.*
+
+# Local tools (bender, toolchains, venv); only the private-accelerator stubs are tracked
+tools/*
+!tools/convolve_private_stubs/
