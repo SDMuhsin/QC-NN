@@ -1,0 +1,13 @@
+v engr-tau-01L:/tmp/ckp908/qcnn_kulsyn/build/syn/kul_p4.0/KULCluster_snax_KUL_cluster_wrapper.v 65.8 MB
+ddc engr-tau-01L:/tmp/ckp908/qcnn_kulsyn/build/syn/kul_p4.0/KULCluster_snax_KUL_cluster_wrapper.ddc 108.7 MB
+sdc engr-tau-01L:/tmp/ckp908/qcnn_kulsyn/build/syn/kul_p4.0/KULCluster_snax_KUL_cluster_wrapper.sdc 0.5 MB
+macro_views engr-tau-01L:/tmp/ckp908/qcnn_kulsyn/macros (<inst>/<inst>.lef, _<corner>_syn.lib/.db, .v)
+env QC_TOP=KULCluster_snax_KUL_cluster_wrapper
+env QC_PERIOD=4.0
+env QC_CLK=clu_clk
+env QC_SDC=/tmp/ckp908/qcnn_kulsyn/tree/impl/kulcluster/constraints.sdc
+env QC_IO_PCT=20
+env QC_TOPO=0
+env QC_EXTRA_DB_SS="/tmp/ckp908/qcnn_kulsyn/macros/kul_rf_512x64m4/kul_rf_512x64m4_ss_0p9v_125c_syn.db /tmp/ckp908/qcnn_kulsyn/macros/kul_rf_128x128m1/kul_rf_128x128m1_ss_0p9v_125c_syn.db /tmp/ckp908/qcnn_kulsyn/macros/kul_rf_128x40m1/kul_rf_128x40m1_ss_0p9v_125c_syn.db "
+env QC_EXTRA_DB_TT="/tmp/ckp908/qcnn_kulsyn/macros/kul_rf_512x64m4/kul_rf_512x64m4_tt_1p0v_25c_syn.db /tmp/ckp908/qcnn_kulsyn/macros/kul_rf_128x128m1/kul_rf_128x128m1_tt_1p0v_25c_syn.db /tmp/ckp908/qcnn_kulsyn/macros/kul_rf_128x40m1/kul_rf_128x40m1_tt_1p0v_25c_syn.db "
+env QC_EXTRA_DB_FF="/tmp/ckp908/qcnn_kulsyn/macros/kul_rf_512x64m4/kul_rf_512x64m4_ff_1p1v_m40c_syn.db /tmp/ckp908/qcnn_kulsyn/macros/kul_rf_128x128m1/kul_rf_128x128m1_ff_1p1v_m40c_syn.db /tmp/ckp908/qcnn_kulsyn/macros/kul_rf_128x40m1/kul_rf_128x40m1_ff_1p1v_m40c_syn.db "

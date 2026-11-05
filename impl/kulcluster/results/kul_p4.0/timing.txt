@@ -1,0 +1,115 @@
+# DC wire-load mode, ideal clocks, pre-CTS; PT: same netlist, no parasitics, per corner library
+dc design KULCluster_snax_KUL_cluster_wrapper top KULCluster_snax_KUL_cluster_wrapper corner ss period_ns 4.0 topo 0
+dc cell_area_um2 3957121.374035 gate_eq_kGE 2748.00 cells 588561 regs 96664
+dc setup_wns_ns 2.81334e-05 setup_tns_ns 0.000 setup_viol_endpoints 0
+dc setup_worst_path i_cluster/gen_core_0__i_snitch_cc/i_spill_register_acc_demux_req/gen_isochronous_spill_register_rd_pointer_q_reg_0_/CP -> i_cluster/gen_hive_0__i_snitch_hive/i_snitch_shared_muldiv/i_div/op_a_q_reg_30_/D
+dc hold_wns_ns -0.0268614 hold_tns_ns -57.772 hold_viol_endpoints 4137
+dc hold_worst_path i_cluster/gen_tcdm_super_bank_0__gen_tcdm_bank_0__i_amo_shim/amo_result_q_reg_0_/CP -> i_cluster/i_snitch_data_mem/gen_banks_0__i_data_mem/i_tc_sram/gen_macro_gen_rf_512x64_i_macro/D[0]
+dc dc_wall_s 2710
+dc wall 45:17.15 peak_rss_mb 5767
+
+# PrimeTime ss
+pt_ss design KULCluster_snax_KUL_cluster_wrapper corner ss lib tcbn65gpluswc_ccs period_ns 4.0 parasitics none
+pt_ss setup_wns_ns 0.001564 setup_tns_ns 0.000 setup_viol_endpoints 0
+pt_ss setup_worst_path i_snax_core_0_acc_0_snax_streamer_gemmX/i_snax_streamer_gemmX_shell_wrapper/inst_block_gemm_simd/simd/BlockGemmRescaleSIMD_dataCut3/out_r_2_input_data_reg_21_/CP -> i_snax_core_0_acc_0_snax_streamer_gemmX/i_snax_streamer_gemmX_streamer_wrapper/i_snax_streamer_gemmX_streamer_top/writer_0/dataBuffer/queues_7/ram_reg_3_/D
+pt_ss hold_wns_ns 0.044583 hold_tns_ns 0.000 hold_viol_endpoints 0
+pt_ss hold_worst_path i_cluster/gen_tcdm_super_bank_0__gen_tcdm_bank_0__i_amo_shim/amo_result_q_reg_0_/CP -> i_cluster/i_snitch_data_mem/gen_banks_0__i_data_mem/i_tc_sram/gen_macro_gen_rf_512x64_i_macro/D[0]
+pt_ss clock clu_clk period_ns 4.000 wns_ns 0.002 fmax_mhz 250.1 path i_snax_core_0_acc_0_snax_streamer_gemmX/i_snax_streamer_gemmX_shell_wrapper/inst_block_gemm_simd/simd/BlockGemmRescaleSIMD_dataCut3/out_r_2_input_data_reg_21_/CP -> i_snax_core_0_acc_0_snax_streamer_gemmX/i_snax_streamer_gemmX_streamer_wrapper/i_snax_streamer_gemmX_streamer_top/writer_0/dataBuffer/queues_7/ram_reg_3_/D
+pt_ss path_to_macro slack_ns 0.008 i_cluster/i_axi_to_mem_dma/i_axi_to_mem_write/i_axi_to_detailed_mem/w_cnt_q_reg_1_/CP -> i_cluster/i_snitch_data_mem/gen_banks_15__i_data_mem/i_tc_sram/gen_macro_gen_rf_512x64_i_macro/WEN[0]
+pt_ss path_from_macro slack_ns 0.005 i_cluster/i_snitch_data_mem/gen_banks_23__i_data_mem/i_tc_sram/gen_macro_gen_rf_512x64_i_macro/CLK -> i_cluster/gen_tcdm_super_bank_2__gen_tcdm_bank_7__i_amo_shim/amo_result_q_reg_12_/D
+pt_ss macros 38 macro_area_um2 1867293
+pt_ss power_total_w 0.1970 (vectorless, toggle 0.1, at period 4.000000 ns)
+pt_ss power_net_switching_power_w 5.787e-03
+pt_ss power_cell_internal_power_w 0.1713
+pt_ss power_cell_leakage_power_w 0.0199
+pt_ss pt_wall_s 93
+pt_ss wall 1:36.87 peak_rss_mb 2925
+
+# PrimeTime tt
+pt_tt design KULCluster_snax_KUL_cluster_wrapper corner tt lib tcbn65gplustc_ccs period_ns 4.0 parasitics none
+pt_tt setup_wns_ns 1.387680 setup_tns_ns 0.000 setup_viol_endpoints 0
+pt_tt setup_worst_path i_cluster/gen_core_0__i_snitch_cc/i_spill_register_acc_demux_req/gen_isochronous_spill_register_rd_pointer_q_reg_0_/CP -> i_snax_core_0_acc_0_snax_streamer_gemmX/i_snax_streamer_gemmX_streamer_wrapper/i_snax_streamer_gemmX_streamer_top/reader_0/addressgen/counters_5/value_reg_0_/D
+pt_tt hold_wns_ns -0.011064 hold_tns_ns -22.026 hold_viol_endpoints 2048
+pt_tt hold_worst_path i_cluster/gen_tcdm_super_bank_2__gen_tcdm_bank_6__i_amo_shim/amo_result_q_reg_0_/CP -> i_cluster/i_snitch_data_mem/gen_banks_22__i_data_mem/i_tc_sram/gen_macro_gen_rf_512x64_i_macro/D[0]
+pt_tt clock clu_clk period_ns 4.000 wns_ns 1.388 fmax_mhz 382.8 path i_cluster/gen_core_0__i_snitch_cc/i_spill_register_acc_demux_req/gen_isochronous_spill_register_rd_pointer_q_reg_0_/CP -> i_snax_core_0_acc_0_snax_streamer_gemmX/i_snax_streamer_gemmX_streamer_wrapper/i_snax_streamer_gemmX_streamer_top/reader_0/addressgen/counters_5/value_reg_0_/D
+pt_tt path_to_macro slack_ns 1.396 i_cluster/gen_core_0__i_snitch_cc/i_spill_register_acc_demux_req/gen_isochronous_spill_register_rd_pointer_q_reg_0_/CP -> i_cluster/i_snitch_data_mem/gen_banks_30__i_data_mem/i_tc_sram/gen_macro_gen_rf_512x64_i_macro/WEN[0]
+pt_tt path_from_macro slack_ns 1.454 i_cluster/i_snitch_data_mem/gen_banks_5__i_data_mem/i_tc_sram/gen_macro_gen_rf_512x64_i_macro/CLK -> i_cluster/gen_tcdm_super_bank_0__gen_tcdm_bank_5__i_amo_shim/amo_result_q_reg_12_/D
+pt_tt macros 38 macro_area_um2 1867293
+pt_tt power_total_w 0.2292 (vectorless, toggle 0.1, at period 4.000000 ns)
+pt_tt power_net_switching_power_w 7.631e-03
+pt_tt power_cell_internal_power_w 0.2077
+pt_tt power_cell_leakage_power_w 0.0139
+pt_tt pt_wall_s 93
+pt_tt wall 1:37.32 peak_rss_mb 2923
+
+# PrimeTime ff
+pt_ff design KULCluster_snax_KUL_cluster_wrapper corner ff lib tcbn65gpluslt_ccs period_ns 4.0 parasitics none
+pt_ff setup_wns_ns 2.147949 setup_tns_ns 0.000 setup_viol_endpoints 0
+pt_ff setup_worst_path i_cluster/gen_core_0__i_snitch_cc/i_spill_register_acc_demux_req/gen_isochronous_spill_register_rd_pointer_q_reg_0_/CP -> i_snax_core_0_acc_0_snax_streamer_gemmX/i_snax_streamer_gemmX_streamer_wrapper/i_snax_streamer_gemmX_streamer_top/reader_0/addressgen/counters_5/value_reg_0_/D
+pt_ff hold_wns_ns -0.027063 hold_tns_ns -58.278 hold_viol_endpoints 4137
+pt_ff hold_worst_path i_cluster/gen_tcdm_super_bank_1__gen_tcdm_bank_3__i_amo_shim/amo_result_q_reg_1_/CP -> i_cluster/i_snitch_data_mem/gen_banks_11__i_data_mem/i_tc_sram/gen_macro_gen_rf_512x64_i_macro/D[1]
+pt_ff clock clu_clk period_ns 4.000 wns_ns 2.148 fmax_mhz 539.9 path i_cluster/gen_core_0__i_snitch_cc/i_spill_register_acc_demux_req/gen_isochronous_spill_register_rd_pointer_q_reg_0_/CP -> i_snax_core_0_acc_0_snax_streamer_gemmX/i_snax_streamer_gemmX_streamer_wrapper/i_snax_streamer_gemmX_streamer_top/reader_0/addressgen/counters_5/value_reg_0_/D
+pt_ff path_to_macro slack_ns 2.175 i_cluster/gen_core_0__i_snitch_cc/i_spill_register_acc_demux_req/gen_isochronous_spill_register_rd_pointer_q_reg_0_/CP -> i_cluster/i_snitch_data_mem/gen_banks_30__i_data_mem/i_tc_sram/gen_macro_gen_rf_512x64_i_macro/WEN[0]
+pt_ff path_from_macro slack_ns 2.270 i_cluster/i_snitch_data_mem/gen_banks_5__i_data_mem/i_tc_sram/gen_macro_gen_rf_512x64_i_macro/CLK -> i_cluster/gen_tcdm_super_bank_0__gen_tcdm_bank_5__i_amo_shim/amo_result_q_reg_12_/D
+pt_ff macros 38 macro_area_um2 1867293
+pt_ff power_total_w 0.3160 (vectorless, toggle 0.1, at period 4.000000 ns)
+pt_ff power_net_switching_power_w 9.714e-03
+pt_ff power_cell_internal_power_w 0.2763
+pt_ff power_cell_leakage_power_w 0.0299
+pt_ff pt_wall_s 96
+pt_ff wall 1:39.34 peak_rss_mb 2916
+
+# worst ss path (PrimeTime): 139 pins, arrival 3.74 ns, slack 0.00 ns
+  from i_snax_core_0_acc_0_snax_streamer_gemmX/i_snax_streamer_gemmX_shell_wrapper/inst_block_gemm_simd/simd/BlockGemmRescaleSIMD_dataCut3/out_r_2_input_data_reg_21_
+  to   i_snax_core_0_acc_0_snax_streamer_gemmX/i_snax_streamer_gemmX_streamer_wrapper/i_snax_streamer_gemmX_streamer_top/writer_0/dataBuffer/queues_7/ram_reg_3_
+  via  i_snax_core_0_acc_0_snax_streamer_gemmX/i_snax_streamer_gemmX_shell_wrapper/inst_block_gemm_simd/simd/BlockGemmRescaleSIMD_dataCut3
+  via  i_snax_core_0_acc_0_snax_streamer_gemmX/i_snax_streamer_gemmX_shell_wrapper/inst_block_gemm_simd/simd/lane_0
+  via  i_snax_core_0_acc_0_snax_streamer_gemmX/i_snax_streamer_gemmX_shell_wrapper/inst_block_gemm_simd/simd
+  via  i_snax_core_0_acc_0_snax_streamer_gemmX/i_snax_streamer_gemmX_streamer_wrapper/i_snax_streamer_gemmX_streamer_top/writer_0/dataBuffer
+
+# worst tt path (PrimeTime): 197 pins, arrival 2.36 ns, slack 1.39 ns
+  from i_cluster/gen_core_0__i_snitch_cc/i_spill_register_acc_demux_req/gen_isochronous_spill_register_rd_pointer_q_reg_0_
+  to   i_snax_core_0_acc_0_snax_streamer_gemmX/i_snax_streamer_gemmX_streamer_wrapper/i_snax_streamer_gemmX_streamer_top/reader_0/addressgen/counters_5/value_reg_2_
+  via  i_cluster/gen_core_0__i_snitch_cc/i_spill_register_acc_demux_req
+  via  i_snax_core_0_acc_0_snax_streamer_gemmX/i_snax_csr_mux_demux
+  via  i_snax_core_0_acc_0_snax_streamer_gemmX/i_snax_streamer_gemmX_streamer_wrapper/i_snax_streamer_gemmX_streamer_top/csrManager
+  via  i_snax_core_0_acc_0_snax_streamer_gemmX/i_snax_streamer_gemmX_streamer_wrapper/i_snax_streamer_gemmX_streamer_top
+  via  i_snax_core_0_acc_0_snax_streamer_gemmX/i_snax_streamer_gemmX_streamer_wrapper/i_snax_streamer_gemmX_streamer_top/readerCExtention_0/snax_streamer_gemmX__Extension_0_Broadcaster256to2048
+  via  i_snax_core_0_acc_0_snax_streamer_gemmX/i_snax_streamer_gemmX_shell_wrapper/inst_block_gemm_simd/gemm
+  via  i_snax_core_0_acc_0_snax_streamer_gemmX/i_snax_streamer_gemmX_streamer_wrapper/i_snax_streamer_gemmX_streamer_top/readerCExtention_0/snax_streamer_gemmX__Extension_0_Broadcaster256to2048
+  via  i_snax_core_0_acc_0_snax_streamer_gemmX/i_snax_streamer_gemmX_streamer_wrapper/i_snax_streamer_gemmX_streamer_top/reader_writer_0/reader
+  via  i_snax_core_0_acc_0_snax_streamer_gemmX/i_snax_streamer_gemmX_streamer_wrapper/i_snax_streamer_gemmX_streamer_top/reader_writer_0/readerwriterMux_17
+  via  i_cluster
+  via  i_cluster/gen_yes_wide_acc_connect_i_dma_interconnect/gen_xbar_i_stream_xbar/gen_inps_4__i_stream_demux
+  via  i_cluster/gen_yes_wide_acc_connect_i_dma_interconnect/gen_xbar_i_stream_xbar/gen_outs_0__i_rr_arb_tree
+  via  i_cluster
+  via  i_cluster/gen_tcdm_super_bank_0__i_tcdm_mux
+  via  i_cluster/gen_yes_snax_tcdm_interconnect_i_tcdm_interconnect/gen_xbar_i_stream_xbar/gen_outs_6__i_rr_arb_tree
+  via  i_cluster/gen_yes_snax_tcdm_interconnect_i_tcdm_interconnect/gen_xbar_i_stream_xbar/gen_inps_1__i_stream_demux
+  via  i_snax_core_0_acc_0_snax_streamer_gemmX/i_snax_streamer_gemmX_streamer_wrapper/i_snax_streamer_gemmX_streamer_top/reader_0/requestors
+  via  i_snax_core_0_acc_0_snax_streamer_gemmX/i_snax_streamer_gemmX_streamer_wrapper/i_snax_streamer_gemmX_streamer_top/reader_0/addressgen
+
+# worst ff path (PrimeTime): 197 pins, arrival 1.60 ns, slack 2.15 ns
+  from i_cluster/gen_core_0__i_snitch_cc/i_spill_register_acc_demux_req/gen_isochronous_spill_register_rd_pointer_q_reg_0_
+  to   i_snax_core_0_acc_0_snax_streamer_gemmX/i_snax_streamer_gemmX_streamer_wrapper/i_snax_streamer_gemmX_streamer_top/reader_0/addressgen/counters_5/value_reg_2_
+  via  i_cluster/gen_core_0__i_snitch_cc/i_spill_register_acc_demux_req
+  via  i_snax_core_0_acc_0_snax_streamer_gemmX/i_snax_csr_mux_demux
+  via  i_snax_core_0_acc_0_snax_streamer_gemmX/i_snax_streamer_gemmX_streamer_wrapper/i_snax_streamer_gemmX_streamer_top/csrManager
+  via  i_snax_core_0_acc_0_snax_streamer_gemmX/i_snax_streamer_gemmX_streamer_wrapper/i_snax_streamer_gemmX_streamer_top
+  via  i_snax_core_0_acc_0_snax_streamer_gemmX/i_snax_streamer_gemmX_streamer_wrapper/i_snax_streamer_gemmX_streamer_top/readerCExtention_0/snax_streamer_gemmX__Extension_0_Broadcaster256to2048
+  via  i_snax_core_0_acc_0_snax_streamer_gemmX/i_snax_streamer_gemmX_shell_wrapper/inst_block_gemm_simd/gemm
+  via  i_snax_core_0_acc_0_snax_streamer_gemmX/i_snax_streamer_gemmX_streamer_wrapper/i_snax_streamer_gemmX_streamer_top/readerCExtention_0/snax_streamer_gemmX__Extension_0_Broadcaster256to2048
+  via  i_snax_core_0_acc_0_snax_streamer_gemmX/i_snax_streamer_gemmX_streamer_wrapper/i_snax_streamer_gemmX_streamer_top/reader_writer_0/reader
+  via  i_snax_core_0_acc_0_snax_streamer_gemmX/i_snax_streamer_gemmX_streamer_wrapper/i_snax_streamer_gemmX_streamer_top/reader_writer_0/readerwriterMux_17
+  via  i_cluster
+  via  i_cluster/gen_yes_wide_acc_connect_i_dma_interconnect/gen_xbar_i_stream_xbar/gen_inps_4__i_stream_demux
+  via  i_cluster/gen_yes_wide_acc_connect_i_dma_interconnect/gen_xbar_i_stream_xbar/gen_outs_0__i_rr_arb_tree
+  via  i_cluster
+  via  i_cluster/gen_tcdm_super_bank_0__i_tcdm_mux
+  via  i_cluster/gen_yes_snax_tcdm_interconnect_i_tcdm_interconnect/gen_xbar_i_stream_xbar/gen_outs_6__i_rr_arb_tree
+  via  i_cluster/gen_yes_snax_tcdm_interconnect_i_tcdm_interconnect/gen_xbar_i_stream_xbar/gen_inps_1__i_stream_demux
+  via  i_snax_core_0_acc_0_snax_streamer_gemmX/i_snax_streamer_gemmX_streamer_wrapper/i_snax_streamer_gemmX_streamer_top/reader_0/requestors
+  via  i_snax_core_0_acc_0_snax_streamer_gemmX/i_snax_streamer_gemmX_streamer_wrapper/i_snax_streamer_gemmX_streamer_top/reader_0/addressgen
+
+# DC report_power (ss, default activity)
+dc_power Total Dynamic Power    =  55.3964 mW  (100%)

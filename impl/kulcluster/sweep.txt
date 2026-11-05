@@ -1,0 +1,13 @@
+# candidate shapes for the KUL cluster memories (flow/tsmc65/sram/mc_gen.sh sweep)
+k_sp_512x64m4   sram_sp_adv 512 64 4 write_mask=on wp_size=8
+k_sp_512x64m8   sram_sp_adv 512 64 8 write_mask=on wp_size=8
+k_sp_512x64m16  sram_sp_adv 512 64 16 write_mask=on wp_size=8
+k_rf_512x64m4   rf_sp_adv   512 64 4 write_mask=on wp_size=8
+k_rf_512x64m8   rf_sp_adv   512 64 8 write_mask=on wp_size=8
+k_rf_128x128m1  rf_sp_adv   128 128 1
+k_rf_128x64m2   rf_sp_adv   128 64 2
+k_sp_128x128m4  sram_sp_adv 128 128 4
+k_sp_256x128m4  sram_sp_adv 256 128 4
+k_rf_128x40m1   rf_sp_adv   128 40 1
+k_rf_128x40m2   rf_sp_adv   128 40 2
+k_rf_128x39m1   rf_sp_adv   128 39 1
