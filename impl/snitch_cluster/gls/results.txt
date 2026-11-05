@@ -1,0 +1,37 @@
+# Snitch cluster (fp_p4.0 DC netlist) gate-level simulation, impl/snitch_cluster/gls/gls.sh
+# reference: sim/results/<kernel>_vsim_chimera_fp.txt (RTL, Questa 2022.1_2)
+
+[gemm_fp64 / rtl]
+  self-check (verifier exit 0, 1024 outputs compared): PASS
+  Questa errors 0, GLS_X (X check) 0
+  kernel cycles 6518 (hart 0 regions 1,3, 4 mcycle reads); RTL 6518: match
+  retire monitor == upstream tracer (core instructions, all 9 harts): yes
+  wall time 0:00:21, clock 1000 ps
+  => PASS
+
+[gemm_fp64 / zd]
+  self-check (verifier exit 0, 1024 outputs compared): PASS
+  Questa errors 0, GLS_X (X check) 0
+  kernel cycles 6518 (hart 0 regions 1,3, 4 mcycle reads); RTL 6518: match
+  harts with a retire stream (time, pc, insn) identical to RTL: 9/9 (14583 retires)
+  wall time 0:00:49, clock 1000 ps
+  => PASS
+
+[conv2d / rtl]
+  self-check (verifier exit 0, 256 outputs compared): PASS
+  Questa errors 0, GLS_X (X check) 0
+  kernel cycles 18587 (hart 0 regions 1,2,3,4,5,6,7,8,9,10,11, 11 mcycle reads); RTL 18587: match
+  retire monitor == upstream tracer (core instructions, all 9 harts): yes
+  wall time 0:00:39, clock 1000 ps
+  => PASS
+
+[conv2d / zd]
+  self-check (verifier exit 0, 256 outputs compared): PASS
+  Questa errors 0, GLS_X (X check) 0
+  kernel cycles 18587 (hart 0 regions 1,2,3,4,5,6,7,8,9,10,11, 11 mcycle reads); RTL 18587: match
+  harts with a retire stream (time, pc, insn) identical to RTL: 9/9 (15358 retires)
+  wall time 0:01:31, clock 1000 ps
+  => PASS
+
+[sdf, tt]
+  not finished: diverges from RTL after the first fetches (README, "SDF run")
