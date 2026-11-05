@@ -1,0 +1,4 @@
+llmdocs/
+.secret.txt
+.secrets.txt
+env/
