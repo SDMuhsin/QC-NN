@@ -1,0 +1,75 @@
+/* synthetic macro timing for the pnr macro-hook test (not a kit view) */
+library(fake_ram) {
+  delay_model : table_lookup;
+  time_unit : "1ns"; voltage_unit : "1V"; current_unit : "1mA"; pulling_resistance_unit : "1kohm";
+  capacitive_load_unit(1,pf); leakage_power_unit : "1nW";
+  nom_process : 1; nom_temperature : 25; nom_voltage : 1.0;
+  voltage_map(VDD, 1.0); voltage_map(VSS, 0.0);
+  default_max_transition : 0.5;
+  slew_lower_threshold_pct_rise : 10; slew_upper_threshold_pct_rise : 90;
+  slew_lower_threshold_pct_fall : 10; slew_upper_threshold_pct_fall : 90;
+  input_threshold_pct_rise : 50; input_threshold_pct_fall : 50;
+  output_threshold_pct_rise : 50; output_threshold_pct_fall : 50;
+  cell(FAKERAM) {
+    area : 900; interface_timing : true;
+    pg_pin(VDD) { voltage_name : VDD; pg_type : primary_power; }
+    pg_pin(VSS) { voltage_name : VSS; pg_type : primary_ground; }
+    pin(CLK) { direction : input; clock : true; capacitance : 0.005; }
+    pin(D[0]) { direction : input; capacitance : 0.002;
+      timing() { related_pin : "CLK"; timing_type : setup_rising; rise_constraint(scalar) { values("0.10"); } fall_constraint(scalar) { values("0.10"); } }
+      timing() { related_pin : "CLK"; timing_type : hold_rising; rise_constraint(scalar) { values("0.05"); } fall_constraint(scalar) { values("0.05"); } } }
+    pin(Q[0]) { direction : output; max_capacitance : 0.2;
+      timing() { related_pin : "CLK"; timing_type : rising_edge; timing_sense : non_unate;
+        cell_rise(scalar) { values("0.60"); } cell_fall(scalar) { values("0.60"); }
+        rise_transition(scalar) { values("0.10"); } fall_transition(scalar) { values("0.10"); } } }
+    pin(D[1]) { direction : input; capacitance : 0.002;
+      timing() { related_pin : "CLK"; timing_type : setup_rising; rise_constraint(scalar) { values("0.10"); } fall_constraint(scalar) { values("0.10"); } }
+      timing() { related_pin : "CLK"; timing_type : hold_rising; rise_constraint(scalar) { values("0.05"); } fall_constraint(scalar) { values("0.05"); } } }
+    pin(Q[1]) { direction : output; max_capacitance : 0.2;
+      timing() { related_pin : "CLK"; timing_type : rising_edge; timing_sense : non_unate;
+        cell_rise(scalar) { values("0.60"); } cell_fall(scalar) { values("0.60"); }
+        rise_transition(scalar) { values("0.10"); } fall_transition(scalar) { values("0.10"); } } }
+    pin(D[2]) { direction : input; capacitance : 0.002;
+      timing() { related_pin : "CLK"; timing_type : setup_rising; rise_constraint(scalar) { values("0.10"); } fall_constraint(scalar) { values("0.10"); } }
+      timing() { related_pin : "CLK"; timing_type : hold_rising; rise_constraint(scalar) { values("0.05"); } fall_constraint(scalar) { values("0.05"); } } }
+    pin(Q[2]) { direction : output; max_capacitance : 0.2;
+      timing() { related_pin : "CLK"; timing_type : rising_edge; timing_sense : non_unate;
+        cell_rise(scalar) { values("0.60"); } cell_fall(scalar) { values("0.60"); }
+        rise_transition(scalar) { values("0.10"); } fall_transition(scalar) { values("0.10"); } } }
+    pin(D[3]) { direction : input; capacitance : 0.002;
+      timing() { related_pin : "CLK"; timing_type : setup_rising; rise_constraint(scalar) { values("0.10"); } fall_constraint(scalar) { values("0.10"); } }
+      timing() { related_pin : "CLK"; timing_type : hold_rising; rise_constraint(scalar) { values("0.05"); } fall_constraint(scalar) { values("0.05"); } } }
+    pin(Q[3]) { direction : output; max_capacitance : 0.2;
+      timing() { related_pin : "CLK"; timing_type : rising_edge; timing_sense : non_unate;
+        cell_rise(scalar) { values("0.60"); } cell_fall(scalar) { values("0.60"); }
+        rise_transition(scalar) { values("0.10"); } fall_transition(scalar) { values("0.10"); } } }
+    pin(D[4]) { direction : input; capacitance : 0.002;
+      timing() { related_pin : "CLK"; timing_type : setup_rising; rise_constraint(scalar) { values("0.10"); } fall_constraint(scalar) { values("0.10"); } }
+      timing() { related_pin : "CLK"; timing_type : hold_rising; rise_constraint(scalar) { values("0.05"); } fall_constraint(scalar) { values("0.05"); } } }
+    pin(Q[4]) { direction : output; max_capacitance : 0.2;
+      timing() { related_pin : "CLK"; timing_type : rising_edge; timing_sense : non_unate;
+        cell_rise(scalar) { values("0.60"); } cell_fall(scalar) { values("0.60"); }
+        rise_transition(scalar) { values("0.10"); } fall_transition(scalar) { values("0.10"); } } }
+    pin(D[5]) { direction : input; capacitance : 0.002;
+      timing() { related_pin : "CLK"; timing_type : setup_rising; rise_constraint(scalar) { values("0.10"); } fall_constraint(scalar) { values("0.10"); } }
+      timing() { related_pin : "CLK"; timing_type : hold_rising; rise_constraint(scalar) { values("0.05"); } fall_constraint(scalar) { values("0.05"); } } }
+    pin(Q[5]) { direction : output; max_capacitance : 0.2;
+      timing() { related_pin : "CLK"; timing_type : rising_edge; timing_sense : non_unate;
+        cell_rise(scalar) { values("0.60"); } cell_fall(scalar) { values("0.60"); }
+        rise_transition(scalar) { values("0.10"); } fall_transition(scalar) { values("0.10"); } } }
+    pin(D[6]) { direction : input; capacitance : 0.002;
+      timing() { related_pin : "CLK"; timing_type : setup_rising; rise_constraint(scalar) { values("0.10"); } fall_constraint(scalar) { values("0.10"); } }
+      timing() { related_pin : "CLK"; timing_type : hold_rising; rise_constraint(scalar) { values("0.05"); } fall_constraint(scalar) { values("0.05"); } } }
+    pin(Q[6]) { direction : output; max_capacitance : 0.2;
+      timing() { related_pin : "CLK"; timing_type : rising_edge; timing_sense : non_unate;
+        cell_rise(scalar) { values("0.60"); } cell_fall(scalar) { values("0.60"); }
+        rise_transition(scalar) { values("0.10"); } fall_transition(scalar) { values("0.10"); } } }
+    pin(D[7]) { direction : input; capacitance : 0.002;
+      timing() { related_pin : "CLK"; timing_type : setup_rising; rise_constraint(scalar) { values("0.10"); } fall_constraint(scalar) { values("0.10"); } }
+      timing() { related_pin : "CLK"; timing_type : hold_rising; rise_constraint(scalar) { values("0.05"); } fall_constraint(scalar) { values("0.05"); } } }
+    pin(Q[7]) { direction : output; max_capacitance : 0.2;
+      timing() { related_pin : "CLK"; timing_type : rising_edge; timing_sense : non_unate;
+        cell_rise(scalar) { values("0.60"); } cell_fall(scalar) { values("0.60"); }
+        rise_transition(scalar) { values("0.10"); } fall_transition(scalar) { values("0.10"); } } }
+  }
+}
