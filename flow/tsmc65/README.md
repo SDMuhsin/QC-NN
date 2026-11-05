@@ -13,6 +13,7 @@ flow/tsmc65/
   sta/               run_pt.sh + pt.tcl         PrimeTime, one session per corner
   sim/               run_vcs.sh                 VCS RTL or zero-delay gate-level simulation
   smoke/             registered signed 8x8 MAC + self-checking testbench, run.sh runs the whole flow
+  sram/              mc_gen.sh + lib2db.tcl  compiled SRAM / register-file macro views (ARM memory compilers)
 ```
 
 ## Site files
@@ -21,6 +22,7 @@ flow/tsmc65/
 |---|---|---|
 | `site.example.sh`  | `site.sh`  | ssh host (`QC_HOST`), ssh command, server checkout / work-tree dirs (read by `sync.sh`) |
 | `site.example.csh` | `site.csh` | tool setup scripts, `QC_KIT`, `QC_CELL_V` (sourced by every tool run) |
+| `sram.example.sh`  | `sram.sh`  | memory-compiler dir, Java 8 runtime, host-local scratch / output dir, the 4 corners, LC setup (read by `sram/mc_gen.sh`) |
 | `site.example.tcl` | `site.tcl` | library dir, .db and operating condition per corner (ss / tt / ff), Milkyway + TLU+ for topographical mode, reference cells |
 
 New site: `cp site.example.X site.X` for X in sh, csh, tcl and replace every `<PLACEHOLDER>`.  The real files are
@@ -38,7 +40,9 @@ flow/tsmc65/sim/run_vcs.sh <tag> <tb_top> <a.f> [b.f ...]       # -> build/tsmc6
 
 Options are environment variables, documented in each script's header: `QC_CORNER`, `QC_TOPO=1`
 (topographical mode), `QC_CLK`, `QC_SDC` (a design SDC instead of the generated single-clock constraints),
-`QC_IO_PCT`, `QC_PARAMS`, `QC_HOOK` (Tcl sourced before compile), `QC_COMPILE`, `QC_CORES`, `QC_BUILD`.
+`QC_IO_PCT`, `QC_PARAMS`, `QC_HOOK` (Tcl sourced before compile), `QC_COMPILE`, `QC_CORES`, `QC_BUILD`,
+`QC_EXTRA_DB_SS` / `_TT` / `_FF` (extra link libraries per corner, e.g. SRAM macros as black boxes; kept in run.env
+for PrimeTime), `QC_PT_HOOK` (Tcl sourced by PrimeTime after its reports, design-specific numbers).
 Every run writes the full reports under `build/` (git-ignored, stays on the server) and a short `summary.txt` /
 `pt_<corner>.txt` with area, gate count, setup / hold WNS / TNS and run time.
 
@@ -69,11 +73,20 @@ For a bender project: `bender script flist -t synthesis -t asic > design.f` (abs
 RTL simulation and zero-delay gate-level simulation of the DC netlist.  It shows that the tools start, the
 licences check out and the kit paths are right.
 
+## SRAM macros
+
+`sram/mc_gen.sh sweep|gen <macros.txt>` runs the kit's ARM memory compilers headless (one line per macro:
+instance, compiler, words, bits, mux, `option=value` ...): `sweep` prints footprint and ss access / cycle time,
+`gen` writes liberty for the four characterisation corners (compiled to .db with Library Compiler), Verilog model,
+LEF footprint and datatable to `QC_MC_OUT/<instance>/` (host-local) plus `manifest.txt`.  Host workarounds (from the
+SGWA project's recipe): system Java 8 instead of the bundled 32-bit runtime, compilers copied to a host-local
+scratch (32-bit `stat()` fails on the NFS inode numbers), `jre_tiling` link for the footprint generator, exactly four
+`-corners`, liberty libraries renamed from `USERLIB` to `<instance>_<corner>_syn`.  About 10 s per macro.  The kit has
+no GDS / LVS views for the macros: front end and P&R abstracts only.
+
 ## Not covered (yet)
 
-Place and route, SRAM macros, power with switching activity, formal equivalence.  Notes for later: ICC2
+Place and route, power with switching activity, formal equivalence.  Notes for later: ICC2
 (`/CMC/scripts/synopsys.icc2.*`), Fusion Compiler and Cadence Innovus (`cadence.innovus*`, up to 21.17) setup
 scripts exist on the tau hosts; the standard-cell kit has LEF (6-9 metal layers) and Milkyway views.  The ARM
-memory compilers (single-port SRAM, single- / two-port register file, ROM) are under
-`/CMC/kits/arm_tsmc65gp-nonCmcPsa/aci`; they give front-end views only (liberty, Verilog, footprint; no GDS) and
-need host workarounds (system Java 8, a copy on a local file system) - see the SGWA project's `flow/tsmc65/sram`.
+memory compilers are wrapped by `sram/` (above).

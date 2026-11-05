@@ -3,10 +3,11 @@
 #   flow/tsmc65/sta/run_pt.sh <syn_run_dir | syn_tag> [corner ...]      (corners default: QC_CORNERS of site.tcl)
 # Reads <dir>/run.env + <top>.v (and <top>.spef if DC topographical mode wrote it); one pt_shell per corner,
 # constraints regenerated for that corner's library (or QC_SDC).  Pre-CTS, ideal clocks.
+# QC_PT_HOOK (optional): Tcl file sourced after the timing reports, with the open summary channel $fh (design reports).
 # Output in <dir>: pt_<corner>.log, rpt/pt_<corner>_*.rpt, pt_<corner>.txt (summary).
 set -u
 . "$(dirname "$0")/../common/tool.sh"
-[ $# -ge 1 ] || { sed -n '2,7p' "$0"; exit 1; }
+[ $# -ge 1 ] || { sed -n '2,8p' "$0"; exit 1; }
 dir=$1; shift
 [ -d "$dir" ] || dir=$BUILD/syn/$dir
 dir=$(cd "$dir" && pwd) || exit 1

@@ -1,0 +1,60 @@
+# DC (wire-load or topographical, see 'topo'), ideal clocks, pre-CTS
+dc design qc_snitch_cluster_top top qc_snitch_cluster_top corner ss period_ns 2.0 topo 0
+dc cell_area_um2 2984554.357840 gate_eq_kGE 2072.61 cells 312668 regs 65509
+dc setup_wns_ns -0.428995 -0.296437 setup_tns_ns -6630.090 setup_viol_endpoints 25345
+dc setup_worst_path i_cluster/i_test_cluster/gen_core_1__i_snitch_cc/i_spill_register_acc_demux_req/gen_isochronous_spill_register_wr_pointer_q_reg_1_/CP i_cluster/i_cluster_axi_adapter/wide_mst_cdc/i_axi_cdc_dst/i_cdc_fifo_gray_dst_ar/i_spill_register/spill_register_flushable_i/gen_spill_reg_b_full_q_reg/CP -> i_cluster/i_test_cluster/gen_hive_0__i_snitch_hive/i_snitch_shared_muldiv/i_multiplier/result_q_reg_56_/D narrow_out_req_o[212]
+dc hold_wns_ns -0.127092 0.000444449 hold_tns_ns -96.287 hold_viol_endpoints 1328
+dc hold_worst_path i_cluster/i_test_cluster/gen_tcdm_super_bank_1__gen_tcdm_bank_5__i_amo_shim/idx_q_reg/CP i_cluster/gen_narrow_adapter_i_cluster_narrow_adapter/gen_clu_to_soc_conv_0__i_clu_to_soc_dw_converter/gen_dw_downsize_i_axi_dw_downsizer/w_req_q_reg_aw__atop__0_/CP -> i_cluster/i_test_cluster/gen_tcdm_super_bank_1__gen_tcdm_bank_5__i_data_mem/i_tc_sram/gen_macro_gen_sp_1024x64_i_macro/WEN[4] i_cluster/gen_narrow_adapter_i_cluster_narrow_adapter/gen_clu_to_soc_conv_0__i_clu_to_soc_dw_converter/gen_dw_downsize_i_axi_dw_downsizer/i_axi_demux/i_aw_spill_reg/spill_register_flushable_i/gen_spill_reg_a_data_q_reg_atop__0_/D
+dc dc_wall_s 1987
+dc wall 33:11.86 peak_rss_mb 4847
+
+# PrimeTime ss
+pt_ss design qc_snitch_cluster_top corner ss lib tcbn65gpluswc_ccs period_ns 2.0 parasitics none
+pt_ss setup_wns_ns -0.426432 setup_tns_ns -6552.616 setup_viol_endpoints 25304
+pt_ss setup_worst_path i_cluster/i_test_cluster/gen_core_1__i_snitch_cc/i_spill_register_acc_demux_req/gen_isochronous_spill_register_wr_pointer_q_reg_0_/CP -> i_cluster/i_test_cluster/gen_hive_0__i_snitch_hive/i_snitch_shared_muldiv/i_multiplier/result_q_reg_56_/D
+pt_ss hold_wns_ns -0.222124 hold_tns_ns -166.146 hold_viol_endpoints 1312
+pt_ss hold_worst_path i_cluster/i_test_cluster/gen_tcdm_super_bank_1__gen_tcdm_bank_5__i_amo_shim/idx_q_reg/CP -> i_cluster/i_test_cluster/gen_tcdm_super_bank_1__gen_tcdm_bank_5__i_data_mem/i_tc_sram/gen_macro_gen_sp_1024x64_i_macro/WEN[4]
+pt_ss clock clu_clk period_ns 2.000 wns_ns -0.426 fmax_mhz 412.1 path i_cluster/i_test_cluster/gen_core_1__i_snitch_cc/i_spill_register_acc_demux_req/gen_isochronous_spill_register_wr_pointer_q_reg_0_/CP -> i_cluster/i_test_cluster/gen_hive_0__i_snitch_hive/i_snitch_shared_muldiv/i_multiplier/result_q_reg_56_/D
+pt_ss clock soc_clk period_ns 2.000 wns_ns -0.293 fmax_mhz 436.1 path i_cluster/i_cluster_axi_adapter/wide_mst_cdc/i_axi_cdc_dst/i_cdc_fifo_gray_dst_ar/i_spill_register/spill_register_flushable_i/gen_spill_reg_b_full_q_reg/CP -> narrow_out_req_o[212]
+pt_ss macros 20 macro_area_um2 1915781
+pt_ss power_total_w 0.0688 (vectorless, toggle 0.1)
+pt_ss power_net_switching_power_w 4.866e-03
+pt_ss power_cell_internal_power_w 0.0465
+pt_ss power_cell_leakage_power_w 0.0173
+pt_ss pt_wall_s 46
+pt_ss wall 0:49.96 peak_rss_mb 2428
+
+# PrimeTime tt
+pt_tt design qc_snitch_cluster_top corner tt lib tcbn65gplustc_ccs period_ns 2.0 parasitics none
+pt_tt setup_wns_ns 0.308470 setup_tns_ns 0.000 setup_viol_endpoints 0
+pt_tt setup_worst_path i_cluster/i_cluster_axi_adapter/wide_mst_cdc/i_axi_cdc_dst/i_cdc_fifo_gray_dst_ar/i_spill_register/spill_register_flushable_i/gen_spill_reg_b_full_q_reg/CP -> narrow_out_req_o[212]
+pt_tt hold_wns_ns -0.138364 hold_tns_ns -101.589 hold_viol_endpoints 1312
+pt_tt hold_worst_path i_cluster/i_test_cluster/gen_tcdm_super_bank_1__gen_tcdm_bank_5__i_amo_shim/idx_q_reg/CP -> i_cluster/i_test_cluster/gen_tcdm_super_bank_1__gen_tcdm_bank_5__i_data_mem/i_tc_sram/gen_macro_gen_sp_1024x64_i_macro/WEN[4]
+pt_tt clock clu_clk period_ns 2.000 wns_ns 0.381 fmax_mhz 617.8 path i_cluster/i_test_cluster/gen_hive_0__i_snitch_hive/i_snitch_icache/i_l0_to_bypass/in_data_o_reg_7__18_/CP -> i_cluster/i_test_cluster/gen_core_7__i_snitch_cc/i_snitch/i_snitch_regfile/mem_reg_25__24_/D
+pt_tt clock soc_clk period_ns 2.000 wns_ns 0.308 fmax_mhz 591.2 path i_cluster/i_cluster_axi_adapter/wide_mst_cdc/i_axi_cdc_dst/i_cdc_fifo_gray_dst_ar/i_spill_register/spill_register_flushable_i/gen_spill_reg_b_full_q_reg/CP -> narrow_out_req_o[212]
+pt_tt macros 20 macro_area_um2 1915781
+pt_tt power_total_w 0.0737 (vectorless, toggle 0.1)
+pt_tt power_net_switching_power_w 6.357e-03
+pt_tt power_cell_internal_power_w 0.0571
+pt_tt power_cell_leakage_power_w 0.0102
+pt_tt pt_wall_s 43
+pt_tt wall 0:46.13 peak_rss_mb 2429
+
+# PrimeTime ff
+pt_ff design qc_snitch_cluster_top corner ff lib tcbn65gpluslt_ccs period_ns 2.0 parasitics none
+pt_ff setup_wns_ns 0.522867 setup_tns_ns 0.000 setup_viol_endpoints 0
+pt_ff setup_worst_path narrow_out_resp_i[89] -> narrow_out_req_o[212]
+pt_ff hold_wns_ns -0.127403 hold_tns_ns -96.728 hold_viol_endpoints 1328
+pt_ff hold_worst_path i_cluster/i_test_cluster/gen_tcdm_super_bank_1__gen_tcdm_bank_5__i_amo_shim/idx_q_reg/CP -> i_cluster/i_test_cluster/gen_tcdm_super_bank_1__gen_tcdm_bank_5__i_data_mem/i_tc_sram/gen_macro_gen_sp_1024x64_i_macro/WEN[4]
+pt_ff clock clu_clk period_ns 2.000 wns_ns 0.822 fmax_mhz 848.6 path i_cluster/i_test_cluster/gen_hive_0__i_snitch_hive/i_snitch_icache/i_l0_to_bypass/in_data_o_reg_7__30_/CP -> i_cluster/i_test_cluster/gen_core_7__i_snitch_cc/i_snitch/i_snitch_regfile/mem_reg_25__24_/D
+pt_ff clock soc_clk period_ns 2.000 wns_ns 0.523 fmax_mhz 677.0 path narrow_out_resp_i[89] -> narrow_out_req_o[212]
+pt_ff macros 20 macro_area_um2 1915781
+pt_ff power_total_w 0.0994 (vectorless, toggle 0.1)
+pt_ff power_net_switching_power_w 8.072e-03
+pt_ff power_cell_internal_power_w 0.0719
+pt_ff power_cell_leakage_power_w 0.0194
+pt_ff pt_wall_s 42
+pt_ff wall 0:46.17 peak_rss_mb 2428
+
+# DC report_power (ss, default activity)
+dc_power Total Dynamic Power    =  84.4873 mW  (100%)

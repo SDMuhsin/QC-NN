@@ -1,0 +1,5 @@
+# Generated macro views (not tracked; host-local): flow/tsmc65/sram/mc_gen.sh gen hw/tech/tsmc65/macros.txt on the build host.
+# Files per macro in <dir>/<instance>/: <instance>_<corner>_syn.lib/.db (4 corners), <instance>.v (model), .lef (footprint), .dat (datatable).
+# macro views on engr-tau-02L:/tmp/ckp908/qcnn/macros  corners ss_0p9v_125c,tt_1p0v_25c,ff_1p1v_m40c,ff_1p1v_125c  2026-11-04
+qc_rf_16x128m1 rf_sp_adv 16x128 mux 1  | w_um 225.8 h_um 87.0 macro_um2 19641 core_um2 12288 ta_ss_ns 0.895 tcyc_ss_ns 0.855 | lib 4 db 4 v 1 lef 1
+qc_sp_1024x64m8 sram_sp_adv 1024x64 mux 8 write_mask=on wp_size=8 | w_um 646.5 h_um 177.6 macro_um2 114826 core_um2 70674 ta_ss_ns 1.116 tcyc_ss_ns 1.548 | lib 4 db 4 v 1 lef 1

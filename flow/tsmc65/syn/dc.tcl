@@ -12,8 +12,12 @@ set_app_var alib_library_analysis_path [qc_env QC_ALIB $out/../alib]   ;# librar
 set_app_var search_path [concat . $::QC_LIBDIR [get_app_var search_path]]
 set_app_var target_library [list [qc_db $corner]]
 set_app_var synthetic_library dw_foundation.sldb
-set_app_var link_library [list * [qc_db $corner] dw_foundation.sldb]
-if {$corner ne "ff"} { set_min_library [qc_db $corner] -min_version [qc_db ff] }
+set_app_var link_library [concat * [qc_db $corner] [qc_extra_dbs $corner] dw_foundation.sldb]
+if {$corner ne "ff"} {
+    set_min_library [qc_db $corner] -min_version [qc_db ff]
+    foreach m [qc_extra_dbs $corner] f [qc_extra_dbs ff] { if {$m ne "" && $f ne ""} { set_min_library $m -min_version $f } }
+}
+if {[llength [qc_extra_dbs $corner]]} { puts "QC_LIBS [llength [qc_extra_dbs $corner]] extra link libraries ($corner)" }
 if {[llength $::QC_DONT_USE]} {
     set_dont_use [get_lib_cells [lmap c $::QC_DONT_USE {string cat $::QC_LIB($corner)/$c}]]
 }

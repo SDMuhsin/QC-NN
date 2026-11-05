@@ -8,6 +8,9 @@ proc qc_env {name {default ""}} {
     return $default
 }
 proc qc_db {corner} { return $::QC_LIBDIR/$::QC_LIB($corner).db }
+# Extra link libraries per corner (e.g. compiled SRAM macros, linked as black boxes): the .db files listed in the
+# environment variable QC_EXTRA_DB_SS / _TT / _FF (whitespace separated, same order in every corner).
+proc qc_extra_dbs {corner} { return [qc_env QC_EXTRA_DB_[string toupper $corner]] }
 
 # Generic single-clock constraints (used unless QC_SDC names a design SDC).
 #   clock on port <clk> (virtual clock if the port does not exist), period <period> ns;

@@ -9,12 +9,13 @@
 #   QC_PARAMS   top-level parameters, DC syntax "W=8,N=4"
 #   QC_HOOK     Tcl file sourced after link, before compile (design-specific DC settings)
 #   QC_COMPILE  compile command  ("compile_ultra -no_autoungroup -gate_clock")
+#   QC_EXTRA_DB_SS / _TT / _FF   extra link libraries (.db) per corner, e.g. SRAM macros (black boxes)
 #   QC_CORES    max cores (8)     QC_BUILD  output root (<repo>/build/tsmc65)
 # Output: $QC_BUILD/syn/<tag>/  (tag = <top>_<corner>_p<period>[_topo]): <top>.v .ddc .sdc [.spef], dc.log, rpt/,
 #   summary.txt, run.env (read by sta/run_pt.sh).
 set -u
 . "$(dirname "$0")/../common/tool.sh"
-[ $# -ge 3 ] || { sed -n '2,16p' "$0"; exit 1; }
+[ $# -ge 3 ] || { sed -n '2,17p' "$0"; exit 1; }
 flist=$(cd "$(dirname "$1")" && pwd)/$(basename "$1"); top=$2; period=$3
 corner=${QC_CORNER:-ss}; topo=${QC_TOPO:-0}
 tag=${4:-${top}_${corner}_p${period}$([ "$topo" = 1 ] && echo _topo)}
@@ -28,6 +29,9 @@ QC_CLK=${QC_CLK:-clk}
 QC_SDC=${QC_SDC:-}
 QC_IO_PCT=${QC_IO_PCT:-20}
 QC_TOPO=$topo
+QC_EXTRA_DB_SS="${QC_EXTRA_DB_SS:-}"
+QC_EXTRA_DB_TT="${QC_EXTRA_DB_TT:-}"
+QC_EXTRA_DB_FF="${QC_EXTRA_DB_FF:-}"
 EOT
 mode=""; [ "$topo" = 1 ] && mode=-topographical_mode
 cd "$out" || exit 1
