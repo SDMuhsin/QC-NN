@@ -1,0 +1,42 @@
+KUL cluster (SNAX GeMMX) gate-level simulation in the full chimera SoC (Questa 2022.1, tau1, Nov 2026)
+Netlist: impl/kulcluster kul_p3.5 (DC, TSMC65 tcbn65gplus, ss 3.5 ns target), KULCluster_snax_KUL_cluster_wrapper
+in place of the RTL pickle. Cells tcbn65gplus_140b Verilog, ARM RF macro models from the memory compiler
+(32 x kul_rf_512x64m4 TCDM, 4 x kul_rf_128x128m1 + 2 x kul_rf_128x40m1 icache). The test is sw/chimera_gemmx: int8 GeMM
+8x144 x 144x16 (+C, SIMD rescale to int8). The gate-level core 0 checks it against the snax golden D8, and the host's
+exit code 0 means the kernel ran with 0 mismatches. Scripts: gls/ (see README "Gate-level simulation").
+
+== Zero delay (gls.sh ... zd): PASS, cycle-exact with RTL ==
++nospecify +notimingchecks, macros in ARM unit-delay mode, cluster clock 2 ns (chimera TB default).
+  self-check: [JTAG] SUCCESS (exit code 0: marker 0xc0ffee00, 0 mismatches vs golden D8)
+  Questa errors 0. No X on the probed busy nets.
+  AXI X-check (gls_xcheck.sv): 988911 cluster cycles checked, 0 X
+  wall time 10 min 37 s (RTL run: 12 min); vsim RSS ~0.5 GB
+  [cluster cycles]                            GLS    RTL
+  GeMM core busy (BlockGemm io_busy_o)         40     40  ok
+  SIMD busy (io_busy_o)                        51     51  ok
+  streamer busy (cstate)                       77     77  ok
+  GeMM core perf counter                       40     40  ok
+  GeMMX (SIMD) perf counter                    51     51  ok
+  streamer perf counter                        76     76  ok
+  GeMM busy 20299932 .. 20300012 ns. The GeMM starts and ends at the same ps as in the RTL run.
+  (full table: results/gls_zd.log)
+
+X handling: no X suppression and no forced initial values. Async-reset flops get their RTL reset values. The
+40k non-reset flops (DFQD*) and the macro arrays start at X, as in RTL, and nothing X reaches the AXI
+handshakes or the result. vopt-2958 reports 8805 undriven implicit nets. gls.sh undriven checks that each
+one feeds an input-port bit with no load inside its submodule: 7657 resolved, 0 loaded, 1148 in
+concatenations the check cannot resolve.
+
+== SDF at tt (gls.sh sdf, then ... sdf): FAIL (hang), root cause not found ==
+DC write_sdf at tt (NCCOM, wire load; tt WNS +1.18 ns at 3.5 ns, hold -0.01 ns incl. 0.05 ns uncertainty).
+sdf_idealclk.py zeroes the 3440 ICG CP->Q delays, as in the ideal-clock STA. Full macro timing models,
+timing checks on, cluster clock 3.5 ns. Annotation is clean: the 80k vsim-SDF-16107 warnings are
+INTERCONNECT entries that Questa cannot map, and all of them are 0 delay. 56872 vsim-3448 warnings: negative
+check limits were set to 0.
+Result: 0 timing-check errors and 0 X on the handshakes. But after reset release the cluster issues one
+wide-AXI AR (icache refill) and then never issues another. The zero-delay run at this point issues an AR
+every ~320 ns. The host polls until the end. Probable area: icache refill / macro read path under real delays.
+Not debugged further (time box). Debug run log: tau1:/tmp/ckp908/qcnn_kulgls/sdf/run.log
+(GLS_STOP=18560us KUL_GLS_SIMARGS=+GLS_HSLOG=60).
+Pitfall found and fixed: vsim -G of the TB's time parameter ClkPeriodClu takes simulator units (ps). "3.5ns"
+gave a 4 ps clock.
