@@ -12,6 +12,19 @@ proc qc_db {corner} { return $::QC_LIBDIR/$::QC_LIB($corner).db }
 # environment variable QC_EXTRA_DB_SS / _TT / _FF (whitespace separated, same order in every corner).
 proc qc_extra_dbs {corner} { return [qc_env QC_EXTRA_DB_[string toupper $corner]] }
 
+# Wire-load model of wire-load (non-topographical) runs, DC and pre-layout PrimeTime.  A kit library may default to
+# a zero model (tcbn65gplus: default_wire_load_selection WireAreaForZero -> ZeroWireload, no wire cap at all), which
+# lets DC size for pin loads only.  QC_WLM_GROUP (site.tcl, or env) names an area-based wire_load_selection group of
+# the library, QC_WLM_MODE (env, default enclosed) the mode; empty group = library default.  Returns a summary word.
+proc qc_wire_load {corner} {
+    set g [qc_env QC_WLM_GROUP [expr {[info exists ::QC_WLM_GROUP] ? $::QC_WLM_GROUP : ""}]]
+    if {$g eq ""} { return lib_default }
+    set m [qc_env QC_WLM_MODE enclosed]
+    set_wire_load_mode $m
+    set_wire_load_selection_group -library $::QC_LIB($corner) $g
+    return $g/$m
+}
+
 # Generic single-clock constraints (used unless QC_SDC names a design SDC).
 #   clock on port <clk> (virtual clock if the port does not exist), period <period> ns;
 #   setup / hold uncertainty QC_UNC_SETUP / QC_UNC_HOLD (0.25 / 0.05 ns), clock transition 0.15 ns;

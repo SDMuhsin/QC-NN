@@ -11,7 +11,11 @@ current_design $top
 link_design
 qc_apply_constraints $corner
 set par none
-if {[file exists $out/$top.spef] && ![catch {read_parasitics -format spef $out/$top.spef}]} { set par dc_topo_estimate }
+if {[file exists $out/$top.spef] && ![catch {read_parasitics -format spef $out/$top.spef}]} {
+    set par dc_topo_estimate
+} else {
+    set par wire_load_[qc_wire_load $corner]
+}
 update_timing
 file mkdir $out/rpt
 report_timing -max_paths 10 -nosplit                 > $out/rpt/pt_${corner}_max.rpt

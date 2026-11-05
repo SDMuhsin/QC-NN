@@ -8,6 +8,10 @@ set ::QC_LIBDIR <STDCELL_DB_DIR>
 array set ::QC_LIB {ss <LIB_SS> tt <LIB_TT> ff <LIB_FF>}
 array set ::QC_OC  {ss <OPCOND_SS> tt <OPCOND_TT> ff <OPCOND_FF>}
 
+# ---- wire-load mode (QC_TOPO=0): area-based wire_load_selection group of the library (empty: library default;
+#      check it is not a zero model, see common/lib.tcl qc_wire_load)
+set ::QC_WLM_GROUP <WLM_SELECTION_GROUP>
+
 # ---- physical data for DC topographical mode (QC_TOPO=1)
 set ::QC_TF      <TECHFILE>
 set ::QC_MW_REF  <MILKYWAY_REFERENCE_LIB>

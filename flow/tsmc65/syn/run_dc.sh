@@ -3,6 +3,7 @@
 # Environment (all optional):
 #   QC_CORNER   library corner ss | tt | ff                  (ss)
 #   QC_TOPO     1 = topographical mode (Milkyway + TLU+ RC)  (0 = wire-load)
+#   QC_WLM_GROUP / QC_WLM_MODE  wire-load selection group (site.tcl QC_WLM_GROUP) and mode (enclosed), QC_TOPO=0
 #   QC_CLK      clock port name                              (clk)
 #   QC_SDC      design SDC to use instead of the generated constraints (common/lib.tcl qc_constraints)
 #   QC_IO_PCT   IO delay, % of the period                    (20)
@@ -15,7 +16,7 @@
 #   summary.txt, run.env (read by sta/run_pt.sh).
 set -u
 . "$(dirname "$0")/../common/tool.sh"
-[ $# -ge 3 ] || { sed -n '2,17p' "$0"; exit 1; }
+[ $# -ge 3 ] || { sed -n '2,18p' "$0"; exit 1; }
 flist=$(cd "$(dirname "$1")" && pwd)/$(basename "$1"); top=$2; period=$3
 corner=${QC_CORNER:-ss}; topo=${QC_TOPO:-0}
 tag=${4:-${top}_${corner}_p${period}$([ "$topo" = 1 ] && echo _topo)}
@@ -29,6 +30,8 @@ QC_CLK=${QC_CLK:-clk}
 QC_SDC=${QC_SDC:-}
 QC_IO_PCT=${QC_IO_PCT:-20}
 QC_TOPO=$topo
+QC_WLM_GROUP=${QC_WLM_GROUP:-}
+QC_WLM_MODE=${QC_WLM_MODE:-}
 QC_EXTRA_DB_SS="${QC_EXTRA_DB_SS:-}"
 QC_EXTRA_DB_TT="${QC_EXTRA_DB_TT:-}"
 QC_EXTRA_DB_FF="${QC_EXTRA_DB_FF:-}"

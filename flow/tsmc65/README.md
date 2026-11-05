@@ -39,7 +39,7 @@ flow/tsmc65/sim/run_vcs.sh <tag> <tb_top> <a.f> [b.f ...]       # -> build/tsmc6
 ```
 
 Options are environment variables, documented in each script's header: `QC_CORNER`, `QC_TOPO=1`
-(topographical mode), `QC_CLK`, `QC_SDC` (a design SDC instead of the generated single-clock constraints),
+(topographical mode), `QC_WLM_GROUP` / `QC_WLM_MODE` (wire-load model, see below), `QC_CLK`, `QC_SDC` (a design SDC instead of the generated single-clock constraints),
 `QC_IO_PCT`, `QC_PARAMS`, `QC_HOOK` (Tcl sourced before compile), `QC_COMPILE`, `QC_CORES`, `QC_BUILD`,
 `QC_EXTRA_DB_SS` / `_TT` / `_FF` (extra link libraries per corner, e.g. SRAM macros as black boxes; kept in run.env
 for PrimeTime), `QC_PT_HOOK` (Tcl sourced by PrimeTime after its reports, design-specific numbers).
@@ -58,6 +58,25 @@ flow/tsmc65/sync.sh wip                           # before a push: rsync flow/ t
 QC_TREE=wip flow/tsmc65/sync.sh run '...'         # ... and run there
 flow/tsmc65/sync.sh fetch build/tsmc65/syn/<tag>/summary.txt
 ```
+
+## Wire-load model
+
+tcbn65gplus selects `WireAreaForZero` -> `ZeroWireload` by default (`default_wire_load_selection`, mode segmented),
+so a plain DC run sees pin caps only: no wire cap at all.  DC then sizes for that (many D0 / D1 drivers), which
+P&R has to undo.  With `QC_WLM_GROUP` set in `site.tcl` (here `WireAreaLowkCon`, the kit's area-selected
+conservative models; `QC_WLM_MODE`, default `enclosed`), DC and pre-layout PrimeTime use that group instead
+(`common/lib.tcl` `qc_wire_load`; `summary.txt` and `pt_<corner>.txt` show the model used).  Numbers from one
+FPU of the Snitch cluster (fpnew, 94k cells, 228k um2, 4.0 ns at ss), all from the same zero-WLM netlist:
+
+| ss, 4.0 ns | WNS | cell area |
+|---|---|---|
+| zero WLM (old default) | +0.12 ns | 228k um2 |
+| same netlist re-timed with WireAreaLowkCon enclosed / top | -1.95 / -3.03 ns | - |
+| `compile_ultra -incremental` with WireAreaLowkCon enclosed | -0.23 ns | 249k (+9 %) |
+| `compile_ultra -incremental -spg` (topographical, TLU+ cworst) | 0.00 ns | 247k (+8 %) |
+
+So the area-selected WLM comes close to topographical results at a fraction of the run time.  For large blocks
+(long top-level nets that no WLM models) use `QC_TOPO=1`.
 
 ## File lists
 

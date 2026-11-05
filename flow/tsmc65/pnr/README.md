@@ -96,3 +96,13 @@ files in `QC_EXTRA_DB_SS` / `_TT` / `_FF`.  `designs/macro_test.cfg` checks the 
   (ODB-0388), so those rules are not checked either.  No metal density fill is done.
 * **Utilisation.**  `repair_design` resizes cells towards a target slew once it runs: in the smoke run, 153
   cells and +41 % cell area for the 0.25 ns `max_transition` at ss.  Leave room for this in `CORE_UTIL`.
+* **Input netlist: synthesize with wire load.**  Audit on one Snitch FPU (94k cells, 4.0 ns at ss, netlist from a
+  zero-wire-load DC run, see the flow README "Wire-load model"): OpenROAD init +0.29 ns, after global placement
+  -4.07 ns with 24k slew-violating pins (D0 / D1 drivers on real wires); plain `repair_design` resized 80k of the
+  94k instances (+84 % area) and only reached -1.6 ns (-3.96 ns at global route after CTS and `repair_timing`,
+  +93 % area); repairing only the violating nets keeps the area (+12 %) but leaves -3.2 ns.  DC topographical on the
+  same netlist closes 4.0 ns with +8 % area, the kit WLM (`WireAreaLowkCon`) gets -0.23 ns with +9 %.  The RC
+  itself was checked and is not the cause: per-um R / C as set (1.09 Ohm, 0.266 fF on M2-M7 at ss cworst; 1.40 /
+  0.222 at tt) arrive unchanged in OpenROAD (kOhm / pF per um = liberty units), a 500 um net gets 0.134 pF and a
+  37.8 ps wire delay (Elmore by hand 36.5 ps), the def2spef SPEF reads with the same caps in PrimeTime, and PT and
+  OpenROAD agree within 1 % on a long-wire chain (same liberty, slew thresholds / derate handled alike).

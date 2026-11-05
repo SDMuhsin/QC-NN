@@ -49,6 +49,7 @@ if {![link]} { puts "QC_ERROR link"; exit 1 }
 set_operating_conditions -max $::QC_OC($corner) -max_library $::QC_LIB($corner) \
                          -min $::QC_OC(ff) -min_library $::QC_LIB(ff)
 qc_apply_constraints $corner
+set wlm [expr {$::env(QC_TOPO) ? "topo" : [qc_wire_load $corner]}]
 set_fix_hold [all_clocks]
 set_clock_gating_style -sequential_cell latch -positive_edge_logic integrated -control_point before \
     -minimum_bitwidth 4 -max_fanout 32
@@ -80,7 +81,7 @@ redirect -variable ra {report_area -nosplit}
 set area NA; regexp -line {^Total cell area:\s+([0-9.]+)} $ra -> area
 set nand [get_attribute [get_lib_cells $::QC_LIB($corner)/$::QC_NAND2] area]
 set fh [open $out/summary.txt w]
-puts $fh "design $design top $top corner $corner period_ns $::env(QC_PERIOD) topo $::env(QC_TOPO)"
+puts $fh "design $design top $top corner $corner period_ns $::env(QC_PERIOD) topo $::env(QC_TOPO) wire_load $wlm"
 puts $fh [format "cell_area_um2 %s gate_eq_kGE %.2f cells %d regs %d" $area \
     [expr {$area eq "NA" ? 0 : $area / $nand / 1000.0}] \
     [sizeof_collection [get_cells -hierarchical -filter is_hierarchical==false]] \
