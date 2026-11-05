@@ -27,16 +27,38 @@ handshakes or the result. vopt-2958 reports 8805 undriven implicit nets. gls.sh 
 one feeds an input-port bit with no load inside its submodule: 7657 resolved, 0 loaded, 1148 in
 concatenations the check cannot resolve.
 
-== SDF at tt (gls.sh sdf, then ... sdf): FAIL (hang), root cause not found ==
+== SDF at tt (gls.sh sdf, then ... sdf): PASS, cycle-exact with zero delay at the same clock ==
 DC write_sdf at tt (NCCOM, wire load; tt WNS +1.18 ns at 3.5 ns, hold -0.01 ns incl. 0.05 ns uncertainty).
-sdf_idealclk.py zeroes the 3440 ICG CP->Q delays, as in the ideal-clock STA. Full macro timing models,
-timing checks on, cluster clock 3.5 ns. Annotation is clean: the 80k vsim-SDF-16107 warnings are
-INTERCONNECT entries that Questa cannot map, and all of them are 0 delay. 56872 vsim-3448 warnings: negative
-check limits were set to 0.
-Result: 0 timing-check errors and 0 X on the handshakes. But after reset release the cluster issues one
-wide-AXI AR (icache refill) and then never issues another. The zero-delay run at this point issues an AR
-every ~320 ns. The host polls until the end. Probable area: icache refill / macro read path under real delays.
-Not debugged further (time box). Debug run log: tau1:/tmp/ckp908/qcnn_kulgls/sdf/run.log
-(GLS_STOP=18560us KUL_GLS_SIMARGS=+GLS_HSLOG=60).
+sdf_idealclk.py gives the view that the STA signed off (impl/snitch_cluster/gls/README.md "SDF run (tt)"):
+ - zero IOPATH on the 3440 ICGs (ideal clock);
+ - zero IOPATH on the 1201 cells of the rst_ni buffer tree (ideal network + false path in the SDC);
+ - 0.7 ns (the SDC set_input_delay) on all 46799 INTERCONNECTs from input ports other than clk_i.
+Full macro timing models, timing checks on, cluster clock 3.5 ns. Run on tau5.
+  self-check: [JTAG] SUCCESS (exit code 0, 0 mismatches vs golden D8)
+  Questa errors 0 (no timing-check violation), no X on the probed busy nets
+  AXI X-check: 659856 cluster cycles, 0 X
+  wall time 13 min 32 s
+  [cluster cycles]            SDF 3.5 ns   zd 3.5 ns   RTL / zd 2 ns
+  GeMM core busy                   40          40          40
+  SIMD busy                        51          51          51
+  streamer busy                    72          72          77
+  GeMM core perf counter           40          40          40
+  GeMMX (SIMD) perf counter        51          51          51
+  streamer perf counter            71          71          76
+  (full table: results/gls_sdf.log)
+Every probed edge of the SDF run is the zd 3.5 ns edge plus 140..220 ps of clock-to-Q, from streamer start
+20645243.5 ns to streamer end 20645495.5 ns. The streamer is 5 cycles shorter than in RTL because of the
+clock: RTL and gls_zd.log run the cluster at chimera's default 2 ns. Rerunning zd at 3.5 ns
+(KUL_GLS_SIMARGS=-G/tb_chimera_soc/fix/vip/ClkPeriodClu=3500) gives 72/71 as well. That zd run is not in
+results/gls_zd.log. Only the streamer differs: GeMM and SIMD are the same at both clocks.
+
+Root cause of the earlier hang: the same one as the Snitch SDF run. chimera's RTL changes the cluster inputs
+0 ps after the clock edge, and some port-to-flop paths are about 10 ps. The tt SDF gives those flops
+hold windows that reach past the edge (negative setup / positive hold on D). Questa models negative
+$setuphold limits with internal delayed D/CP, so such a flop samples the input of the NEXT cycle and
+the check passes on the delayed signals. Nothing is reported, but an AXI handshake is seen one cycle
+early. The STA assumed 0.7 ns input delay, so these paths meet hold there. The fix is all three items
+above together. The input delay was not bisected on KUL. The reset item was not the cause of the hang:
+the old run reported 0 reset (CDN) timing errors.
 Pitfall found and fixed: vsim -G of the TB's time parameter ClkPeriodClu takes simulator units (ps). "3.5ns"
 gave a 4 ps clock.

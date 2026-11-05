@@ -8,10 +8,11 @@
 #   gls.sh wait    <kernel> <mode>  poll (<= 9 min per call), prints GLS_DONE when finished
 #   gls.sh summary <kernel> <mode>  logs back, verdict + cycles vs RTL -> build/gls/<kernel>_<mode>.txt
 #   gls.sh report                   all summaries -> impl/snitch_cluster/gls/results.txt
-#   gls.sh sdf                      DC write_sdf at tt on $GLS_SYNHOST, ideal-clock view (sdf_idealclk.py) -> $GLS_HOST
+#   gls.sh sdf                      DC write_sdf at tt on $GLS_SYNHOST, STA-consistent view (sdf_idealclk.py:
+#                                   ideal clock + reset networks, SDC input delay on the TB-driven ports) -> $GLS_HOST
 # modes: rtl = RTL + gls_trace.sv (validates the retire monitor against the upstream tracer)
 #        zd  = netlist, +nospecify +notimingchecks, ARM macro models in unit-delay mode
-#        sdf = netlist + DC tt SDF (ideal clocks), ARM timing models, timing checks reported
+#        sdf = netlist + DC tt SDF (ideal clock + reset, SDC input delay), ARM timing models, timing checks reported
 #              (+no_notifier, see README), clock GLS_TCK_PS (default 4000)
 # kernel: gemm_fp64 | conv2d (ELF from sim/run_kernel.sh <kernel> vsim, build/sim/runs/...)
 set -euo pipefail
@@ -103,8 +104,8 @@ summary)
 report)
   { echo "# Snitch cluster (fp_p4.0 DC netlist) gate-level simulation, impl/snitch_cluster/gls/gls.sh"
     echo "# reference: sim/results/<kernel>_vsim_chimera_fp.txt (RTL, Questa 2022.1_2)"
+    echo "# sdf: DC tt SDF, sdf_idealclk.py view (ideal clock + reset, 0.8 ns SDC input delay), README \"SDF run (tt)\""
     for f in "$B"/{gemm_fp64,conv2d}_{rtl,zd,sdf}.txt; do [ -f "$f" ] && { echo; cat "$f"; }; done
-    ls "$B"/*_sdf.txt > /dev/null 2>&1 || printf '\n[sdf, tt]\n  not finished: diverges from RTL after the first fetches (README, "SDF run")\n'
   } > "$G/results.txt"
   cat "$G/results.txt"
   ;;
@@ -117,7 +118,10 @@ sdf)
       ssh "$SYNHOST" "cat $SG/snitch_cluster_wrapper_tt.sdf.gz" | ssh "$H" "cat > $R/net/snitch_cluster_wrapper_tt.sdf.gz"
     ssh "$SYNHOST" "cat $SG/clock_cells.txt" | ssh "$H" "cat > $R/net/clock_cells.txt"
     rsync -a "$G/sdf_idealclk.py" "$H:$R/net/"
-    ssh "$H" "cd $R/net && zcat snitch_cluster_wrapper_tt.sdf.gz | python3 sdf_idealclk.py clock_cells.txt | gzip -1 > snitch_cluster_wrapper_idealclk.sdf.gz"
+    # input delay of the TB-driven ports = the SDC's set_input_delay (one value, min = max)
+    IND=$(ssh "$H" "grep -o 'set_input_delay -clock [^ ]* *[0-9.]*' $R/net/snitch_cluster_wrapper.sdc | awk '{print \$NF}' | sort -u")
+    [ "$(echo "$IND" | wc -l)" = 1 ] || { echo "expected one set_input_delay value, got: $IND"; exit 1; }
+    ssh "$H" "cd $R/net && python3 sdf_idealclk.py snitch_cluster_wrapper_tt.sdf.gz clock_cells.txt $IND clk_i rst_ni | gzip -1 > snitch_cluster_wrapper_idealclk.sdf.gz"
     echo SDF_DONE; exit 0
   fi
   if ssh "$SYNHOST" "pgrep -u \$USER -f '[d]c_shell.*write_sdf' > /dev/null"; then

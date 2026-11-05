@@ -89,18 +89,28 @@ def main():
                 out.append(f"  {h}: monitor != tracer at retire {k_}: {e[k_:k_+1]} vs {d[k_:k_+1]}")
         out.append(f"  retire monitor == upstream tracer (core instructions, all 9 harts): {'yes' if ok else 'NO'}")
     else:                 # every retire (time, pc, insn) vs the RTL run
-        same = 0
+        same, tail = 0, 0
+        fin = re.search(r"\$finish.*\n#\s+Time: (\d+) ns", slog)
         for h, e in ev.items():
             r = events(os.path.join(a.rtl, "logs", h))
             if a.tck != 1000 and e and r:   # slower clock (sdf): compare in cycles from the first retire
-                e = [((t - e[0][0]) * 1000 // a.tck + r[0][0], pc, i) for t, pc, i in e]
+                t0 = e[0][0]
+                e = [((t - t0) * 1000 // a.tck + r[0][0], pc, i) for t, pc, i in e]
+                # tb_bin polls fesvr every 200 ns, so after the exit the slower run reaches $finish
+                # after fewer cycles: RTL retires from that cycle on were never simulated (a retire is
+                # logged one cycle after it, when the pc moves on)
+                if fin:
+                    end = (int(fin[1]) * 1000 - t0) * 1000 // a.tck + r[0][0]
+                    tail += sum(1 for x in r if x[0] >= end)
+                    r = [x for x in r if x[0] < end]
             k_ = first_diff(e, r)
             same += k_ is None
             if k_ is not None:
                 out.append(f"  {h}: differs from RTL at retire {k_} of {len(r)}: {e[k_:k_+1]} vs {r[k_:k_+1]}")
         ok = ok and same == len(ev)
         out.append(f"  harts with a retire stream (time, pc, insn) identical to RTL: {same}/{len(ev)} "
-                   f"({sum(len(e) for e in ev.values())} retires)")
+                   f"({sum(len(e) for e in ev.values())} retires"
+                   + (f"; {tail} RTL retires after this run's $finish not compared" if tail else "") + ")")
     wall = re.search(r"Elapsed time: ([\d:]+)", slog)
     out.append(f"  wall time {wall[1] if wall else '?'}, clock {a.tck} ps")
     out.append(f"  => {'PASS' if ok else 'FAIL'}")

@@ -72,21 +72,29 @@ models and the netlist. The top module name and port widths are the same, so chi
 hw/kulcluster/gls/gls.sh compile zd; hw/kulcluster/gls/gls.sh start zd   # zero delay, ~10 min
 hw/kulcluster/gls/gls.sh wait zd      # repeat until GLS_DONE
 hw/kulcluster/gls/gls.sh summary zd   # -> results/gls_zd.log (PASS/FAIL, cycles vs RTL)
-hw/kulcluster/gls/gls.sh sdf          # DC write_sdf at tt (+ ideal-clock filter), then the same 4 steps with `sdf`
+hw/kulcluster/gls/gls.sh sdf          # DC write_sdf at tt (+ sdf_idealclk.py), then the same 4 steps with `sdf`
 ```
 * `zd`: `+nospecify +notimingchecks`, macro models in ARM unit-delay mode (`ARM_UD_MODEL`).
   `sdf`: DC `write_sdf` at tt, full macro timing models, timing checks on, cluster clock 3.5 ns
-  (pre-CTS tt fmax ~433 MHz). `sdf_idealclk.py` zeroes the ICG CP->Q delays because STA used
-  ideal clocks. Otherwise every gated flop would be 0.15 ns late, and that skew is not in any timed view.
+  (pre-CTS tt fmax ~433 MHz). `sdf_idealclk.py` makes the SDF consistent with the STA:
+  * ICG CP->Q delays and the `rst_ni` buffer tree are zeroed, because they are ideal networks in
+    synthesis.
+  * The input ports get the SDC input delay of 0.7 ns. chimera's RTL changes them 0 ps after the
+    edge, and with the cells' tt hold windows Questa would then sample the next cycle's value
+    without reporting it.
+
+  See `impl/snitch_cluster/gls/README.md`, "SDF run (tt)".
 * Probes (`gls_probe.tcl`): the busy nets and perf-counter flops that survive synthesis (GeMM
   core / SIMD / streamer), in the same GEMMX_PROBE format as the RTL run.
 * X handling: no X suppression. All resettable state uses its RTL reset (async-reset flops).
   Non-reset flops and the macros start at X, as in RTL. `gls_xcheck.sv` (bound into chimera's
   `chimera_cluster_kulcluster`) flags any X on the cluster's AXI handshakes, on valid AW/AR
   addresses and on valid R data. Busy nets are logged in binary, so an X there fails the summary.
-* Status: `zd` PASS and cycle-exact with RTL (GeMM busy 40, SIMD 51, streamer 76 counters). The
-  `sdf` run hangs after the first icache refill request, with no timing-check error and no X; not
-  root-caused (`results/gls.txt`). Debug knobs: `GLS_STOP=<time>` (stop early) and
+* Status: `zd` PASS and cycle-exact with RTL (GeMM busy 40, SIMD 51, streamer 76 counters).
+  `sdf` (tt, 3.5 ns, on tau5 with `KUL_VSIM_HOST=tau5`) PASS: 0 timing-check errors, 0 X, and
+  cycle-exact with zd at the same 3.5 ns clock (GeMM 40, SIMD 51, streamer 71). The streamer is
+  5 cycles shorter than at chimera's default 2 ns, where RTL ran. That comes from the clock, not
+  from the delays (`results/gls.txt`). Debug knobs: `GLS_STOP=<time>` (stop early) and
   `KUL_GLS_SIMARGS=+GLS_HSLOG=<n>` (log the first n AXI handshake changes).
 * Netlist warnings that do not matter: vopt-2685/2718 are unconnected outputs. vopt-2958 (8805 undriven
   implicit nets) are DC's dangling nets on input-port bits with no load inside the submodule.

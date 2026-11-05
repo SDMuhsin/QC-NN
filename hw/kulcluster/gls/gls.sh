@@ -4,7 +4,8 @@
 # sim/chimera_vsim.sh; only the cluster RTL pickle is replaced by netlist + cells + macro models.
 #   hw/kulcluster/gls/gls.sh compile|start|wait|summary   [zd|sdf]   (default mode zd)
 #     zd   zero delay: +nospecify +notimingchecks, ARM macro models in unit-delay mode
-#     sdf  DC write_sdf delays at tt (`sdf` step), ICG delays zeroed (ideal clock, sdf_idealclk.py),
+#     sdf  DC write_sdf delays at tt (`sdf` step) in the STA-consistent view of sdf_idealclk.py
+#          (ideal clock and reset networks, SDC input delay on the chimera-driven ports),
 #          full ARM macro timing models, timing checks on; cluster clock KUL_GLS_CLK_SDF (3500 ps)
 #   hw/kulcluster/gls/gls.sh sdf        DC: write the tt SDF of the netlist (remote, detached, ~3 min;
 #                                       call again until it lists the .sdf.gz)
@@ -45,7 +46,10 @@ sdf)
   # detached; call again to see the status (QC_SDF_DONE in write_sdf.log when finished)
   if ssh $HOST "grep -q QC_SDF_DONE $R/sdfgen/write_sdf.log 2>/dev/null"; then
     rsync -a $G/sdf_idealclk.py $HOST:$R/sdfgen/
-    ssh $HOST "cd $R/sdfgen; [ -s $SDFI ] || python3 sdf_idealclk.py $SDF | gzip -1 > $SDFI
+    # input delay of the chimera-driven ports = the SDC's set_input_delay (one value, min = max)
+    IND=$(ssh $HOST "grep -o 'set_input_delay -clock [^ ]* *[0-9.]*' $R/sdfgen/tt.sdc | awk '{print \$NF}' | sort -u")
+    [ "$(echo "$IND" | wc -l)" = 1 ] || { echo "expected one set_input_delay value, got: $IND"; exit 1; }
+    ssh $HOST "cd $R/sdfgen; [ -s $SDFI ] || python3 sdf_idealclk.py $SDF $IND clk_i rst_ni | gzip -1 > $SDFI
       grep -E 'slack' tt_timing.rpt; ls -la $SDF $SDFI"; exit 0
   fi
   if ssh $HOST "pgrep -u \$USER -f '[d]c_shell.*write_sdf' >/dev/null"; then
