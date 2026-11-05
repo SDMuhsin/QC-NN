@@ -1,0 +1,59 @@
+diff --git a/Bender.lock b/Bender.lock
+index 8d81397..54bb040 100644
+--- a/Bender.lock
++++ b/Bender.lock
+@@ -150,10 +150,10 @@ packages:
+     - fpnew
+     - tech_cells_generic
+   ethcluster:
+-    revision: 690369f4971ec76a8b6c7a54c3c8470d6eeff609
++    revision: null
+     version: null
+     source:
+-      Git: git@gitlab.tue.nl:es/convolve-private/ethcluster.git
++      Path: /workspace/qc-nn/tools/convolve_private_stubs/ethcluster
+     dependencies: []
+   fpnew:
+     revision: a8e0cba6dd50f357ece73c2c955d96efc3c6c315
+@@ -202,10 +202,10 @@ packages:
+     - common_cells
+     - register_interface
+   kulcluster:
+-    revision: 2fc9c58b8462903e6439ba4875fdd162c4e067c2
++    revision: null
+     version: null
+     source:
+-      Git: git@gitlab.tue.nl:es/convolve-private/kulcluster.git
++      Path: /workspace/qc-nn/hw/kulcluster
+     dependencies: []
+   memory_island:
+     revision: 64828cb7a9ccc1f1656ec92d06129072f445c319
+@@ -291,22 +291,22 @@ packages:
+     dependencies:
+     - common_verification
+   tuddcim:
+-    revision: 9f623cd1b7e4b72e50cbd69d56726c5cc667cadd
++    revision: null
+     version: null
+     source:
+-      Git: git@gitlab.tue.nl:es/convolve-private/tuddcim.git
++      Path: /workspace/qc-nn/tools/convolve_private_stubs/tuddcim
+     dependencies: []
+   tuedcim:
+-    revision: 81b02629cf50ffcd0d0aebf0a488cabc99dc64fe
++    revision: null
+     version: null
+     source:
+-      Git: git@gitlab.tue.nl:es/convolve-private/tuedcim.git
++      Path: /workspace/qc-nn/tools/convolve_private_stubs/tuedcim
+     dependencies: []
+   tuemega:
+-    revision: b0b1fd2ba0733edb1ecdf6bdb758c005ee385499
++    revision: null
+     version: null
+     source:
+-      Git: git@gitlab.tue.nl:es/convolve-private/tuemega.git
++      Path: /workspace/qc-nn/tools/convolve_private_stubs/tuemega
+     dependencies: []
+   unbent:
+     revision: e9c9d5cfb635f2d4668c816ce9235798cfecb297

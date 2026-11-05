@@ -5,5 +5,5 @@ overrides:
   tuedcim:    { path: "/workspace/qc-nn/tools/convolve_private_stubs/tuedcim" }
   tuemega:    { path: "/workspace/qc-nn/tools/convolve_private_stubs/tuemega" }
   tuddcim:    { path: "/workspace/qc-nn/tools/convolve_private_stubs/tuddcim" }
-  kulcluster: { path: "/workspace/qc-nn/tools/convolve_private_stubs/kulcluster" }
+  kulcluster: { path: "/workspace/qc-nn/hw/kulcluster" }  # public SNAX equivalent, see hw/kulcluster
   ethcluster: { path: "/workspace/qc-nn/tools/convolve_private_stubs/ethcluster" }
