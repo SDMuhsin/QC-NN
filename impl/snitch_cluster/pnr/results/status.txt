@@ -1,0 +1,35 @@
+Snitch FP cluster (snitch_cluster_wrapper, DC fp_p4.0, 4.0 ns at ss) - OpenROAD P&R, tag sn_fp
+host usask (engr-tau-02L), run dir /tmp/ckp908/qcnn/build/pnr/sn_fp (tree /tmp/ckp908/qcnn/sn_tree), OpenROAD 2.0-12381
+config impl/snitch_cluster/pnr/snitch_fp.cfg; raw step log results/pnr_summary_raw.txt (includes the PDN iterations)
+
+STATUS: STOPPED BEFORE DETAILED ROUTING - out of memory.
+  detailed_route was OOM-killed at the start of its 0th iteration (anon RSS 31 GB, total VM 48 GB, host has
+  30 GB RAM + 15 GB swap).  Total OpenROAD run time over all attempts is about 6 h.  Not done: detailed route, routed
+  DEF / netlist, SPEF, post-route PrimeTime (ss/tt/ff), DRC / antenna counts, power.
+  Last checkpoint: db/cts_opt.odb (= db/cts.odb; after CTS, setup + hold repair, legalised), route.guide (global
+  route of that checkpoint, no overflow: gr_congestion.rpt is empty).
+
+floorplan (3 macro-placement / PDN iterations)
+  die 3160.00 x 3000.00 um = 9.480 mm2, core 3140.0 x 2977.2 um = 9.348 mm2
+  16 x qc_sp_1024x64m8: 2 rows of 4 at the top (R0) and 2 at the bottom (MX), x 501.8-3148.3 um;
+  4 x qc_rf_16x128m1: 2 x 2 in the logic band below the first top TCDM column; 480 um standard-cell column at the left
+  PDN: M1 rails, M4 / M7 core straps, M6 macro straps to the M3 rings; check_power_grid VDD / VSS true
+  utilisation (cells + macros / core): floorplan 0.621 -> place 0.622 -> repair_design 0.745 -> CTS 0.775 -> opt 0.780
+  standard-cell area: DC 3.889 mm2 -> after repair 5.372 mm2 (+38 %); macros 1.916 mm2
+
+timing (OpenROAD, ns; propagated clocks after CTS; setup WNS / TNS, hold WNS / TNS)
+  stage                     ss                               tt                              ff
+  place (no repair)         -46.83 / -2006842  -0.04 / -0.4   -19.87 / -742866  -0.04 / -0.4  -8.28 / -212095  -0.05 / -1.2
+  pre-CTS (DRV repair)      -12.19 / -370678   -0.10 / -1.4   -5.46 / -91172    -0.06 / -1.4  -2.87 / -20946   -0.06 / -4.6
+  CTS                       -13.12 / -392740   -1.24 / -355   -5.68 / -100143   -0.73 / -214  -2.79 / -20925   -0.48 / -221
+  CTS + setup/hold repair   -7.38 / -347876    -1.11 / -168   -3.67 / -80288    -0.66 / -87   -2.11 / -13358   -0.46 / -55
+  global route (GRT RC)     -8.41 / -401481    -1.04 / -150   -3.84 / -98316    -0.62 / -77   -2.21 / -16420   -0.43 / -48
+  fmax estimate at global-route parasitics (1 / (4.0 - WNS)): ss 81 MHz, tt 128 MHz, ff 161 MHz (DC/PT pre-layout: 250 / 382 / 538)
+  hold repair: 28557 hold buffers; remaining hold violations are on paths that also fail setup (e.g. I-cache l0 ->
+  core 4 spill register, -1.11 ns at ss, clock skew of the gated tree), which repair_timing does not trade off.
+
+why timing is far off
+  DC sized for zero wire load (many D0 / D1 drivers); with placement RC (captable cworst, ss) long nets between the
+  cores, the xbar / interconnect and the TCDM rows dominate (worst path core 4 spill register -> TCDM bank).
+  Global placement was not timing-driven (each of its 6 timing reweights took ~8 min on 1.36M instances); setup
+  repair was bounded to the worst endpoints (repair_tns 0) for run time.
