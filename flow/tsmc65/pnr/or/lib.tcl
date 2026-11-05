@@ -20,7 +20,7 @@ proc qc_log {msg} { puts "QC_PNR $msg"; flush stdout }
 array set ::P_DEFAULT {
     CORE_UTIL 0.55   ASPECT 1.0   CORE_MARGIN 5.0   DIE_AREA {}   CORE_AREA {}
     PLACE_DENSITY {}  PLACE_PAD 1   TIMING_DRIVEN 1   ROUTABILITY_DRIVEN 1
-    PIN_TCL {}  FLOORPLAN_TCL {}  PRE_PLACE_TCL {}  PRE_CTS_TCL {}  PRE_ROUTE_TCL {}  POST_ROUTE_TCL {}
+    PIN_TCL {}  FLOORPLAN_TCL {}  PRE_PLACE_TCL {}  PRE_CTS_TCL {}  PRE_ROUTE_TCL {}  POST_GRT_TCL {}  POST_ROUTE_TCL {}
     MACRO_LEFS {}  MACRO_LIBS_ss {}  MACRO_LIBS_tt {}  MACRO_LIBS_ff {}  MACRO_GDS {}
     MACRO_PLACE {}  MACRO_HALO {5 5}  MACRO_AUTO 1  MACRO_PDN_TCL {}  MACRO_PIN_LAYER M4
     PDN_TCL {}  PDN_RAIL_W 0.33
@@ -62,10 +62,21 @@ proc qc_router_lef {} {
     }
     return $lef
 }
+# macro LEF as read by OpenROAD: CLASS RING (ARM memory compilers with power rings) becomes CLASS BLOCK in a copy
+# under $OUT/rc, else OpenROAD does not see the macro as a block (macro placement, cut_rows, pdngen macro grids)
+proc qc_macro_lef {lef} {
+    set f [open $lef]; set t [read $f]; close $f
+    if {![regsub -all {(\n\s*CLASS\s+)RING(\s*;)} $t {\1BLOCK\2} t]} { return $lef }
+    file mkdir $::OUT/rc
+    set out $::OUT/rc/[file tail $lef]
+    set f [open $out w]; puts -nonewline $f $t; close $f
+    qc_log "macro LEF $lef: CLASS RING read as CLASS BLOCK ($out)"
+    return $out
+}
 proc qc_read_libs {} {
     qc_read_liberty
     read_lef [qc_router_lef]
-    foreach l [p MACRO_LEFS] { read_lef $l }
+    foreach l [p MACRO_LEFS] { read_lef [qc_macro_lef $l] }
 }
 proc qc_read_design {} {
     read_verilog [p NETLIST]
@@ -189,4 +200,36 @@ proc qc_util {} {
 proc qc_summary {line} {
     set f [open $::OUT/summary.txt a]; puts $f $line; close $f
     qc_log $line
+}
+# Electrical repair of the nets with a max slew / cap / fanout violation only.  repair_design (build 2.0-12381)
+# also resizes the driver of every net it visits towards its library target slew: on a DC-sized netlist that
+# changes most instances (Snitch FPU: 75k of 96k, +80-90 % area) and loses timing.  All other signal nets are
+# dont_touch while it runs, so DC's sizing is kept there; setup / hold sizing is left to repair_timing.
+proc qc_repair_drv {} {
+    set blk [ord::get_db_block]
+    set rf $::OUT/rpt/drv_repair.tmp
+    qc_to $rf { report_check_types -max_slew -max_capacitance -max_fanout -violators }
+    array set v {}
+    set f [open $rf]
+    while {[gets $f line] >= 0} {
+        if {![string match *VIOLATED* $line]} { continue }
+        set pin [lindex $line 0]; set k [string last / $pin]
+        set it NULL
+        if {$k < 0} {
+            set it [$blk findBTerm $pin]
+        } elseif {[set i [$blk findInst [string range $pin 0 [expr {$k - 1}]]]] ne "NULL"} {
+            set it [$i findITerm [string range $pin [expr {$k + 1}] end]]
+        }
+        if {$it ne "NULL" && [$it getNet] ne "NULL"} { set v([[$it getNet] getName]) 1 }
+    }
+    close $f
+    file delete $rf
+    set dt {}
+    foreach n [$blk getNets] {
+        if {[$n getSigType] ne "SIGNAL" || [$n isDoNotTouch] || [info exists v([$n getName])]} { continue }
+        $n setDoNotTouch 1; lappend dt $n
+    }
+    qc_log "repair_design on [array size v] nets with DRV violations ([llength $dt] nets kept)"
+    repair_design -max_utilization [p MAX_UTIL]
+    foreach n $dt { $n setDoNotTouch 0 }
 }

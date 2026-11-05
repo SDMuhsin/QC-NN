@@ -8,11 +8,14 @@ set_routing_layers -signal $::QC_PNR_MIN_LAYER-$::QC_PNR_MAX_LAYER -clock $::QC_
 global_placement {*}$gpl
 estimate_parasitics -placement
 foreach t [list $::QC_PNR_TIEHI $::QC_PNR_TIELO] { repair_tie_fanout -separation 2 [join $t /] }
-# repair_design also upsizes cells towards a target slew; REPAIR_DESIGN auto runs it only on real DRV violations
+# REPAIR_DESIGN auto: repair only the nets with DRV violations (qc_repair_drv, DC sizing kept elsewhere);
+# 1: plain repair_design (also resizes every other driver towards a target slew); 0: none
 set ndrv [expr {[sta::max_slew_violation_count] + [sta::max_capacitance_violation_count] + [sta::max_fanout_violation_count]}]
 qc_log "drv violations after global placement: $ndrv"
-if {[p REPAIR_DESIGN] eq "1" || ([p REPAIR_DESIGN] eq "auto" && $ndrv > 0)} {
+if {[p REPAIR_DESIGN] eq "1"} {
     repair_design -max_utilization [p MAX_UTIL]
+} elseif {[p REPAIR_DESIGN] eq "auto" && $ndrv > 0} {
+    qc_repair_drv
 }
 detailed_placement
 check_placement

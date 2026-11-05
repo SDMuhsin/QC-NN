@@ -49,7 +49,7 @@ Steps (`or/<step>.tcl`, each ends in `db/<step>.odb` + `.sdc`):
 | init | liberty of every corner (`define_corners`), router LEF + macro LEFs, netlist, SDC, per-corner RC |
 | floorplan | die / core from `CORE_UTIL`, `ASPECT`, `CORE_MARGIN` (or `DIE_AREA` + `CORE_AREA`), tracks, macros, tie cells for driverless constant nets, optional tapcells, IO pins |
 | pdn | M1 followpin rails + `PDN_V_*` / `PDN_H_*` straps, macro grid, `check_power_grid` |
-| place | global placement (timing + routability driven), tie fanout, `repair_design` (when there are DRV violations, `REPAIR_DESIGN auto`), detailed placement |
+| place | global placement (timing + routability driven), tie fanout, `repair_design` of the nets with DRV violations only (`REPAIR_DESIGN auto`; `1` = plain `repair_design`), detailed placement |
 | cts | `clock_tree_synthesis` with the site clock buffers, propagated clocks, setup then hold repair |
 | route | global route, antenna repair (diode `ANTENNA`), decap + filler cells, detailed route, `check_antennas` |
 | finish | DEF, netlist without fillers (`<top>.v`, for STA) and with PG + fillers (`<top>_pg.v`), pin dump for def2spef |
@@ -106,3 +106,8 @@ files in `QC_EXTRA_DB_SS` / `_TT` / `_FF`.  `designs/macro_test.cfg` checks the 
   0.222 at tt) arrive unchanged in OpenROAD (kOhm / pF per um = liberty units), a 500 um net gets 0.134 pF and a
   37.8 ps wire delay (Elmore by hand 36.5 ps), the def2spef SPEF reads with the same caps in PrimeTime, and PT and
   OpenROAD agree within 1 % on a long-wire chain (same liberty, slew thresholds / derate handled alike).
+* **repair_design resizes every driver.**  Even on the DC topographical netlist of that FPU (0.00 ns, 247k um2),
+  plain `repair_design` resized 75k of 96k instances for ~600 violating nets and the placement no longer fit at
+  50 % utilisation.  `REPAIR_DESIGN auto` therefore runs it with all non-violating signal nets dont_touch
+  (`qc_repair_drv` in `or/lib.tcl`): +7 % area after placement, +11 % after CTS / hold repair, ss WNS -1.80 ns
+  (placement), -0.94 ns (CTS + `repair_timing`), -1.44 ns at global-route RC, with `TIMING_DRIVEN 0`.
