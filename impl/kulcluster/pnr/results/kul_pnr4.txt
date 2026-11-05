@@ -1,0 +1,48 @@
+KUL cluster P&R, OpenROAD 2.0-12381 on tau1 -- Nov 5 2026: PARTIAL (stopped in global routing)
+
+Input   kul_w4.2: DC with kit wire-load model WireAreaLowkCon, 4.2 ns at ss
+        tau1:/tmp/ckp908/qcnn_kulsyn/build/syn/kul_w4.2/KULCluster_snax_KUL_cluster_wrapper.{v,ddc,sdc}
+        (see ../../README.md and ../../results/kul_w4.2)
+Run     tau1:/tmp/ckp908/qcnn_kulsyn/build/pnr/kul_pnr4  (impl/kulcluster/pnr/run.sh pnr kul_pnr4)
+        checkpoints db/{init,floorplan,pdn,place,cts}.odb; summary.txt, rpt/
+        No routed netlist, SPEF, DEF or GDS exists yet.
+
+Floorplan (iteration 2, macro_place.tcl)
+  die 2820.0 x 2462.0 um = 6.943 mm2; core 2800.0 x 2440.8 um = 6.834 mm2
+  utilisation at DC area 0.591 (cells 2.172 + macros 1.867 mm2)
+  38 macros fixed, halo 10 um:
+    top    T1/T2: 6 TCDM banks each; T3: 3 TCDM + I-cache (4 data, 2 tag)
+    bottom B1/B2: 6 TCDM each; B3: 5 TCDM
+    every macro's pin edge faces the logic band in the middle
+  IO 3332 pins on the left / right edges of the band
+  iteration 1 (2620 x 2322 um, 66.8 %) ran out of row area with the old, undersized
+  ZeroWireload netlist (kul_p3.5): cells grew to 84 % and detailed placement failed after CTS
+PDN     M1 rails, M4 0.4/20 um, M7 0.8/30 um
+        macros: M6 1.0/40 um straps, via stacks to the M3 PG rings (VDDPE/VDDCE -> VDD, VSSE -> VSS)
+        check_power_grid VDD / VSS: true
+
+Stage        cell mm2  util   ss WNS / TNS (ns)       tt WNS   ff WNS   hold WNS ss/tt/ff (ns)
+init         2.172     0.591  +0.356 / 0              +1.741   -        0.044 / - / -
+place        2.752     0.676  -3.617 / -41389         -0.803   +0.545   0.055 / -0.003 / -0.022
+cts          2.948     0.705  -4.117 / -44087         -0.995   +0.453   -1.071 / -0.641 / -0.427
+cts_opt      3.038     0.718  -3.671 / -41050         -0.769   +0.600   -0.017 / -0.011 / -0.008
+  place:   timing-driven + routability-driven gpl at density 0.70, routability RC 1.014
+           REPAIR_DESIGN auto: 73k violating nets repaired, 23k buffers, 76k cells resized, +27 % cell area
+  cts:     clock_tree_synthesis -balance_levels; skew at ss 1.52 ns, latency 1.49-3.01 ns
+           without -balance_levels: 1.69 ns, -4.70 ns WNS after repair
+  cts_opt: repair_timing setup + hold (hold margin 0), 7.3k hold endpoints, legalised at 72 %
+  estimated fmax after CTS (placement parasitics): ss ~127 MHz (4.2 + 3.67 ns), tt ~201 MHz,
+  ff meets 4.2 ns
+  Worst ss paths: core 0 accelerator request spill register -> GeMMX CSR mux / streamer -> TCDM / DMA
+  interconnect -> TCDM bank or core 0. About 150 stages, with long wires between the macro banks.
+
+Route   global_route (GR_ADJUST 0.25, 50 congestion iterations) was still in maze routing after 2.9 h
+        (13 GB RSS), with no output; stopped.
+        Not available: post-GRT optimisation, detailed route, DRC / antenna, SPEF, post-route
+        PrimeTime ss/tt/ff, post-route power.
+        Pre-layout power estimate (PT, vectorless, 4.2 ns, from DC): 200 / 231 / 319 mW at ss / tt / ff.
+
+Resume  from the CTS checkpoint (re-runs post_cts.tcl), from the tree root on tau1:
+          QC_PNR_FROM=route impl/kulcluster/pnr/run.sh pnr kul_pnr4
+        Try GR_ADJUST 0.1-0.15 / fewer congestion iterations (QC_PNR_SET) or a wider die.
+        Then: impl/kulcluster/pnr/run.sh pt kul_pnr4

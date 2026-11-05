@@ -1,7 +1,7 @@
 # cts: clock tree (site buffers), propagated clocks, timing repair (setup, then hold) at placement parasitics.
 if {[p PRE_CTS_TCL] ne ""} { source [p PRE_CTS_TCL] }
 clock_tree_synthesis -buf_list $::QC_PNR_CTS_BUF -root_buf $::QC_PNR_CTS_ROOT -sink_clustering_enable \
-    -sink_clustering_size [p CTS_CLUSTER_SIZE] -sink_clustering_max_diameter [p CTS_CLUSTER_DIAMETER]
+    -sink_clustering_size [p CTS_CLUSTER_SIZE] -sink_clustering_max_diameter [p CTS_CLUSTER_DIAMETER] {*}[p CTS_ARGS]
 set_propagated_clock [all_clocks]
 repair_clock_nets
 detailed_placement

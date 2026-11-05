@@ -63,7 +63,7 @@ are in `rpt/` (`drt.drc.rpt` is the detailed-route violation list).
 
 `designs/smoke_mac8.cfg` is the minimal example.  Keys and defaults are in `or/lib.tcl` (`P_DEFAULT`):
 `TOP`, `SYN` or `NETLIST` + `SDC`, floorplan (`CORE_UTIL`, `ASPECT`, `CORE_MARGIN`, `DIE_AREA`, `CORE_AREA`),
-`PLACE_DENSITY` (default util + 0.2), PDN strap layer / width / pitch / offset, CTS clustering, repair margins,
+`PLACE_DENSITY` (default util + 0.2), PDN strap layer / width / pitch / offset, CTS clustering (+ `CTS_ARGS`, extra clock_tree_synthesis options), repair margins,
 `GR_ADJUST`, `DR_END_ITER`, `DR_ARGS`, `FILL`, `DCAP`, `GDS`, and Tcl hooks `FLOORPLAN_TCL`, `PIN_TCL`, `PDN_TCL`,
 `PRE_PLACE_TCL`, `PRE_CTS_TCL`, `PRE_ROUTE_TCL`, `POST_ROUTE_TCL`.
 

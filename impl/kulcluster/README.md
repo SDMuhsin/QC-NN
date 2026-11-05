@@ -45,8 +45,16 @@ nohup impl/kulcluster/run.sh all 3.5 > /tmp/$USER/qcnn_kulsyn/build/all_p3.5.log
 | tag | DC target (ss) | total mm2 | logic mm2 (kGE) | PT ss WNS / fmax | tt fmax | ff fmax | PT power ss / tt / ff (vectorless, at target) |
 |---|---|---|---|---|---|---|---|
 | `kul_p2.5` | 2.5 ns | 4.049 | 2.182 (1515) | -1.003 ns / 285.5 MHz | 434.6 MHz | 606.4 MHz | 306 / 361 / 491 mW |
-| **`kul_p3.5`** (P&R netlist) | 3.5 ns | 3.993 | 2.126 (1476) | -0.017 ns / 284.3 MHz | 433.3 MHz | 605.9 MHz | 223 / 260 / 357 mW |
+| `kul_p3.5` | 3.5 ns | 3.993 | 2.126 (1476) | -0.017 ns / 284.3 MHz | 433.3 MHz | 605.9 MHz | 223 / 260 / 357 mW |
 | `kul_p4.0` | 4.0 ns | 3.957 | 2.090 (1451) | +0.002 ns / 250.1 MHz (met) | 382.8 MHz | 539.9 MHz | 197 / 229 / 316 mW |
+| `kul_w3.5` (kit WLM) | 3.5 ns | 4.060 | 2.192 (1523) | -0.697 ns / 238.3 MHz | 364.2 MHz | 515.1 MHz | 235 / 274 / 375 mW |
+| **`kul_w4.2`** (kit WLM, P&R netlist) | 4.2 ns | 4.040 | 2.172 (1509) | -0.162 ns / 229.3 MHz | 353.7 MHz | 503.1 MHz | 200 / 231 / 319 mW |
+
+The `kul_p*` runs used the library default wire-load model, which for tcbn65gplus is ZeroWireload (no wire cap); they
+are optimistic and undersized (OpenROAD then had to grow the cell area by ~80 % to fix slew / cap).  The `kul_w*`
+runs use the kit's area-selected WireAreaLowkCon models (enclosed mode, flow/tsmc65 `QC_WLM_GROUP`).  At 4.2 ns the
+WLM netlist still misses ss by 0.16 ns, and its fmax is no better than the 3.5 ns run's, so the target was not
+pushed further.
 
 fmax = 1 / (period - WNS) with 0.25 ns setup uncertainty, pre-CTS, wire-load, ideal clocks; tt / ff use the ss-optimised
 netlist.  Macros 1.867 mm2 (46.8 %): 32 x `kul_rf_512x64m4` 1.697 mm2, 4 x `kul_rf_128x128m1`, 2 x `kul_rf_128x40m1`.
