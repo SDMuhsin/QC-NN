@@ -56,6 +56,12 @@ runs use the kit's area-selected WireAreaLowkCon models (enclosed mode, flow/tsm
 WLM netlist still misses ss by 0.16 ns, and its fmax is no better than the 3.5 ns run's, so the target was not
 pushed further.
 
+All `kul_*` netlists were synthesised before the icache PMA fix of `hw/kulcluster/cfg` (cached region = memory
+island instead of DRAM, see `hw/kulcluster/README.md`).  The only RTL difference is the constant base/mask of that
+region in each core's fetch-cacheability compare: the netlists are functionally equivalent to the current RTL, but
+their cores fetch uncached from the memory island (much slower software, same GeMMX timing).  Re-synthesise for a
+cycle-matched gate-level run of whole programs.
+
 fmax = 1 / (period - WNS) with 0.25 ns setup uncertainty, pre-CTS, wire-load, ideal clocks; tt / ff use the ss-optimised
 netlist.  Macros 1.867 mm2 (46.8 %): 32 x `kul_rf_512x64m4` 1.697 mm2, 4 x `kul_rf_128x128m1`, 2 x `kul_rf_128x40m1`.
 Block split of `kul_p3.5` (`results/kul_p3.5/area.txt`): GeMMX 0.987 mm2 = 24.7 % of the cluster, 46.4 % of the logic

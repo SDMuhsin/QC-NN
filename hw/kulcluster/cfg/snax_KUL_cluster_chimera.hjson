@@ -94,11 +94,13 @@
             }
         ]
     },
+    // Only used for the instruction-cache PMA (cached region).  chimera's code lives in the
+    // memory island, not in DRAM: cache 0x4800_0000 + 256 KiB (upstream: 0x8000_0000 + 2 GiB).
     dram: {
-        // 0x8000_0000
-        address: 2147483648,
-        // 0x8000_0000
-        length: 2147483648
+        // 0x4800_0000
+        address: 1207959552,
+        // 0x0004_0000
+        length: 262144
     },
     peripherals: {
         clint: {

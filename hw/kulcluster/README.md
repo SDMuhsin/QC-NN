@@ -7,6 +7,8 @@ sources: **KULeuven-MICAS/snax_cluster @ 3575d72** (6 Dec 2024), config `snax_KU
 via its streamer/CSR manager, core 1 drives the Chisel xDMA; 128 KiB TCDM in 32 banks).
 
 ## Config tweaks (`cfg/snax_KUL_cluster_chimera.hjson` vs upstream)
+The `dram` row was added after synthesis: the `kul_*` netlists of `impl/kulcluster` still have the
+upstream cached region (one constant address compare in each core's fetch path), see that README.
 | field | upstream | here | why |
 |---|---|---|---|
 | `user_width` | 3 | 2 | chimera narrow AXI user = `AxiUserWidth` 2 |
@@ -14,6 +16,7 @@ via its streamer/CSR manager, core 1 drives the Chisel xDMA; 128 KiB TCDM in 32 
 | `observable_pin_width` | 8 | 0 | wrapper has no `obs_o` |
 | `enable_debug` | false | true | wrapper connects `debug_req_i` |
 | `sram_cfg_expose` | true | false | wrapper has no `sram_cfgs_i` |
+| `dram` (icache PMA) | 0x8000_0000 + 2 GiB | 0x4800_0000 + 256 KiB | only used for the instruction-cache *cached* region; chimera's code lives in the memory island, so upstream left every fetch uncached (~25 cycles per instruction, found in the ResNet-8 RTL run, `nn/results/rtl.md`) |
 
 ## Packaging
 `gen.sh` clones snax_cluster, runs `make rtl-gen` (Chisel 6 via sbt, JDK 11), then pickles the
@@ -55,6 +58,7 @@ compares D8 with the golden result; host returns 0 iff the kernel ran and had 0 
   `kul_result[2]` ("window", start CSR writes .. busy polls done) is a *software* window: core 0
   fetches every instruction from the memory island (~25 cycles each), so it is dominated by the
   ~13 instructions of start/poll code, not by the accelerator. Use the counters / probes instead.
+  (Measured before the icache PMA fix above; the fetches are now cached.)
 * `sim/gemmx_probe.tcl` (sourced by `run_chimera.tcl`) logs the BlockGemm / SIMD / streamer busy
   edges and the MAC-array A/B handshakes; `chimera_vsim.sh run` then calls
   `scripts/gemmx_cycles.py` (output in `build/kulcluster/vsim_run/gemmx_cycles.txt`).
