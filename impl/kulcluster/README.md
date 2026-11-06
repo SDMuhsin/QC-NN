@@ -48,7 +48,8 @@ nohup impl/kulcluster/run.sh all 3.5 > /tmp/$USER/qcnn_kulsyn/build/all_p3.5.log
 | `kul_p3.5` | 3.5 ns | 3.993 | 2.126 (1476) | -0.017 ns / 284.3 MHz | 433.3 MHz | 605.9 MHz | 223 / 260 / 357 mW |
 | `kul_p4.0` | 4.0 ns | 3.957 | 2.090 (1451) | +0.002 ns / 250.1 MHz (met) | 382.8 MHz | 539.9 MHz | 197 / 229 / 316 mW |
 | `kul_w3.5` (kit WLM) | 3.5 ns | 4.060 | 2.192 (1523) | -0.697 ns / 238.3 MHz | 364.2 MHz | 515.1 MHz | 235 / 274 / 375 mW |
-| **`kul_w4.2`** (kit WLM, P&R netlist) | 4.2 ns | 4.040 | 2.172 (1509) | -0.162 ns / 229.3 MHz | 353.7 MHz | 503.1 MHz | 200 / 231 / 319 mW |
+| `kul_w4.2` (kit WLM, P&R netlist) | 4.2 ns | 4.040 | 2.172 (1509) | -0.162 ns / 229.3 MHz | 353.7 MHz | 503.1 MHz | 200 / 231 / 319 mW |
+| **`kul_w4.2p`** (kit WLM, current RTL: icache PMA fix; GLS netlist) | 4.2 ns | 4.046 | 2.179 (1513) | -0.093 ns / 232.9 MHz | 356.8 MHz | 505.8 MHz | 201 / 232 / 320 mW |
 
 The `kul_p*` runs used the library default wire-load model, which for tcbn65gplus is ZeroWireload (no wire cap); they
 are optimistic and undersized (OpenROAD then had to grow the cell area by ~80 % to fix slew / cap).  The `kul_w*`
@@ -56,11 +57,13 @@ runs use the kit's area-selected WireAreaLowkCon models (enclosed mode, flow/tsm
 WLM netlist still misses ss by 0.16 ns, and its fmax is no better than the 3.5 ns run's, so the target was not
 pushed further.
 
-All `kul_*` netlists were synthesised before the icache PMA fix of `hw/kulcluster/cfg` (cached region = memory
-island instead of DRAM, see `hw/kulcluster/README.md`).  The only RTL difference is the constant base/mask of that
-region in each core's fetch-cacheability compare: the netlists are functionally equivalent to the current RTL, but
-their cores fetch uncached from the memory island (much slower software, same GeMMX timing).  Re-synthesise for a
-cycle-matched gate-level run of whole programs.
+All `kul_*` netlists except `kul_w4.2p` were synthesised before the icache PMA fix of `hw/kulcluster/cfg` (cached
+region = memory island instead of DRAM, see `hw/kulcluster/README.md`).  The only RTL difference is the constant
+base/mask of that region in each core's fetch-cacheability compare (the pickle diff, ignoring Chisel's hashed module
+names, is that one line): those netlists are functionally equivalent, but their cores fetch uncached from the memory
+island.  `kul_w4.2p` is the same run (`run.sh all 4.2 kul_w4.2p`, same flow, constraints and WLM) on the current
+pickle: +0.16 % area, +1.6 % / +0.9 % / +0.5 % fmax at ss / tt / ff (DC run-to-run noise), and it is the netlist of
+the cycle-matched ResNet-8 gate-level run (`nn/results/gls_power.md`).
 
 fmax = 1 / (period - WNS) with 0.25 ns setup uncertainty, pre-CTS, wire-load, ideal clocks; tt / ff use the ss-optimised
 netlist.  Macros 1.867 mm2 (46.8 %): 32 x `kul_rf_512x64m4` 1.697 mm2, 4 x `kul_rf_128x128m1`, 2 x `kul_rf_128x40m1`.
