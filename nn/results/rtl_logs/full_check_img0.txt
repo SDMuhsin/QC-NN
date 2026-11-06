@@ -1,0 +1,26 @@
+run full1: JTAG SUCCESS, marker 0xc0ffee00, errors 0, sim end 18.160 ms
+  NN_FULL_CHECK: every byte of every step output of the first image matches
+  image     0: logits BIT-EXACT  pred 3 label 3  cycles 404857
+
+1 images: 1 bit-exact, 1 correctly classified; cycles/image mean 404857 (min 404857, max 404857)
+  GeMMX conv        64033   15.8 %
+  residual add     300875   74.3 %
+  pool+FC           35389    8.7 %
+  input DMA          4560    1.1 %
+
+step      cycles   gemm_busy  streamer  fires  fires/busy
+  input       4560 
+  conv0       7606      3050      3051   2304   75.5 %
+  conv1      10202      6203      6204   4608   74.3 %
+  conv2       8382      6157      6158   4608   74.8 %
+  add1      163538 
+  conv3       7381      3243      3244   2304   71.0 %
+  conv5       3263      1036      1037    256   24.7 %
+  conv4       8465      6242      6243   4608   73.8 %
+  add2       88579 
+  conv6       7660      3082      3083   2304   74.8 %
+  conv8       2775       529       530    256   48.4 %
+  conv7       8299      6066      6067   4608   76.0 %
+  add3       48758 
+  poolfc     35389 
+  GeMMX: busy 35608 cycles for 25856 fires = 72.6 % array utilisation while busy; busy 8.8 % of the image; fires / image cycles 6.4 %

@@ -22,6 +22,7 @@
 #define TCDM(off) ((uintptr_t)KUL_TCDM_BASE + (uintptr_t)(off))
 #define CLINT_MSIP 0x02040000u
 #define ADD_SHIFT 16
+#define NN_X0 8              // interior column of a padded tensor (lower.Tensor.X0)
 
 volatile nn_result_t nn_result;
 
@@ -83,41 +84,39 @@ static void dma_copy(uint32_t dst, uint32_t src, uint32_t size) {
 }
 
 // ---------------------------------------------------------------- core kernels
-// rows [r0, r1) of the (C8 x H) interior rows; a row is H pixels x 8 channels = 2H words.
-// Same arithmetic as nn.quant.hw.core_add_requant, with the zero points, the rounding
-// constant and zo folded into one constant (adding zo * 2^16 commutes with the shift):
-//   out = clamp((a*ma + b*mb + kc) >> 16, lo, 127),  kc = 2^15 + zo*2^16 - za*ma - zb*mb
+// rows [r0, r1) of the (C8 x H) interior rows; a row is H pixels x 8 channels = 8H bytes.
+// Same arithmetic as nn.quant.hw.core_add_requant with the constants folded (nn_add_t):
+//   out = lut[((a*ma + b*mb + kc) >> 16) - tmin]
+// Byte loads/stores (lb sign-extends for free), one pixel (8 channels) per iteration and a
+// table clamp (no branches): ~10 instructions per element.
 static void add_rows(const nn_add_t *p, uint32_t r0, uint32_t r1) {
-    const int32_t ma = p->ma, mb = p->mb, lo = p->lo;
-    const int32_t kc = (1 << (ADD_SHIFT - 1)) + p->zo * (1 << ADD_SHIFT) - p->za * ma - p->zb * mb;
-    const uint32_t nw = p->H * 2, rs = p->Wp * 8;
+    const int32_t ma = p->ma, mb = p->mb, kc = p->kc;
+    const int8_t *restrict lut = (const int8_t *)TCDM(p->lut) - p->tmin;
+    const uint32_t n = p->H * 8, rs = p->Wq * 8, Hp = p->H + 2;
     for (uint32_t r = r0; r < r1; r++) {
-        uint32_t off = ((r / p->H) * p->Wp + (r % p->H)) * rs;   // C8 group plane + row
-        const uint32_t *a = (const uint32_t *)TCDM(p->a + off);
-        const uint32_t *b = (const uint32_t *)TCDM(p->b + off);
-        uint32_t *o = (uint32_t *)TCDM(p->out + off);
-        for (uint32_t i = 0; i < nw; i++) {
-            uint32_t wa = a[i], wb = b[i], res = 0;
+        uint32_t off = ((r / p->H) * Hp + (r % p->H)) * rs;      // C8 group plane + row
+        const int8_t *restrict a = (const int8_t *)TCDM(p->a + off);   // restrict: lets clang
+        const int8_t *restrict b = (const int8_t *)TCDM(p->b + off);   // interleave the 8 lanes
+        int8_t *restrict o = (int8_t *)TCDM(p->out + off);
+        for (const int8_t *end = a + n; a != end; a += 8, b += 8, o += 8) {
+            int32_t t[8];                  // three passes: independent ops back to back hide the
+#pragma clang loop unroll(full)            // load and multiply latencies of the in-order core
+            for (uint32_t j = 0; j < 8; j++) t[j] = a[j] * ma;
 #pragma clang loop unroll(full)
-            for (uint32_t j = 0; j < 4; j++) {
-                int32_t t = ((int32_t)(wa << (24 - 8 * j)) >> 24) * ma +
-                            ((int32_t)(wb << (24 - 8 * j)) >> 24) * mb + kc;
-                t >>= ADD_SHIFT;
-                if ((uint32_t)(t - lo) > (uint32_t)(127 - lo)) t = t < lo ? lo : 127;
-                res |= ((uint32_t)t & 0xFFu) << (8 * j);
-            }
-            o[i] = res;
+            for (uint32_t j = 0; j < 8; j++) t[j] += b[j] * mb + kc;
+#pragma clang loop unroll(full)
+            for (uint32_t j = 0; j < 8; j++) o[j] = lut[t[j] >> ADD_SHIFT];
         }
     }
 }
 
 static void pool_fc(const nn_poolfc_t *p, int32_t *logits) {
     int32_t pool[64];
-    const uint32_t rs = p->Wp * 8;
+    const uint32_t rs = p->Wq * 8, Hp = p->H + 2;
     for (uint32_t g = 0; g < p->C8; g++) {
         int32_t s[8] = {0};
         for (uint32_t h = 0; h < p->H; h++) {
-            const int8_t *x = (const int8_t *)TCDM(p->in + (g * p->Wp + h) * rs);
+            const int8_t *x = (const int8_t *)TCDM(p->in + (g * Hp + h) * rs);
             for (uint32_t w = 0; w < p->H; w++, x += 8)
                 for (uint32_t j = 0; j < 8; j++) s[j] += x[j];
         }
@@ -132,34 +131,37 @@ static void pool_fc(const nn_poolfc_t *p, int32_t *logits) {
     }
 }
 
+// Zero-point border of a padded tensor: top and bottom rows, columns 0 (right border of the row
+// above) and NN_X0-1 (left border) of every interior row, and the 64 B tail after the last plane.
 static void fill_border(const nn_step_t *s) {
-    // s->out points at interior pixel (0,0) of group 0; the padded buffer starts Wp+1 pixels before
-    const uint32_t Wp = s->out_Wp, plane = Wp * Wp * 8;
+    const uint32_t Wq = s->out_Wq, Hp = s->out_H + 2, rs = Wq * 8, plane = Hp * rs;
     const uint32_t v = (uint8_t)s->border_zp * 0x01010101u;
-    uint32_t base = s->out - (Wp + 1) * 8;
+    uint32_t base = s->out - (Wq + NN_X0) * 8;            // s->out = interior pixel (0,0) of group 0
     for (uint32_t g = 0; g < s->out_C8; g++, base += plane) {
         volatile uint32_t *top = (volatile uint32_t *)TCDM(base);
-        volatile uint32_t *bot = (volatile uint32_t *)TCDM(base + (Wp - 1) * Wp * 8);
-        for (uint32_t i = 0; i < Wp * 2; i++) { top[i] = v; bot[i] = v; }
-        for (uint32_t r = 1; r < Wp - 1; r++) {
-            volatile uint32_t *l = (volatile uint32_t *)TCDM(base + r * Wp * 8);
-            volatile uint32_t *rr = l + (Wp - 1) * 2;
-            l[0] = v; l[1] = v; rr[0] = v; rr[1] = v;
+        volatile uint32_t *bot = (volatile uint32_t *)TCDM(base + (Hp - 1) * rs);
+        for (uint32_t i = 0; i < Wq * 2; i++) { top[i] = v; bot[i] = v; }
+        for (uint32_t r = 1; r < Hp - 1; r++) {
+            volatile uint32_t *l = (volatile uint32_t *)TCDM(base + r * rs);
+            l[0] = v; l[1] = v; l[2 * NN_X0 - 2] = v; l[2 * NN_X0 - 1] = v;
         }
     }
+    volatile uint32_t *tail = (volatile uint32_t *)TCDM(base);
+    for (uint32_t i = 0; i < 16; i++) tail[i] = v;
 }
 
 static void checksum(const nn_step_t *s, uint32_t *c1, uint32_t *c2) {
     uint32_t s1 = 0, s2 = 0;
-    const uint32_t Wp = s->out_Wp, words = s->out_H * 2;
+    const uint32_t rs = s->out_Wq * 8, Hp = s->out_H + 2, words = s->out_H * 2;
     for (uint32_t g = 0; g < s->out_C8; g++)
         for (uint32_t h = 0; h < s->out_H; h++) {
-            const volatile uint32_t *p = (const volatile uint32_t *)TCDM(s->out + ((g * Wp + h) * Wp) * 8);
+            const volatile uint32_t *p = (const volatile uint32_t *)TCDM(s->out + (g * Hp + h) * rs);
             for (uint32_t i = 0; i < words; i++) { s1 += p[i]; s2 += s1; }
         }
     *c1 = s1; *c2 = s2;
 }
 
+_Static_assert(sizeof(nn_conv_t) == NN_CONV_PARAM_BYTES, "nn_conv_t layout != lower.conv_params");
 static void gemmx_conv(const nn_conv_t *c) {
     set_gemmx_streamer_csr(
         c->Aslstride0, c->Aslstride1, c->Atlbound0, c->Atlstride0, c->Atlbound1, c->Atlstride1,
@@ -206,7 +208,7 @@ static uint32_t run_image(uint32_t img) {
             wait_job(post(JOB_DMA, TCDM(NN_INPUT_ADDR), (uint32_t)nn_images[img], NN_INPUT_SIZE));
             break;
         case NN_CONV:
-            gemmx_conv((const nn_conv_t *)s->p);
+            gemmx_conv((const nn_conv_t *)TCDM((uintptr_t)s->p));   // params arrive with the weights
             if (img == 0) {
                 nn_result.gemmx_perf[i] = read_gemmx_perf_counter();
                 nn_result.streamer_perf[i] = read_gemmx_streamer_perf_counter();
@@ -236,6 +238,12 @@ static uint32_t run_image(uint32_t img) {
         uint32_t dt = rdcycle() - t0;
         nn_result.cycles[img][i] = dt;
         t_img += dt;
+#ifdef NN_STOP_AFTER
+        if (i == NN_STOP_AFTER) {                    // debug: freeze for a TCDM dump (run_nn.tcl)
+            nn_result.marker = 0xDEAD0000u | i;
+            for (;;) {}
+        }
+#endif
         if (s->out_C8) {                                         // check (not timed)
             uint32_t c1, c2;
             checksum(s, &c1, &c2);
@@ -243,12 +251,19 @@ static uint32_t run_image(uint32_t img) {
 #ifdef NN_FULL_CHECK
             if (img == 0) {
                 const int8_t *e = nn_expect_full[i];
-                const uint32_t Wp = s->out_Wp, n = s->out_H * 8;
+                const uint32_t rs = s->out_Wq * 8, Hp = s->out_H + 2, n = s->out_H * 8;
                 for (uint32_t g = 0; g < s->out_C8; g++)
                     for (uint32_t h = 0; h < s->out_H; h++, e += n) {
-                        const int8_t *o = (const int8_t *)TCDM(s->out + ((g * Wp + h) * Wp) * 8);
+                        const int8_t *o = (const int8_t *)TCDM(s->out + (g * Hp + h) * rs);
                         for (uint32_t k = 0; k < n; k++)
-                            if (o[k] != e[k]) mismatch(img, i, &err);
+                            if (o[k] != e[k]) {
+                                if (nn_result.full_err[i]++ == 0 && nn_result.full_first[0] == 0) {
+                                    nn_result.full_first[0] = (i << 24) | (uint32_t)(e - nn_expect_full[i] + k);
+                                    nn_result.full_first[1] = (uint8_t)o[k];
+                                    nn_result.full_first[2] = (uint8_t)e[k];
+                                }
+                                mismatch(img, i, &err);
+                            }
                     }
             }
 #endif

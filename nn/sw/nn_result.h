@@ -13,6 +13,8 @@ typedef struct {
     uint32_t pred[NN_N_IMAGES];
     uint32_t gemmx_perf[NN_N_STEPS];              // GeMMX / streamer busy counters, image 0
     uint32_t streamer_perf[NN_N_STEPS];
+    uint32_t full_err[NN_N_STEPS];                // NN_FULL_CHECK: mismatching bytes per step, image 0
+    uint32_t full_first[3];                       // first mismatch: (step << 24) | byte index, got, expected
 } nn_result_t;
 extern volatile nn_result_t nn_result;
 #endif

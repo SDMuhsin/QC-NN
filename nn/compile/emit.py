@@ -9,41 +9,13 @@ import os
 
 import numpy as np
 
-from .lower import ALIGN, TCDM_RESERVED, TCDM_SIZE
-
-STREAMER_FIELDS = (
-    "Aslstride0 Aslstride1 Atlbound0 Atlstride0 Atlbound1 Atlstride1 Atlbound2 Atlstride2 Atlbound3 "
-    "Atlstride3 Atlbound4 Atlstride4 Atlbound5 Atlstride5 set_addr_remap_index_A "
-    "Bslstride0 Bslstride1 Btlbound0 Btlstride0 Btlbound1 Btlstride1 Btlbound2 Btlstride2 set_addr_remap_index_B "
-    "D8slstride0 D8slstride1 D8tlbound0 D8tlstride0 D8tlbound1 D8tlstride1 D8tlbound2 D8tlstride2 "
-    "set_addr_remap_index_D8 "
-    "Cslstride0 Cslstride1 Ctlbound0 Ctlstride0 Ctlbound1 Ctlstride1 Ctlbound2 Ctlstride2 set_addr_remap_index_C "
-    "D32slstride0 D32slstride1 D32tlbound0 D32tlstride0 D32tlbound1 D32tlstride1 D32tlbound2 D32tlstride2 "
-    "set_addr_remap_index_D32 "
-    "delta_local_a delta_local_b delta_local_d8 delta_local_c delta_local_d32 "
-    "bypassSIMD transposed_A transposed_B channel_en_C broadcast_C K N M").split()
-
+from .lower import ALIGN, CONV_PARAM_BYTES, TCDM_RESERVED, TCDM_SIZE
 
 def fletcher(t_int8):
     """Checksum of a tensor interior [C8][H][W][8] as computed by nn_cluster.c (uint32 words)."""
     w = np.ascontiguousarray(t_int8).view(np.uint32).reshape(-1).astype(np.uint64)
     s1 = np.cumsum(w) % 2 ** 32
     return int(s1[-1]), int(s1.sum() % 2 ** 32)
-
-
-def u8(x): return int(x) & 0xFF
-
-
-def conv_struct(c):
-    vals = [str(int(c[f])) for f in STREAMER_FIELDS]
-    sub = (u8(c["subtraction_b"]) << 8) | u8(c["subtraction_a"])
-    csr0 = (u8(c["min_int_i"]) << 24) | (u8(c["max_int_i"]) << 16) | (u8(c["output_zp_i"]) << 8) | u8(c["input_zp_i"])
-    sh = c["shift"]
-    sh0 = sh[0] | sh[1] << 8 | sh[2] << 16 | sh[3] << 24
-    sh1 = sh[4] | sh[5] << 8 | sh[6] << 16 | sh[7] << 24
-    vals += [f"0x{sub:x}u", f"0x{csr0:x}u", str(c["double_round_i"]), f"0x{sh0:x}u", f"0x{sh1:x}u"]
-    vals.append("{" + ", ".join(f"{m}" for m in c["multiplier"]) + "}")
-    return "{" + ", ".join(vals) + "}"
 
 
 def carray(ctype, name, data, align=ALIGN, per_line=24, section=None):
@@ -70,6 +42,7 @@ def emit(prog, images, ref_taps, ref_logits, outdir):
         f"#define NN_INPUT_SIZE {prog.tensors['input'].size}u",
         f"#define NN_TCDM_ARENA {prog.arena}u   // reserved top {TCDM_RESERVED} B: mailbox + stacks",
         f"#define NN_TCDM_PEAK {prog.peak}u",
+        f"#define NN_CONV_PARAM_BYTES {CONV_PARAM_BYTES}u   // nn_conv_t image in each conv blob",
         "extern const nn_step_t nn_steps[NN_N_STEPS];",
         "extern const nn_blob_t nn_blobs[NN_N_BLOBS];",
         "extern const uint8_t nn_images[NN_N_IMAGES][NN_INPUT_SIZE];",
@@ -98,25 +71,26 @@ def emit(prog, images, ref_taps, ref_logits, outdir):
     T = prog.tensors
     for st in S:
         if st.kind == "conv":
-            c.append(f"static const nn_conv_t p_{st.name} = {conv_struct(st.cfg)};")
+            pass                     # nn_conv_t travels in the weight blob (lower.conv_params)
         elif st.kind == "add":
             v, ta, tb, to = st.cfg, T[st.ins[0]], T[st.ins[1]], T[st.out]
-            ins = lambda t: t.addr + t.offset(0, 1, 1)
+            ins = lambda t: t.addr + t.origin
             c.append(f"static const nn_add_t p_{st.name} = {{{ins(ta)}u, {ins(tb)}u, {ins(to)}u, "
-                     f"{v['za']}, {v['ma']}, {v['zb']}, {v['mb']}, {v['zo']}, {v['lo']}, {to.C8}u, {to.H}u, {to.Wp}u}};")
+                     f"{v['ma']}, {v['mb']}, {v['kc']}, {st.blob.addr}u, {v['tmin']}, {to.C8}u, {to.H}u, {to.Wq}u}};")
         elif st.kind == "poolfc":
             t = T["add3"]
-            c.append(f"static const nn_poolfc_t p_{st.name} = {{{t.addr + t.offset(0, 1, 1)}u, {t.C8}u, {t.H}u, "
-                     f"{t.Wp}u, {st.cfg['zp_in']}, {st.blob.addr}u, {st.blob.addr + st.cfg['bias_off']}u, 10u, 64u}};")
+            c.append(f"static const nn_poolfc_t p_{st.name} = {{{t.addr + t.origin}u, {t.C8}u, {t.H}u, "
+                     f"{t.Wq}u, {st.cfg['zp_in']}, {st.blob.addr}u, {st.blob.addr + st.cfg['bias_off']}u, 10u, 64u}};")
     c.append("\nconst nn_step_t nn_steps[NN_N_STEPS] = {")
     kinds = dict(input="NN_INPUT", conv="NN_CONV", add="NN_ADD", poolfc="NN_POOLFC")
     for st in S:
-        p = f"&p_{st.name}" if st.kind != "input" else "0"
+        p = ("0" if st.kind == "input" else f"&p_{st.name}" if st.kind != "conv"
+             else f"(const void *){st.blob.addr + st.cfg['wsize'] + 256 * st.cfg['N']}u")   # TCDM offset
         bi = blob_idx[st.blob.name] if st.blob else -1
         if st.out:
             t = T[st.out]
             zp = t.zp if (t.border and st.kind != "input") else 999
-            o = f"{t.addr + t.offset(0, 1, 1)}u, {t.C8}u, {t.H}u, {t.Wp}u, {zp}"
+            o = f"{t.addr + t.origin}u, {t.C8}u, {t.H}u, {t.Wq}u, {zp}"
         else:
             o = "0u, 0u, 0u, 0u, 999"
         c.append(f"  {{{kinds[st.kind]}, {bi}, {p}, {o}}},  // {st.idx} {st.name}")

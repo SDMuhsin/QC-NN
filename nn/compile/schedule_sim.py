@@ -43,6 +43,7 @@ def gemmx_call(mem, c):
     c_addr = temporal(c["delta_local_c"], [c[f"Ctlbound{i}"] for i in range(3)], [c[f"Ctlstride{i}"] for i in range(3)])
     d_addr = temporal(c["delta_local_d8"], [c[f"D8tlbound{i}"] for i in range(3)], [c[f"D8tlstride{i}"] for i in range(3)])
     assert len(a_addr) == len(b_addr) == M * N * K and len(c_addr) == len(d_addr) == M * N
+    assert (d_addr % 64 == 0).all(), "D8 writer: tile addresses must be 64 B aligned (RTL drops bits [5:0])"
     A = read8(mem, a_addr, 8, c["Aslstride1"]).reshape(M * N, K, 8, 8) - c["subtraction_a"]
     B = read8(mem, b_addr, 8, c["Bslstride1"]).reshape(M * N, K, 8, 8) - c["subtraction_b"]
     # broadcast C: the first 256 bits (8 x int32, one per output column) of every tile
@@ -59,8 +60,10 @@ def gemmx_call(mem, c):
 
 
 def fill_border(mem, t):
-    v = mem[t.addr:t.addr + t.size].view(np.int8).reshape(t.C8, t.Wp, t.Wp, 8)
-    v[:, 0], v[:, -1], v[:, :, 0], v[:, :, -1] = t.zp, t.zp, t.zp, t.zp
+    """Mirror of nn_cluster.c fill_border: top/bottom rows, columns 0 and X0-1, the tail."""
+    v = t.view(mem)
+    v[:, 0], v[:, -1], v[:, :, 0], v[:, :, t.X0 - 1] = t.zp, t.zp, t.zp, t.zp
+    mem[t.addr + t.C8 * t.plane:t.addr + t.size] = np.uint8(t.zp & 0xFF)
 
 
 def run_image(prog, mem, img_bytes, check=None):
@@ -112,7 +115,7 @@ def cycle_estimate(prog):
             cyc = busy + GEMMX_OVERHEAD
             to = prog.tensors[st.out]
             if to.border:
-                cyc += FILL_CYC_PER_WORD * (4 * to.Wp * 2) * to.C8
+                cyc += FILL_CYC_PER_WORD * (2 * to.Wq * 2 + 4 * to.H) * to.C8
             dma = DMA_LATENCY + st.blob.size // DMA_BYTES_PER_CYC
             rows.append((st.name, cyc, f"GeMMX M={c['M']} N={c['N']} K={c['K']} fires={fires}, "
                                        f"busy-util {fires / busy:.0%}; weight DMA {dma} cyc hidden"))

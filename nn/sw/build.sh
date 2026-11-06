@@ -27,7 +27,7 @@ $CC $CFLAGS -c "$NN/sw/nn_cluster.c" -o "$O/nn_cluster.o"
 $CC $CFLAGS -c "$NN/sw/nn_host.c" -o "$O/nn_host.o"
 $CC $CFLAGS -c "$GEN/nn_net.c" -o "$O/nn_net.o"
 $CC $CFLAGS -c "$GEN/nn_full.c" -o "$O/nn_full.o"
-$CC $CFLAGS -nostdlib -fuse-ld=lld -Wl,--gc-sections -L"$CHIM/sw/link" -T"$CHIM/sw/link/memisl.ld" \
+$CC $CFLAGS -nostdlib -fuse-ld=lld -Wl,--gc-sections -L"$CHIM/sw/link" -T"$NN/sw/nn_memisl.ld" \
   -o "$O/resnet8.memisl.elf" "$O"/{crt0,nn_host,offload,nn_entry,nn_cluster,nn_net,nn_full,snax-gemmx-lib}.o
 $QCNN/tools/llvm17/bin/llvm-objdump -d -h "$O/resnet8.memisl.elf" > "$O/resnet8.memisl.dump"
 set +x

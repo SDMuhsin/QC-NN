@@ -25,16 +25,20 @@ typedef struct {
     int32_t mult[8];
 } nn_conv_t;
 
-// Residual add + requant on the cores: out = clamp((((a-za)*ma + (b-zb)*mb + 2^15) >> 16) + zo, lo, 127)
+// Tensor layout (nn/compile/lower.py): [C8][H+2][Wq][8], interior at row 1, column NN_X0.
+// Residual add + requant on the cores (nn.quant.hw.core_add_requant, constants folded):
+//   t = (a*ma + b*mb + kc) >> 16,  out = lut[t - tmin] = clamp(t, lo, 127)
 typedef struct {
-    uint32_t a, b, out;              // TCDM offsets of the padded tensors
-    int32_t za, ma, zb, mb, zo, lo;
-    uint32_t C8, H, Wp;
+    uint32_t a, b, out;              // TCDM offsets of the interior origins
+    int32_t ma, mb, kc;              // kc = 2^15 + zo*2^16 - za*ma - zb*mb
+    uint32_t lut;                    // TCDM offset of the clamp table (a DMA'd blob)
+    int32_t tmin;
+    uint32_t C8, H, Wq;              // Wq: row pitch in pixels; a group plane is (H+2) rows
 } nn_add_t;
 
 // Global average pool (as a channel sum) + FC -> int32 logits
 typedef struct {
-    uint32_t in, C8, H, Wp;          // add3 tensor
+    uint32_t in, C8, H, Wq;          // add3 tensor (interior origin, row pitch)
     int32_t zp;
     uint32_t w, bias;                // TCDM offsets (int8 [10][64], int32 [10])
     uint32_t n_out, n_in;
@@ -49,8 +53,8 @@ typedef struct {
 typedef struct {
     uint32_t kind;
     int32_t blob;                    // blob that must have landed before the step, or -1
-    const void *p;                   // nn_conv_t / nn_add_t / nn_poolfc_t
-    uint32_t out, out_C8, out_H, out_Wp;  // output tensor (checksum, border fill)
+    const void *p;                   // nn_add_t / nn_poolfc_t; conv: TCDM offset of its nn_conv_t (in the blob)
+    uint32_t out, out_C8, out_H, out_Wq;  // output tensor: interior origin, groups, H, row pitch
     int32_t border_zp;               // fill the output border with this zp first, or 999
 } nn_step_t;
 

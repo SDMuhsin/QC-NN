@@ -2,17 +2,22 @@
 
 Mapping (one GeMMX call per conv, the streamer's native implicit-im2col conv mode, as in
 snax_cluster sw/apps/snax-gemmx-conv):
-  * every activation tensor lives in TCDM as C8HW8 with a 1-pixel border:
-        [C/8][H+2][W+2][8] int8   (8 channels = one 64-bit word per pixel)
-    The border holds the tensor's zero point, so the A reader sees Keras zero padding.
-    3x3 stride-1 convs start the window at padded (0,0); Keras stride-2 'same' pads only
-    bottom/right, so 3x3/s2 and 1x1/s2 convs start at padded (1,1).
+  * every activation tensor lives in TCDM as C8HW8 with a zero-point border:
+        [C/8][H+2][W+8][8] int8 (+ one 64 B tail)   (8 channels = one 64-bit word per pixel)
+    The interior starts at column X0 = 8 of row 1, so every D8 output tile (8 pixels x 8 ch =
+    64 B) and every row start is 64 B aligned: the GeMMX D8 writer drops address bits [5:0]
+    (measured in RTL).  Column 7 is the left border; the right border of a row is column 0 of
+    the next row (the tail covers the last row).  The border holds the tensor's zero point, so
+    the A reader sees Keras zero padding.  3x3 stride-1 convs start the window at padded
+    (0, X0-1); Keras stride-2 'same' pads only bottom/right, so 3x3/s2 and 1x1/s2 convs start at
+    (1, X0).
   * A (8 output pixels of one row x 8 input channels per fire): temporal loops
     Kw, Kh, Cin/8 (K) | Cout/8 (N, stride 0) | Wo/8, Ho (M); spatial stride 8*stride.
   * B (weights) [Cout/8][Cin/8][Kh][Kw][8 co][8 ci], loops K | N | M (stride 0).
   * C (bias) one 256 B int32 tile per Cout/8 group (8 rows x 8 ch, broadcast reader), M stride 0.
   * D8 written straight into the interior of the next padded buffer (SIMD requant + ReLU).
-  * Residual add (+requant), avgpool+FC: Snitch cores, rows split between core 0 and core 1.
+  * Residual add (+requant, clamp by a DMA'd lookup table), avgpool+FC: Snitch cores, rows split
+    between core 0 and core 1.
   * Weights (+bias tiles) are DMA'd from the memory island by core 1 (Snitch iDMA), one
     conv ahead; all buffers are placed by a liveness-based first-fit allocator.
 """
@@ -21,6 +26,7 @@ from dataclasses import dataclass, field
 import numpy as np
 
 from ..model.resnet8 import CONV_CFG
+from ..quant.hw import ADD_SHIFT
 from ..quant.quantize import ADDS, CONV_IN
 
 TCDM_SIZE = 128 * 1024
@@ -45,21 +51,41 @@ class Tensor:
     addr: int = -1
     live: list = field(default_factory=lambda: [10 ** 9, -1])
 
+    X0 = 8                         # interior column offset (64 B aligned rows and D8 tiles)
+
     @property
     def C8(self): return -(-self.C // 8)
     @property
-    def Wp(self): return self.H + 2
+    def Hp(self): return self.H + 2            # rows incl. top/bottom border
     @property
-    def size(self): return self.C8 * self.Wp * self.Wp * 8
+    def Wq(self): return self.H + self.X0      # row pitch in pixels (W + 8, W % 8 == 0)
+    @property
+    def plane(self): return self.Hp * self.Wq * 8
+    @property
+    def size(self): return self.C8 * self.plane + 64
 
     def offset(self, c8, row, col):
-        """Byte offset of padded pixel (row, col) of channel group c8."""
-        return ((c8 * self.Wp + row) * self.Wp + col) * 8
+        """Byte offset of padded pixel (row, col) of channel group c8 (interior: rows 1..H, cols X0..)."""
+        return ((c8 * self.Hp + row) * self.Wq + col) * 8
+
+    @property
+    def origin(self):
+        """Byte offset of interior pixel (0, 0) of group 0."""
+        return self.offset(0, 1, self.X0)
+
+    def view(self, mem, base=None):
+        a = self.addr if base is None else base
+        return mem[a:a + self.C8 * self.plane].view(np.int8).reshape(self.C8, self.Hp, self.Wq, 8)
 
     def interior(self, mem):
         """Read back [C8][H][W][8] int8 from a TCDM image."""
-        v = mem[self.addr:self.addr + self.size].view(np.int8).reshape(self.C8, self.Wp, self.Wp, 8)
-        return v[:, 1:-1, 1:-1, :]
+        return self.view(mem)[:, 1:-1, self.X0:self.X0 + self.H, :]
+
+    def pack(self, x):
+        """NCHW (1 image) int -> TCDM bytes of this tensor, border / extra channels / tail = zp."""
+        b = np.full(self.size, self.zp, dtype=np.int8)
+        self.view(b, 0)[:, 1:-1, self.X0:self.X0 + self.H, :] = to_c8hw8(x, self.C8, self.zp)[:, 1:-1, 1:-1, :]
+        return b.tobytes()
 
 
 @dataclass
@@ -109,7 +135,49 @@ def conv_blob(name, v):
     bias = np.repeat(v["bias"].astype(np.int32).reshape(cout // 8, 1, 8), 8, axis=1)
     b = B.tobytes()
     assert len(b) % ALIGN == 0
-    return Blob(name, b + bias.tobytes()), len(b)
+    return Blob(name, b + bias.tobytes() + pad64(bytes(CONV_PARAM_BYTES))), len(b)   # params: see conv_params
+
+
+def add_lut(name, v):
+    """Clamp table of a residual add on the cores (nn_cluster.c add_rows).  With the zero points,
+    the rounding constant and zo folded into kc, t = (a*ma + b*mb + kc) >> 16 has a range fixed
+    by int8 a, b; out = lut[t - tmin] = clamp(t, lo, 127) replaces the compare/branch clamp."""
+    ma, mb = v["ma"], v["mb"]
+    kc = (1 << (ADD_SHIFT - 1)) + v["zo"] * (1 << ADD_SHIFT) - v["za"] * ma - v["zb"] * mb
+    ext = lambda m, f: f(-128 * m, 127 * m)
+    tmin = (ext(ma, min) + ext(mb, min) + kc) >> ADD_SHIFT
+    tmax = (ext(ma, max) + ext(mb, max) + kc) >> ADD_SHIFT
+    v.update(kc=kc, tmin=tmin)
+    lut = np.clip(np.arange(tmin, tmax + 1), v["lo"], 127).astype(np.int8)
+    return Blob("lut_" + name, pad64(lut.tobytes()))
+
+
+STREAMER_FIELDS = (
+    "Aslstride0 Aslstride1 Atlbound0 Atlstride0 Atlbound1 Atlstride1 Atlbound2 Atlstride2 Atlbound3 "
+    "Atlstride3 Atlbound4 Atlstride4 Atlbound5 Atlstride5 set_addr_remap_index_A "
+    "Bslstride0 Bslstride1 Btlbound0 Btlstride0 Btlbound1 Btlstride1 Btlbound2 Btlstride2 set_addr_remap_index_B "
+    "D8slstride0 D8slstride1 D8tlbound0 D8tlstride0 D8tlbound1 D8tlstride1 D8tlbound2 D8tlstride2 "
+    "set_addr_remap_index_D8 "
+    "Cslstride0 Cslstride1 Ctlbound0 Ctlstride0 Ctlbound1 Ctlstride1 Ctlbound2 Ctlstride2 set_addr_remap_index_C "
+    "D32slstride0 D32slstride1 D32tlbound0 D32tlstride0 D32tlbound1 D32tlstride1 D32tlbound2 D32tlstride2 "
+    "set_addr_remap_index_D32 "
+    "delta_local_a delta_local_b delta_local_d8 delta_local_c delta_local_d32 "
+    "bypassSIMD transposed_A transposed_B channel_en_C broadcast_C K N M").split()
+CONV_PARAM_BYTES = 4 * (len(STREAMER_FIELDS) + 5 + 8)       # sizeof(nn_conv_t), all 32-bit fields
+
+
+def conv_params(c):
+    """nn_conv_t (nn/sw/nn_types.h) as bytes.  It is appended to the conv's weight blob, so core 0
+    programs the CSRs from TCDM instead of ~80 slow loads from the memory island."""
+    u8 = lambda x: int(x) & 0xFF
+    sh = c["shift"]
+    words = [int(c[f]) for f in STREAMER_FIELDS] + [
+        (u8(c["subtraction_b"]) << 8) | u8(c["subtraction_a"]),
+        (u8(c["min_int_i"]) << 24) | (u8(c["max_int_i"]) << 16) | (u8(c["output_zp_i"]) << 8) | u8(c["input_zp_i"]),
+        c["double_round_i"],
+        sh[0] | sh[1] << 8 | sh[2] << 16 | sh[3] << 24,
+        sh[4] | sh[5] << 8 | sh[6] << 16 | sh[7] << 24] + [int(m) for m in c["multiplier"]]
+    return np.array(words, dtype=np.int64).astype(np.uint32).tobytes()
 
 
 def gemmx_cfg(name, v, tin, tout, wsize, blob):
@@ -118,18 +186,18 @@ def gemmx_cfg(name, v, tin, tout, wsize, blob):
     Ho = tout.H
     Wo = Ho
     lo = max((Ho - 1) * s + k - tin.H, 0) // 2     # Keras 'same': top/left padding
-    o = 1 - lo                                     # window origin in the 1-pixel-padded input
+    o = 1 - lo                                     # window origin: padded row o, column X0-1+o
     K, N, M = k * k * tin.C8, tout.C8, Ho * Wo // 8
-    Wp, Hp = tin.Wp, tin.Wp
+    Wq, Hp = tin.Wq, tin.Hp
     c = dict(
         # A: implicit im2col
         Aslstride0=1, Aslstride1=8 * s,
         Atlbound0=k, Atlstride0=8,
-        Atlbound1=k, Atlstride1=8 * Wp,
-        Atlbound2=tin.C8, Atlstride2=8 * Wp * Hp,
+        Atlbound1=k, Atlstride1=8 * Wq,
+        Atlbound2=tin.C8, Atlstride2=8 * Wq * Hp,
         Atlbound3=N, Atlstride3=0,
         Atlbound4=Wo // 8, Atlstride4=64 * s,
-        Atlbound5=Ho, Atlstride5=8 * Wp * s,
+        Atlbound5=Ho, Atlstride5=8 * Wq * s,
         set_addr_remap_index_A=0,
         # B: weights
         Bslstride0=1, Bslstride1=8,
@@ -139,9 +207,9 @@ def gemmx_cfg(name, v, tin, tout, wsize, blob):
         set_addr_remap_index_B=0,
         # D8: interior of the padded output
         D8slstride0=1, D8slstride1=8,
-        D8tlbound0=N, D8tlstride0=8 * tout.Wp * tout.Wp,
+        D8tlbound0=N, D8tlstride0=tout.plane,
         D8tlbound1=Wo // 8, D8tlstride1=64,
-        D8tlbound2=Ho, D8tlstride2=8 * tout.Wp,
+        D8tlbound2=Ho, D8tlstride2=8 * tout.Wq,
         set_addr_remap_index_D8=0,
         # C: bias tile per N, broadcast over rows and M
         Cslstride0=8, Cslstride1=64,
@@ -155,11 +223,11 @@ def gemmx_cfg(name, v, tin, tout, wsize, blob):
         D32tlbound1=Wo // 8, D32tlstride1=0,
         D32tlbound2=Ho, D32tlstride2=0,
         set_addr_remap_index_D32=0,
-        delta_local_a=tin.addr + tin.offset(0, o, o),
+        delta_local_a=tin.addr + tin.offset(0, o, tin.X0 - 1 + o),
         delta_local_b=blob.addr,
-        delta_local_d8=tout.addr + tout.offset(0, 1, 1),
+        delta_local_d8=tout.addr + tout.origin,
         delta_local_c=blob.addr + wsize,
-        delta_local_d32=tout.addr + tout.offset(0, 1, 1),
+        delta_local_d32=tout.addr + tout.origin,
         bypassSIMD=0, transposed_A=0, transposed_B=0, channel_en_C=0xFF, broadcast_C=1,
         # GeMMX
         K=K, N=N, M=M,
@@ -169,6 +237,7 @@ def gemmx_cfg(name, v, tin, tout, wsize, blob):
         multiplier=[int(v["mult"][l]) for l in range(8)],
     )
     assert Wo % 8 == 0
+    assert c["delta_local_d8"] % 64 == 0 and c["D8tlstride0"] % 64 == 0 and c["D8tlstride2"] % 64 == 0
     assert c["Atlbound0"] * c["Atlbound1"] * c["Atlbound2"] * c["Atlbound3"] * c["Atlbound4"] * c["Atlbound5"] == M * N * K
     return c
 
@@ -208,7 +277,8 @@ class Program:
                 blob.name = "w_" + n
                 st = Step(i, "conv", n, [CONV_IN[n]], n, blob, dict(wsize=wsize))
             elif n.startswith("add"):
-                st = Step(i, "add", n, list(ADDS[n]), n, cfg=dict(q["add"][n]))
+                cfg = dict(q["add"][n])
+                st = Step(i, "add", n, list(ADDS[n]), n, add_lut(n, cfg), cfg)
             else:
                 fc = q["fc"]
                 data = pad64(fc["W"].astype(np.int8).tobytes()) + pad64(fc["bias"].astype(np.int32).tobytes())
@@ -234,11 +304,14 @@ class Program:
             if st.kind == "conv":
                 st.cfg.update(gemmx_cfg(st.name, self.q["conv"][st.name], self.tensors[st.ins[0]],
                                         self.tensors[st.out], st.cfg["wsize"], st.blob))
+                po = st.cfg["wsize"] + 256 * st.cfg["N"]
+                pb = conv_params(st.cfg)
+                st.blob.data = st.blob.data[:po] + pb + st.blob.data[po + len(pb):]
 
     def input_image(self, x_q):
         """Integer-reference input (3x32x32, values pixel-128) -> padded TCDM image bytes."""
         t = self.tensors["input"]
-        return to_c8hw8(np.asarray(x_q), t.C8, t.zp).tobytes()
+        return t.pack(np.asarray(x_q))
 
     def macs(self):
         """(useful MACs, GeMMX fires) per image."""
