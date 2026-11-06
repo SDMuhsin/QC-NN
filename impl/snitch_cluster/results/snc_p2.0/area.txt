@@ -1,3 +1,4 @@
+# SUPERSEDED: DC used the library default wire-load selection = ZeroWireload (no wire cap), so area / fmax are optimistic.  Not re-run with the fixed flow (README).
 # um2 at ss (DC, report_area); macro = compiled SRAM / RF macros (area from their .db)
 total_um2 2984554  logic_um2 1068773 (742 kGE)  macro_um2 1915781  macro_share 64.2 %
 logic_comb_um2 543275  logic_seq_um2 525498  macros 20  cells 318361

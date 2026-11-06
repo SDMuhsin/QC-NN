@@ -1,0 +1,57 @@
+# DC (wire-load or topographical, see 'topo'), ideal clocks, pre-CTS
+dc design snitch_cluster_wrapper top snitch_cluster_wrapper corner ss period_ns 4.0 topo 0 wire_load WireAreaLowkCon/enclosed
+dc cell_area_um2 5992752.909588 gate_eq_kGE 4161.63 cells 1337831 regs 167892
+dc setup_wns_ns -1.04075 setup_tns_ns -36014.769 setup_viol_endpoints 49266
+dc setup_worst_path i_cluster/gen_core_0__i_snitch_cc/gen_fpu_i_snitch_fp_ss/i_fpu/i_fpu/gen_operation_groups_0__i_opgroup_block/gen_merged_slice_i_multifmt_slice/gen_num_lanes_1__active_lane_lane_instance_i_fpnew_fma_multi/DP_OP_729J13_174_5682_clu_clk_r_REG2959_S1/CP -> i_cluster/gen_core_0__i_snitch_cc/gen_fpu_i_snitch_fp_ss/i_fpu/i_fpu/gen_operation_groups_0__i_opgroup_block/gen_merged_slice_i_multifmt_slice/gen_num_lanes_1__active_lane_lane_instance_i_fpnew_fma_multi/clu_clk_r_REG671_S2/D
+dc hold_wns_ns -0.0853856 hold_tns_ns -84.581 hold_viol_endpoints 1348
+dc hold_worst_path i_cluster/gen_tcdm_super_bank_0__gen_tcdm_bank_0__i_amo_shim/idx_q_reg/CP -> i_cluster/gen_tcdm_super_bank_0__gen_tcdm_bank_0__i_data_mem/i_tc_sram/gen_macro_gen_sp_1024x64_i_macro/WEN[0]
+dc dc_wall_s 12192
+dc wall 3:23:24 peak_rss_mb 9464
+
+# PrimeTime ss
+pt_ss design snitch_cluster_wrapper corner ss lib tcbn65gpluswc_ccs period_ns 4.0 parasitics wire_load_WireAreaLowkCon/enclosed
+pt_ss setup_wns_ns -1.030431 setup_tns_ns -35581.697 setup_viol_endpoints 49103
+pt_ss setup_worst_path i_cluster/gen_core_6__i_snitch_cc/gen_fpu_i_snitch_fp_ss/i_fpu/i_fpu/gen_operation_groups_0__i_opgroup_block/gen_merged_slice_i_multifmt_slice/gen_num_lanes_2__active_lane_lane_instance_i_fpnew_fma_multi/clu_clk_r_REG3789_S1/CP -> i_cluster/gen_core_6__i_snitch_cc/gen_fpu_i_snitch_fp_ss/i_fpu/i_fpu/gen_operation_groups_0__i_opgroup_block/gen_merged_slice_i_multifmt_slice/gen_num_lanes_2__active_lane_lane_instance_i_fpnew_fma_multi/i_fpnew_rounding/clu_clk_r_REG783_S2/D
+pt_ss hold_wns_ns -0.125846 hold_tns_ns -129.568 hold_viol_endpoints 1245
+pt_ss hold_worst_path i_cluster/gen_tcdm_super_bank_1__gen_tcdm_bank_2__i_amo_shim/amo_result_q_reg_6_/CP -> i_cluster/gen_tcdm_super_bank_1__gen_tcdm_bank_2__i_data_mem/i_tc_sram/gen_macro_gen_sp_1024x64_i_macro/D[38]
+pt_ss clock clu_clk period_ns 4.000 wns_ns -1.030 fmax_mhz 198.8 path i_cluster/gen_core_6__i_snitch_cc/gen_fpu_i_snitch_fp_ss/i_fpu/i_fpu/gen_operation_groups_0__i_opgroup_block/gen_merged_slice_i_multifmt_slice/gen_num_lanes_2__active_lane_lane_instance_i_fpnew_fma_multi/clu_clk_r_REG3789_S1/CP -> i_cluster/gen_core_6__i_snitch_cc/gen_fpu_i_snitch_fp_ss/i_fpu/i_fpu/gen_operation_groups_0__i_opgroup_block/gen_merged_slice_i_multifmt_slice/gen_num_lanes_2__active_lane_lane_instance_i_fpnew_fma_multi/i_fpnew_rounding/clu_clk_r_REG783_S2/D
+pt_ss macros 20 macro_area_um2 1915781
+pt_ss power_total_w 0.0873 (vectorless, toggle 0.1)
+pt_ss power_net_switching_power_w 0.0173
+pt_ss power_cell_internal_power_w 0.0315
+pt_ss power_cell_leakage_power_w 0.0384
+pt_ss pt_wall_s 209
+pt_ss wall 3:38.35 peak_rss_mb 3933
+
+# PrimeTime tt
+pt_tt design snitch_cluster_wrapper corner tt lib tcbn65gplustc_ccs period_ns 4.0 parasitics wire_load_WireAreaLowkCon/enclosed
+pt_tt setup_wns_ns 0.758726 setup_tns_ns 0.000 setup_viol_endpoints 0
+pt_tt setup_worst_path i_cluster/gen_core_1__i_snitch_cc/gen_fpu_i_snitch_fp_ss/gen_fpu_sequencer_i_snitch_fpu_sequencer/inst_cnt_q_reg_0_/CP -> i_cluster/gen_core_7__i_snitch_cc/gen_ssrs_i_snitch_ssr_streamer/gen_ssrs_1__i_ssr/i_fifo/mem_q_reg_2__7_/D
+pt_tt hold_wns_ns -0.072047 hold_tns_ns -77.335 hold_viol_endpoints 1251
+pt_tt hold_worst_path i_cluster/gen_tcdm_super_bank_1__gen_tcdm_bank_2__i_amo_shim/amo_result_q_reg_6_/CP -> i_cluster/gen_tcdm_super_bank_1__gen_tcdm_bank_2__i_data_mem/i_tc_sram/gen_macro_gen_sp_1024x64_i_macro/D[38]
+pt_tt clock clu_clk period_ns 4.000 wns_ns 0.759 fmax_mhz 308.5 path i_cluster/gen_core_1__i_snitch_cc/gen_fpu_i_snitch_fp_ss/gen_fpu_sequencer_i_snitch_fpu_sequencer/inst_cnt_q_reg_0_/CP -> i_cluster/gen_core_7__i_snitch_cc/gen_ssrs_i_snitch_ssr_streamer/gen_ssrs_1__i_ssr/i_fifo/mem_q_reg_2__7_/D
+pt_tt macros 20 macro_area_um2 1915781
+pt_tt power_total_w 0.0860 (vectorless, toggle 0.1)
+pt_tt power_net_switching_power_w 0.0220
+pt_tt power_cell_internal_power_w 0.0391
+pt_tt power_cell_leakage_power_w 0.0249
+pt_tt pt_wall_s 190
+pt_tt wall 3:14.54 peak_rss_mb 3938
+
+# PrimeTime ff
+pt_ff design snitch_cluster_wrapper corner ff lib tcbn65gpluslt_ccs period_ns 4.0 parasitics wire_load_WireAreaLowkCon/enclosed
+pt_ff setup_wns_ns 1.740829 setup_tns_ns 0.000 setup_viol_endpoints 0
+pt_ff setup_worst_path i_cluster/gen_core_1__i_snitch_cc/gen_fpu_i_snitch_fp_ss/gen_fpu_sequencer_i_snitch_fpu_sequencer/inst_cnt_q_reg_0_/CP -> i_cluster/gen_core_7__i_snitch_cc/gen_ssrs_i_snitch_ssr_streamer/gen_ssrs_1__i_ssr/i_fifo/mem_q_reg_2__7_/D
+pt_ff hold_wns_ns -0.083148 hold_tns_ns -78.189 hold_viol_endpoints 1328
+pt_ff hold_worst_path i_cluster/gen_tcdm_super_bank_0__gen_tcdm_bank_0__i_amo_shim/idx_q_reg/CP -> i_cluster/gen_tcdm_super_bank_0__gen_tcdm_bank_0__i_data_mem/i_tc_sram/gen_macro_gen_sp_1024x64_i_macro/WEN[0]
+pt_ff clock clu_clk period_ns 4.000 wns_ns 1.741 fmax_mhz 442.6 path i_cluster/gen_core_1__i_snitch_cc/gen_fpu_i_snitch_fp_ss/gen_fpu_sequencer_i_snitch_fpu_sequencer/inst_cnt_q_reg_0_/CP -> i_cluster/gen_core_7__i_snitch_cc/gen_ssrs_i_snitch_ssr_streamer/gen_ssrs_1__i_ssr/i_fifo/mem_q_reg_2__7_/D
+pt_ff macros 20 macro_area_um2 1915781
+pt_ff power_total_w 0.1285 (vectorless, toggle 0.1)
+pt_ff power_net_switching_power_w 0.0272
+pt_ff power_cell_internal_power_w 0.0509
+pt_ff power_cell_leakage_power_w 0.0505
+pt_ff pt_wall_s 210
+pt_ff wall 3:33.92 peak_rss_mb 3932
+
+# DC report_power (ss, default activity)
+dc_power Total Dynamic Power    =  61.3296 mW  (100%)

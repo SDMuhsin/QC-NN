@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Gate-level simulation of the DC netlist of the Snitch cluster (impl/snitch_cluster, fp_p4.0) in
+# Gate-level simulation of the DC netlist of the Snitch cluster (impl/snitch_cluster, fp_p5.0_wlm) in
 # the sim/ testbench (Questa 2022.1 on $GLS_HOST). Same TB, kernel ELFs and self-checking
 # verifiers as sim/run_kernel.sh <kernel> vsim; only the RTL snitch_cluster_wrapper is replaced.
 #   gls.sh setup                    netlist + macro models usask -> $GLS_HOST, RTL TB build there
@@ -21,7 +21,7 @@ source "$G/../../../sim/env.sh"
 STEP=${1:?step}
 H=${GLS_HOST:-tau5}
 R=${GLS_DIR:-/tmp/ckp908/qcnn_snitchgls}      # host-local work area
-SYNHOST=${GLS_SYNHOST:-usask}; SYN=${GLS_SYN:-/tmp/ckp908/qcnn/build/syn/fp_p4.0}
+SYNHOST=${GLS_SYNHOST:-usask}; SYN=${GLS_SYN:-/tmp/ckp908/qcnn/build/syn/fp_p5.0_wlm}
 SYNMAC=${GLS_SYNMACROS:-/tmp/ckp908/qcnn/macros}
 CELLS=${GLS_CELLS:-/CMC/kits/tsmc_65nm_libs/tcbn65gplus_200a/TSMCHOME/digital/Front_End/verilog/tcbn65gplus_140b/tcbn65gplus.v}
 QUESTA=${GLS_QUESTA:-/CMC/scripts/siemens.questasim.2022.1_2.csh}
@@ -102,7 +102,7 @@ summary)
     --rtl "$B/runs/rtl/$K" --tck "$([ $MODE = sdf ] && echo $TCK_SDF || echo 1000)" --rtl-summary "$QCNN_SIM/results/${K}_vsim_$SIM_CFG.txt" | tee "$B/${K}_$MODE.txt"
   ;;
 report)
-  { echo "# Snitch cluster (fp_p4.0 DC netlist) gate-level simulation, impl/snitch_cluster/gls/gls.sh"
+  { echo "# Snitch cluster (fp_p5.0_wlm DC netlist) gate-level simulation, impl/snitch_cluster/gls/gls.sh"
     echo "# reference: sim/results/<kernel>_vsim_chimera_fp.txt (RTL, Questa 2022.1_2)"
     echo "# sdf: DC tt SDF, sdf_idealclk.py view (ideal clock + reset, 0.8 ns SDC input delay), README \"SDF run (tt)\""
     for f in "$B"/{gemm_fp64,conv2d}_{rtl,zd,sdf}.txt; do [ -f "$f" ] && { echo; cat "$f"; }; done

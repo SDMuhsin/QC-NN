@@ -1,0 +1,15 @@
+v engr-tau-02L:/tmp/ckp908/qcnn/build/syn/fp_p5.0_topo/snitch_cluster_wrapper.v 130.0 MB
+ddc engr-tau-02L:/tmp/ckp908/qcnn/build/syn/fp_p5.0_topo/snitch_cluster_wrapper.ddc 266.4 MB
+sdc engr-tau-02L:/tmp/ckp908/qcnn/build/syn/fp_p5.0_topo/snitch_cluster_wrapper.sdc 1972.0 MB
+spef engr-tau-02L:/tmp/ckp908/qcnn/build/syn/fp_p5.0_topo/snitch_cluster_wrapper.spef 1156.2 MB
+env QC_TOP=snitch_cluster_wrapper
+env QC_PERIOD=5.0
+env QC_CLK=clu_clk
+env QC_SDC=/home/ckp908/engr-ece/qcnn/wip_local/impl/snitch_cluster/constraints.sdc
+env QC_IO_PCT=20
+env QC_TOPO=1
+env QC_WLM_GROUP=
+env QC_WLM_MODE=
+env QC_EXTRA_DB_SS="/tmp/ckp908/qcnn/macros/qc_sp_1024x64m8/qc_sp_1024x64m8_ss_0p9v_125c_syn.db /tmp/ckp908/qcnn/macros/qc_rf_16x128m1/qc_rf_16x128m1_ss_0p9v_125c_syn.db "
+env QC_EXTRA_DB_TT="/tmp/ckp908/qcnn/macros/qc_sp_1024x64m8/qc_sp_1024x64m8_tt_1p0v_25c_syn.db /tmp/ckp908/qcnn/macros/qc_rf_16x128m1/qc_rf_16x128m1_tt_1p0v_25c_syn.db "
+env QC_EXTRA_DB_FF="/tmp/ckp908/qcnn/macros/qc_sp_1024x64m8/qc_sp_1024x64m8_ff_1p1v_m40c_syn.db /tmp/ckp908/qcnn/macros/qc_rf_16x128m1/qc_rf_16x128m1_ff_1p1v_m40c_syn.db "

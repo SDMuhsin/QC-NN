@@ -2,7 +2,7 @@
 # P&R of the Snitch FP cluster on the server (from the repository root of a server tree; see README.md):
 #   impl/snitch_cluster/pnr/run.sh pnr [tag]   OpenROAD (flow/tsmc65/pnr/run_pnr.sh snitch_fp.cfg) -> $QC_BUILD/pnr/<tag>
 #   impl/snitch_cluster/pnr/run.sh pt  [tag] [corners]   PrimeTime post-route timing (pt_post.tcl) + vectorless power
-# tag: sn_fp.  QC_BUILD default /tmp/$USER/qcnn/build (synthesis fp_p4.0 under syn/), QC_PNR_THREADS 16.
+# tag: sn_fp.  QC_BUILD default /tmp/$USER/qcnn/build (synthesis fp_p5.0_wlm under syn/), QC_PNR_THREADS 16.
 set -u
 here=$(cd "$(dirname "$0")" && pwd)
 root=$(cd "$here/../../.." && pwd)

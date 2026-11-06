@@ -1,3 +1,4 @@
+# SUPERSEDED: DC used the library default wire-load selection = ZeroWireload (no wire cap), so area / fmax are optimistic.  Re-run with WireAreaLowkCon enclosed: results/fp_p5.0_wlm (README).
 # DC (wire-load or topographical, see 'topo'), ideal clocks, pre-CTS
 dc design snitch_cluster_wrapper top snitch_cluster_wrapper corner ss period_ns 2.0 topo 0
 dc cell_area_um2 5929210.752668 gate_eq_kGE 4117.51 cells 1384748 regs 168030

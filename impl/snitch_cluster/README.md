@@ -49,37 +49,85 @@ host-local tree; builds go to `QC_BUILD=/tmp/$USER/qcnn/build`.
 Macro margin pins (EMA) tied to 000, retention inactive; a hold register per macro port keeps the tc_sram
 read-data contract (the macros are write-through).  Clock cells (`tc_clk.sv`): CKLNQD1 ICG, CKMUX2D1, CK* gates.
 
-## Results (DC wire-load, ss 0.9 V 125 C; PrimeTime ss / tt / ff; pre-CTS, ideal clocks, no parasitics)
+## Results (DC wire-load `WireAreaLowkCon` enclosed, ss 0.9 V 125 C; PrimeTime ss / tt / ff; pre-CTS, ideal clocks)
 
 Full numbers in `results/<tag>/{area,timing,netlist}.txt`.  fmax = 1 / (period - WNS) of the worst clu_clk path.
+Same SDC (`constraints.sdc`), FPU-only retiming (`dc_hook.tcl`) and macros as the superseded runs below; only the
+wire-load model differs (flow commit a9319d6, `flow/tsmc65/README.md` "Wire-load model").
 
 | tag | variant | period | total mm2 | logic mm2 (kGE) | macros mm2 | fmax ss / tt / ff MHz | power tt (vectorless) |
 |---|---|---|---|---|---|---|---|
-| **fp_p4.0** | fp | 4.0 ns | **5.80** | 3.89 (2700) | 1.92 | **250** / 382 / 538 | 68 mW @ 250 MHz |
-| fp_p2.0 | fp | 2.0 ns (over-constrained) | 5.93 | 4.01 (2787) | 1.92 | 257 / 394 / 554 | 119 mW @ 500 MHz |
-| snc_p2.0 | chimera | 2.0 ns | 2.98 | 1.07 (742) | 1.92 | 412 / 618 / 849 (soc_clk 436 / 591 / 677) | 74 mW @ 500 MHz |
+| **fp_p5.0_wlm** | fp | 5.0 ns | **5.93** | 4.01 (2785) | 1.92 | **200** / 309 / 442 | 68 mW @ 200 MHz |
+| fp_p4.0_wlm | fp | 4.0 ns (misses at ss: WNS -1.03 ns, 49k endpoints) | 5.99 | 4.08 (2831) | 1.92 | 199 / 309 / 443 | 86 mW @ 250 MHz |
 
-* fp: the FPUs dominate (each compute core ~0.37 mm2, of which the FP subsystem ~0.28 mm2).  fpnew is configured with
-  `PipeConfig BEFORE`, so `dc_hook.tcl` enables register retiming for the fpnew designs; the remaining critical
-  paths at ss are inside the SIMD FP units (sdotp / cast) after retiming, at tt / ff the FPU sequencer -> SSR FIFO
-  paths.  fp_p4.0 meets 4.0 ns at ss (WNS -0.001 ns in PT).
-* chimera: worst ss path is the shared multiplier (`snitch_shared_muldiv`); soc_clk paths are the CDC FIFO outputs
-  to the ports with 20 % IO delay.
-* Hold: about 1300 endpoints at -0.1 to -0.2 ns in every corner, mostly macro input pins (macro hold 0.29 ns at ss),
-  with ideal clocks; left to CTS / P&R hold fixing.
+* fp_p5.0_wlm is the primary result: 5.0 ns is met at ss (PT WNS +0.005 ns; DC 0.000).  4.0 ns misses badly, and the
+  4.0 ns netlist is not faster (199 MHz): 5.0 ns is the period that just meets.
+* Area: each compute core ~0.38 mm2, of which the FP subsystem ~0.29 mm2 (+4 % vs the zero-WLM run, from drive
+  strength); logic 2.79 MGE (NAND2 = 1.44 um2).
+* **What limits fmax** (PT ss, 5.0 ns netlist): there is no single critical unit.  53 800 paths are within 0.25 ns of
+  the worst slack; by endpoint: FP subsystem (scoreboard / regfile / LSU) 16.0k, integer core 11.7k, SSR 8.5k, FPU
+  datapaths (fma / sdotp / cast / other) 8.4k, I-cache L0 3.5k, TCDM macro pins 1.5k.  The worst classes in the 4.0 ns
+  netlist all end at -1.02 to -1.03 ns, with 70-85 cells per path:
+  * FREP sequencer -> FP LSU -> `gen_fpu_i_reqrsp_mux` -> address decode -> TCDM interconnect (stream_xbar arbiter)
+    -> ready back to the SSR address generator / FP scoreboard, or forward to the SRAM GWEN: a full core <-> TCDM
+    request / grant round trip in one cycle;
+  * integer core: pc -> L0 I-cache lookup -> decode -> LSU consistency queue (`gen_caq`) -> dpc / regfile write enable;
+  * FPU datapaths after retiming (fma / sdotp) end at the same slack: retiming balanced them to the control paths.
+* **Not explained by FPU pipeline depth.** The fpnew settings of `sim/cfg/chimera_fp.hjson` are the upstream
+  `default.hjson` ones (snitch_cluster c12ce9b): `lat_comp_fp64 3, fp32 2, fp16 / fp16alt / fp8 / fp8alt 1,
+  noncomp 1, conv 2, sdotp 3`, `fpu_pipe_config BEFORE` (identical).  The FPU datapaths are only ~16 % of the
+  near-critical endpoints, and the integer core and TCDM paths, which have no FPU pipeline registers, fail together with
+  them, so deeper FPU pipelines alone would not raise fmax.  One timing knob differs: `register_fpu_req: false`
+  (chimera's `snitch_cluster` default, which chimera never sets because its cluster has no FPU) where upstream
+  `default.hjson` has `true`.  It is the cut register on the FP-LSU port of `gen_fpu_i_reqrsp_mux`
+  (`snitch_cc.sv`), i.e. on the first path class above; the integer core / I-cache paths would remain.  The design was
+  not changed.
+* Against the paper (Snitch, Zaruba et al., IEEE TC 2021: GF22, 3.3 MGE, 755 MHz worst case): 2.79 MGE logic is above
+  the expected 65 nm range of 1.6-2.6 MGE (this config adds SIMD FP8 / FP16 / sdotp, SSR intersection and indirection);
+  200 MHz at ss is below the expected 350-500 MHz.  The gap is not explained by the FPU pipeline (above): it comes
+  from the single-cycle core <-> TCDM and fetch -> LSU loops of this config at 65 nm ss.  The wire-load model is not
+  the cause either: the topographical run (below) gives the same fmax (198 MHz at ss).
+* tt / ff limiters: FREP sequencer -> SSR FIFO paths (same class as above).
+* Hold: about 1100-1300 endpoints at -0.07 to -0.13 ns in every corner, mostly macro input pins (macro hold 0.29 ns
+  at ss), with ideal clocks; left to CTS / P&R hold fixing.
 * Power: PrimeTime vectorless (toggle 0.1 / cycle, static probability 0.5 on inputs and defaults), no switching
   activity from simulation: an order-of-magnitude estimate only.
-* Wire-load mode only (the library's ZeroWireload is selected): topographical mode was not run (an fp DC run is
-  3-3.5 h on 8 cores).
+* Gate-level simulation of fp_p5.0_wlm (zero-delay, gemm_fp64): PASS, 6518 cycles = RTL, retire stream identical to RTL
+  on 9/9 harts (`gls/results.txt`).
+* Topographical mode (`QC_TOPO=1`, `compile_ultra -spg`, TLU+ RC, 5.0 ns; tag fp_p5.0_topo, 4.2 h, peak 10.9 GB):
+  6.02 mm2 total, 4.11 mm2 logic (2853 kGE); PT with the DC topographical parasitic estimate (SPEF): fmax ss / tt / ff
+  198 / 311 / 433 MHz (ss WNS -0.04 ns, DC 0.000), power tt 79 mW @ 200 MHz.  It agrees with fp_p5.0_wlm within 1-2 %
+  in fmax and area, which confirms the area-selected wire-load model for this block.
+
+### Superseded: zero wire load (ZeroWireload)
+
+These runs used the library's default wire-load selection, which in tcbn65gplus is `ZeroWireload` (no wire
+capacitance at all): DC sized for pin loads only, so area and fmax were optimistic (P&R after CTS found ss -8.4 ns on
+the fp_p4.0 netlist).  Kept for reference only; do not use these numbers.
+
+| tag | variant | period | total mm2 | logic mm2 (kGE) | macros mm2 | fmax ss / tt / ff MHz | power tt (vectorless) |
+|---|---|---|---|---|---|---|---|
+| fp_p4.0 (zero WLM, superseded) | fp | 4.0 ns | 5.80 | 3.89 (2700) | 1.92 | 250 / 382 / 538 | 68 mW @ 250 MHz |
+| fp_p2.0 (zero WLM, superseded) | fp | 2.0 ns (over-constrained) | 5.93 | 4.01 (2787) | 1.92 | 257 / 394 / 554 | 119 mW @ 500 MHz |
+| snc_p2.0 (zero WLM, not re-run) | chimera | 2.0 ns | 2.98 | 1.07 (742) | 1.92 | 412 / 618 / 849 (soc_clk 436 / 591 / 677) | 74 mW @ 500 MHz |
+
+* zero-WLM fp: the remaining critical paths at ss were inside the SIMD FP units (sdotp / cast) after retiming.
+* chimera: worst ss path was the shared multiplier (`snitch_shared_muldiv`); soc_clk paths are the CDC FIFO outputs
+  to the ports with 20 % IO delay.
 
 Netlists (host-local, `<dir>/<top>.{v,ddc,sdc}`; the macros are black boxes, models in `/tmp/ckp908/qcnn/macros`
 on the same host):
 
 | tag | host | dir |
 |---|---|---|
-| fp_p4.0 (primary) | usask (engr-tau-02L) | `/tmp/ckp908/qcnn/build/syn/fp_p4.0/` |
-| fp_p2.0 | tau5 (engr-tau-05L) | `/tmp/ckp908/qcnn/build/syn/fp_p2.0/` |
-| snc_p2.0 | usask (engr-tau-02L) | `/tmp/ckp908/qcnn/build/syn/snc_p2.0/` |
+| fp_p5.0_wlm (primary) | usask (engr-tau-02L) | `/tmp/ckp908/qcnn/build/syn/fp_p5.0_wlm/` |
+| fp_p4.0_wlm | usask (engr-tau-02L) | `/tmp/ckp908/qcnn/build/syn/fp_p4.0_wlm/` |
+| fp_p5.0_topo (+ `.spef`) | usask (engr-tau-02L) | `/tmp/ckp908/qcnn/build/syn/fp_p5.0_topo/` |
+| fp_p4.0 (zero WLM, superseded) | usask (engr-tau-02L) | `/tmp/ckp908/qcnn/build/syn/fp_p4.0/` |
+| fp_p2.0 (zero WLM, superseded) | tau5 (engr-tau-05L) | `/tmp/ckp908/qcnn/build/syn/fp_p2.0/` |
+| snc_p2.0 (zero WLM) | usask (engr-tau-02L) | `/tmp/ckp908/qcnn/build/syn/snc_p2.0/` |
+
+`pnr/` and `gls/gls.sh` still default to the superseded fp_p4.0 netlist (`QC_SN_SYN` / `GLS_SYN` select another).
 
 The tech overlay alone is checked by `hw/tech/tsmc65/test/run.sh` (VCS, vendor macro models, 20 000 random
 operations per shape against a reference model of the tc_sram contract: PASS; a mutant without the hold adapter

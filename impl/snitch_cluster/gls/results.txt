@@ -49,3 +49,17 @@
   harts with a retire stream (time, pc, insn) identical to RTL: 9/9 (15358 retires)
   wall time 0:10:54, clock 4000 ps
   => PASS
+
+# ---------------------------------------------------------------------------------------------------
+# Re-run on the fixed-flow netlist fp_p5.0_wlm (DC WireAreaLowkCon enclosed, 5.0 ns at ss; ../README.md).
+# The entries above are for the superseded zero-wire-load netlist fp_p4.0.  Netlist usask -> tau5
+# (/tmp/ckp908/qcnn_snitchgls_wlm, sim/ and macro models shared with the fp_p4.0 work area), then
+# GLS_DIR=/tmp/ckp908/qcnn_snitchgls_wlm gls.sh compile zd / start / wait / summary gemm_fp64 zd.
+
+[gemm_fp64 / zd, fp_p5.0_wlm]
+  self-check (verifier exit 0, 1024 outputs compared): PASS
+  Questa errors 0, GLS_X (X check) 0
+  kernel cycles 6518 (hart 0 regions 1,3, 4 mcycle reads); RTL 6518: match
+  harts with a retire stream (time, pc, insn) identical to RTL: 9/9 (14583 retires)
+  wall time 0:00:40, clock 1000 ps
+  => PASS

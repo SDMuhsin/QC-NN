@@ -1,3 +1,4 @@
+# SUPERSEDED: DC used the library default wire-load selection = ZeroWireload (no wire cap), so area / fmax are optimistic.  Not re-run with the fixed flow (README).
 # DC (wire-load or topographical, see 'topo'), ideal clocks, pre-CTS
 dc design qc_snitch_cluster_top top qc_snitch_cluster_top corner ss period_ns 2.0 topo 0
 dc cell_area_um2 2984554.357840 gate_eq_kGE 2072.61 cells 312668 regs 65509
