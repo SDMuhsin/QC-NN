@@ -31,6 +31,7 @@ SDF), and OpenROAD place and route (not finished) for the two compute clusters t
 | `impl/snitch_cluster/` | Snitch cluster synthesis / STA, `gls/` gate-level simulation, `pnr/` ([README](impl/snitch_cluster/README.md)) |
 | `impl/kulcluster/` | KUL cluster synthesis / STA and `pnr/` ([README](impl/kulcluster/README.md)) |
 | `sim/` | NN kernels on the Snitch cluster RTL (Questa / Verilator), with golden-model checks ([README](sim/README.md)) |
+| `nn/` | MLPerf Tiny ResNet-8 on the KUL GeMMX cluster: model, int8 quantization, compiler, C runtime, host-side bit-exact checks ([README](nn/README.md)) |
 | `third_party/` | chimera submodule, bender overrides, `Bender.lock` patch |
 | `tools/` | git-ignored local tools; only `convolve_private_stubs/` is tracked |
 
