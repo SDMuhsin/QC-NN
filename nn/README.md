@@ -3,7 +3,9 @@
 Phase 1 (host): float model, int8 quantization that maps one-to-one onto the GeMMX hardware arithmetic, a
 compiler that lowers the network to the cluster, a C runtime for chimera, and two independent bit-exact checks.
 Phase 2 (RTL): the whole network runs in the full chimera SoC on Questa, bit-exact against the PyTorch int8
-reference; results in [`results/rtl.md`](results/rtl.md).
+reference; results in [`results/rtl.md`](results/rtl.md).  Phase 3 (gate level): the heaviest conv runs on the
+synthesised cluster netlist (zero delay and SDF at tt), bit-exact and cycle-exact with RTL, with SAIF-based
+PrimeTime PX power; results in [`results/gls_power.md`](results/gls_power.md).
 
 | dir | contents |
 |---|---|
@@ -11,8 +13,9 @@ reference; results in [`results/rtl.md`](results/rtl.md).
 | `quant/` | `hw.py`: bit-exact GeMMX / RescaleSIMD / core arithmetic. `quantize.py`: PTQ, and `IntResNet8`, the integer-only PyTorch reference |
 | `compile/` | `lower.py`: layouts, GeMMX CSR values, TCDM liveness allocator. `schedule_sim.py`: TCDM-image model of the schedule and cycle model. `emit.py`: C tables and data. `main.py`: driver |
 | `sw/` | `nn_cluster.c` (cluster runtime, both cores), `nn_host.c` (CVA6 offload), `nn_entry.S`, `build.sh` (chimera ELF), `native/` (host x86 run of the same C on a C GeMMX model) |
-| `sim/` | `run_rtl.sh` (RTL run on a tau host), `run_nn.tcl` (Questa script), `memisl.py` (memory-island backdoor image + result decode), `summary.py`, `tcdm_check.py` (debug: TCDM dump vs reference) |
-| `results/` | `rtl.md` (phase 2 results), `rtl_logs/` (per-run summaries) |
+| `sim/` | `run_rtl.sh` (RTL run on a tau host), `prep.sh` (network + ELF + memory-island image), `run_nn.tcl` (Questa script), `memisl.py` / `memisl.tcl` (memory-island backdoor image, result decode), `summary.py`, `tcdm_check.py` (TCDM dump vs reference) |
+| `gls/` | `run_gls.sh` (one layer on the cluster netlist in chimera: zd / SDF, SAIF window), `nn_gls.tcl`, `tcdm_macro.py` (TCDM macro dump decode), `summary.py` (checks vs reference and RTL), `power.sh` + `pt_power.tcl` (PrimeTime PX from the SAIF), `energy.py` |
+| `results/` | `rtl.md` (phase 2), `gls_power.md` (phase 3), `rtl_logs/`, `gls_logs/` (summaries) |
 
 ```bash
 nn/fetch.sh                                   # pretrainedResnet.h5 + CIFAR-10 -> nn/data/ (git-ignored)
@@ -39,6 +42,7 @@ Python: `nn/requirements.txt` (torch, numpy, h5py).
 | TCDM peak | 79.8 KiB of 124 KiB arena (4 KiB at the top for the mailbox and stacks) |
 | ELF in the memory island | weights + bias tiles + conv parameters + add tables 89 KiB, 10.7 KiB per image; `NN_FULL_CHECK` adds 120 KiB (1 image only) |
 | estimated cycles / image | ~370 k (phase 1 model); **measured in RTL: see [`results/rtl.md`](results/rtl.md)** |
+| gate level, conv1 on `kul_w4.2p` (zd 2 ns, SDF tt 2.8 / 5 ns) | output bit-exact, cycles = RTL at the same clock; SDF tt 357 MHz: 332 mW, 5.7 uJ / layer, 2.4 pJ/MAC cluster (1.4 GeMMX), ~101 uJ / image (extrapolated); see [`results/gls_power.md`](results/gls_power.md) |
 
 Calibration: 2000 training images, 99.99th percentile of each activation tensor.
 

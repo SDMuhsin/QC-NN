@@ -65,9 +65,13 @@ runs are optimistic and superseded, and are kept only for reference in the sub-R
 | GLS zero-delay (2 ns) | PASS, all six cycle counters = RTL, 0 X on the AXI handshakes |
 | GLS SDF (tt, 3.5 ns) | PASS, 0 timing-check errors, 0 X, cycle-exact with zd at 3.5 ns.  The streamer is 5 cycles shorter than RTL at 2 ns, which comes from the clock (`results/gls.txt`). |
 | synthesis `kul_w4.2` | 4.04 mm2 total = 2.17 mm2 logic (**1509 kGE**) + 1.87 mm2 RF macros; GeMMX 1.01 mm2 (702 kGE); fmax ss / tt / ff **229** / 354 / 503 MHz; 231 mW tt (vectorless) |
+| synthesis `kul_w4.2p` (same flow, current RTL with the icache PMA fix) | 4.05 mm2, 1513 kGE, fmax 233 / 357 / 506 MHz (+0.2 % area, +1 % fmax: noise) |
+| ResNet-8 RTL in chimera (`nn/`) | 30 / 30 images bit-exact vs PyTorch int8, 401.7 k cycles / image ([nn/results/rtl.md](nn/results/rtl.md)) |
+| ResNet-8 GLS, conv1 on `kul_w4.2p` | zd 2 ns and SDF tt 2.8 / 5 ns: output bit-exact, cycles and GeMMX counters = RTL at the same clock, 0 timing-check errors ([nn/results/gls_power.md](nn/results/gls_power.md)) |
+| conv1 SAIF power (PT PX, tt, pre-CTS) | 357 MHz: **332 mW** (GeMMX 59 %), 5.7 uJ / layer, **2.4 pJ/MAC** cluster (1.4 GeMMX) = 0.82 TOPS/W; 200 MHz: 194 mW; ~101 uJ / image extrapolated (adds on the cores dominate) |
 | P&R (OpenROAD) | **incomplete**: stopped in global route.  Post-CTS: ss WNS -3.67 ns (~127 MHz), skew 1.52 ns (`impl/kulcluster/pnr/results/kul_pnr4.txt`) |
 
-Both KUL GLS runs used the superseded zero-WLM netlist `kul_p3.5`.  P&R used `kul_w4.2`.
+The GeMM-test GLS runs used the superseded zero-WLM netlist `kul_p3.5`; the ResNet-8 GLS uses `kul_w4.2p`.  P&R used `kul_w4.2`.
 
 ## Paper sanity check
 
@@ -78,6 +82,7 @@ Frequency is scaled by an FO4 rule of thumb (22 nm FDX to 65 nm: 1.5-2x slower; 
 |---|---|---|---|---|---|
 | GeMMX MAC utilisation | 90 % (36 ideal / 40 busy) | 82-99 % (OpenGeMM [2]), 92 % large tiles (SNAX [3]) | 16 nm | node-independent | **in range** (small job: add-C / drain cycles weigh more) |
 | GeMMX fmax | 229 MHz ss, 354 MHz tt | 800 MHz (SNAX syn. [3], Voltra silicon [4]) | 16 nm | ss 200-330, tt 250-450 MHz | **in range** |
+| GeMMX conv energy | 0.82 TOPS/W cluster, 1.39 GeMMX only (conv1, SAIF, tt 1.0 V, pre-CTS) | 4.68 TOPS/W (OpenGeMM [2], 0.675 V); 1.6 TOPS/W (Voltra [4] silicon, 0.6 V) | 16 nm | 0.53-0.71 ([2]); 0.14-0.19 ([4]) TOPS/W | **above**, x1.2-1.6 vs [2], x4-6 vs [4] (no clock tree / ideal clock, WLM; see `nn/results/gls_power.md`) |
 | GeMMX area | 702 kGE (GeMM + SIMD 561, streamer 135) | not reported; OpenGeMM core ~0.063 mm2 [2] | 16 nm | ~300-750 kGE (first principles: 200-450 core + 100-300 streamers / SIMD) | **plausible**, upper half |
 | KUL cluster area | 4.04 mm2 (2.17 logic + 1.87 RF) | KUL cluster not reported in [1]; SNAX cluster 0.45 mm2 [3] | 16 nm | < 7.4 mm2 ((65/16)^2 upper bound; the configs differ) | **consistent**, weak check |
 | Snitch FP64 GEMM | 6518 cycles for 32^3 on 8 cores = 63 % FPU util. | 8-core 32^2 DGEMM 85-87 % (Snitch TC [5]); 89 % at 48^2 (Occamy [6]) | 22 / 12 nm | node-independent | **plausible, lower**: 2 tiles of M = 16, and SSR setup / barriers / DMA waits are inside the timed regions |
@@ -114,6 +119,7 @@ below are the entry points.  Prerequisites, hosts and options are in the linked 
 | KUL in chimera (RTL) | `hw/kulcluster/sim/prep_chimera_ws.sh; hw/kulcluster/sw/chimera_gemmx/build.sh; hw/kulcluster/sim/chimera_vsim.sh` | [hw/kulcluster](hw/kulcluster/README.md) |
 | KUL synthesis + STA | `impl/kulcluster/run.sh macros; impl/kulcluster/run.sh all 4.2` | [impl/kulcluster](impl/kulcluster/README.md) |
 | KUL GLS | `hw/kulcluster/gls/gls.sh compile\|start\|wait\|summary zd\|sdf` | [hw/kulcluster](hw/kulcluster/README.md) |
+| ResNet-8 RTL / GLS + power | `nn/sim/run_rtl.sh`; `nn/gls/run_gls.sh`, `nn/gls/power.sh` | [nn](nn/README.md), [gls_power](nn/results/gls_power.md) |
 | KUL P&R | `impl/kulcluster/pnr/run.sh pnr kul_pnr4` | `impl/kulcluster/pnr/results/kul_pnr4.txt` |
 | OpenROAD install | `flow/tsmc65/pnr/install_openroad.sh` | [pnr](flow/tsmc65/pnr/README.md) |
 
@@ -138,4 +144,6 @@ below are the entry points.  Prerequisites, hosts and options are in the linked 
   GCC toolchain for the bootroms.  It was not run.
 * **GeMMX copy-in in chimera** uses a core-0 load / store loop from the memory island (722k cycles) instead of the
   cluster DMA.  Only the accelerator counters are meaningful as performance numbers.
-* Power is PrimeTime vectorless (no switching activity), so it is an order-of-magnitude estimate.
+* Power is PrimeTime vectorless (no switching activity) for the cluster-level numbers, so those are
+  order-of-magnitude estimates.  The ResNet-8 conv1 power is SAIF-based (gate-level activity), but pre-CTS:
+  there is no clock tree and the clock is ideal.

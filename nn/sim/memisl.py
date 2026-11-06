@@ -11,6 +11,8 @@ Memory island (chimera_pkg: 0x4800_0000, 256 KiB, narrow 32 bit, wide 512 bit, 2
 
     memisl.py banks  <elf> <outdir>       -> <outdir>/bank_<i>_<j>.hex + stub.elf
     memisl.py result <elf> <nn_net.h> <dir> -> decode nn_result from <dir>/bank_<i>_<j>.hex (JSON)
+    memisl.py where  <elf> <symbol>       -> "<i> <j> <row>" of the symbol's first word (run_nn.tcl polls
+                                             nn_result.marker there)
 """
 import json
 import re
@@ -123,6 +125,8 @@ def decode_result(elf, net_h, d):
 if __name__ == "__main__":
     if sys.argv[1] == "banks":
         write_banks(sys.argv[2], sys.argv[3])
+    elif sys.argv[1] == "where":
+        print(*bank_of(symbol(sys.argv[2], sys.argv[3]) - BASE))
     elif sys.argv[1] == "result":
         print(json.dumps(decode_result(*sys.argv[2:5])))
     else:

@@ -1,0 +1,17 @@
+gate-level run add1_zd_2000ps: step add1 (index 4)
+  sim end 1300.0 us, wall 2.2 min, cluster clock 2000 ps
+  ok   core 0 stopped after add1 (marker 0xdead0004)
+  ok   step checksums vs PyTorch int8 reference: 0 mismatches
+  ok   add1 output byte compare (TCDM dump): 0 of 16384 wrong, 0 X
+  ok   AXI X-check: 514034 cycles, 0 X
+  ok   Questa errors (incl. timing checks): 0
+  ok   no X on the GeMMX busy nets
+  SAIF window (fixed): 900.000 .. 1000.000 us = 50000 cycles
+  step cycles (mcycle):   input 4933  conv0 7635  conv1 10357  conv2 8612  add1 165830
+  GeMMX / streamer counters: conv0 3050/3051  conv1 6203/6204  conv2 6157/6158
+  ok   step cycles = RTL
+  ok   GeMMX / streamer busy counters = RTL
+  GeMM busy window 1: GLS 615.662 .. 621.740 us (6078000 ps), RTL 615.662 .. 621.740 us (6078000 ps)  identical
+  GeMM busy window 2: GLS 706.572 .. 718.956 us (12384000 ps), RTL 706.572 .. 718.956 us (12384000 ps)  identical
+  GeMM busy window 3: GLS 800.352 .. 812.644 us (12292000 ps), RTL 800.352 .. 812.644 us (12292000 ps)  identical
+PASS

@@ -1,0 +1,170 @@
+period_ns 2 corner tt saif /tmp/ckp908/qcnn_nngls/zd/nn_conv1_zd_2000ps/layer.saif
+Power Group             Power     Power      Power      Power   (     %)  Attrs
+--------------------------------------------------------------------------------
+clock_network              0.0848 4.276e-03 9.470e-05    0.0891 (23.28%)  i
+register                   0.0139 2.252e-03 3.691e-03    0.0199 ( 5.19%)  
+combinational              0.1027    0.0496 7.536e-03    0.1599 (41.74%)  
+sequential                 0.0000    0.0000    0.0000    0.0000 ( 0.00%)  
+memory                     0.1094 1.913e-04 4.472e-03    0.1141 (29.79%)  
+io_pad                     0.0000    0.0000    0.0000    0.0000 ( 0.00%)  
+black_box                  0.0000    0.0000    0.0000    0.0000 ( 0.00%)  
+
+  Net Switching Power  =    0.0563   (14.71%)
+  Cell Internal Power  =    0.3108   (81.17%)
+  Cell Leakage Power   =    0.0158   ( 4.12%)
+                         ---------
+Total Power            =    0.3829  (100.00%)
+
+1
+
+Hierarchy                             Power    Power    Power     Power    %
+--------------------------------------------------------------------------------
+KULCluster_snax_KUL_cluster_wrapper      0.311 5.63e-02 1.58e-02     0.383 100.0
+  i_snax_core_0_acc_0_snax_streamer_gemmX (KULCluster_snax_streamer_gemmX_wrapper_00000040_56_140242)    0.152 4.61e-02 6.06e-03    0.204  53.3
+    i_snax_csr_mux_demux (KULCluster_snax_csr_mux_demux_65_00000020_00000020) 9.90e-10 1.04e-09 4.31e-06 4.32e-06   0.0
+    i_snax_streamer_gemmX_shell_wrapper (KULCluster_snax_streamer_gemmX_shell_wrapper)    0.130 4.40e-02 5.06e-03    0.179  46.7
+    i_snax_streamer_gemmX_streamer_wrapper (KULCluster_snax_streamer_gemmX_streamer_wrapper_00000040_00000038_00000011_140242) 2.19e-02 2.10e-03 9.62e-04 2.49e-02   6.5
+    i_snax_streamer_gemmX_csrman_wrapper (KULCluster_snax_streamer_gemmX_csrman_wrapper_00000013_00000002) 2.95e-04 1.48e-05 3.11e-05 3.41e-04   0.1
+  i_snax_core_1_xdma (KULCluster_snax_KUL_cluster_xdma_wrapper_317242) 3.81e-03 1.46e-05 7.81e-04 4.61e-03   1.2
+    i_snax_KUL_cluster_xdma (KULCluster_snax_KUL_cluster_xdma) 3.81e-03 1.46e-05 7.81e-04 4.61e-03   1.2
+  i_cluster (KULCluster_snitch_cluster_48_64_512_00000002_00000001_00000002_00000002_1_2_00000200_64_64_00000020_16_8_00000100_00000080_00000002_0_0_0_0_0_0_0_0_0_0_0_2_0_0_0000000800000010_0000003000000000_24_48_1_2_1_0000000000000038_0000000700000047_00000008_00000037_0_0000000100000001_0000000400000004_0000000400000004_0000000400000004_0000000100000001_0000000100000001_0_0000000100000001_0000000400000004_0000001000000010_0000000000000000_0_2_1_1_1_1_0_1_1_0_0_0_0_0_3ff_3ff_32_32_4_4_1_164242)    0.155 1.02e-02 8.95e-03    0.174  45.5
+    gen_tcdm_super_bank_2__gen_tcdm_bank_4__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_11) 8.72e-05 3.69e-05 1.21e-05 1.36e-04   0.0
+    gen_tcdm_super_bank_0__gen_tcdm_bank_0__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_31) 9.95e-05 4.70e-05 1.21e-05 1.59e-04   0.0
+    gen_tcdm_super_bank_3__gen_tcdm_bank_5__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_2) 8.55e-05 3.31e-05 1.23e-05 1.31e-04   0.0
+    gen_core_0__i_sync_msip (KULCluster_sync_STAGES2_4) 1.30e-05    0.000 6.80e-08 1.31e-05   0.0
+    gen_tcdm_super_bank_2__gen_tcdm_bank_1__i_sram_pipe (KULCluster_shift_reg_0_320242_14)    0.000    0.000    0.000    0.000   N/A
+    gen_tcdm_super_bank_1__gen_tcdm_bank_1__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_22) 8.45e-05 3.19e-05 1.22e-05 1.29e-04   0.0
+    gen_core_0__i_sync_mtip (KULCluster_sync_STAGES2_5) 1.30e-05    0.000 7.57e-08 1.31e-05   0.0
+    gen_tcdm_super_bank_0__gen_tcdm_bank_2__i_sram_pipe (KULCluster_shift_reg_0_320242_29)    0.000    0.000    0.000    0.000   N/A
+    gen_snax_control_connection_0__gen_snax_use_csr_ports_i_snax_intf_translator (KULCluster_snax_intf_translator_000003c0_573242_1) 3.65e-05 8.02e-11 5.19e-06 4.17e-05   0.0
+    gen_tcdm_super_bank_2__gen_tcdm_bank_7__i_sram_pipe (KULCluster_shift_reg_0_320242_8)    0.000    0.000    0.000    0.000   N/A
+    gen_tcdm_super_bank_2__gen_tcdm_bank_2__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_13) 8.80e-05 3.65e-05 1.21e-05 1.37e-04   0.0
+    gen_tcdm_super_bank_3__gen_tcdm_bank_3__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_4) 8.37e-05 3.25e-05 1.19e-05 1.28e-04   0.0
+    gen_tcdm_super_bank_3__gen_tcdm_bank_3__i_sram_pipe (KULCluster_shift_reg_0_320242_4)    0.000    0.000    0.000    0.000   N/A
+    gen_tcdm_super_bank_1__gen_tcdm_bank_4__i_sram_pipe (KULCluster_shift_reg_0_320242_19)    0.000    0.000    0.000    0.000   N/A
+    gen_tcdm_super_bank_2__gen_tcdm_bank_0__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_15) 8.86e-05 3.72e-05 1.20e-05 1.38e-04   0.0
+    i_popcount_req (KULCluster_popcount_00000002_1) 3.18e-07 1.20e-07 1.45e-08 4.52e-07   0.0
+    gen_tcdm_super_bank_2__i_tcdm_mux (KULCluster_mem_wide_narrow_mux_00000040_00000200_471242_1) 3.65e-04 4.18e-04 1.89e-05 8.02e-04   0.2
+    gen_tcdm_super_bank_3__gen_tcdm_bank_1__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_6) 8.27e-05 3.11e-05 1.19e-05 1.26e-04   0.0
+    i_cut_ext_wide_out (KULCluster_axi_cut_168242) 4.04e-04 4.06e-08 1.14e-04 5.19e-04   0.1
+    gen_tcdm_super_bank_0__gen_tcdm_bank_1__i_sram_pipe (KULCluster_shift_reg_0_320242_30)    0.000    0.000    0.000    0.000   N/A
+    gen_tcdm_super_bank_2__gen_tcdm_bank_6__i_sram_pipe (KULCluster_shift_reg_0_320242_9)    0.000    0.000    0.000    0.000   N/A
+    gen_tcdm_super_bank_0__i_tcdm_mux (KULCluster_mem_wide_narrow_mux_00000040_00000200_471242_3) 3.35e-04 3.64e-04 1.83e-05 7.17e-04   0.2
+    gen_tcdm_super_bank_0__gen_tcdm_bank_7__i_sram_pipe (KULCluster_shift_reg_0_320242_24)    0.000    0.000    0.000    0.000   N/A
+    i_snitch_barrier (KULCluster_snitch_barrier_s00000002) 1.30e-05    0.000 9.09e-08 1.31e-05   0.0
+    gen_tcdm_super_bank_0__gen_tcdm_bank_7__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_24) 8.67e-05 3.50e-05 1.24e-05 1.34e-04   0.0
+    gen_tcdm_super_bank_3__gen_tcdm_bank_2__i_sram_pipe (KULCluster_shift_reg_0_320242_5)    0.000    0.000    0.000    0.000   N/A
+    gen_tcdm_super_bank_1__gen_tcdm_bank_3__i_sram_pipe (KULCluster_shift_reg_0_320242_20)    0.000    0.000    0.000    0.000   N/A
+    gen_tcdm_super_bank_0__gen_tcdm_bank_5__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_26) 9.14e-05 4.84e-05 1.27e-05 1.52e-04   0.0
+    gen_hive_0__i_snitch_hive (KULCluster_snitch_hive_00000002_00000100_00000080_00000002_0_00000030_00000040_00000200_0_183242) 1.45e-03 6.99e-05 9.19e-04 2.44e-03   0.6
+    i_cut_ext_narrow_slv (KULCluster_axi_cut_146242) 1.68e-04    0.000 2.85e-05 1.96e-04   0.1
+    gen_tcdm_super_bank_1__gen_tcdm_bank_6__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_17) 8.48e-05 3.30e-05 1.20e-05 1.30e-04   0.0
+    gen_tcdm_super_bank_0__gen_tcdm_bank_0__i_sram_pipe (KULCluster_shift_reg_0_320242_31)    0.000    0.000    0.000    0.000   N/A
+    gen_tcdm_super_bank_2__gen_tcdm_bank_5__i_sram_pipe (KULCluster_shift_reg_0_320242_10)    0.000    0.000    0.000    0.000   N/A
+    gen_tcdm_super_bank_2__gen_tcdm_bank_7__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_8) 9.41e-05 4.96e-05 1.29e-05 1.57e-04   0.0
+    i_axi_to_mem_dma (KULCluster_axi_to_mem_interleaved_00000030_00000200_00000003_1_00000002_562242) 1.10e-03 1.46e-05 2.74e-04 1.39e-03   0.4
+    gen_core_1__i_sync_debug (KULCluster_sync_STAGES2_3) 1.30e-05    0.000 6.80e-08 1.31e-05   0.0
+    gen_tcdm_super_bank_0__gen_tcdm_bank_3__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_28) 8.95e-05 4.62e-05 1.28e-05 1.49e-04   0.0
+    gen_tcdm_super_bank_0__gen_tcdm_bank_6__i_sram_pipe (KULCluster_shift_reg_0_320242_25)    0.000    0.000    0.000    0.000   N/A
+    gen_core_1__i_sync_meip (KULCluster_sync_STAGES2_2) 1.30e-05    0.000 6.80e-08 1.31e-05   0.0
+    gen_tcdm_super_bank_1__gen_tcdm_bank_4__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_19) 8.66e-05 3.45e-05 1.23e-05 1.33e-04   0.0
+    gen_tcdm_super_bank_2__gen_tcdm_bank_0__i_sram_pipe (KULCluster_shift_reg_0_320242_15)    0.000    0.000    0.000    0.000   N/A
+    gen_core_0__i_sync_debug (KULCluster_sync_STAGES2_7) 1.30e-05    0.000 6.80e-08 1.31e-05   0.0
+    gen_tcdm_super_bank_2__gen_tcdm_bank_5__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_10) 8.86e-05 3.77e-05 1.18e-05 1.38e-04   0.0
+    gen_tcdm_super_bank_1__gen_tcdm_bank_2__i_sram_pipe (KULCluster_shift_reg_0_320242_21)    0.000    0.000    0.000    0.000   N/A
+    i_reqrsp_to_axi_core (KULCluster_reqrsp_to_axi_00000040_00000002_149242_0) 5.87e-05    0.000 2.21e-06 6.09e-05   0.0
+    gen_tcdm_super_bank_3__gen_tcdm_bank_7__i_sram_pipe (KULCluster_shift_reg_0_320242_0)    0.000    0.000    0.000    0.000   N/A
+    i_snitch_cluster_peripheral (KULCluster_snitch_cluster_peripheral_00000030_00000002_905242) 8.83e-03 3.55e-04 1.57e-04 9.35e-03   2.4
+    gen_tcdm_super_bank_0__gen_tcdm_bank_1__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_30) 8.85e-05 4.32e-05 1.27e-05 1.44e-04   0.0
+    gen_tcdm_super_bank_3__gen_tcdm_bank_6__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_1) 8.37e-05 3.21e-05 1.20e-05 1.28e-04   0.0
+    gen_tcdm_super_bank_1__gen_tcdm_bank_2__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_21) 8.61e-05 3.32e-05 1.24e-05 1.32e-04   0.0
+    gen_tcdm_super_bank_2__gen_tcdm_bank_3__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_12) 8.71e-05 3.50e-05 1.22e-05 1.34e-04   0.0
+    gen_snax_control_connection_1__gen_snax_use_csr_ports_i_snax_intf_translator (KULCluster_snax_intf_translator_000003c0_573242_0) 3.65e-05    0.000 2.23e-06 3.88e-05   0.0
+    gen_tcdm_super_bank_2__gen_tcdm_bank_4__i_sram_pipe (KULCluster_shift_reg_0_320242_11)    0.000    0.000    0.000    0.000   N/A
+    gen_tcdm_super_bank_3__gen_tcdm_bank_4__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_3) 8.40e-05 3.17e-05 1.21e-05 1.28e-04   0.0
+    gen_yes_snax_tcdm_interconnect_i_tcdm_interconnect (KULCluster_snitch_tcdm_interconnect_0000001b_00000020_00000002_00000009_00000040_00000001_0_500242) 9.98e-03 3.54e-03 6.95e-04 1.42e-02   3.7
+    gen_tcdm_super_bank_0__gen_tcdm_bank_5__i_sram_pipe (KULCluster_shift_reg_0_320242_26)    0.000    0.000    0.000    0.000   N/A
+    gen_core_0__i_sync_meip (KULCluster_sync_STAGES2_6) 1.30e-05    0.000 6.80e-08 1.31e-05   0.0
+    gen_tcdm_super_bank_1__gen_tcdm_bank_0__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_23) 8.73e-05 3.52e-05 1.23e-05 1.35e-04   0.0
+    i_axi_to_reg (KULCluster_axi_to_reg_s00000030_s00000040_s00000004_s00000002_1_1_1_917242) 1.29e-03 2.92e-05 4.01e-05 1.36e-03   0.4
+    gen_tcdm_super_bank_2__gen_tcdm_bank_1__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_14) 8.79e-05 3.65e-05 1.22e-05 1.37e-04   0.0
+    gen_tcdm_super_bank_1__gen_tcdm_bank_1__i_sram_pipe (KULCluster_shift_reg_0_320242_22)    0.000    0.000    0.000    0.000   N/A
+    gen_yes_wide_acc_connect_i_dma_interconnect (KULCluster_snitch_tcdm_interconnect_00000007_00000004_00000009_00000200__logic_Z_1yB__00000001_024242) 1.52e-03 1.92e-03 1.49e-04 3.59e-03   0.9
+    gen_tcdm_super_bank_3__i_tcdm_mux (KULCluster_mem_wide_narrow_mux_00000040_00000200_471242_0) 3.58e-04 4.05e-04 1.97e-05 7.83e-04   0.2
+    gen_tcdm_super_bank_3__gen_tcdm_bank_6__i_sram_pipe (KULCluster_shift_reg_0_320242_1)    0.000    0.000    0.000    0.000   N/A
+    gen_tcdm_super_bank_3__gen_tcdm_bank_2__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_5) 8.48e-05 3.22e-05 1.25e-05 1.29e-04   0.0
+    i_popcount_con (KULCluster_popcount_00000002_0) 8.69e-08 3.28e-08 1.41e-08 1.34e-07   0.0
+    gen_tcdm_super_bank_1__gen_tcdm_bank_7__i_sram_pipe (KULCluster_shift_reg_0_320242_16)    0.000    0.000    0.000    0.000   N/A
+    i_axi_dma_xbar (KULCluster_axi_xbar_0_952242) 3.05e-03 1.06e-05 5.81e-04 3.65e-03   1.0
+    i_cut_ext_wide_in (KULCluster_axi_cut_109242) 4.04e-04    0.000 1.11e-04 5.15e-04   0.1
+    gen_core_1__i_snitch_cc (KULCluster_snitch_cc_00000030_00000040_00000200_00000001_00000010_00000008_00000011_0_0_0_0_0_0_0_0_0_0_1_0_0_0_0_00000001_00000004_00000004_00000004_00000001_00000001_00000010_00000001_00000004_00_0_1_1_1_1_0_0_0_0_1_166949) 7.61e-03 9.80e-04 7.85e-04 9.38e-03   2.4
+    gen_tcdm_super_bank_1__i_tcdm_mux (KULCluster_mem_wide_narrow_mux_00000040_00000200_471242_2) 3.29e-04 3.58e-04 1.89e-05 7.06e-04   0.2
+    gen_tcdm_super_bank_3__gen_tcdm_bank_1__i_sram_pipe (KULCluster_shift_reg_0_320242_6)    0.000    0.000    0.000    0.000   N/A
+    gen_tcdm_super_bank_3__gen_tcdm_bank_0__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_7) 8.59e-05 3.40e-05 1.23e-05 1.32e-04   0.0
+    gen_tcdm_super_bank_2__gen_tcdm_bank_3__i_sram_pipe (KULCluster_shift_reg_0_320242_12)    0.000    0.000    0.000    0.000   N/A
+    i_cluster_xbar (KULCluster_axi_xbar__900242) 2.44e-03 1.78e-05 1.57e-04 2.61e-03   0.7
+    gen_tcdm_super_bank_0__gen_tcdm_bank_4__i_sram_pipe (KULCluster_shift_reg_0_320242_27)    0.000    0.000    0.000    0.000   N/A
+    gen_tcdm_super_bank_1__gen_tcdm_bank_0__i_sram_pipe (KULCluster_shift_reg_0_320242_23)    0.000    0.000    0.000    0.000   N/A
+    gen_tcdm_super_bank_3__gen_tcdm_bank_5__i_sram_pipe (KULCluster_shift_reg_0_320242_2)    0.000    0.000    0.000    0.000   N/A
+    gen_tcdm_super_bank_0__gen_tcdm_bank_6__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_25) 8.43e-05 3.29e-05 1.20e-05 1.29e-04   0.0
+    gen_tcdm_super_bank_1__gen_tcdm_bank_6__i_sram_pipe (KULCluster_shift_reg_0_320242_17)    0.000    0.000    0.000    0.000   N/A
+    gen_tcdm_super_bank_1__gen_tcdm_bank_7__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_16) 8.58e-05 3.35e-05 1.22e-05 1.32e-04   0.0
+    i_cut_ext_narrow_mst (KULCluster_axi_cut_299242) 1.68e-04    0.000 2.96e-05 1.97e-04   0.1
+    i_snitch_data_mem (KULCluster_snitch_data_mem_00000200_00000040_00000020_301242)    0.111 4.84e-04 4.17e-03    0.115  30.1
+    i_axi_zeromem (KULCluster_axi_zero_mem_00000030_00000200_00000003_1_1_562242) 1.99e-04 3.65e-06 1.61e-05 2.19e-04   0.1
+    gen_core_0__i_snitch_cc (KULCluster_snitch_cc_00000030_00000040_00000200_00000001_00000010_00000008_00000011_0_0_0_0_0_0_0_0_0_0_0_0_0_0_0_00000001_00000004_00000004_00000004_00000001_00000001_00000010_00000001_00000004_00_0_1_1_1_1_0_0_0_0_1_166949) 1.16e-03 1.25e-05 2.21e-04 1.40e-03   0.4
+    gen_core_1__i_sync_msip (KULCluster_sync_STAGES2_0) 1.30e-05    0.000 6.80e-08 1.31e-05   0.0
+    gen_tcdm_super_bank_3__gen_tcdm_bank_0__i_sram_pipe (KULCluster_shift_reg_0_320242_7)    0.000    0.000    0.000    0.000   N/A
+    gen_tcdm_super_bank_2__gen_tcdm_bank_2__i_sram_pipe (KULCluster_shift_reg_0_320242_13)    0.000    0.000    0.000    0.000   N/A
+    gen_tcdm_super_bank_0__gen_tcdm_bank_4__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_27) 8.63e-05 3.49e-05 1.20e-05 1.33e-04   0.0
+    gen_core_1__i_sync_mtip (KULCluster_sync_STAGES2_1) 1.30e-05    0.000 7.57e-08 1.31e-05   0.0
+    gen_tcdm_super_bank_0__gen_tcdm_bank_3__i_sram_pipe (KULCluster_shift_reg_0_320242_28)    0.000    0.000    0.000    0.000   N/A
+    gen_tcdm_super_bank_1__gen_tcdm_bank_5__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_18) 9.16e-05 4.81e-05 1.28e-05 1.53e-04   0.0
+    i_axi_to_tcdm (KULCluster_axi_to_tcdm_00000030_00000040_00000004_00000002_257242) 2.37e-04 7.30e-06 2.34e-05 2.68e-04   0.1
+    gen_tcdm_super_bank_2__gen_tcdm_bank_6__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_9) 8.80e-05 3.75e-05 1.20e-05 1.38e-04   0.0
+    gen_tcdm_super_bank_0__gen_tcdm_bank_2__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_29) 8.53e-05 3.46e-05 1.22e-05 1.32e-04   0.0
+    gen_tcdm_super_bank_3__gen_tcdm_bank_7__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_0) 8.48e-05 3.28e-05 1.21e-05 1.30e-04   0.0
+    gen_tcdm_super_bank_3__gen_tcdm_bank_4__i_sram_pipe (KULCluster_shift_reg_0_320242_3)    0.000    0.000    0.000    0.000   N/A
+    i_reqrsp_mux_core (KULCluster_reqrsp_mux_00000002_00000030_00000040_2_388242) 6.52e-05    0.000 2.78e-06 6.80e-05   0.0
+    gen_tcdm_super_bank_1__gen_tcdm_bank_3__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_20) 8.95e-05 4.51e-05 1.31e-05 1.48e-04   0.0
+    gen_tcdm_super_bank_1__gen_tcdm_bank_5__i_sram_pipe (KULCluster_shift_reg_0_320242_18)    0.000    0.000    0.000    0.000   N/A
+1
+
+Switching Activity Overview Statistics for "KULCluster_snax_KUL_cluster_wrapper"
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+                  From Activity     From         From         From             From            From                                                            Not
+Object Type       File (%)          SSA (%)      SSA Force (%) SSA Force (%)   SCA (%)         Clock (%)       Default (%)     Propagated(%)   Implied(%)      Annotated(%)  Total
+                                                 Annotated    Implied                                                                                                        
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Nets             887959(100.00%)   0(0.00%)     0(0.00%)     0(0.00%)         0(0.00%)        0(0.00%)        0(0.00%)        0(0.00%)        0(0.00%)        0(0.00%)      887959
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Nets Driven by
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Primary Input     1716(100.00%)     0(0.00%)     0(0.00%)     0(0.00%)         0(0.00%)        0(0.00%)        0(0.00%)        0(0.00%)        0(0.00%)        0(0.00%)      1716
+Tri-State         0(0%)             0(0%)        0(0%)        0(0%)            0(0%)           0(0%)           0(0%)           0(0%)           0(0%)           0(0%)         0
+Black Box         0(0%)             0(0%)        0(0%)        0(0%)            0(0%)           0(0%)           0(0%)           0(0%)           0(0%)           0(0%)         0
+Sequential        96628(100.00%)    0(0.00%)     0(0.00%)     0(0.00%)         0(0.00%)        0(0.00%)        0(0.00%)        0(0.00%)        0(0.00%)        0(0.00%)      96628
+Combinational     783535(100.00%)   0(0.00%)     0(0.00%)     0(0.00%)         0(0.00%)        0(0.00%)        0(0.00%)        0(0.00%)        0(0.00%)        0(0.00%)      783535
+Memory            2640(100.00%)     0(0.00%)     0(0.00%)     0(0.00%)         0(0.00%)        0(0.00%)        0(0.00%)        0(0.00%)        0(0.00%)        0(0.00%)      2640
+Clock Gate        3440(100.00%)     0(0.00%)     0(0.00%)     0(0.00%)         0(0.00%)        0(0.00%)        0(0.00%)        0(0.00%)        0(0.00%)        0(0.00%)      3440
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Static Probability Overview Statistics for "KULCluster_snax_KUL_cluster_wrapper"
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+                  From Activity     From         From         From             From            From                                                            Not
+Object Type       File (%)          SSA (%)      SSA Force (%) SSA Force (%)   SCA (%)         Clock (%)       Default (%)     Propagated(%)   Implied(%)      Annotated(%)  Total
+                                                 Annotated    Implied                                                                                                        
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Nets             887959(100.00%)   0(0.00%)     0(0.00%)     0(0.00%)         0(0.00%)        0(0.00%)        0(0.00%)        0(0.00%)        0(0.00%)        0(0.00%)      887959
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Nets Driven by
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Primary Input     1716(100.00%)     0(0.00%)     0(0.00%)     0(0.00%)         0(0.00%)        0(0.00%)        0(0.00%)        0(0.00%)        0(0.00%)        0(0.00%)      1716
+Tri-State         0(0%)             0(0%)        0(0%)        0(0%)            0(0%)           0(0%)           0(0%)           0(0%)           0(0%)           0(0%)         0
+Black Box         0(0%)             0(0%)        0(0%)        0(0%)            0(0%)           0(0%)           0(0%)           0(0%)           0(0%)           0(0%)         0
+Sequential        96628(100.00%)    0(0.00%)     0(0.00%)     0(0.00%)         0(0.00%)        0(0.00%)        0(0.00%)        0(0.00%)        0(0.00%)        0(0.00%)      96628
+Combinational     783535(100.00%)   0(0.00%)     0(0.00%)     0(0.00%)         0(0.00%)        0(0.00%)        0(0.00%)        0(0.00%)        0(0.00%)        0(0.00%)      783535
+Memory            2640(100.00%)     0(0.00%)     0(0.00%)     0(0.00%)         0(0.00%)        0(0.00%)        0(0.00%)        0(0.00%)        0(0.00%)        0(0.00%)      2640
+Clock Gate        3440(100.00%)     0(0.00%)     0(0.00%)     0(0.00%)         0(0.00%)        0(0.00%)        0(0.00%)        0(0.00%)        0(0.00%)        0(0.00%)      3440
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+1
+

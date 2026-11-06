@@ -1,0 +1,23 @@
+conv1_zd_2000ps  power_2ns.txt: clock 2.0 ns (500.0 MHz), window 12.384 us = 6192 cycles, SAIF annotation 100.00 % of nets
+  power total 382.9 mW = dynamic 367.1 + leakage 15.80 mW
+  GeMMX 204.0 mW (53.3 %), rest of cluster 178.9 mW; RF macros 114.1 mW, clock network (ICGs) 89.1 mW
+    GeMMX = GeMM array + SIMD 179.0 mW + streamer 24.9 mW; i_cluster (cores, TCDM + macros, interconnect, iDMA, icache) 174.0 mW
+  layer energy 4.74 uJ (GeMMX 2.53 uJ) for 2359296 MACs: 2.01 pJ/MAC cluster, 1.07 pJ/MAC GeMMX; 0.995 TOPS/W cluster, 1.868 TOPS/W GeMMX
+  per image (extrapolated): 90.4 uJ = convs 27.2 + other 63.2; latency 0.803 ms
+conv1_sdf_2800ps  power_2.8ns.txt: clock 2.8 ns (357.1 MHz), window 17.223 us = 6151 cycles, SAIF annotation 98.94 % of nets
+  power total 332.3 mW = dynamic 316.5 + leakage 15.80 mW
+  GeMMX 197.0 mW (59.3 %), rest of cluster 135.3 mW; RF macros 83.8 mW, clock network (ICGs) 64.0 mW
+    GeMMX = GeMM array + SIMD 176.0 mW + streamer 20.3 mW; i_cluster (cores, TCDM + macros, interconnect, iDMA, icache) 132.0 mW
+  layer energy 5.72 uJ (GeMMX 3.39 uJ) for 2359296 MACs: 2.43 pJ/MAC cluster, 1.44 pJ/MAC GeMMX; 0.824 TOPS/W cluster, 1.391 TOPS/W GeMMX
+  per image (extrapolated): 100.9 uJ = convs 33.1 + other 67.8; latency 1.125 ms
+conv1_sdf_5000ps  power_5ns.txt: clock 5.0 ns (200.0 MHz), window 30.755 us = 6151 cycles, SAIF annotation 98.94 % of nets
+  power total 193.7 mW = dynamic 177.9 + leakage 15.80 mW
+  GeMMX 113.0 mW (58.3 %), rest of cluster 80.7 mW; RF macros 49.5 mW, clock network (ICGs) 35.9 mW
+    GeMMX = GeMM array + SIMD 101.0 mW + streamer 11.8 mW; i_cluster (cores, TCDM + macros, interconnect, iDMA, icache) 78.5 mW
+  layer energy 5.96 uJ (GeMMX 3.48 uJ) for 2359296 MACs: 2.53 pJ/MAC cluster, 1.47 pJ/MAC GeMMX; 0.792 TOPS/W cluster, 1.358 TOPS/W GeMMX
+  per image (extrapolated): 115.0 uJ = convs 34.5 + other 80.6; latency 2.008 ms
+add1_zd_2000ps  power_2ns.txt: clock 2.0 ns (500.0 MHz), window 100.000 us = 50000 cycles, SAIF annotation 100.00 % of nets
+  power total 86.3 mW = dynamic 70.5 + leakage 15.80 mW
+  GeMMX 15.5 mW (18.0 %), rest of cluster 70.8 mW; RF macros 13.8 mW, clock network (ICGs) 53.0 mW
+    GeMMX = GeMM array + SIMD 8.8 mW + streamer 6.3 mW; i_cluster (cores, TCDM + macros, interconnect, iDMA, icache) 66.1 mW
+  energy per cycle 172.6 pJ (dynamic 141.0 pJ)

@@ -75,7 +75,7 @@ Measured on image 0: 471 k -> 434 k -> 407 k cycles.
 
 ## How it runs (`../sim/`)
 
-`run_rtl.sh -H <host> -n <images> -f <first> [-- -DNN_FULL_CHECK | -DNN_STOP_AFTER=<step>]` compiles the network
+`run_rtl.sh -H <host> -n <images> -f <first> [-c clk_ps] [-- -DNN_FULL_CHECK | -DNN_STOP_AFTER=<step>]` compiles the network
 for those test images, builds the ELF, and splits it into the 32 memory-island bank images (`memisl.py`). The
 testbench JTAG-loads an 8 B stub (JTAG for 120-240 KiB would take hours of simulated time) and `run_nn.tcl`
 `mem load`s the banks. At the end it saves the memory island and the TCDM, and `memisl.py result` decodes
@@ -85,6 +85,8 @@ time: ~1 min boot + ~3 min per image (images run back to back in one ELF; 10 ima
 
 ## For the gate-level phase
 
+Done in phase 3: [`gls_power.md`](gls_power.md) (re-synthesised netlist `kul_w4.2p`, conv1). Notes kept for reference:
+
 * Netlist: `impl/kulcluster` `kul_w4.2` (and all `kul_*`) were synthesised **before** the PMA fix. They are
   functionally equivalent (same results), but their cores fetch every instruction uncached from the memory
   island, so software (border fills, CSR setup, adds) is ~10-20x slower; GeMMX busy cycles are unaffected.
@@ -93,5 +95,5 @@ time: ~1 min boot + ~3 min per image (images run back to back in one ELF; 10 ima
   window (6 162 cycles), conv7 the best utilisation (76 %, K=72, all 64 channels). RTL busy windows of image 0
   (TB clock 2 ns, `run.log` NN_PROBE lines): conv1 706.3-718.7 us, conv7 1738.1-1750.2 us. On the uncached
   netlist the times shift; use the `gemm_busy` edges (BlockGemm `cstate`) to gate the SAIF window.
-* `-DNN_STOP_AFTER=<step>` freezes core 0 after a step and the TCDM is dumped, so a GLS run can stop right after
+* `-DNN_STOP_AFTER=<step>` freezes core 0 after a step (and its check) and the TCDM is dumped, so a GLS run can stop right after
   the layer of interest; `-n 1` keeps the image short.

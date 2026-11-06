@@ -238,12 +238,6 @@ static uint32_t run_image(uint32_t img) {
         uint32_t dt = rdcycle() - t0;
         nn_result.cycles[img][i] = dt;
         t_img += dt;
-#ifdef NN_STOP_AFTER
-        if (i == NN_STOP_AFTER) {                    // debug: freeze for a TCDM dump (run_nn.tcl)
-            nn_result.marker = 0xDEAD0000u | i;
-            for (;;) {}
-        }
-#endif
         if (s->out_C8) {                                         // check (not timed)
             uint32_t c1, c2;
             checksum(s, &c1, &c2);
@@ -268,6 +262,14 @@ static uint32_t run_image(uint32_t img) {
             }
 #endif
         }
+#ifdef NN_STOP_AFTER
+        if (i == NN_STOP_AFTER) {      // freeze after this step and its check (TCDM dump, gate-level runs)
+            nn_result.errors = err;
+            nn_result.marker = 0xDEAD0000u | i;
+            fence();
+            for (;;) {}
+        }
+#endif
     }
     nn_result.total[img] = t_img;
     return err;
