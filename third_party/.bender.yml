@@ -2,8 +2,8 @@
 # clusters live in private TU/e GitLab repos we cannot access; override them with
 # empty placeholder packages so the open dependencies still resolve.
 overrides:
-  tuedcim:    { path: "/workspace/qc-nn/tools/convolve_private_stubs/tuedcim" }
-  tuemega:    { path: "/workspace/qc-nn/tools/convolve_private_stubs/tuemega" }
-  tuddcim:    { path: "/workspace/qc-nn/tools/convolve_private_stubs/tuddcim" }
-  kulcluster: { path: "/workspace/qc-nn/hw/kulcluster" }  # public SNAX equivalent, see hw/kulcluster
-  ethcluster: { path: "/workspace/qc-nn/tools/convolve_private_stubs/ethcluster" }
+  tuedcim:    { path: "../tools/convolve_private_stubs/tuedcim" }
+  tuemega:    { path: "../tools/convolve_private_stubs/tuemega" }
+  tuddcim:    { path: "../tools/convolve_private_stubs/tuddcim" }
+  kulcluster: { path: "../hw/kulcluster" }  # public SNAX equivalent, see hw/kulcluster
+  ethcluster: { path: "../tools/convolve_private_stubs/ethcluster" }

@@ -2,7 +2,7 @@
 # P&R of the KUL cluster on the server (from the repository root of a server tree; see README.md):
 #   impl/kulcluster/pnr/run.sh pnr [tag]   OpenROAD (flow/tsmc65/pnr/run_pnr.sh kulcluster.cfg) -> $QC_BUILD/pnr/<tag>
 #   impl/kulcluster/pnr/run.sh pt  [tag]   PrimeTime post-route timing (run_pt_post.sh) + vectorless power, ss tt ff
-# tag: kul_pnr.  QC_BUILD default /tmp/$USER/qcnn_kulsyn/build (synthesis kul_p3.5 under syn/), QC_PNR_THREADS 14.
+# tag: kul_pnr.  QC_BUILD default /tmp/$USER/qcnn_kulsyn/build (synthesis kul_w4.2 under syn/), QC_PNR_THREADS 14.
 set -u
 here=$(cd "$(dirname "$0")" && pwd)
 root=$(cd "$here/../../.." && pwd)

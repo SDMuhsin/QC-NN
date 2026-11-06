@@ -127,7 +127,8 @@ on the same host):
 | fp_p2.0 (zero WLM, superseded) | tau5 (engr-tau-05L) | `/tmp/ckp908/qcnn/build/syn/fp_p2.0/` |
 | snc_p2.0 (zero WLM) | usask (engr-tau-02L) | `/tmp/ckp908/qcnn/build/syn/snc_p2.0/` |
 
-`pnr/` and `gls/gls.sh` still default to the superseded fp_p4.0 netlist (`QC_SN_SYN` / `GLS_SYN` select another).
+`pnr/` and `gls/gls.sh` default to fp_p5.0_wlm (`QC_SN_SYN` / `GLS_SYN` select another).  The P&R results in
+`pnr/results/` and the gls sdf / conv2d entries in `gls/results.txt` are from the superseded fp_p4.0 netlist.
 
 The tech overlay alone is checked by `hw/tech/tsmc65/test/run.sh` (VCS, vendor macro models, 20 000 random
 operations per shape against a reference model of the tc_sram contract: PASS; a mutant without the hold adapter

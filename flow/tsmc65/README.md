@@ -12,6 +12,7 @@ flow/tsmc65/
   syn/               run_dc.sh + dc.tcl         DC synthesis
   sta/               run_pt.sh + pt.tcl         PrimeTime, one session per corner
   sim/               run_vcs.sh                 VCS RTL or zero-delay gate-level simulation
+                     sdf_idealclk.py            STA-consistent view of a pre-CTS DC SDF for timing GLS (ideal clock / reset, input delay)
   smoke/             registered signed 8x8 MAC + self-checking testbench, run.sh runs the whole flow
   sram/              mc_gen.sh + lib2db.tcl  compiled SRAM / register-file macro views (ARM memory compilers)
 ```

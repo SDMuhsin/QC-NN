@@ -8,7 +8,7 @@
 #   gls.sh wait    <kernel> <mode>  poll (<= 9 min per call), prints GLS_DONE when finished
 #   gls.sh summary <kernel> <mode>  logs back, verdict + cycles vs RTL -> build/gls/<kernel>_<mode>.txt
 #   gls.sh report                   all summaries -> impl/snitch_cluster/gls/results.txt
-#   gls.sh sdf                      DC write_sdf at tt on $GLS_SYNHOST, STA-consistent view (sdf_idealclk.py:
+#   gls.sh sdf                      DC write_sdf at tt on $GLS_SYNHOST, STA-consistent view (flow/tsmc65/sim/sdf_idealclk.py:
 #                                   ideal clock + reset networks, SDC input delay on the TB-driven ports) -> $GLS_HOST
 # modes: rtl = RTL + gls_trace.sv (validates the retire monitor against the upstream tracer)
 #        zd  = netlist, +nospecify +notimingchecks, ARM macro models in unit-delay mode
@@ -117,11 +117,11 @@ sdf)
     ssh "$H" "test -s $R/net/snitch_cluster_wrapper_tt.sdf.gz" || \
       ssh "$SYNHOST" "cat $SG/snitch_cluster_wrapper_tt.sdf.gz" | ssh "$H" "cat > $R/net/snitch_cluster_wrapper_tt.sdf.gz"
     ssh "$SYNHOST" "cat $SG/clock_cells.txt" | ssh "$H" "cat > $R/net/clock_cells.txt"
-    rsync -a "$G/sdf_idealclk.py" "$H:$R/net/"
+    rsync -a "$QCNN_ROOT/flow/tsmc65/sim/sdf_idealclk.py" "$H:$R/net/"
     # input delay of the TB-driven ports = the SDC's set_input_delay (one value, min = max)
     IND=$(ssh "$H" "grep -o 'set_input_delay -clock [^ ]* *[0-9.]*' $R/net/snitch_cluster_wrapper.sdc | awk '{print \$NF}' | sort -u")
     [ "$(echo "$IND" | wc -l)" = 1 ] || { echo "expected one set_input_delay value, got: $IND"; exit 1; }
-    ssh "$H" "cd $R/net && python3 sdf_idealclk.py snitch_cluster_wrapper_tt.sdf.gz clock_cells.txt $IND clk_i rst_ni | gzip -1 > snitch_cluster_wrapper_idealclk.sdf.gz"
+    ssh "$H" "cd $R/net && python3 sdf_idealclk.py --clock-cells clock_cells.txt snitch_cluster_wrapper_tt.sdf.gz $IND clk_i rst_ni | gzip -1 > snitch_cluster_wrapper_idealclk.sdf.gz"
     echo SDF_DONE; exit 0
   fi
   if ssh "$SYNHOST" "pgrep -u \$USER -f '[d]c_shell.*write_sdf' > /dev/null"; then

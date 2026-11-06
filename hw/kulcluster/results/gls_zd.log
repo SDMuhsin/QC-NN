@@ -1,0 +1,12 @@
+KUL cluster gate-level simulation in chimera (zd): PASS, cycles match RTL
+  self-check (host exit code 0 = kernel ran, 0 mismatches vs golden D8): JTAG SUCCESS
+  Questa errors 0, X on probed busy nets 0, GLS_X (AXI X-check) 0, GLS_XCHECK cycles_checked 988911 x_errors 0
+  wall time 0:10:37, cluster clock period 2000 ps
+  [cluster cycles]                            GLS    RTL
+  GeMM core busy (BlockGemm io_busy_o)         40     40  ok
+  SIMD busy (io_busy_o)                        51     51  ok
+  streamer busy (cstate)                       77     77  ok
+  GeMM core perf counter                       40     40  ok
+  GeMMX (SIMD) perf counter                    51     51  ok
+  streamer perf counter                        76     76  ok
+  GeMM busy 20299932000 .. 20300012000 ps

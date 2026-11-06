@@ -72,11 +72,11 @@ models and the netlist. The top module name and port widths are the same, so chi
 hw/kulcluster/gls/gls.sh compile zd; hw/kulcluster/gls/gls.sh start zd   # zero delay, ~10 min
 hw/kulcluster/gls/gls.sh wait zd      # repeat until GLS_DONE
 hw/kulcluster/gls/gls.sh summary zd   # -> results/gls_zd.log (PASS/FAIL, cycles vs RTL)
-hw/kulcluster/gls/gls.sh sdf          # DC write_sdf at tt (+ sdf_idealclk.py), then the same 4 steps with `sdf`
+hw/kulcluster/gls/gls.sh sdf          # DC write_sdf at tt (+ flow/tsmc65/sim/sdf_idealclk.py), then the same 4 steps with `sdf`
 ```
 * `zd`: `+nospecify +notimingchecks`, macro models in ARM unit-delay mode (`ARM_UD_MODEL`).
   `sdf`: DC `write_sdf` at tt, full macro timing models, timing checks on, cluster clock 3.5 ns
-  (pre-CTS tt fmax ~433 MHz). `sdf_idealclk.py` makes the SDF consistent with the STA:
+  (pre-CTS tt fmax ~433 MHz). `flow/tsmc65/sim/sdf_idealclk.py --clock-celltype CKLNQD` makes the SDF consistent with the STA:
   * ICG CP->Q delays and the `rst_ni` buffer tree are zeroed, because they are ideal networks in
     synthesis.
   * The input ports get the SDC input delay of 0.7 ns. chimera's RTL changes them 0 ps after the

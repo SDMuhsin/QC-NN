@@ -1,6 +1,7 @@
 # impl/snitch_cluster/gls: gate-level simulation of the Snitch cluster netlist
 
-The DC netlist `fp_p4.0` (`snitch_cluster_wrapper`, see `../README.md`) replaces the RTL
+The DC netlist (`snitch_cluster_wrapper`, see `../README.md`; `gls.sh` default `fp_p5.0_wlm`; every entry of
+`results.txt` except the last, gemm_fp64 zd on `fp_p5.0_wlm`, is from the superseded `fp_p4.0`) replaces the RTL
 `snitch_cluster_wrapper` in the `sim/` Questa testbench. The TB, kernel ELFs and self-checking
 verifiers are the same as in `sim/run_kernel.sh <kernel> vsim`. Results: `results.txt`.
 
@@ -20,7 +21,7 @@ $G report                         # -> results.txt
 | `mk_compile.py` | bender compile script of `sim/` -> GLS script: RTL wrapper -> its package only, + cells, ARM models, netlist |
 | `gls_trace.sv` | second top: per-hart retire trace (time, pc, insn) from the I-cache fetch ports, X check |
 | `gls_summary.py` | verdict, kernel cycles, retire-by-retire comparison with the RTL run |
-| `write_sdf.tcl`, `sdf_idealclk.py` | DC `write_sdf` at tt; STA-consistent view of it (ideal clock + reset, SDC input delay) |
+| `write_sdf.tcl` | DC `write_sdf` at tt (+ `clock_cells.txt`); `flow/tsmc65/sim/sdf_idealclk.py --clock-cells` makes the STA-consistent view of it (ideal clock + reset, SDC input delay) |
 
 ## Method
 
@@ -51,7 +52,7 @@ that the STA signed off. Then `compile sdf` adds the ARM timing models and a cop
 `TCK = GLS_TCK_PS` (default 4000). The run uses `+no_notifier`, so a timing violation is reported
 (and fails the summary through "Questa errors") but does not X the register.
 
-`sdf_idealclk.py` applies the three SDC assumptions that the raw SDF does not model:
+`flow/tsmc65/sim/sdf_idealclk.py` applies the three SDC assumptions that the raw SDF does not model:
 
 1. **Ideal clock.** The IOPATHs of the 6541 ICGs (the whole clock network, `clock_cells.txt`) are
    zeroed. STA uses ideal clocks, and CTS balances this insertion delay later.
