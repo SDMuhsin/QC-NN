@@ -1,7 +1,8 @@
 """QC-GeMMX call on a TCDM image (hook for nn.compile.schedule_sim.run_image(..., gemm=...)).
 
 Same streamer semantics as schedule_sim.gemmx_call (A reader, broadcast C, D8 writer, RescaleSIMD);
-the B reader is one 64-bit channel (one QC code word per fire) and the array is
+the B reader is one 64-bit channel (one QC code word per fire), the SIMD may use the per-channel
+requant table (qcacc.model.requant) and the array is
 qcacc.model.array.qc_array (select activity per conv via make_gemm(..., stats)).
 """
 import numpy as np
@@ -10,6 +11,7 @@ from nn.compile.schedule_sim import gemmx_call, read8, temporal
 from nn.quant.hw import simd_rescale
 
 from ..model.array import qc_array
+from ..model.requant import lane_params
 
 
 def qc_gemmx_call(mem, c, stats=None):
@@ -26,8 +28,8 @@ def qc_gemmx_call(mem, c, stats=None):
     Cb = mem[cidx].copy().view(np.int32).reshape(M * N, 1, 8).astype(np.int64)
     acc = qc_array(X, codes, stats) + Cb
     acc = ((acc + 2 ** 31) % 2 ** 32) - 2 ** 31
-    out = simd_rescale(acc, c["input_zp_i"], c["output_zp_i"], np.array(c["multiplier"], np.int64),
-                       np.array(c["shift"], np.int64), c["min_int_i"], c["max_int_i"],
+    mult, shift = lane_params(c, M * N)                  # per-lane CSRs or the per-channel table
+    out = simd_rescale(acc, c["input_zp_i"], c["output_zp_i"], mult, shift, c["min_int_i"], c["max_int_i"],
                        c["double_round_i"]).astype(np.int8)
     didx = d_addr[:, None, None] + (np.arange(8) * c["D8slstride1"])[None, :, None] + np.arange(8)[None, None, :]
     mem[didx] = out.view(np.uint8)

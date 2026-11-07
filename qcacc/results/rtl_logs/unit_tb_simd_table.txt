@@ -1,0 +1,1 @@
+QC SIMD+table TB: 209 cases (159 with the table, up to 8 groups), 5248 tiles, 0 bad cases, 0 bad tiles -> BIT-EXACT

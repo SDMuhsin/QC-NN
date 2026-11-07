@@ -1,10 +1,35 @@
 // Host (x86 -m32) run of nn/sw on a C model of QC-GeMMX: nn/sw/native/native.c (syscalls, TCDM
 // mmap, streamer CSR capture, RescaleSIMD, _start) with the array replaced by the QC datapath of
-// qcacc/ARCH.md.  B reader: 1 channel x 64 b, one tile code word per fire at the B AGU address
+// qcacc/ARCH.md and the per-channel requant table of the RescaleSIMD.  B reader: 1 channel x 64 b, one tile code word per fire at the B AGU address
 // (Bslstride0/1 unused).  Built by qcacc/sw/native.sh qc (NN_NATIVE_C=this file).
 #define wait_gemmx_and_streamer nn_dense_wait_and_streamer   // keep the dense model, unused here
 #include "../../nn/sw/native/native.c"
 #undef wait_gemmx_and_streamer
+
+// per-output-channel requant table (qcacc/hw/chisel/qcgemm/QcRequantTable.scala): set_gemmx_qc_rq of
+// the QC tree's snax-gemmx-lib; D tile t uses group (t / stride) % mod when enabled
+static struct { uint32_t map; int32_t mult[64]; int8_t shift[64]; } rq;
+void set_gemmx_qc_rq(uint32_t map, const int32_t *mult, const uint32_t *shift, uint32_t groups) {
+    rq.map = map;
+    for (uint32_t i = 0; i < 8 * groups && i < 64; i++) {
+        rq.mult[i] = mult[i];
+        rq.shift[i] = (int8_t)(shift[i / 4] >> (8 * (i % 4)));
+    }
+}
+
+static int32_t rescale_tile(int32_t acc, int lane, uint32_t t) {
+    if (!(rq.map >> 31)) return rescale(acc, lane);
+    uint32_t stride = rq.map & 0xffff, mod = (rq.map >> 16) & 0xff;
+    if (!stride) stride = 1;
+    if (!mod) mod = 1;
+    uint32_t e = ((t / stride) % mod % 8) * 8 + lane;
+    int8_t izp = g.csr0 & 0xff, ozp = (g.csr0 >> 8) & 0xff, mx = (g.csr0 >> 16) & 0xff, mn = g.csr0 >> 24;
+    int32_t sh = rq.shift[e];
+    int64_t v0 = (int64_t)((int64_t)acc - izp) * rq.mult[e];
+    int32_t v1 = (int32_t)(uint32_t)(v0 >> (sh - 1));
+    int32_t v2 = (v1 >> 1) + ozp;
+    return v2 > mx ? mx : v2 < mn ? mn : v2;
+}
 
 static int32_t trit(uint32_t c) {                             // 00 = 0, 01 = +1, 11 = -1
     if (c == 2) { put("illegal trit code 10\n"); sys(1, 3, 0, 0, 0, 0, 0); }
@@ -53,6 +78,6 @@ void wait_gemmx_and_streamer(void) {
         }
         int32_t da = agu(g.base_d8, &g.d8[2], 3, t);
         for (int r = 0; r < 8; r++)
-            for (int c = 0; c < 8; c++) ((int8_t *)(da + r * g.d8[1]))[c] = (int8_t)rescale(acc[r][c], c);
+            for (int c = 0; c < 8; c++) ((int8_t *)(da + r * g.d8[1]))[c] = (int8_t)rescale_tile(acc[r][c], c, t);
     }
 }

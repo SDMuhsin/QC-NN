@@ -6,7 +6,7 @@ Expected D = qcacc.model.array.qc_array(X, codes) + C (int32 wrap), X = int8(A) 
 i.e. the bit-exact M1 array model.  Cases:
   * random: random K (1..12), M*N (1..6), random legal code words (also all-zero / all-sum / all-diff
     words), int8 A, subtraction_a, random subtraction_b (ignored by QC) and int32 C (incl. wrap);
-  * real (--real): every QC GeMMX call (42) of the s2 network on test image 0, captured from the
+  * real (--real): every QC GeMMX call of the s2 network (qc mode: 9, one per conv) on image 0, from the
     schedule model (nn.compile.schedule_sim.run_image with qcacc's QC call): the real A tiles,
     code words and bias C of each call (C broadcast to the 8 rows, as the streamer does).
     The captured pre-SIMD accumulators are also checked against the M1 model call.

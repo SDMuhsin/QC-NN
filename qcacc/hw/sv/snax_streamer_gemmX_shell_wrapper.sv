@@ -4,6 +4,8 @@
 
 // Author: Xiaoling Yi (xiaoling.yi@kuleuven.be)
 // qcacc (QC-GeMMX): upstream file with DataWidthB = 64; BlockGemmRescaleSIMD is snax_acc.qcgemm.QcBlockGemmRescaleSIMD.
+// CSRs 0..17 as upstream, 18..98 the QC requant table (QC_RQ_MAP, QC_RQ_MULT0..63, QC_RQ_SHIFT0..15),
+// 99 = GEMMX_START (the CSR manager's last read/write register).
 
 //-------------------------------
 // Accelerator wrapper
@@ -11,7 +13,7 @@
 module snax_streamer_gemmX_shell_wrapper #(
     // Custom parameters. As much as possible,
     // these parameters should not be taken from outside
-    parameter int unsigned RegRWCount   = 19,
+    parameter int unsigned RegRWCount   = 100,  // qcacc: 18 dense + 81 QC requant table + start
     parameter int unsigned RegROCount   = 2,
     parameter int unsigned DataWidthA   = 512,
     parameter int unsigned DataWidthB   = 64,   // qcacc: one QC code word per fire (dense: 512)
@@ -98,6 +100,10 @@ module snax_streamer_gemmX_shell_wrapper #(
       .io_ctrl_simd_ctrl_bits_12(csr_reg_set_i[16]),
 
       .io_ctrl_bypassSIMD(bypassSIMD),
+
+      .io_ctrl_qc_rq_map  (csr_reg_set_i[18]),
+      .io_ctrl_qc_rq_mult (csr_reg_set_i[82:19]),
+      .io_ctrl_qc_rq_shift(csr_reg_set_i[98:83]),
 
       .io_ctrl_busy_o(csr_reg_ro_set_o[0][0]),
       .io_ctrl_performance_counter(csr_reg_ro_set_o[1]),

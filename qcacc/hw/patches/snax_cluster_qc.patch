@@ -58,6 +58,177 @@ index 348306ba..798f9418 100644
    }
  
    // c broadcast
+diff --git a/target/snitch_cluster/sw/snax/gemmx/include/snax-gemmx-lib.h b/target/snitch_cluster/sw/snax/gemmx/include/snax-gemmx-lib.h
+index 66bacf58..d4245930 100644
+--- a/target/snitch_cluster/sw/snax/gemmx/include/snax-gemmx-lib.h
++++ b/target/snitch_cluster/sw/snax/gemmx/include/snax-gemmx-lib.h
+@@ -36,9 +36,30 @@
+ #define TEMPORAL_LOOP_BOUND (SIMD_SHARED_MULTIPLIER7 + 1)
+ #define BYPASS_SIMD (TEMPORAL_LOOP_BOUND + 1)
+ 
+-#define GEMMX_START (BYPASS_SIMD + 1)
+-#define GEMMX_BUSY (GEMMX_START + 1)
+-#define GEMMX_PERFORMANCE_COUNTER (GEMMX_BUSY + 1)
++// qcacc (QC-GeMMX): the per-output-channel requant table (81 CSRs, qcacc/hw/chisel/qcgemm/
++// QcRequantTable.scala) sits between BYPASS_SIMD and GEMMX_START.  Addresses from QC_RQ_MAP on are
++// beyond the csrw_ss / csrr_ss switch of snRuntime's csr.h (<= 1063): literal csrw / csrr below.
++#define QC_RQ_MAP 1043
++#define QC_RQ_MULT0 1044
++#define QC_RQ_SHIFT0 1108
++#define GEMMX_START 1124
++#define GEMMX_BUSY 1125
++#define GEMMX_PERFORMANCE_COUNTER 1126
++_Static_assert(QC_RQ_MAP == BYPASS_SIMD + 1 && QC_RQ_SHIFT0 == QC_RQ_MULT0 + 64 &&
++               GEMMX_START == QC_RQ_SHIFT0 + 16, "QC-GeMMX CSR map");
++#define QC_STR_(x) #x
++#define QC_STR(x) QC_STR_(x)
++#ifdef __riscv
++#define qc_csrw(addr, v) asm volatile("csrw " QC_STR(addr) ", %0" ::"r"((uint32_t)(v)))
++#define qc_csrr(addr) ({ uint32_t __t; asm volatile("csrr %0, " QC_STR(addr) : "=r"(__t)); __t; })
++#else   // host builds (nn/sw/native): the snrt.h stand-ins
++#define qc_csrw(addr, v) csrw_ss(addr, v)
++#define qc_csrr(addr) csrr_ss(addr)
++#endif
++// QC_RQ_MAP word: enable | mod (groups) | stride (D tiles per group step)
++#define QC_RQ_MAP_WORD(en, mod, stride) (((uint32_t)(en) << 31) | ((uint32_t)(mod) << 16) | (uint32_t)(stride))
++// program the table: map word, mult[8 * groups], packed shifts shift[2 * groups] (groups <= 8)
++void set_gemmx_qc_rq(uint32_t map, const int32_t* mult, const uint32_t* shift, uint32_t groups);
+ 
+ // Pack matrix size setting to one CSR
+ int32_t gen_size_config(uint8_t Batch, uint8_t M, uint8_t K, uint8_t N);
+@@ -94,7 +115,7 @@ void set_gemmx_csr(int tempLoop0, int tempLoop1, int tempLoop2,
+                    uint32_t temporal_loop_bound, uint32_t bypassSIMD);
+ 
+ // Set CSR to start GEMM
+-inline void set_gemmx_start() { csrw_ss(GEMMX_START, 1); }
++inline void set_gemmx_start() { qc_csrw(GEMMX_START, 1); }
+ 
+ // Poll until Streamer and GEMM accelerator finish
+ void wait_gemmx_and_streamer();
+diff --git a/target/snitch_cluster/sw/snax/gemmx/src/snax-gemmx-lib.c b/target/snitch_cluster/sw/snax/gemmx/src/snax-gemmx-lib.c
+index d4f460db..94ae76da 100644
+--- a/target/snitch_cluster/sw/snax/gemmx/src/snax-gemmx-lib.c
++++ b/target/snitch_cluster/sw/snax/gemmx/src/snax-gemmx-lib.c
+@@ -235,11 +235,11 @@ void set_gemmx_csr(int tempLoop0, int tempLoop1, int tempLoop2,
+ void wait_gemmx_and_streamer() {
+     csrw_ss(STREAMER_START_CSR, 0);
+     csrw_ss(STREAMER_START_CSR, 0);
+-    while (csrr_ss(GEMMX_BUSY)) {
++    while (qc_csrr(GEMMX_BUSY)) {
+     }
+     while (csrr_ss(STREAMER_BUSY_CSR)) {
+     }
+-    csrw_ss(GEMMX_START, 0);
++    qc_csrw(GEMMX_START, 0);
+ }
+ 
+ // Read performance counter of the Streamer, a read-only CSR
+@@ -250,7 +250,7 @@ uint32_t read_gemmx_streamer_perf_counter() {
+ 
+ // Read performance counter of GEMM, a read-only CSR
+ uint32_t read_gemmx_perf_counter() {
+-    uint32_t perf_counter = csrr_ss(GEMMX_PERFORMANCE_COUNTER);
++    uint32_t perf_counter = qc_csrr(GEMMX_PERFORMANCE_COUNTER);
+     return perf_counter;
+ }
+ 
+@@ -306,3 +306,96 @@ uint32_t check_gemmx_result_D32(int32_t* output, int32_t* output_golden,
+ 
+     return err;
+ }
++
++// qcacc: per-output-channel requant table (unrolled: CSR numbers must be literals)
++void set_gemmx_qc_rq(uint32_t map, const int32_t* mult, const uint32_t* shift, uint32_t groups) {
++    qc_csrw(QC_RQ_MAP, map);
++    if (groups <= 0) return;
++    qc_csrw(1044, mult[0]);
++    qc_csrw(1045, mult[1]);
++    qc_csrw(1046, mult[2]);
++    qc_csrw(1047, mult[3]);
++    qc_csrw(1048, mult[4]);
++    qc_csrw(1049, mult[5]);
++    qc_csrw(1050, mult[6]);
++    qc_csrw(1051, mult[7]);
++    qc_csrw(1108, shift[0]);
++    qc_csrw(1109, shift[1]);
++    if (groups <= 1) return;
++    qc_csrw(1052, mult[8]);
++    qc_csrw(1053, mult[9]);
++    qc_csrw(1054, mult[10]);
++    qc_csrw(1055, mult[11]);
++    qc_csrw(1056, mult[12]);
++    qc_csrw(1057, mult[13]);
++    qc_csrw(1058, mult[14]);
++    qc_csrw(1059, mult[15]);
++    qc_csrw(1110, shift[2]);
++    qc_csrw(1111, shift[3]);
++    if (groups <= 2) return;
++    qc_csrw(1060, mult[16]);
++    qc_csrw(1061, mult[17]);
++    qc_csrw(1062, mult[18]);
++    qc_csrw(1063, mult[19]);
++    qc_csrw(1064, mult[20]);
++    qc_csrw(1065, mult[21]);
++    qc_csrw(1066, mult[22]);
++    qc_csrw(1067, mult[23]);
++    qc_csrw(1112, shift[4]);
++    qc_csrw(1113, shift[5]);
++    if (groups <= 3) return;
++    qc_csrw(1068, mult[24]);
++    qc_csrw(1069, mult[25]);
++    qc_csrw(1070, mult[26]);
++    qc_csrw(1071, mult[27]);
++    qc_csrw(1072, mult[28]);
++    qc_csrw(1073, mult[29]);
++    qc_csrw(1074, mult[30]);
++    qc_csrw(1075, mult[31]);
++    qc_csrw(1114, shift[6]);
++    qc_csrw(1115, shift[7]);
++    if (groups <= 4) return;
++    qc_csrw(1076, mult[32]);
++    qc_csrw(1077, mult[33]);
++    qc_csrw(1078, mult[34]);
++    qc_csrw(1079, mult[35]);
++    qc_csrw(1080, mult[36]);
++    qc_csrw(1081, mult[37]);
++    qc_csrw(1082, mult[38]);
++    qc_csrw(1083, mult[39]);
++    qc_csrw(1116, shift[8]);
++    qc_csrw(1117, shift[9]);
++    if (groups <= 5) return;
++    qc_csrw(1084, mult[40]);
++    qc_csrw(1085, mult[41]);
++    qc_csrw(1086, mult[42]);
++    qc_csrw(1087, mult[43]);
++    qc_csrw(1088, mult[44]);
++    qc_csrw(1089, mult[45]);
++    qc_csrw(1090, mult[46]);
++    qc_csrw(1091, mult[47]);
++    qc_csrw(1118, shift[10]);
++    qc_csrw(1119, shift[11]);
++    if (groups <= 6) return;
++    qc_csrw(1092, mult[48]);
++    qc_csrw(1093, mult[49]);
++    qc_csrw(1094, mult[50]);
++    qc_csrw(1095, mult[51]);
++    qc_csrw(1096, mult[52]);
++    qc_csrw(1097, mult[53]);
++    qc_csrw(1098, mult[54]);
++    qc_csrw(1099, mult[55]);
++    qc_csrw(1120, shift[12]);
++    qc_csrw(1121, shift[13]);
++    if (groups <= 7) return;
++    qc_csrw(1100, mult[56]);
++    qc_csrw(1101, mult[57]);
++    qc_csrw(1102, mult[58]);
++    qc_csrw(1103, mult[59]);
++    qc_csrw(1104, mult[60]);
++    qc_csrw(1105, mult[61]);
++    qc_csrw(1106, mult[62]);
++    qc_csrw(1107, mult[63]);
++    qc_csrw(1122, shift[14]);
++    qc_csrw(1123, shift[15]);
++}
 diff --git a/util/snaxgen/snaxgen.py b/util/snaxgen/snaxgen.py
 index a9e7f2c1..7c9793e3 100755
 --- a/util/snaxgen/snaxgen.py

@@ -1,0 +1,57 @@
+run qc_img0_n10: marker 0xc0ffee00 (complete), errors 0, sim end 14.678 ms
+  image     0: logits BIT-EXACT  pred 3 label 3  cycles 404279
+  image     1: logits BIT-EXACT  pred 8 label 8  cycles 399999
+  image     2: logits BIT-EXACT  pred 8 label 8  cycles 399915
+  image     3: logits BIT-EXACT  pred 0 label 0  cycles 399915
+  image     4: logits BIT-EXACT  pred 6 label 6  cycles 399983
+  image     5: logits BIT-EXACT  pred 6 label 6  cycles 399896
+  image     6: logits BIT-EXACT  pred 1 label 1  cycles 399872
+  image     7: logits BIT-EXACT  pred 2 label 6  cycles 399895
+  image     8: logits BIT-EXACT  pred 3 label 3  cycles 399869
+  image     9: logits BIT-EXACT  pred 1 label 1  cycles 399981
+run qc_img10_n10: marker 0xc0ffee00 (complete), errors 0, sim end 14.678 ms
+  image    10: logits BIT-EXACT  pred 0 label 0  cycles 404216
+  image    11: logits BIT-EXACT  pred 9 label 9  cycles 399862
+  image    12: logits BIT-EXACT  pred 5 label 5  cycles 399907
+  image    13: logits BIT-EXACT  pred 7 label 7  cycles 399912
+  image    14: logits BIT-EXACT  pred 9 label 9  cycles 399901
+  image    15: logits BIT-EXACT  pred 8 label 8  cycles 399925
+  image    16: logits BIT-EXACT  pred 5 label 5  cycles 399867
+  image    17: logits BIT-EXACT  pred 7 label 7  cycles 399916
+  image    18: logits BIT-EXACT  pred 8 label 8  cycles 399922
+  image    19: logits BIT-EXACT  pred 6 label 6  cycles 399885
+run qc_img20_n10: marker 0xc0ffee00 (complete), errors 0, sim end 14.678 ms
+  image    20: logits BIT-EXACT  pred 7 label 7  cycles 404268
+  image    21: logits BIT-EXACT  pred 0 label 0  cycles 399883
+  image    22: logits BIT-EXACT  pred 4 label 4  cycles 399915
+  image    23: logits BIT-EXACT  pred 9 label 9  cycles 399901
+  image    24: logits BIT-EXACT  pred 4 label 5  cycles 399938
+  image    25: logits BIT-EXACT  pred 2 label 2  cycles 399911
+  image    26: logits BIT-EXACT  pred 2 label 4  cycles 399881
+  image    27: logits BIT-EXACT  pred 0 label 0  cycles 399880
+  image    28: logits BIT-EXACT  pred 9 label 9  cycles 399953
+  image    29: logits BIT-EXACT  pred 6 label 6  cycles 399919
+
+30 images: 30 bit-exact, 27 correctly classified; cycles/image mean 400346 (min 399862, max 404279)
+  GeMMX conv        62046   15.5 %
+  residual add     300593   75.1 %
+  pool+FC           35349    8.8 %
+  input DMA          2358    0.6 %
+
+step        cycles  gemm_busy  streamer   fires  fires/busy   (counters: first image of each run)
+  input         2358
+  conv0         6892       2701      2703    2304   85.3 %
+  conv1         9578       5475      5477    4608   84.2 %
+  conv2         7791       5431      5433    4608   84.8 %
+  add1        163240
+  conv3         7092       2732      2734    2304   84.3 %
+  conv5         3513       1034      1036     256   24.8 %
+  conv4         7983       5509      5511    4608   83.6 %
+  add2         88586
+  conv6         7723       2693      2695    2304   85.5 %
+  conv8         3204        525       527     256   48.8 %
+  conv7         8269       5592      5594    4608   82.4 %
+  add3         48766
+  poolfc       35349
+  GeMMX: 9 calls, busy 31693 cycles for 25856 fires = 81.6 % array utilisation while busy; conv steps 62046 cycles
+RESULT: BIT-EXACT

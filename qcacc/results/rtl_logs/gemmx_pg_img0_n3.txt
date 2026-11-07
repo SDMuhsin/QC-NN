@@ -1,0 +1,73 @@
+run gemmx_pg_img0_n3: marker 0xc0ffee00 (complete), errors 0, sim end 5.474 ms
+  image     0: logits BIT-EXACT  pred 3 label 3  cycles 478585
+  image     1: logits BIT-EXACT  pred 8 label 8  cycles 472225
+  image     2: logits BIT-EXACT  pred 8 label 8  cycles 472120
+
+3 images: 3 bit-exact, 3 correctly classified; cycles/image mean 474310 (min 472120, max 478585)
+  GeMMX conv       135639   28.6 %
+  residual add     300603   63.4 %
+  pool+FC           35345    7.5 %
+  input DMA          2723    0.6 %
+
+step        cycles  gemm_busy  streamer   fires  fires/busy   (counters: first image of each run)
+  input         2723
+  conv0_g0      5070       1609      1610    1152   71.6 %
+  conv0_g1      4705       1619      1620    1152   71.2 %
+  conv1_g0      6227       2983      2984    2304   77.2 %
+  conv1_g1      6047       3002      3003    2304   76.7 %
+  conv2_g0      5300       3039      3040    2304   75.8 %
+  conv2_g1      5042       2982      2983    2304   77.3 %
+  add1        163333
+  conv3_g0      3734        792       793     576   72.7 %
+  conv3_g1      3570        817       818     576   70.5 %
+  conv3_g2      3537        800       801     576   72.0 %
+  conv3_g3      3566        834       835     576   69.1 %
+  conv5_g0      2533        268       269      64   23.9 %
+  conv5_g1      2334        268       269      64   23.9 %
+  conv5_g2      2329        268       269      64   23.9 %
+  conv5_g3      2338        268       269      64   23.9 %
+  conv4_g0      3815       1555      1556    1152   74.1 %
+  conv4_g1      3610       1554      1555    1152   74.1 %
+  conv4_g2      3631       1564      1565    1152   73.7 %
+  conv4_g3      3608       1543      1544    1152   74.7 %
+  add2         88520
+  conv6_g0      3216        423       424     288   68.1 %
+  conv6_g1      3014        415       416     288   69.4 %
+  conv6_g2      3002        400       401     288   72.0 %
+  conv6_g3      2992        402       403     288   71.6 %
+  conv6_g4      3028        425       426     288   67.8 %
+  conv6_g5      3010        410       411     288   70.2 %
+  conv6_g6      2995        414       415     288   69.6 %
+  conv6_g7      2991        395       396     288   72.9 %
+  conv8_g0      2348         80        81      32   40.0 %
+  conv8_g1      2146         79        80      32   40.5 %
+  conv8_g2      2146         80        81      32   40.0 %
+  conv8_g3      2148         83        84      32   38.6 %
+  conv8_g4      2144         79        80      32   40.5 %
+  conv8_g5      2142         78        79      32   41.0 %
+  conv8_g6      2145         80        81      32   40.0 %
+  conv8_g7      2136         80        81      32   40.0 %
+  conv7_g0      3064        793       794     576   72.6 %
+  conv7_g1      2861        789       790     576   73.0 %
+  conv7_g2      2858        792       793     576   72.7 %
+  conv7_g3      2848        789       790     576   73.0 %
+  conv7_g4      2847        792       793     576   72.7 %
+  conv7_g5      2850        793       794     576   72.6 %
+  conv7_g6      2861        792       793     576   72.7 %
+  conv7_g7      2855        789       790     576   73.0 %
+  add3         48750
+  poolfc       35345
+per conv (sum of its group calls):  cycles  gemm_busy  streamer  fires
+  conv0      9775      3228      3230   2304
+  conv1     12274      5985      5987   4608
+  conv2     10342      6021      6023   4608
+  conv3     14407      3243      3247   2304
+  conv5      9533      1072      1076    256
+  conv4     14664      6216      6220   4608
+  conv6     24247      3284      3292   2304
+  conv8     17355       639       647    256
+  conv7     23042      6329      6337   4608
+  GeMMX: 42 calls, busy 36017 cycles for 25856 fires = 71.8 % array utilisation while busy; conv steps 135639 cycles
+RESULT: BIT-EXACT
+[run_rtl] gemmx_pg_img0_n3 on tau5: 17:57:48 start
+[run_rtl] gemmx_pg_img0_n3 on tau5: 18:09:35 done

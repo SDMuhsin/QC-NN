@@ -1,7 +1,8 @@
 package snax_acc.qcgemm
 
 // QC-GeMMX accelerator top: snax_acc.gemmx.BlockGemmRescaleSIMD verbatim with BlockGemm -> QcBlockGemm
-// (B = one 64-bit code word per fire).  RescaleSIMD / PipelinedRescaleSIMD and all control unchanged.
+// (B = one 64-bit code word per fire) and PipelinedRescaleSIMD -> QcPipelinedRescaleSIMD (per-output-channel
+// requant table, QcRequantTable.scala; extra ctrl input io.ctrl.qc_rq).  All other control unchanged.
 // Emitted under the dense module name BlockGemmRescaleSIMD (qcacc/hw/gen.sh), so the gemmX shell
 // wrapper and the snax_cluster Bender file list are reused as they are.
 
@@ -19,8 +20,13 @@ class QcBlockGemmRescaleSIMDDataIO(params: BlockGemmRescaleSIMDParams) extends B
   )
 }
 
+class QcBlockGemmRescaleSIMDCtrlIO(params: BlockGemmRescaleSIMDParams)
+    extends BlockGemmRescaleSIMDCtrlIO(params) {
+  val qc_rq = new QcRqCsrIO
+}
+
 class QcBlockGemmRescaleSIMDIO(params: BlockGemmRescaleSIMDParams) extends Bundle {
-  val ctrl = new BlockGemmRescaleSIMDCtrlIO(params)
+  val ctrl = new QcBlockGemmRescaleSIMDCtrlIO(params)
   val data = new QcBlockGemmRescaleSIMDDataIO(params)
 }
 
@@ -37,13 +43,10 @@ class QcBlockGemmRescaleSIMD(params: BlockGemmRescaleSIMDParams)
 
   // instiantiate the simd module based on the configuration
   // select if use pipelined simd or not accrording to the configuration
-  val simd = params.withPipeline match {
-    case true =>
-      Module(new PipelinedRescaleSIMD(params.rescaleSIMDParams))
-    case false =>
-      Module(new RescaleSIMD(params.rescaleSIMDParams))
-    case _ => throw new Exception("Unknown SIMD configuration")
-  }
+  // QC: the pipelined SIMD (8 lanes) with the per-output-channel requant table
+  require(params.withPipeline, "QC-GeMMX requant table needs the pipelined RescaleSIMD (with_pipeline)")
+  val simd = Module(new QcPipelinedRescaleSIMD(params.rescaleSIMDParams))
+  simd.qc_rq := io.ctrl.qc_rq
 
   // gemm control signal connection
   gemm.io.ctrl <> io.ctrl.gemm_ctrl

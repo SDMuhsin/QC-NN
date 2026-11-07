@@ -114,3 +114,25 @@ qcacc/hw/sim/run_rtl_qc.sh -H usask -n 1         # whole network, image 0
     conv5 / conv8, i.e. negative SIMD multipliers), 475 715 cycles (dense RTL 401.7 k); GeMMX busy 31 913.
     The extra cycles are per-call overhead: ~2.2 k cycles per group call outside the GeMMX busy window
     (cycle model assumed 120), x 42 calls.
+
+# M2b — per-output-channel requant table, one GeMMX call per conv
+
+* **Hardware (QC cluster only)**: `hw/chisel/qcgemm/QcRequantTable.scala`: `QcRequantTable` (group counter
+  g = (t / stride) % mod over the D tiles entering the SIMD, 8:1 select of 8 lanes x {int32 mult, int8 shift}
+  out of 64 entries) and `QcPipelinedRescaleSIMD` (upstream `PipelinedRescaleSIMD` + table; the per-lane
+  control that enters the pipeline with a tile takes the table entry 8 g + lane when enabled).  The entries
+  are the CSR-manager registers (81 new CSRs, no copy): `QC_RQ_MAP` (stride [15:0], mod [23:16], enable [31]),
+  `QC_RQ_MULT0..63`, `QC_RQ_SHIFT0..15` (4 x int8).  CSRs 0..17 unchanged; they sit between `BYPASS_SIMD` and
+  `GEMMX_START` (the CSR manager's start register must be the last one), so `GEMMX_START/BUSY/PERF` move
+  to 1124..1126 (QC tree `snax-gemmx-lib.h`; literal csrw/csrr, snRuntime's `csrw_ss` stops at 1063).
+  The table must not be rewritten while a call runs (nn/sw waits for GeMMX + streamer first).
+* **Compiler / runtime**: `qcacc.compile.main --mode qc` = one call per conv (9 calls; N = Cout/8, table
+  `rq_map = enable | N << 16 | 1`), `--per-group` = the 42-call variant (gemmx mode always).  The table image
+  follows each `nn_conv_t` in the conv blob; `nn/sw/nn_cluster.c` programs it under `-DNN_QC_RQ`
+  (`qcacc/sw/build.sh qc`, `native.sh qc`, `run_rtl_qc.sh` set it).  Models: `model/requant.py`
+  (schedule model), `sw/native_qc.c`.
+* **Unit TB** (`hw/tb/run.sh`): + `QcPipelinedRescaleSIMD` vs `model/requant.py` + `simd_rescale`
+  (`vectors_simd.py`, `tb_qc_simd.cpp`): 200 random cases (159 with the table, 1..8 groups, stride 1..3)
+  + the 9 real s2 calls.  Input stalls only: the upstream PipelinedRescaleSIMD mis-handles output_o
+  back-pressure (also with the table disabled; never happens in the cluster runs).
+* **RTL**: `hw/sim/run_rtl_qc.sh [-m qc|gemmx] [-g] ...`; results `results/rtl.md`.

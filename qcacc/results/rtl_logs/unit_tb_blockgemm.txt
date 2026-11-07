@@ -1,0 +1,1 @@
+QcBlockGemm TB: 209 cases, 29574 A/B fires, 0 bad cases, 0 bad D words; full-rate cases: busy 17243 cycles vs M*N*(K+1) = 17033 -> BIT-EXACT

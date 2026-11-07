@@ -162,6 +162,11 @@ static void checksum(const nn_step_t *s, uint32_t *c1, uint32_t *c2) {
 }
 
 _Static_assert(sizeof(nn_conv_t) == NN_CONV_PARAM_BYTES, "nn_conv_t layout != lower.conv_params");
+#ifdef NN_QC_RQ
+// QC-GeMMX cluster (qcacc): the per-output-channel requant table image follows every nn_conv_t
+// (64 B aligned, qcacc.compile.lower.rq_table); map bit 31 clear = table disabled.
+typedef struct { uint32_t map; int32_t mult[64]; uint32_t shift[16]; } nn_qc_rq_t;
+#endif
 static void gemmx_conv(const nn_conv_t *c) {
     set_gemmx_streamer_csr(
         c->Aslstride0, c->Aslstride1, c->Atlbound0, c->Atlstride0, c->Atlbound1, c->Atlstride1,
@@ -181,6 +186,10 @@ static void gemmx_conv(const nn_conv_t *c) {
     set_gemmx_csr(c->K, c->N, c->M, c->subtractions, c->csr0, c->csr1, c->shift0, c->shift1,
                   c->mult[0], c->mult[1], c->mult[2], c->mult[3], c->mult[4], c->mult[5],
                   c->mult[6], c->mult[7], c->M * c->N, c->bypassSIMD);
+#ifdef NN_QC_RQ
+    const nn_qc_rq_t *rq = (const nn_qc_rq_t *)((uintptr_t)c + ((NN_CONV_PARAM_BYTES + 63u) & ~63u));
+    set_gemmx_qc_rq(rq->map, rq->mult, rq->shift, (rq->map >> 31) ? (uint32_t)c->N : 0u);
+#endif
     set_gemmx_streamer_start();
     set_gemmx_start();
     wait_gemmx_and_streamer();

@@ -5,7 +5,8 @@
 #   overlay: chisel/qcgemm/*.scala      -> hw/chisel_acc/src/main/scala/snax_acc/qcgemm/ (QC core)
 #            sv/snax_streamer_gemmX_shell_wrapper.sv -> hw/chisel_acc/src/ (DataWidthB = 64)
 #            patches/snax_cluster_qc.patch (snaxgen runs the QC core generator; streamer: per-reader
-#              transposer, so the 1 x 64 b B reader has none and the CSR map stays the dense one)
+#              transposer, so the 1 x 64 b B reader has none and the streamer CSR map stays the dense one;
+#              snax-gemmx-lib: requant-table CSRs + GEMMX_START/BUSY/PERF moved behind them)
 #            cfg/snax_KUL_cluster_qc.hjson (B reader 1 x 64 b, narrow)
 #   output:  build/qcacc/generated/kulcluster_{sim,vlt,syn}.sv: same KULCluster_ prefix and top
 #            (KULCluster_snax_KUL_cluster_wrapper) as hw/kulcluster, drop-in for chimera.
@@ -27,7 +28,7 @@ if [ ! -d "$KUL_SNAX/.git" ]; then
   git clone -q --reference-if-able "$BASE_SNAX" --dissociate "$SNAX_REPO" "$KUL_SNAX"
 fi
 git -C "$KUL_SNAX" fetch -q origin "$SNAX_REV" 2>/dev/null || true
-git -C "$KUL_SNAX" checkout -q -- hw util                   # drop a previous overlay patch
+git -C "$KUL_SNAX" checkout -q -- .                         # drop a previous overlay patch (tracked files)
 git -C "$KUL_SNAX" -c advice.detachedHead=false checkout -q "$SNAX_REV"
 git -C "$KUL_SNAX" submodule update -q --init --recursive
 

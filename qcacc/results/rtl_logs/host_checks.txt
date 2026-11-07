@@ -1,0 +1,9 @@
+[gemmx] schedule model vs IntResNet8: 1000 images x (46 step outputs + logits), 0 mismatches (BIT-EXACT); accuracy on them 80.2 %
+GeMMX calls/image 42, fires 25856, useful MACs 12500992; B tiles 1210 = 77440 B (77440 B 64B-padded), conv blobs incl. bias tiles + nn_conv_t 101632 B
+cycle model / image: 374418 (GeMMX steps 37360, cores 337058);  dense baseline 370458 (GeMMX 33400, 9 calls; RTL measured 401.7 k)  -> 1.011x
+[qc] schedule model vs IntResNet8: 1000 images x (13 step outputs + logits), 0 mismatches (BIT-EXACT); accuracy on them 80.2 %
+GeMMX calls/image 9, fires 25856, useful MACs 12500992; B tiles 1210 = 9680 B (9792 B 64B-padded), conv blobs incl. bias tiles + nn_conv_t 26880 B
+cycle model / image: 370458 (GeMMX steps 33400, cores 337058);  dense baseline 370458 (GeMMX 33400, 9 calls; RTL measured 401.7 k)  -> 1.000x
+native qc (9 calls, 8 images): marker 1 errors 0 first_bad -1
+native qc -DNN_FULL_CHECK: marker 1 errors 0 first_bad -1
+native gemmx (42 calls, 8 images): marker 1 errors 0 first_bad -1

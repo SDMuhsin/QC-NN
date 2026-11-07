@@ -1,0 +1,37 @@
+run qc_img10_n10: marker 0xc0ffee00 (complete), errors 0, sim end 14.678 ms
+  image    10: logits BIT-EXACT  pred 0 label 0  cycles 404216
+  image    11: logits BIT-EXACT  pred 9 label 9  cycles 399862
+  image    12: logits BIT-EXACT  pred 5 label 5  cycles 399907
+  image    13: logits BIT-EXACT  pred 7 label 7  cycles 399912
+  image    14: logits BIT-EXACT  pred 9 label 9  cycles 399901
+  image    15: logits BIT-EXACT  pred 8 label 8  cycles 399925
+  image    16: logits BIT-EXACT  pred 5 label 5  cycles 399867
+  image    17: logits BIT-EXACT  pred 7 label 7  cycles 399916
+  image    18: logits BIT-EXACT  pred 8 label 8  cycles 399922
+  image    19: logits BIT-EXACT  pred 6 label 6  cycles 399885
+
+10 images: 10 bit-exact, 10 correctly classified; cycles/image mean 400331 (min 399862, max 404216)
+  GeMMX conv        62029   15.5 %
+  residual add     300596   75.1 %
+  pool+FC           35349    8.8 %
+  input DMA          2357    0.6 %
+
+step        cycles  gemm_busy  streamer   fires  fires/busy   (counters: first image of each run)
+  input         2357
+  conv0         6892       2701      2703    2304   85.3 %
+  conv1         9578       5475      5477    4608   84.2 %
+  conv2         7789       5431      5433    4608   84.8 %
+  add1        163241
+  conv3         7079       2679      2681    2304   86.0 %
+  conv5         3512       1033      1035     256   24.8 %
+  conv4         7984       5509      5511    4608   83.6 %
+  add2         88588
+  conv6         7722       2692      2694    2304   85.6 %
+  conv8         3202        525       527     256   48.8 %
+  conv7         8269       5592      5594    4608   82.4 %
+  add3         48768
+  poolfc       35349
+  GeMMX: 9 calls, busy 31637 cycles for 25856 fires = 81.7 % array utilisation while busy; conv steps 62029 cycles
+RESULT: BIT-EXACT
+[run_rtl] qc_img10_n10 on tau1: 17:59:33 start
+[run_rtl] qc_img10_n10 on tau1: 18:29:46 done

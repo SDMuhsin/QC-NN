@@ -1,8 +1,9 @@
 """Compile s2 for the KUL cluster in one mode and check the schedule on the host.
 
-    python3 -m qcacc.compile.main --mode gemmx|qc [--qparams S2] [--check N] [--images N] [--first I]
-                                  [--out DIR] [--acc]
-  1. lowers the int8 qparams (qcacc.compile.lower.QCProgram): one GeMMX call per 8-channel group
+    python3 -m qcacc.compile.main --mode gemmx|qc [--per-group] [--qparams S2] [--check N] [--images N]
+                                  [--first I] [--out DIR] [--acc]
+  1. lowers the int8 qparams (qcacc.compile.lower.QCProgram): qc mode one GeMMX call per conv with the
+     per-channel requant table (--per-group: one call per 8-channel group, as gemmx mode always does)
   2. runs the schedule model (nn.compile.schedule_sim.run_image; qc mode with the QC array model)
      on --check test images and compares every step output (every group) and the logits with
      nn.quant.quantize.IntResNet8, bit for bit; prints the QC select activity per conv
@@ -55,6 +56,7 @@ def main():
     ap.add_argument("--first", type=int, default=0)
     ap.add_argument("--out")
     ap.add_argument("--acc", action="store_true")
+    ap.add_argument("--per-group", action="store_true", help="qc mode: one call per 8-channel group (42 calls)")
     a = ap.parse_args()
     out = a.out or os.path.join(QCACC, "build", a.mode, "gen")
 
@@ -63,7 +65,7 @@ def main():
     xt, yt = test_set()
     if a.acc:
         print(f"int8 accuracy (IntResNet8, {a.qparams}, 10k test): {100 * evaluate(im.forward, xt, yt):.2f} %")
-    prog = QCProgram(q, a.mode)
+    prog = QCProgram(q, a.mode, True if a.per_group else None)
 
     # --- schedule model vs integer reference -------------------------------------------
     stats = {}
@@ -111,7 +113,7 @@ def main():
 
     # --- calls, bytes, cycles ----------------------------------------------------------------
     useful, fires = prog.macs()
-    tiles = sum(st.cfg["K"] for st in prog.steps if st.kind == "conv")
+    tiles = sum(st.cfg["K"] * st.cfg["N"] for st in prog.steps if st.kind == "conv")
     raw = tiles * (8 if a.mode == "qc" else 64)
     print(f"GeMMX calls/image {prog.calls()}, fires {fires}, useful MACs {useful}; B tiles {tiles} = {raw} B "
           f"({prog.weight_bytes()} B 64B-padded), conv blobs incl. bias tiles + nn_conv_t "

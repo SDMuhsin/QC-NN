@@ -1,0 +1,17 @@
+run qc_stop_conv1: marker 0xdead0002 (stopped after conv1), errors 0, sim end 6.200 ms
+  NN_FULL_CHECK (image 0): 0 bad bytes
+
+1 image(s), steps up to conv1: 22007 cycles
+  GeMMX conv        17139   77.9 %
+  residual add          0    0.0 %
+  pool+FC               0    0.0 %
+  input DMA          4868   22.1 %
+
+step        cycles  gemm_busy  streamer   fires  fires/busy   (counters: first image of each run)
+  input         4868
+  conv0         7546       2745      2746    2304   83.9 %
+  conv1         9593       5464      5465    4608   84.3 %
+  GeMMX: 2 calls, busy 8209 cycles for 6912 fires = 84.2 % array utilisation while busy; conv steps 17139 cycles
+RESULT: BIT-EXACT
+[run_rtl] qc_stop_conv1 on usask: 17:49:46 start
+[run_rtl] qc_stop_conv1 on usask: 17:58:20 done
