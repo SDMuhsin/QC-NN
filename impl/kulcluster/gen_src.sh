@@ -13,7 +13,7 @@ HERE=$(cd "$(dirname "$0")" && pwd)
 ROOT=$(cd "$HERE/../.." && pwd)
 OUT=${1:?usage: gen_src.sh <out_dir>}
 mkdir -p "$OUT"; OUT=$(cd "$OUT" && pwd)
-PICKLE=$ROOT/hw/kulcluster/generated/kulcluster_syn.sv
+PICKLE=${KUL_PICKLE:-$ROOT/hw/kulcluster/generated/kulcluster_syn.sv}   # KUL_PICKLE: another pickle (e.g. the QC cluster)
 TECH=$ROOT/hw/tech/tsmc65
 [ -f "$PICKLE" ] || { echo "missing $PICKLE (hw/kulcluster/gen.sh)"; exit 1; }
 

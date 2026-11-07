@@ -11,6 +11,10 @@
 #     -w "<t0_us> <t1_us>"  SAIF over this time window instead (for a step without GeMMX, e.g. -s add1)
 # Env: KUL_GLS_SYN (netlist run dir), KUL_GLS_DIR (remote GLS root: <mode>/work = compiled library, made
 #      with `KUL_GLS_DIR=.. KUL_GLS_SYN=.. hw/kulcluster/gls/gls.sh compile <mode>`), SDF via gls.sh sdf.
+# Hooks (defaults = the dense ResNet-8 run; qcacc/gls/run_gls_qc.sh sets them):
+#   NN_GLS_IDX_CALL "<step index> <GeMMX call of the SAIF>" (else from nn/compile/lower.py ORDER), NN_GLS_FLAGS extra build flags, NN_GLS_CHECK byte-compare module
+#   (nn.sim.tcdm_check), NN_GLS_ACC extra vopt +acc, NN_GLS_OUT local result root (build/nn_gls); prep.sh's
+#   NN_COMPILE / nn/sw/build.sh's KUL_BUILD select compiler and headers.
 # Local results: build/nn_gls/<tag>/{run.log,result.json,check.txt,summary.txt}.  Exit 0 = layer bit-exact.
 set -euo pipefail
 NN=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
@@ -21,17 +25,18 @@ while getopts "H:m:c:s:f:t:w:" o; do
              t) TAG=$OPTARG;; w) WIN=$OPTARG;; *) sed -n 2,16p "$0"; exit 2;; esac
 done
 TAG=${TAG:-${STEP}_${MODE}_${CLK}ps}
-L=$QCNN/build/nn_gls/$TAG
+L=${NN_GLS_OUT:-$QCNN/build/nn_gls}/$TAG
 R=${KUL_GLS_DIR:-/tmp/ckp908/qcnn_nngls}
 QUESTA=${KUL_QUESTA:-/CMC/scripts/siemens.questasim.2022.1_2.csh}
 SDFI=$R/sdfgen/KULCluster_snax_KUL_cluster_wrapper_tt_idealclk.sdf.gz
 rq() { ssh "$HOST" "tcsh -c 'source $QUESTA >& /dev/null; $*'"; }
 
 # step index and GeMMX call number of the layer (nn/compile/lower.py ORDER: one GeMMX call per conv)
+if [ -n "${NN_GLS_IDX_CALL:-}" ]; then read -r IDX CALL <<< "$NN_GLS_IDX_CALL"; else
 read -r IDX CALL < <(cd "$QCNN" && python3 -c "
 from nn.compile.lower import ORDER
-i = ORDER.index('$STEP'); print(i, sum(s.startswith('conv') for s in ORDER[:i + 1]))")
-"$NN/sim/prep.sh" "$L" "$FIRST" 1 -DNN_STOP_AFTER="$IDX"
+i = ORDER.index('$STEP'); print(i, sum(s.startswith('conv') for s in ORDER[:i + 1]))"); fi
+"$NN/sim/prep.sh" "$L" "$FIRST" 1 -DNN_STOP_AFTER="$IDX" ${NN_GLS_FLAGS:-}
 cp "$NN/gls/nn_gls.tcl" "$QCNN/hw/kulcluster/gls/gls_probe.tcl" "$L/run/"
 
 RD=$R/$MODE/nn_$TAG
@@ -42,7 +47,7 @@ GX=/tb_chimera_soc/fix/dut/i_cluster_domain/i_chimera_cluster_kulcluster/i_test_
 # netlist nets for the SAIF (recursive), probe modules, the memory-island SRAMs (backdoor), CVA6 (reload
 # trigger), the TCDM macro arrays (dump)
 ACC="+acc=n+$GX. +acc=n+KULCluster_BlockGemm+KULCluster_PipelinedRescaleSIMD+KULCluster_snax_streamer_gemmX_Streamer"
-ACC="$ACC +acc=rn+gls_xcheck +acc=npr+tc_sram +acc=npr+cva6 +acc=rc+kul_rf_512x64m4"
+ACC="$ACC +acc=rn+gls_xcheck +acc=npr+tc_sram +acc=npr+cva6 +acc=rc+kul_rf_512x64m4 ${NN_GLS_ACC:-}"
 if [ "$MODE" = zd ]; then
   VOPT="+nospecify +notimingchecks $ACC"; SDFOPT=""
 else
@@ -50,12 +55,12 @@ else
 fi
 MK=$(cat "$L/run/marker.txt")
 echo "[run_gls] $TAG ($STEP = step $IDX, GeMMX call $CALL) on $HOST: $(date +%T) start"
-rq "cd $RD; setenv NN_MARKER \"$MK\"; $([ -n "$WIN" ] && echo "setenv NN_SAIF_WIN \"$WIN\";" || echo "setenv NN_SAIF_CALL $CALL;") vsim -c -lib $R/$MODE/work tb_chimera_soc gls_bind -t 1ps -voptargs=\\\"$VOPT\\\" $SDFOPT -G/tb_chimera_soc/fix/vip/ClkPeriodClu=$CLK -suppress 3009 -suppress 8386 -error 7 +BOOTMODE=0 +PRELMODE=0 +BINARY=$RD/stub.elf -do nn_gls.tcl >& run.log; tail -2 run.log" || true
+rq "cd $RD; setenv NN_MARKER \"$MK\"; $([ -n "$WIN" ] && echo "setenv NN_SAIF_WIN \"$WIN\";" || echo "setenv NN_SAIF_CALL \"$CALL\";") vsim -c -lib $R/$MODE/work tb_chimera_soc gls_bind -t 1ps -voptargs=\\\"$VOPT\\\" $SDFOPT -G/tb_chimera_soc/fix/vip/ClkPeriodClu=$CLK -suppress 3009 -suppress 8386 -error 7 +BOOTMODE=0 +PRELMODE=0 +BINARY=$RD/stub.elf -do nn_gls.tcl >& run.log; tail -2 run.log" || true
 echo "[run_gls] $TAG on $HOST: $(date +%T) done"
 
 rsync -a "$HOST:$RD/run.log" "$HOST:$RD/out" "$L/"
 ssh "$HOST" "ls -la $RD/layer.saif" || true
 python3 "$NN/sim/memisl.py" result "$L/sw/resnet8.memisl.elf" "$L/gen/nn_net.h" "$L/out" > "$L/result.json"
 python3 "$NN/gls/tcdm_macro.py" "$L"
-(cd "$QCNN" && python3 -m nn.sim.tcdm_check "$L" "$STEP") | tee "$L/check.txt"
+(cd "$QCNN" && python3 -m ${NN_GLS_CHECK:-nn.sim.tcdm_check} "$L" "$STEP") | tee "$L/check.txt"
 python3 "$NN/gls/summary.py" "$L" "$STEP" ${NN_GLS_RTL:+--rtl "$NN_GLS_RTL"} | tee "$L/summary.txt"; exit ${PIPESTATUS[0]}

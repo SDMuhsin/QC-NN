@@ -136,3 +136,21 @@ qcacc/hw/sim/run_rtl_qc.sh -H usask -n 1         # whole network, image 0
   + the 9 real s2 calls.  Input stalls only: the upstream PipelinedRescaleSIMD mis-handles output_o
   back-pressure (also with the table disabled; never happens in the cluster runs).
 * **RTL**: `hw/sim/run_rtl_qc.sh [-m qc|gemmx] [-g] ...`; results `results/rtl.md`.
+
+# M3 — TSMC 65 nm implementation (synthesis, gate-level simulation, SAIF power)
+
+Results: [`results/impl.md`](results/impl.md) (logs `results/impl_logs/`).
+
+| file | contents |
+|---|---|
+| `impl/run.sh` | DC / PT of the QC cluster through `impl/kulcluster/run.sh` (identical flow / settings as `kul_w4.2p`), summaries to `results/impl_logs/<tag>` |
+| `impl/blocks.py` | GeMMX block split (array tiles / butterflies / decoder, SIMD + table, CSR manager, streamer) of a DC area report |
+| `gls/env.sh`, `gls/run_gls_qc.sh` | `nn/gls/run_gls.sh` for s2 on the QC netlist (`-d qc`) or the base netlist (`-d gemmx`, control) |
+| `gls/power_qc.sh`, `gls/pt_blocks.tcl` | `nn/gls/power.sh` (PT PX) + per-block power of the GeMMX hierarchy |
+| `gls/tcdm_check.py` | s2 byte compare of a step output in the GLS TCDM dump |
+| `gls/energy_qc.py` | conv1 power / energy and energy per image of dense, control and QC (method of `nn/gls/energy.py`) |
+
+Hooks in the base (defaults unchanged): `impl/kulcluster/gen_src.sh` env `KUL_PICKLE`; `nn/gls/run_gls.sh` env
+`NN_GLS_IDX_CALL`, `NN_GLS_FLAGS`, `NN_GLS_CHECK`, `NN_GLS_ACC`, `NN_GLS_OUT`; `nn/gls/power.sh` env `NN_PT_HOOK`,
+`NN_GLS_OUT`; `nn/gls/pt_power.tcl` sources `NN_PT_HOOK`; `hw/kulcluster/gls/gls_probe.tcl` falls back to the
+`KULCluster_Qc*` modules.

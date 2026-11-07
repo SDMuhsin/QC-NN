@@ -1,0 +1,91 @@
+== qc_stop_conv1_2000ps
+run qc_stop_conv1_2000ps: marker 0xdead0002 (stopped after conv1), errors 0, sim end 0.800 ms
+
+1 image(s), steps up to conv1: 22260 cycles
+  GeMMX conv        17402   78.2 %
+  residual add          0    0.0 %
+  pool+FC               0    0.0 %
+  input DMA          4858   21.8 %
+
+step        cycles  gemm_busy  streamer   fires  fires/busy   (counters: first image of each run)
+  input         4858
+  conv0         7656       2709      2713    2304   85.0 %
+  conv1         9746       5473      5477    4608   84.2 %
+== qc_stop_conv1_2800ps
+run qc_stop_conv1_2800ps: marker 0xdead0002 (stopped after conv1), errors 0, sim end 0.900 ms
+
+1 image(s), steps up to conv1: 20122 cycles
+  GeMMX conv        16592   82.5 %
+  residual add          0    0.0 %
+  pool+FC               0    0.0 %
+  input DMA          3530   17.5 %
+
+step        cycles  gemm_busy  streamer   fires  fires/busy   (counters: first image of each run)
+  input         3530
+  conv0         7176       2709      2713    2304   85.0 %
+  conv1         9416       5461      5465    4608   84.4 %
+== qc_stop_conv1_5000ps
+run qc_stop_conv1_5000ps: marker 0xdead0002 (stopped after conv1), errors 0, sim end 1.200 ms
+
+1 image(s), steps up to conv1: 18131 cycles
+  GeMMX conv        15763   86.9 %
+  residual add          0    0.0 %
+  pool+FC               0    0.0 %
+  input DMA          2368   13.1 %
+
+step        cycles  gemm_busy  streamer   fires  fires/busy   (counters: first image of each run)
+  input         2368
+  conv0         6666       2689      2693    2304   85.7 %
+  conv1         9097       5476      5480    4608   84.1 %
+== qc_stop_add1_2000ps
+run qc_stop_add1_2000ps: marker 0xdead0004 (stopped after add1), errors 0, sim end 1.300 ms
+
+1 image(s), steps up to add1: 193721 cycles
+  GeMMX conv        25438   13.1 %
+  residual add     163572   84.4 %
+  pool+FC               0    0.0 %
+  input DMA          4711    2.4 %
+
+step        cycles  gemm_busy  streamer   fires  fires/busy   (counters: first image of each run)
+  input         4711
+  conv0         7695       2744      2746    2304   84.0 %
+  conv1         9838       5478      5480    4608   84.1 %
+== gemmx_stop_conv1_2800ps
+run gemmx_stop_conv1_2800ps: marker 0xdead0004 (stopped after conv1_g1), errors 0, sim end 1.000 ms
+
+1 image(s), steps up to conv1_g1: 25205 cycles
+  GeMMX conv        21603   85.7 %
+  residual add          0    0.0 %
+  pool+FC               0    0.0 %
+  input DMA          3602   14.3 %
+
+step        cycles  gemm_busy  streamer   fires  fires/busy   (counters: first image of each run)
+  input         3602
+  conv0_g0      5050       1621      1622    1152   71.1 %
+  conv0_g1      4538       1619      1620    1152   71.2 %
+== gemmx_stop_conv1_5000ps
+run gemmx_stop_conv1_5000ps: marker 0xdead0004 (stopped after conv1_g1), errors 0, sim end 1.200 ms
+
+1 image(s), steps up to conv1_g1: 22757 cycles
+  GeMMX conv        20250   89.0 %
+  residual add          0    0.0 %
+  pool+FC               0    0.0 %
+  input DMA          2507   11.0 %
+
+step        cycles  gemm_busy  streamer   fires  fires/busy   (counters: first image of each run)
+  input         2507
+  conv0_g0      4603       1621      1622    1152   71.1 %
+  conv0_g1      4250       1619      1620    1152   71.2 %
+== gemmx_stop_add1_2000ps
+run gemmx_stop_add1_2000ps: marker 0xdead0007 (stopped after add1), errors 0, sim end 1.400 ms
+
+1 image(s), steps up to add1: 201934 cycles
+  GeMMX conv        33368   16.5 %
+  residual add     163583   81.0 %
+  pool+FC               0    0.0 %
+  input DMA          4983    2.5 %
+
+step        cycles  gemm_busy  streamer   fires  fires/busy   (counters: first image of each run)
+  input         4983
+  conv0_g0      5456       1609      1610    1152   71.6 %
+  conv0_g1      4755       1616      1617    1152   71.3 %

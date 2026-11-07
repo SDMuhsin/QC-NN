@@ -36,4 +36,6 @@ puts $fh [regsub {^.*?(Hierarchy)} $ph {\1}]
 redirect -variable sa { report_switching_activity }
 puts $fh [regsub {^.*?(Switching Activity Overview)} $sa {\1}]
 close $fh
+# NN_PT_HOOK: extra reports (e.g. qcacc/gls/pt_blocks.tcl)
+if {[info exists ::env(NN_PT_HOOK)]} { source $::env(NN_PT_HOOK) }
 exit

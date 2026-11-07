@@ -1,0 +1,23 @@
+== dense baseline (nn/, kul_w4.2p): conv1 SAIF 6151 cycles at 2.8 ns (357.1 MHz)
+  power 332.3 mW = dyn 316.5 + leak 15.80; GeMMX 196.8 (array 150.5: tiles 138.2, butterflies 0.0, decoder 0.0; SIMD 25.7 incl. table 0.00; CSR mgr 0.25; streamer 20.3)
+  RF macros 83.8, rest of cluster logic 51.7, clock network 64.0 (19.3 %)
+  conv1 energy 5.72 uJ (GeMMX 3.39, array 2.59); 2.43 pJ/MAC cluster, 1.436 GeMMX, 1.099 array; 0.824 TOPS/W cluster, 1.392 GeMMX
+  add1 window: 50000 cycles, 141.0 pJ dynamic / cycle, other energy 185.3 pJ / cycle at 2.8 ns
+  per layer conv energy (uJ): conv0 2.84  conv1 5.73  conv2 5.75  conv3 3.01  conv5 0.96  conv4 5.81  conv6 2.87  conv8 0.49  conv7 5.64
+  per image: 100.9 uJ = convs 33.1 + other 67.8; latency 1.125 ms, avg 89.7 mW; convs 2.50 pJ/MAC, 0.800 TOPS/W; image 0.248 TOPS/W
+== s2 gemmx control (kul_w4.2p): conv1 SAIF 5963 cycles at 2.8 ns (357.1 MHz)
+  power 335.1 mW = dyn 319.4 + leak 15.80; GeMMX 194.3 (array 151.4: tiles 139.2, butterflies 0.0, decoder 0.0; SIMD 22.8 incl. table 0.00; CSR mgr 0.25; streamer 19.8)
+  RF macros 87.1, rest of cluster logic 53.7, clock network 64.5 (19.3 %)
+  conv1 energy 5.60 uJ (GeMMX 3.24, array 2.53); 2.37 pJ/MAC cluster, 1.375 GeMMX, 1.072 array; 0.843 TOPS/W cluster, 1.455 GeMMX
+  add1 window: 50000 cycles, 140.1 pJ dynamic / cycle, other energy 184.4 pJ / cycle at 2.8 ns
+  per layer conv energy (uJ): conv0 3.03  conv1 5.62  conv2 5.65  conv3 3.04  conv5 1.01  conv4 5.83  conv6 3.08  conv8 0.60  conv7 5.94
+  per image: 114.6 uJ = convs 33.8 + other 80.8; latency 1.328 ms, avg 86.3 mW; convs 2.55 pJ/MAC, 0.783 TOPS/W; image 0.218 TOPS/W
+== s2 QC (qc_w4.2): conv1 SAIF 5450 cycles at 2.8 ns (357.1 MHz)
+  power 210.1 mW = dyn 197.4 + leak 12.70; GeMMX 106.3 (array 65.1: tiles 56.8, butterflies 1.8, decoder 0.1; SIMD 27.1 incl. table 0.04; CSR mgr 0.60; streamer 13.5)
+  RF macros 57.0, rest of cluster logic 46.8, clock network 60.9 (29.0 %)
+  conv1 energy 3.21 uJ (GeMMX 1.62, array 0.99); 1.36 pJ/MAC cluster, 0.687 GeMMX, 0.421 array; 1.472 TOPS/W cluster, 2.910 GeMMX
+  add1 window: 50000 cycles, 138.8 pJ dynamic / cycle, other energy 174.7 pJ / cycle at 2.8 ns
+  per layer conv energy (uJ): conv0 1.59  conv1 3.22  conv2 3.19  conv3 1.61  conv5 0.61  conv4 3.24  conv6 1.58  conv8 0.31  conv7 3.29
+  per image: 83.0 uJ = convs 18.6 + other 64.4; latency 1.121 ms, avg 74.1 mW; convs 1.41 pJ/MAC, 1.420 TOPS/W; image 0.301 TOPS/W
+  gemmx vs dense: conv1 window energy x0.978, GeMMX x0.957, array x0.975; convs/image x1.021; image x1.135
+  qc vs dense: conv1 window energy x0.560, GeMMX x0.478, array x0.383; convs/image x0.563; image x0.823

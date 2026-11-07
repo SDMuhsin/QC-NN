@@ -7,14 +7,17 @@
 # The MAC-array handshake nets (gemm_a_b_input_fire / add_c_fire) are optimised away by DC.
 # Values are printed in binary, so an X/Z on a busy net shows up in the log (gls_summary.py
 # flags it); X on the cluster's AXI handshakes is checked by gls_xcheck.sv.
-proc gls_inst {du} {
-  set r [find instances -recursive -bydu $du]
-  if {[llength $r] == 0} { echo "GLS_ERROR missing $du"; return "" }
-  return [lindex [lindex $r 0] 0]
+proc gls_inst {du args} {
+  # args: alternative design units, tried in order (QC-GeMMX cluster of qcacc/hw: KULCluster_Qc*)
+  foreach d [concat $du $args] {
+    set r [find instances -recursive -bydu $d]
+    if {[llength $r]} { return [lindex [lindex $r 0] 0] }
+  }
+  echo "GLS_ERROR missing $du"; return ""
 }
 set gx_top  [gls_inst KULCluster_snax_KUL_cluster_wrapper]
-set gx_bg   [gls_inst KULCluster_BlockGemm]
-set gx_simd [gls_inst KULCluster_PipelinedRescaleSIMD]
+set gx_bg   [gls_inst KULCluster_BlockGemm KULCluster_QcBlockGemm]
+set gx_simd [gls_inst KULCluster_PipelinedRescaleSIMD KULCluster_QcPipelinedRescaleSIMD]
 set gx_str  [gls_inst KULCluster_snax_streamer_gemmX_Streamer]
 set gx_xchk [gls_inst gls_xcheck]
 echo "GLS_INFO cluster $gx_top"

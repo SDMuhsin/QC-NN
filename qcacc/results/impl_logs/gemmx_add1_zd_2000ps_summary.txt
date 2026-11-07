@@ -1,0 +1,20 @@
+gate-level run gemmx_add1_zd_2000ps: step add1 (index 7)
+  sim end 1340.0 us, wall 2.9 min, cluster clock 2000 ps
+  ok   core 0 stopped after add1 (marker 0xdead0007)
+  ok   step checksums vs PyTorch int8 reference: 0 mismatches
+  ok   add1 output byte compare (TCDM dump): 0 of 16384 wrong, 0 X
+  ok   AXI X-check: 520754 cycles, 0 X
+  ok   Questa errors (incl. timing checks): 0
+  ok   no X on the GeMMX busy nets
+  SAIF window (fixed): 980.000 .. 1080.000 us = 50000 cycles
+  step cycles (mcycle):   input 4983  conv0_g0 5456  conv0_g1 4755  conv1_g0 6357  conv1_g1 6188  conv2_g0 5482  conv2_g1 5130  add1 163583
+  GeMMX / streamer counters: conv0_g0 1609/1610  conv0_g1 1616/1617  conv1_g0 2983/2984  conv1_g1 3041/3042  conv2_g0 3089/3090  conv2_g1 2982/2983
+  ok   step cycles = RTL
+  ok   GeMMX / streamer busy counters = RTL
+  GeMM busy window 1: GLS 640.950 .. 644.146 us (3196000 ps), RTL 640.950 .. 644.146 us (3196000 ps)  identical
+  GeMM busy window 2: GLS 689.160 .. 692.370 us (3210000 ps), RTL 689.160 .. 692.370 us (3210000 ps)  identical
+  GeMM busy window 3: GLS 737.810 .. 743.754 us (5944000 ps), RTL 737.810 .. 743.754 us (5944000 ps)  identical
+  GeMM busy window 4: GLS 788.740 .. 794.800 us (6060000 ps), RTL 788.740 .. 794.800 us (6060000 ps)  identical
+  GeMM busy window 5: GLS 838.280 .. 844.436 us (6156000 ps), RTL 838.280 .. 844.436 us (6156000 ps)  identical
+  GeMM busy window 6: GLS 887.420 .. 893.362 us (5942000 ps), RTL 887.420 .. 893.362 us (5942000 ps)  identical
+PASS

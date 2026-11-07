@@ -1,0 +1,18 @@
+gate-level run gemmx_conv1_sdf_5000ps_c4: step conv1_g1 (index 4)
+  sim end 1180.0 us, wall 13.7 min, cluster clock 5000 ps
+  ok   core 0 stopped after conv1_g1 (marker 0xdead0004)
+  ok   step checksums vs PyTorch int8 reference: 0 mismatches
+  ok   conv1_g1 output byte compare (TCDM dump): 0 of 16384 wrong, 0 X
+  ok   AXI X-check: 176299 cycles, 0 X
+  ok   Questa errors (incl. timing checks): 0
+  ok   no X on the GeMMX busy nets
+  SAIF window (GeMMX call 4): 1067.700 .. 1082.655 us = 2991 cycles
+  step cycles (mcycle):   input 2507  conv0_g0 4603  conv0_g1 4250  conv1_g0 5765  conv1_g1 5632
+  GeMMX / streamer counters: conv0_g0 1621/1622  conv0_g1 1619/1620  conv1_g0 2983/2984  conv1_g1 3002/3003
+  ok   step cycles = RTL
+  ok   GeMMX / streamer busy counters = RTL
+  GeMM busy window 1: GLS 709.325 .. 717.375 us (8049960 ps), RTL 709.325 .. 717.375 us (8050000 ps)
+  GeMM busy window 2: GLS 826.325 .. 834.365 us (8039960 ps), RTL 826.325 .. 834.365 us (8040000 ps)
+  GeMM busy window 3: GLS 943.975 .. 958.835 us (14859960 ps), RTL 943.975 .. 958.835 us (14860000 ps)
+  GeMM busy window 4: GLS 1067.700 .. 1082.655 us (14954960 ps), RTL 1067.700 .. 1082.655 us (14955000 ps)
+PASS

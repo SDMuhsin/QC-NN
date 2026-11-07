@@ -1,0 +1,92 @@
+# um2 at ss (DC report_area, pre-P&R, no wires); macro = ARM RF macros (area from their .db, incl. ring)
+total_um2 3572703  logic_um2 1705411 (1184 kGE)  macro_um2 1867293  macro_share 52.3 %
+logic_comb_um2 970837  logic_seq_um2 734574  macros 38  cells 476661
+macro_list 4 x kul_rf_128x128m1, 2 x kul_rf_128x40m1, 32 x kul_rf_512x64m4
+
+block                                         total      %      logic  %logic      macro
+gemmx_compute (GeMM 8x8x8 + SIMD)            347847    9.7     347847    20.4          0
+gemmx_streamer                               160168    4.5     160168     9.4          0
+gemmx_csr_ctrl                                34056    1.0      34056     2.0          0
+dma_xdma (Chisel xDMA)                       156065    4.4     156065     9.2          0
+dma_snitch_idma                              134397    3.8     134397     7.9          0
+snitch_cores (2x rv32ima + cc)                81719    2.3      81719     4.8          0
+snitch_shared_muldiv                          12578    0.4      12578     0.7          0
+icache (8 KiB, 2 way)                        247020    6.9      77181     4.5     169839
+tcdm_banks (32x 512x64 + hold)              1722724   48.2      25271     1.5    1697454
+tcdm_interconnect (narrow+wide)              328998    9.2     328998    19.3          0
+axi_interconnect (xbars, cuts)               312538    8.7     312538    18.3          0
+cluster_periph_ctrl                           33994    1.0      33994     2.0          0
+other (top / cluster glue)                      599    0.0        599     0.0          0
+= GeMMX accelerator (all gemmx_*)            542071   15.2     542071    31.8
+check: sum of blocks                        3572703
+
+hierarchy (depth <= 3, >= 0.5 % of total)                                                 total      %      logic      macro
+KULCluster_snax_KUL_cluster_wrapper                                                     3572703  100.0    1705411    1867293
+  i_cluster                                                                             2874556   80.5    1007263    1867293
+    gen_core_0__i_snitch_cc                                                               40332    1.1      40332          0
+      i_snitch                                                                            29015    0.8      29015          0
+    gen_core_1__i_snitch_cc                                                              175658    4.9     175658          0
+      gen_dma_i_axi_dma_tc_snitch_fe                                                     134397    3.8     134397          0
+      i_snitch                                                                            29688    0.8      29688          0
+    gen_hive_0__i_snitch_hive                                                            259598    7.3      89759     169839
+      i_snitch_icache                                                                    246558    6.9      76719     169839
+    gen_yes_snax_tcdm_interconnect_i_tcdm_interconnect                                   191992    5.4     191992          0
+      gen_xbar_i_stream_xbar                                                             111291    3.1     111291          0
+    gen_yes_wide_acc_connect_i_dma_interconnect                                           41320    1.2      41320          0
+      gen_xbar_i_stream_xbar                                                              23565    0.7      23565          0
+    i_axi_dma_xbar                                                                       132448    3.7     132448          0
+      gen_mst_port_mux_0__i_axi_mux                                                       26314    0.7      26314          0
+      gen_mst_port_mux_1__i_axi_mux                                                       28929    0.8      28929          0
+      gen_slv_port_demux_0__i_axi_demux                                                   26475    0.7      26475          0
+      gen_slv_port_demux_1__i_axi_demux                                                   28065    0.8      28065          0
+    i_axi_to_mem_dma                                                                      64653    1.8      64653          0
+      i_axi_to_mem_read                                                                   28428    0.8      28428          0
+      i_axi_to_mem_write                                                                  32297    0.9      32297          0
+    i_cluster_xbar                                                                        37165    1.0      37165          0
+    i_cut_ext_wide_in                                                                     25025    0.7      25025          0
+    i_cut_ext_wide_out                                                                    25173    0.7      25173          0
+    i_snitch_cluster_peripheral                                                           32619    0.9      32619          0
+    i_snitch_data_mem                                                                   1722724   48.2      25271    1697454
+      gen_banks_0__i_data_mem                                                             53840    1.5        795      53045
+      gen_banks_10__i_data_mem                                                            53837    1.5        792      53045
+      gen_banks_11__i_data_mem                                                            53835    1.5        789      53045
+      gen_banks_12__i_data_mem                                                            53837    1.5        792      53045
+      gen_banks_13__i_data_mem                                                            53832    1.5        787      53045
+      gen_banks_14__i_data_mem                                                            53837    1.5        792      53045
+      gen_banks_15__i_data_mem                                                            53832    1.5        786      53045
+      gen_banks_16__i_data_mem                                                            53834    1.5        788      53045
+      gen_banks_17__i_data_mem                                                            53832    1.5        787      53045
+      gen_banks_18__i_data_mem                                                            53837    1.5        792      53045
+      gen_banks_19__i_data_mem                                                            53840    1.5        795      53045
+      gen_banks_1__i_data_mem                                                             53840    1.5        794      53045
+      gen_banks_20__i_data_mem                                                            53834    1.5        789      53045
+      gen_banks_21__i_data_mem                                                            53831    1.5        786      53045
+      gen_banks_22__i_data_mem                                                            53846    1.5        801      53045
+      gen_banks_23__i_data_mem                                                            53831    1.5        786      53045
+      gen_banks_24__i_data_mem                                                            53840    1.5        795      53045
+      gen_banks_25__i_data_mem                                                            53833    1.5        788      53045
+      gen_banks_26__i_data_mem                                                            53831    1.5        786      53045
+      gen_banks_27__i_data_mem                                                            53831    1.5        786      53045
+      gen_banks_28__i_data_mem                                                            53840    1.5        795      53045
+      gen_banks_29__i_data_mem                                                            53838    1.5        793      53045
+      gen_banks_2__i_data_mem                                                             53834    1.5        788      53045
+      gen_banks_30__i_data_mem                                                            53833    1.5        788      53045
+      gen_banks_31__i_data_mem                                                            53834    1.5        788      53045
+      gen_banks_3__i_data_mem                                                             53834    1.5        788      53045
+      gen_banks_4__i_data_mem                                                             53834    1.5        789      53045
+      gen_banks_5__i_data_mem                                                             53833    1.5        788      53045
+      gen_banks_6__i_data_mem                                                             53830    1.5        785      53045
+      gen_banks_7__i_data_mem                                                             53833    1.5        787      53045
+      gen_banks_8__i_data_mem                                                             53831    1.5        785      53045
+      gen_banks_9__i_data_mem                                                             53838    1.5        793      53045
+  i_snax_core_0_acc_0_snax_streamer_gemmX                                                542071   15.2     542071          0
+    i_snax_streamer_gemmX_csrman_wrapper                                                  33284    0.9      33284          0
+      i_snax_streamer_gemmX_csrman_CsrManager                                             33283    0.9      33283          0
+    i_snax_streamer_gemmX_shell_wrapper                                                  347847    9.7     347847          0
+      inst_block_gemm_simd                                                               347844    9.7     347844          0
+    i_snax_streamer_gemmX_streamer_wrapper                                               160168    4.5     160168          0
+      i_snax_streamer_gemmX_streamer_top                                                 160164    4.5     160164          0
+  i_snax_core_1_xdma                                                                     156065    4.4     156065          0
+    i_snax_KUL_cluster_xdma                                                              156064    4.4     156064          0
+      dmaCtrl                                                                             26282    0.7      26282          0
+      dmaDatapath                                                                        129781    3.6     129781          0
