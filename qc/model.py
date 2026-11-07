@@ -14,18 +14,21 @@ from .layers import QCConv2d
 
 
 class QCResNet8(nn.Module):
-    def __init__(self, mode="unsigned", b=8, topk=2, view="hwc", method="staged", thr=0.0):
-        """b: int, list (one per conv in CONVS order) or {conv name: block size}."""
+    def __init__(self, mode="unsigned", b=8, topk=2, view="hwc", method="staged", thr=0.0,
+                 width=1):
+        """b: int, list (one per conv in CONVS order) or {conv name: block size}.
+        width: channel multiplier of every conv (conv0 input stays 3); capacity probe only, not ResNet-8."""
         super().__init__()
         if isinstance(b, (list, tuple)):
             assert len(b) == len(CONVS)
             b = {c[0]: bc for c, bc in zip(CONVS, b)}
         bs = b if isinstance(b, dict) else {c[0]: b for c in CONVS}
-        self.conv = nn.ModuleDict({n: QCConv2d(cin, cout, k, s, bs[n], mode, topk, view, method, thr)
+        w = lambda c: c if c == 3 else c * width
+        self.conv = nn.ModuleDict({n: QCConv2d(w(cin), w(cout), k, s, bs[n], mode, topk, view, method, thr)
                                    for n, _, _, k, s, cin, cout, _ in CONVS})
-        self.bn = nn.ModuleDict({n: nn.BatchNorm2d(cout) for n, *_, cout, _ in CONVS})
+        self.bn = nn.ModuleDict({n: nn.BatchNorm2d(w(cout)) for n, *_, cout, _ in CONVS})
         self.relu = {c[0]: c[7] for c in CONVS}
-        self.fc = nn.Linear(64, 10)
+        self.fc = nn.Linear(64 * width, 10)
 
     def c(self, name, x):
         y = self.bn[name](self.conv[name](x))

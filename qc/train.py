@@ -118,6 +118,7 @@ def main():
                     "(dense: projected onto block-circulant; QC: copied)")
     ap.add_argument("--soft", type=float, default=0.0, help="qat: first fraction of epochs with real coefficients "
                     "(two-stage; the lr schedules restart at the switch to hard)")
+    ap.add_argument("--width", type=int, default=1, help="conv channel multiplier (capacity probe, not ResNet-8)")
     ap.add_argument("--epochs", type=int, default=200)
     ap.add_argument("--bs", type=int, default=128)
     ap.add_argument("--lr", type=float, default=0.1)
@@ -141,7 +142,8 @@ def main():
     dev = "cuda"
 
     (xtr, ytr), (xva, yva) = split(dev)
-    model = QCResNet8(a.mode, a.b, a.topk, a.view, a.method, a.thr).to(dev)
+    model = QCResNet8(a.mode, a.b, a.topk, a.view, a.method, a.thr, a.width).to(dev)
+    assert a.width == 1 or a.init in ("random",), "--init needs width 1"
     staged = a.mode != "dense" and a.method == "staged"
     qat = a.mode != "dense" and a.method == "qat"
     if qat:

@@ -43,7 +43,8 @@ def folded_forward(model, mats, x):
 def load(ck):
     """Checkpoint dict -> fp64 CPU model in eval mode."""
     a = ck["args"]
-    model = QCResNet8(a["mode"], a["b"], a["topk"], a["view"], a.get("method", "ste"), a.get("thr", 0.0)).double()
+    model = QCResNet8(a["mode"], a["b"], a["topk"], a["view"], a.get("method", "ste"), a.get("thr", 0.0),
+                       a.get("width", 1)).double()
     model.load_state_dict({k: v.cpu() for k, v in ck["state"].items()})
     return model.eval()
 
@@ -67,7 +68,7 @@ def main(path):
         print("FAIL: dense checkpoint (no QC structure)")
         return 1
     ok, mats = True, {}
-    print(f"{path}: mode {a['mode']}, top-{a['topk']}, view {a['view']}")
+    print(f"{path}: mode {a['mode']}, top-{a['topk']}, view {a['view']}, width {a.get('width', 1)}")
     print(f"{'layer':6s} {'b':>3s} {'matrix':>10s} {'density':>8s} {'zero blk':>8s} {'1 shift':>7s} {'2 shift':>7s}  result")
     for n, *_ in CONVS:
         conv = model.conv[n]
