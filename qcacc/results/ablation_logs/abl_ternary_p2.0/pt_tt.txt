@@ -1,0 +1,10 @@
+design AblGemm_ternary corner tt lib tcbn65gplustc_ccs period_ns 2.0 parasitics wire_load_WireAreaLowkCon/enclosed
+setup_wns_ns 0.420320 setup_tns_ns 0.000 setup_viol_endpoints 0
+setup_worst_path io_data_c_i_bits[1804] -> gemm_array/mesh_7_0/accumulation_reg_reg_31_/D
+hold_wns_ns 0.027288 hold_tns_ns 0.000 hold_viol_endpoints 0
+hold_worst_path AblGemm_ternary_dataCut2/out_r_a_reg_137_/CP -> AblGemm_ternary_dataCut2/out_r_1_a_reg_137_/D
+reg2reg_setup_slack_ns 0.533335 N_reg_27_/CP -> cstate_reg/D
+in2reg_setup_slack_ns 0.420320
+reg2out_setup_slack_ns 0.538411
+pt_wall_s 10
+wall 0:13.93 peak_rss_mb 1574

@@ -154,3 +154,19 @@ Hooks in the base (defaults unchanged): `impl/kulcluster/gen_src.sh` env `KUL_PI
 `NN_GLS_IDX_CALL`, `NN_GLS_FLAGS`, `NN_GLS_CHECK`, `NN_GLS_ACC`, `NN_GLS_OUT`; `nn/gls/power.sh` env `NN_PT_HOOK`,
 `NN_GLS_OUT`; `nn/gls/pt_power.tcl` sources `NN_PT_HOOK`; `hw/kulcluster/gls/gls_probe.tcl` falls back to the
 `KULCluster_Qc*` modules.
+
+# M4 — array-level ablation (dense int8 MAC vs plain ternary vs QC butterfly)
+
+Results: [`results/ablation.md`](results/ablation.md) (summaries `results/ablation_logs/`).
+
+| file | contents |
+|---|---|
+| `hw/chisel/ablation/AblGemm.scala` | `TernaryTile` / `TernaryGemmArray` (8 x {0, +x, -x}, 2-bit trits, B 128 b), wrappers of the dense `GemmArray` and the `QcGemmArray` behind one array IO, `AblBlockGemm` (= `BlockGemm` / `QcBlockGemm` verbatim, emitted as `AblGemm_<variant>`), `AblGemmEmit` |
+| `ablation/gen.sh` | Verilog of the three cores (`build/qcacc/ablation/rtl`, ~20 s) |
+| `ablation/vectors.py` | conv1 operand streams of image 0 + expected D: s2 (dense / ternary / QC encodings of the same weights) and the dense baseline ResNet-8 |
+| `ablation/tb_abl.sv` | full-rate testbench (RTL with Verilator, netlists with Questa), D check, busy window |
+| `ablation/remote.sh` | host side: DC + PT (`syn`), tt SDF (`sdf`), Questa GLS + SAIF (`gls`, `abl.do`), PT PX with and without wire load (`power`, `pt_power.tcl`) |
+| `ablation/run.sh` | one command for everything: `qcacc/ablation/run.sh [-H tau1] [gen vec rtl push syn sdf gls power fetch report]` |
+| `ablation/report.py` | tables (`results/ablation_logs/tables.md`) + small summaries |
+
+The `fmax` step re-synthesizes the three cores at 2.0 ns (tags `abl_<v>_p2.0`) for a real fmax.

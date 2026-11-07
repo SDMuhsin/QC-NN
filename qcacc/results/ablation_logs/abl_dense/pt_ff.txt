@@ -1,0 +1,10 @@
+design AblGemm_dense corner ff lib tcbn65gpluslt_ccs period_ns 4.2 parasitics wire_load_WireAreaLowkCon/enclosed
+setup_wns_ns 1.837761 setup_tns_ns 0.000 setup_viol_endpoints 0
+setup_worst_path io_data_d_o_ready -> io_data_a_i_ready
+hold_wns_ns 0.000818 hold_tns_ns 0.000 hold_viol_endpoints 0
+hold_worst_path AblGemm_dense_dataCut2/out_r_a_reg_3_/CP -> AblGemm_dense_dataCut2/out_r_1_a_reg_3_/D
+reg2reg_setup_slack_ns 2.304333 d_output_counter_reg_7_/CP -> d_output_counter_reg_63_/D
+in2reg_setup_slack_ns 1.852497
+reg2out_setup_slack_ns 2.369519
+pt_wall_s 8
+wall 0:11.14 peak_rss_mb 1663

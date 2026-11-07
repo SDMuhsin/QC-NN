@@ -1,0 +1,8 @@
+design AblGemm_ternary top AblGemm_ternary corner ss period_ns 4.2 topo 0 wire_load WireAreaLowkCon/enclosed
+cell_area_um2 168367.321597 gate_eq_kGE 116.92 cells 47114 regs 3806
+setup_wns_ns 3.8147e-06 setup_tns_ns 0.000 setup_viol_endpoints 0
+setup_worst_path AblGemm_ternary_dataCut2/out_r_1_c_reg_2_/CP -> gemm_array/mesh_7_3/accumulation_reg_reg_31_/D
+hold_wns_ns 0.000801034 hold_tns_ns 0.000 hold_viol_endpoints 0
+hold_worst_path AblGemm_ternary_dataCut2/out_r_b_reg_0_/CP -> AblGemm_ternary_dataCut2/out_r_1_b_reg_0_/D
+dc_wall_s 327
+wall 5:32.82 peak_rss_mb 2405

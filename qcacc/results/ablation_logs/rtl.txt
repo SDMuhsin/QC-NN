@@ -1,0 +1,4 @@
+rtl dense_s2 ABL_RESULT PASS tiles 256/256 bad 0 busy_cycles 4866 perf 4866 fires 4608 ideal 4864
+rtl ternary ABL_RESULT PASS tiles 256/256 bad 0 busy_cycles 4866 perf 4866 fires 4608 ideal 4864
+rtl qc ABL_RESULT PASS tiles 256/256 bad 0 busy_cycles 4866 perf 4866 fires 4608 ideal 4864
+rtl dense_base ABL_RESULT PASS tiles 256/256 bad 0 busy_cycles 4866 perf 4866 fires 4608 ideal 4864

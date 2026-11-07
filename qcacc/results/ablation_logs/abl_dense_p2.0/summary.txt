@@ -1,0 +1,8 @@
+design AblGemm_dense top AblGemm_dense corner ss period_ns 2.0 topo 0 wire_load WireAreaLowkCon/enclosed
+cell_area_um2 748601.999713 gate_eq_kGE 519.86 cells 189239 regs 4598
+setup_wns_ns -0.942522 setup_tns_ns -1522.770 setup_viol_endpoints 2022
+setup_worst_path AblGemm_dense_dataCut2/out_r_1_d_reg_6_/CP -> gemm_array/g/mesh/mesh_7_3/accumulation_reg_reg_23_/D
+hold_wns_ns 0.000804946 hold_tns_ns 0.000 hold_viol_endpoints 0
+hold_worst_path AblGemm_dense_dataCut2/out_r_a_reg_0_/CP -> AblGemm_dense_dataCut2/out_r_1_a_reg_0_/D
+dc_wall_s 1263
+wall 21:08.55 peak_rss_mb 2725

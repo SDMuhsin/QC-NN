@@ -1,0 +1,20 @@
+period_ns 2.8 corner tt wire_load WireAreaLowkCon/enclosed
+Power Group             Power     Power      Power      Power   (     %)  Attrs
+--------------------------------------------------------------------------------
+clock_network              0.0151 2.276e-03 3.233e-06    0.0173 (30.52%)  i
+register                1.117e-03 2.357e-03 1.339e-04 3.608e-03 ( 6.35%)  
+combinational              0.0199    0.0152 7.371e-04    0.0359 (63.12%)  
+sequential                 0.0000    0.0000    0.0000    0.0000 ( 0.00%)  
+memory                     0.0000    0.0000    0.0000    0.0000 ( 0.00%)  
+io_pad                     0.0000    0.0000    0.0000    0.0000 ( 0.00%)  
+black_box                  0.0000    0.0000    0.0000    0.0000 ( 0.00%)  
+
+  Net Switching Power  =    0.0198   (34.95%)
+  Cell Internal Power  =    0.0361   (63.51%)
+  Cell Leakage Power   = 8.743e-04   ( 1.54%)
+                         ---------
+Total Power            =    0.0568  (100.00%)
+
+1
+
+annotation Nets 59279(100.00%) 0(0.00%) 0(0.00%) 0(0.00%) 0(0.00%) 0(0.00%) 0(0.00%) 0(0.00%) 0(0.00%) 0(0.00%) 59279

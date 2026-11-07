@@ -1,0 +1,9 @@
+# ABL_INFO vec /tmp/ckp908/qcacc_abl/vec/ternary.txt K 18 N 2 M 128 sc 128 tiles 256 period_ps 2800
+# ABL_SAIF_ON 18530
+# ABL_SAIF_OFF 13643310
+# ABL_RESULT PASS tiles 256/256 bad 0 busy_cycles 4866 perf 4866 fires 4608 ideal 4864
+# ** Note: (vsim-3587) SDF Backannotation Successfully Completed.
+# Errors: 0, Warnings: 2720, Suppressed Warnings: 648
+timing_check_violations 0
+fatal_or_error_lines 0
+saif_bytes 3350509

@@ -1,0 +1,20 @@
+                                  Global cell area              Local cell area
+Hierarchical cell                 Absolute     Percent  Combi-       Noncombi-   Black-
+AblGemm_dense                     622928.1603    100.0   11625.8400   2179.8000  0.0000  AblGemm_dense
+AblGemm_dense_dataCut2             15485.0400      2.5      26.2800  15031.0800  0.0000  DataCut2_W_1040_T_CutBundle
+a_b_sa_sb_cat                          4.6800      0.0       4.6800      0.0000  0.0000  DecoupledCat4to1
+gemm_array                        593568.0002     95.3       0.0000      0.0000  0.0000  DenseAblArray
+gemm_array/g                      593568.0002     95.3       4.3200      0.0000  0.0000  GemmArray
+gemm_array/g/mesh                 593563.6802     95.3    2655.3600      0.0000  0.0000  Mesh
+Number of ports:                        39283
+Number of nets:                        231981
+Number of cells:                       167160
+Number of combinational cells:         162213
+Number of sequential cells:              4738
+Number of macros/black boxes:               0
+Number of buf/inv:                      16467
+Number of references:                     112
+Combinational area:             587067.120068
+Buf/Inv area:                    22069.800745
+Noncombinational area:           35861.040206
+Total cell area:                622928.160274

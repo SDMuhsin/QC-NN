@@ -1,0 +1,82 @@
+                                  Global cell area              Local cell area
+Hierarchical cell                 Absolute     Percent  Combi-       Noncombi-   Black-
+AblGemm_ternary                   168367.3216    100.0   11257.9200   2107.0800  0.0000  AblGemm_ternary
+AblGemm_ternary_dataCut2            9222.1202      5.5      23.7600   8932.6802  0.0000  DataCut2_W_656_T_CutBundle
+a_b_sa_sb_cat                          5.0400      0.0       5.0400      0.0000  0.0000  DecoupledCat4to1
+gemm_array                        145710.3614     86.5    7974.3602      0.0000  0.0000  TernaryGemmArray
+gemm_array/mesh_0_0                 2160.7200      1.3    1877.0400    277.2000  0.0000  TernaryTile_63
+gemm_array/mesh_0_1                 2142.3600      1.3    1858.6800    277.2000  0.0000  TernaryTile_62
+gemm_array/mesh_0_2                 2156.4000      1.3    1872.7200    277.2000  0.0000  TernaryTile_61
+gemm_array/mesh_0_3                 2165.4000      1.3    1881.7200    277.2000  0.0000  TernaryTile_60
+gemm_array/mesh_0_4                 2138.0400      1.3    1854.3600    277.2000  0.0000  TernaryTile_59
+gemm_array/mesh_0_5                 2139.4800      1.3    1855.8000    277.2000  0.0000  TernaryTile_58
+gemm_array/mesh_0_6                 2187.3600      1.3    1903.6800    277.2000  0.0000  TernaryTile_57
+gemm_array/mesh_0_7                 2194.9200      1.3    1911.2400    277.2000  0.0000  TernaryTile_56
+gemm_array/mesh_1_0                 2129.7600      1.3    1846.0800    277.2000  0.0000  TernaryTile_55
+gemm_array/mesh_1_1                 2161.8000      1.3    1878.1200    277.2000  0.0000  TernaryTile_54
+gemm_array/mesh_1_2                 2142.3600      1.3    1858.6800    277.2000  0.0000  TernaryTile_53
+gemm_array/mesh_1_3                 2145.2400      1.3    1861.5600    277.2000  0.0000  TernaryTile_52
+gemm_array/mesh_1_4                 2148.1200      1.3    1864.4400    277.2000  0.0000  TernaryTile_51
+gemm_array/mesh_1_5                 2137.6800      1.3    1854.0000    277.2000  0.0000  TernaryTile_50
+gemm_array/mesh_1_6                 2195.2800      1.3    1911.6000    277.2000  0.0000  TernaryTile_49
+gemm_array/mesh_1_7                 2206.4400      1.3    1922.7600    277.2000  0.0000  TernaryTile_48
+gemm_array/mesh_2_0                 2143.8000      1.3    1860.1200    277.2000  0.0000  TernaryTile_47
+gemm_array/mesh_2_1                 2142.3600      1.3    1858.6800    277.2000  0.0000  TernaryTile_46
+gemm_array/mesh_2_2                 2140.5600      1.3    1856.8800    277.2000  0.0000  TernaryTile_45
+gemm_array/mesh_2_3                 2144.8800      1.3    1861.2000    277.2000  0.0000  TernaryTile_44
+gemm_array/mesh_2_4                 2146.3200      1.3    1862.6400    277.2000  0.0000  TernaryTile_43
+gemm_array/mesh_2_5                 2156.4000      1.3    1872.7200    277.2000  0.0000  TernaryTile_42
+gemm_array/mesh_2_6                 2117.8800      1.3    1832.7600    278.6400  0.0000  TernaryTile_41
+gemm_array/mesh_2_7                 2121.4800      1.3    1837.8000    277.2000  0.0000  TernaryTile_40
+gemm_array/mesh_3_0                 2138.4000      1.3    1854.7200    277.2000  0.0000  TernaryTile_39
+gemm_array/mesh_3_1                 2161.8000      1.3    1878.1200    277.2000  0.0000  TernaryTile_38
+gemm_array/mesh_3_2                 2143.8000      1.3    1860.1200    277.2000  0.0000  TernaryTile_37
+gemm_array/mesh_3_3                 2145.2400      1.3    1861.5600    277.2000  0.0000  TernaryTile_36
+gemm_array/mesh_3_4                 2134.4400      1.3    1850.7600    277.2000  0.0000  TernaryTile_35
+gemm_array/mesh_3_5                 2135.5200      1.3    1851.8400    277.2000  0.0000  TernaryTile_34
+gemm_array/mesh_3_6                 2202.1200      1.3    1918.4400    277.2000  0.0000  TernaryTile_33
+gemm_array/mesh_3_7                 2121.1200      1.3    1837.4400    277.2000  0.0000  TernaryTile_32
+gemm_array/mesh_4_0                 2143.4400      1.3    1859.7600    277.2000  0.0000  TernaryTile_31
+gemm_array/mesh_4_1                 2144.1600      1.3    1860.4800    277.2000  0.0000  TernaryTile_30
+gemm_array/mesh_4_2                 2163.6000      1.3    1879.9200    277.2000  0.0000  TernaryTile_29
+gemm_array/mesh_4_3                 2134.8000      1.3    1851.1200    277.2000  0.0000  TernaryTile_28
+gemm_array/mesh_4_4                 2135.1600      1.3    1851.4800    277.2000  0.0000  TernaryTile_27
+gemm_array/mesh_4_5                 2149.2000      1.3    1865.5200    277.2000  0.0000  TernaryTile_26
+gemm_array/mesh_4_6                 2133.3600      1.3    1849.6800    277.2000  0.0000  TernaryTile_25
+gemm_array/mesh_4_7                 2130.8400      1.3    1847.1600    277.2000  0.0000  TernaryTile_24
+gemm_array/mesh_5_0                 2155.6800      1.3    1872.0000    277.2000  0.0000  TernaryTile_23
+gemm_array/mesh_5_1                 2134.8000      1.3    1851.1200    277.2000  0.0000  TernaryTile_22
+gemm_array/mesh_5_2                 2146.6800      1.3    1863.0000    277.2000  0.0000  TernaryTile_21
+gemm_array/mesh_5_3                 2151.7200      1.3    1868.0400    277.2000  0.0000  TernaryTile_20
+gemm_array/mesh_5_4                 2151.7200      1.3    1868.0400    277.2000  0.0000  TernaryTile_19
+gemm_array/mesh_5_5                 2133.7200      1.3    1848.6000    278.6400  0.0000  TernaryTile_18
+gemm_array/mesh_5_6                 2121.4800      1.3    1837.8000    277.2000  0.0000  TernaryTile_17
+gemm_array/mesh_5_7                 2131.9200      1.3    1848.2400    277.2000  0.0000  TernaryTile_16
+gemm_array/mesh_6_0                 2148.8400      1.3    1863.7200    278.6400  0.0000  TernaryTile_15
+gemm_array/mesh_6_1                 2144.5200      1.3    1860.8400    277.2000  0.0000  TernaryTile_14
+gemm_array/mesh_6_2                 2143.8000      1.3    1860.1200    277.2000  0.0000  TernaryTile_13
+gemm_array/mesh_6_3                 2140.9200      1.3    1857.2400    277.2000  0.0000  TernaryTile_12
+gemm_array/mesh_6_4                 2154.6000      1.3    1870.9200    277.2000  0.0000  TernaryTile_11
+gemm_array/mesh_6_5                 2138.7600      1.3    1855.0800    277.2000  0.0000  TernaryTile_10
+gemm_array/mesh_6_6                 2202.8400      1.3    1919.1600    277.2000  0.0000  TernaryTile_9
+gemm_array/mesh_6_7                 2198.8800      1.3    1915.2000    277.2000  0.0000  TernaryTile_8
+gemm_array/mesh_7_0                 2168.2800      1.3    1884.6000    277.2000  0.0000  TernaryTile_7
+gemm_array/mesh_7_1                 2139.1200      1.3    1855.4400    277.2000  0.0000  TernaryTile_6
+gemm_array/mesh_7_2                 2143.4400      1.3    1859.7600    277.2000  0.0000  TernaryTile_5
+gemm_array/mesh_7_3                 2137.3200      1.3    1853.6400    277.2000  0.0000  TernaryTile_4
+gemm_array/mesh_7_4                 2150.2800      1.3    1866.6000    277.2000  0.0000  TernaryTile_3
+gemm_array/mesh_7_5                 2155.3200      1.3    1871.6400    277.2000  0.0000  TernaryTile_2
+gemm_array/mesh_7_6                 2228.7600      1.3    1945.0800    277.2000  0.0000  TernaryTile_1
+gemm_array/mesh_7_7                 2230.5600      1.3    1946.8800    277.2000  0.0000  TernaryTile_0
+Number of ports:                        22967
+Number of nets:                         74459
+Number of cells:                        47296
+Number of combinational cells:          43193
+Number of sequential cells:              3921
+Number of macros/black boxes:               0
+Number of buf/inv:                      10150
+Number of references:                      90
+Combinational area:             138837.241232
+Buf/Inv area:                    11611.080451
+Noncombinational area:           29530.080365
+Total cell area:                168367.321597
