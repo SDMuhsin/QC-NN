@@ -66,8 +66,9 @@ def fill_border(mem, t):
     mem[t.addr + t.C8 * t.plane:t.addr + t.size] = np.uint8(t.zp & 0xFF)
 
 
-def run_image(prog, mem, img_bytes, check=None):
+def run_image(prog, mem, img_bytes, check=None, gemm=None):
     """Execute all steps for one image on `mem`.  check(step, mem) is called after each step.
+    gemm(mem, cfg) replaces gemmx_call (default) for the conv steps (e.g. qcacc's QC array model).
     Returns int32 logits."""
     T = prog.tensors
     logits = None
@@ -81,7 +82,7 @@ def run_image(prog, mem, img_bytes, check=None):
         elif st.kind == "conv":
             if T[st.out].border:
                 fill_border(mem, T[st.out])
-            gemmx_call(mem, st.cfg)
+            (gemm or gemmx_call)(mem, st.cfg)
         elif st.kind == "add":
             v = st.cfg
             to = T[st.out]
