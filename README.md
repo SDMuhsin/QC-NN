@@ -69,7 +69,7 @@ runs are optimistic and superseded, and are kept only for reference in the sub-R
 | synthesis `kul_w4.2p` (same flow, current RTL with the icache PMA fix) | 4.05 mm2, 1513 kGE, fmax 233 / 357 / 506 MHz (+0.2 % area, +1 % fmax: noise) |
 | ResNet-8 RTL in chimera (`nn/`) | 30 / 30 images bit-exact vs PyTorch int8, 401.7 k cycles / image ([nn/results/rtl.md](nn/results/rtl.md)) |
 | ResNet-8 GLS, conv1 on `kul_w4.2p` | zd 2 ns and SDF tt 2.8 / 5 ns: output bit-exact, cycles and GeMMX counters = RTL at the same clock, 0 timing-check errors ([nn/results/gls_power.md](nn/results/gls_power.md)) |
-| conv1 SAIF power (PT PX, tt, pre-CTS) | 357 MHz: **332 mW** (GeMMX 59 %), 5.7 uJ / layer, **2.4 pJ/MAC** cluster (1.4 GeMMX) = 0.82 TOPS/W; 200 MHz: 194 mW; ~101 uJ / image extrapolated (adds on the cores dominate) |
+| conv1 SAIF power (PT PX, tt, pre-CTS) | 357 MHz: **332 mW** (GeMMX 59 %), 5.7 uJ / layer, **2.4 pJ/MAC** cluster (1.4 GeMMX) = 0.82 TOPS/W; 200 MHz: 194 mW; ~101 uJ / image extrapolated (adds on the cores dominate). **Erratum:** zero wire cap in PT; with the synthesis WLM 391 mW, 6.7 uJ, 2.85 pJ/MAC = 0.70 TOPS/W, ~110 uJ / image (`nn/results/gls_power.md` erratum) |
 | P&R (OpenROAD) | **incomplete**: stopped in global route.  Post-CTS: ss WNS -3.67 ns (~127 MHz), skew 1.52 ns (`impl/kulcluster/pnr/results/kul_pnr4.txt`) |
 
 The GeMM-test GLS runs used the superseded zero-WLM netlist `kul_p3.5`; the ResNet-8 GLS uses `kul_w4.2p`.  P&R used `kul_w4.2`.

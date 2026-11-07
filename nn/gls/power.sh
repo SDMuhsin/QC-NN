@@ -3,6 +3,7 @@
 #   nn/gls/power.sh [-H host] [-p period_ns] <gls tag> <mode>
 # The SAIF and the reports stay on the host (they name kit cells); only the summary <tag>_<period>.txt is
 # copied back to build/nn_gls/<tag>/.  -p defaults to the clock of the GLS run (from the tag, <..>_<ps>ps).
+# NN_PT_ZWLM=1: zero wire-load net capacitance (pre-erratum setting, see pt_power.tcl).
 # Hooks: NN_PT_HOOK (Tcl sourced by pt_power.tcl after the summary), NN_GLS_OUT (local result root, default build/nn_gls).
 set -euo pipefail
 NN=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
@@ -21,6 +22,7 @@ PFX=${P}ns
 OUT=$RD/pt_$PFX
 scp -q "$NN/gls/pt_power.tcl" ${NN_PT_HOOK:-} "$HOST:$RD/"
 HK=${NN_PT_HOOK:+setenv NN_PT_HOOK $RD/$(basename "${NN_PT_HOOK:-x}");}
+HK="$HK ${NN_PT_ZWLM:+setenv NN_PT_ZWLM $NN_PT_ZWLM;}"
 DBTT=$(ssh "$HOST" ". $SYN/run.env; echo \$QC_EXTRA_DB_TT")
 SDC=$(dirname "$(dirname "$SYNTREE")")/impl/kulcluster/constraints.sdc
 ssh "$HOST" "cd $RD && tcsh -f -c 'source $SYNTREE/site/site.csh; setenv QC_FLOW $SYNTREE; setenv SYN $SYN; \

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # PrimeTime PX of a qcacc gate-level run (nn/gls/power.sh with qcacc/gls/env.sh; + qcacc/gls/pt_blocks.tcl):
 #   qcacc/gls/power_qc.sh -d qc|gemmx [-H host] [-p period_ns] <tag> <zd|sdf>
+#   Net capacitance: synthesis WLM (WireAreaLowkCon enclosed); NN_PT_ZWLM=1 for the old zero-wire numbers.
 set -euo pipefail
 Q=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 D=qc; H=tau1; P=()

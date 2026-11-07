@@ -76,39 +76,41 @@ windows sit at the same offset into add1 as the baseline's 900-1000 us. SDF anno
 ## 3. conv1 power (PrimeTime PX, tt, SAIF of the GeMM busy window, `qcacc/gls/power_qc.sh`)
 
 The block split comes from `qcacc/gls/pt_blocks.tcl` (hierarchical-cell power). MACs are dense-equivalent: 4608 fires x
-512 = 2.36 M. The conv1 MACs are the same in all three designs.
+512 = 2.36 M. The conv1 MACs are the same in all three designs. Net capacitance: the synthesis WLM (WireAreaLowkCon,
+enclosed), as DC and `qcacc/ablation` (since 2026-11-07; before, PT ran with zero wire cap: 2.8 ns conv1 332.3 / 335.1 /
+210.1 mW, 5.72 / 5.60 / 3.21 uJ; per image 100.9 / 114.6 / 83.0 uJ, QC x0.82 of dense; `impl_logs/*_zwlm.txt`, `NN_PT_ZWLM=1`).
 
 | SDF tt, 2.8 ns (357 MHz) | dense | control | **QC** |
 |---|---:|---:|---:|
 | window (busy cycles) | 6151 | 5963 (2972 + 2991) | **5450** |
-| total power | 332.3 mW | 335.1 mW | **210.1 mW** |
-| dynamic / leakage | 316.5 / 15.8 | 319.4 / 15.8 | 197.4 / 12.7 |
-| GeMMX | 196.8 | 194.3 | **106.3** |
-|   GeMM array (tiles / butterflies / decoder) | 150.5 (138.2 / - / -) | 151.4 (139.2) | **65.1 (56.8 / 1.8 / 0.1)** |
-|   SIMD rescale (+ table) | 25.7 | 22.8 | 27.1 (table 0.04) |
-|   CSR manager (+ table regs) | 0.25 | 0.25 | 0.60 |
-|   streamer | 20.3 | 19.8 | 13.5 |
-| RF macros | 83.8 | 87.1 | 57.0 |
-| rest of cluster logic | 51.7 | 53.7 | 46.8 |
-| clock network (ICGs, ideal clock) | 64.0 (19.3 %) | 64.5 (19.3 %) | 60.9 (**29.0 %**) |
-| **conv1 energy** (GeMMX / array) | 5.72 uJ (3.39 / 2.59) | 5.60 uJ (3.24 / 2.53) | **3.21 uJ (1.62 / 0.99)** |
-| pJ / MAC cluster / GeMMX / array | 2.43 / 1.44 / 1.10 | 2.37 / 1.38 / 1.07 | **1.36 / 0.69 / 0.42** |
-| TOPS/W cluster / GeMMX | 0.82 / 1.39 | 0.84 / 1.46 | **1.47 / 2.91** |
+| total power | 390.8 mW | 392.7 mW | **240.5 mW** |
+| dynamic / leakage | 375.0 / 15.8 | 376.8 / 15.8 | 227.7 / 12.7 |
+| GeMMX | 237.0 | 233.5 | **127.1** |
+|   GeMM array (tiles / butterflies / decoder) | 183.8 (165.7 / - / -) | 184.2 (166.5) | **79.8 (69.9 / 2.6 / 0.2)** |
+|   SIMD rescale (+ table) | 29.3 | 26.0 | 31.0 (table 0.05) |
+|   CSR manager (+ table regs) | 0.26 | 0.26 | 0.61 |
+|   streamer | 23.6 | 23.0 | 15.6 |
+| RF macros | 84.1 | 87.4 | 57.1 |
+| rest of cluster logic | 69.7 | 71.8 | 56.3 |
+| clock network (ICGs, ideal clock) | 67.6 (17.3 %) | 68.2 (17.4 %) | 64.2 (**26.7 %**) |
+| **conv1 energy** (GeMMX / array) | 6.73 uJ (4.08 / 3.16) | 6.56 uJ (3.90 / 3.08) | **3.67 uJ (1.94 / 1.22)** |
+| pJ / MAC cluster / GeMMX / array | 2.85 / 1.73 / 1.34 | 2.78 / 1.65 / 1.30 | **1.56 / 0.82 / 0.52** |
+| TOPS/W cluster / GeMMX | 0.70 / 1.16 | 0.72 / 1.21 | **1.29 / 2.43** |
 
 The same comparison at 200 MHz (SDF tt, 5 ns):
 
 | | dense | control | QC |
 |---|---:|---:|---:|
-| conv1 power, energy | 193.7 mW, 5.96 uJ | 195.2 mW, 5.82 uJ | **123.9 mW, 3.39 uJ** |
-| pJ / MAC cluster / GeMMX | 2.53 / 1.47 | 2.47 / 1.41 | **1.43 / 0.71** |
+| conv1 power, energy | 226.4 mW, 6.96 uJ | 227.4 mW, 6.78 uJ | **141.0 mW, 3.85 uJ** |
+| pJ / MAC cluster / GeMMX | 2.95 / 1.76 | 2.87 / 1.69 | **1.63 / 0.84** |
 
-* **Effect of the model** (control vs dense, same hardware): conv1 energy x0.98, array x0.975. Ternary weights in
+* **Effect of the model** (control vs dense, same hardware): conv1 energy x0.97, array x0.97. Ternary weights in
   the dense int8 multipliers save almost nothing. A, the accumulators and the clock still toggle.
-* **Effect of the hardware** (QC vs control, same model): conv1 energy x0.57, GeMMX x0.50, array x0.39. Busy cycles
+* **Effect of the hardware** (QC vs control, same model): conv1 energy x0.56, GeMMX x0.50, array x0.40. Busy cycles
   drop by 8.6 %, RF macro power by 35 % (8x less B traffic, fewer streamer stalls), and leakage by 20 %.
-* The 64 tiles (4-term select-add plus int32 accumulator) are 87 % of the QC array's power. The clock
-  network barely changes (60.9 vs 64.0 mW), because the register count is almost unchanged.
-* Zero delay (2 ns) misses glitch energy, as in the baseline: QC conv1 2.67 uJ (GeMMX 1.21) vs 3.21 (1.62) with SDF.
+* The 64 tiles (4-term select-add plus int32 accumulator) are 88 % of the QC array's power. The clock
+  network barely changes (64.2 vs 67.6 mW), because the register count is almost unchanged.
+* Zero delay (2 ns) misses glitch energy, as in the baseline: QC conv1 3.00 uJ (GeMMX 1.43) vs 3.67 (1.94) with SDF.
   The SDF numbers are the reference.
 
 ## 4. Energy per image (`python3 -m qcacc.gls.energy_qc [--clock 5000]`, method of `nn/gls/energy.py`)
@@ -119,22 +121,22 @@ of the add1 window (zero delay, same netlist and software) x the other cycles. I
 
 | conv energy per layer (uJ), 357 MHz | conv0 | conv1 | conv2 | conv3 | conv5 | conv4 | conv6 | conv8 | conv7 | all convs |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| dense | 2.84 | 5.73 | 5.75 | 3.01 | 0.96 | 5.81 | 2.87 | 0.49 | 5.64 | 33.1 |
-| control | 3.03 | 5.62 | 5.65 | 3.04 | 1.01 | 5.83 | 3.08 | 0.60 | 5.94 | 33.8 |
-| **QC** | 1.59 | 3.22 | 3.19 | 1.61 | 0.61 | 3.24 | 1.58 | 0.31 | 3.29 | **18.6** |
+| dense | 3.34 | 6.74 | 6.76 | 3.54 | 1.13 | 6.83 | 3.37 | 0.58 | 6.64 | 38.9 |
+| control | 3.55 | 6.58 | 6.62 | 3.57 | 1.18 | 6.83 | 3.61 | 0.70 | 6.96 | 39.6 |
+| **QC** | 1.82 | 3.69 | 3.66 | 1.84 | 0.70 | 3.71 | 1.81 | 0.35 | 3.77 | **21.3** |
 
 | per image | clock | convs | other (adds, pool+FC, CSR setup) | **total** | latency | avg power | convs pJ/MAC, TOPS/W | image TOPS/W (25.0 M ops) |
 |---|---|---:|---:|---:|---:|---:|---|---:|
-| dense | 357 MHz | 33.1 uJ | 67.8 | **100.9 uJ** | 1.125 ms | 89.7 mW | 2.50, 0.80 | 0.248 |
-| control | 357 MHz | 33.8 | 80.8 | **114.6 uJ** | 1.328 ms | 86.3 mW | 2.55, 0.78 | 0.218 |
-| **QC** | 357 MHz | **18.6** | 64.4 | **83.0 uJ** | 1.121 ms | 74.1 mW | **1.41, 1.42** | **0.301** |
-| dense | 200 MHz | 34.5 | 80.6 | 115.0 uJ | 2.008 ms | 57.3 mW | 2.60, 0.77 | 0.217 |
-| control | 200 MHz | 35.2 | 96.0 | 131.2 uJ | 2.372 ms | 55.3 mW | 2.66, 0.75 | 0.191 |
-| **QC** | 200 MHz | 19.6 | 74.8 | **94.4 uJ** | 2.002 ms | 47.2 mW | 1.48, 1.35 | 0.265 |
+| dense | 357 MHz | 38.9 uJ | 71.4 | **110.4 uJ** | 1.125 ms | 98.1 mW | 2.94, 0.68 | 0.227 |
+| control | 357 MHz | 39.6 | 85.1 | **124.7 uJ** | 1.328 ms | 93.9 mW | 2.99, 0.67 | 0.201 |
+| **QC** | 357 MHz | **21.3** | 67.9 | **89.2 uJ** | 1.121 ms | 79.6 mW | **1.61, 1.24** | **0.280** |
+| dense | 200 MHz | 40.3 | 84.2 | 124.4 uJ | 2.008 ms | 62.0 mW | 3.04, 0.66 | 0.201 |
+| control | 200 MHz | 41.0 | 100.3 | 141.3 uJ | 2.372 ms | 59.6 mW | 3.09, 0.65 | 0.177 |
+| **QC** | 200 MHz | 22.3 | 78.2 | **100.6 uJ** | 2.002 ms | 50.3 mW | 1.69, 1.19 | 0.249 |
 
-QC vs dense per image: **x0.82** (-17.7 %; convs x0.56). QC vs control: x0.72. The control is 14 % worse than dense
-because of the 42 calls (+72.6 k cycles of CSR setup). Per image, the core-side residual adds dominate (78 % of the
-QC energy is "other"). The QC "other" energy per cycle (174.7 pJ at 2.8 ns) is 6 % below dense (185.3), from leakage
+QC vs dense per image: **x0.81** (-19.2 %; convs x0.55; the same x0.81 at 200 MHz). QC vs control: x0.72. The control is 13 % worse than dense
+because of the 42 calls (+72.6 k cycles of CSR setup). Per image, the core-side residual adds dominate (76 % of the
+QC energy is "other"). The QC "other" energy per cycle (184.1 pJ at 2.8 ns) is 6 % below dense (195.1), from leakage
 and idle GeMMX clocking.
 
 Extrapolation caveats (as in the baseline): every conv is assumed to cost what conv1 costs per busy cycle; pool+FC
@@ -149,7 +151,7 @@ KUL_BUILD=$PWD/build/qcacc KUL_GLS_DIR=/tmp/ckp908/qcacc_gls KUL_GLS_SYN=/tmp/ck
 qcacc/hw/sim/run_rtl_qc.sh [-m gemmx] -H tau5 -t <d>_stop_conv1_2800ps -c 2800 -- -DNN_STOP_AFTER=<2|4>   # RTL refs
 qcacc/gls/run_gls_qc.sh -d qc -m sdf -c 2800                     # + -m zd -c 2000; -s add1 -w "900 1000"
 qcacc/gls/run_gls_qc.sh -d gemmx -m sdf -c 2800 -k 3             # and -k 4; -s add1 -w "980 1080" (zd)
-qcacc/gls/power_qc.sh -d qc|gemmx <tag> sdf|zd                   # PT PX + block hook
+qcacc/gls/power_qc.sh -d qc|gemmx <tag> sdf|zd                   # PT PX (WLM) + block hook; NN_PT_ZWLM=1: zero wire
 python3 -m qcacc.gls.energy_qc [--clock 5000 --dense-run build/nn_gls/conv1_sdf_5000ps]
 ```
 The control's GLS library is a copy of the base one (`/tmp/ckp908/qcacc_ctlgls`; the base build dirs are untouched).
@@ -157,9 +159,9 @@ The dense SAIFs were copied there and re-run through PT with the block hook.
 Logs: `impl_logs/` (synthesis summaries and block splits, GLS summaries, PT power summaries, energy tables, RTL references).
 
 ## Open issues
-1. No CTS / P&R: the ideal clock and WLM caveats above. The QC design's 29 % clock-network share means a real clock
+1. No CTS / P&R: the ideal clock and WLM caveats above. The QC design's 27 % clock-network share means a real clock
    tree costs it relatively more than the dense design.
 2. Per-layer energy is extrapolated from conv1. conv5 / conv8 (1x1, low utilisation) and conv0 (padded Cin) were
    not simulated at gate level.
-3. 87 % of the QC array's power is in the tiles (select-add + int32 accumulator), and the clock network is 29 % of
+3. 87 % of the QC array's power is in the tiles (select-add + int32 accumulator), and the clock network is 27 % of
    the cluster. The split between accumulator and select-add inside a tile was not measured (the hook stops at tile level).

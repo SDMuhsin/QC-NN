@@ -2,7 +2,10 @@
 # Environment: QC_FLOW (flow/tsmc65 of the synthesis tree), SYN (DC run dir: <top>.v, run.env values exported),
 #   QC_SDC / QC_PERIOD (ns, = the cluster clock of the GLS that wrote the SAIF), QC_EXTRA_DB_TT (macro .db),
 #   SAIF (file), SAIF_STRIP (instance path of the netlist top in the testbench), OUT (report prefix).
-# Pre-CTS: ideal clock network (as in synthesis / STA), wire-load net capacitance.
+# Pre-CTS: ideal clock network (as in synthesis / STA), wire-load net capacitance: the synthesis wire-load model
+#   (site.tcl QC_WLM_GROUP via common/lib.tcl qc_wire_load, as DC and PT timing; as qcacc/ablation/pt_power.tcl).
+#   NN_PT_ZWLM=1: library default instead (tcbn65gplus WireAreaForZero -> zero wire cap), the setting of the
+#   results before the 2026-11-07 erratum (nn/results/gls_power.md), which read 14-18 % low.
 source $::env(QC_FLOW)/common/lib.tcl
 set top KULCluster_snax_KUL_cluster_wrapper
 set corner tt
@@ -18,6 +21,8 @@ current_design $top
 link_design
 set ::env(QC_CORNER) $corner
 qc_apply_constraints $corner
+set wlm lib_default
+if {![info exists ::env(NN_PT_ZWLM)] || $::env(NN_PT_ZWLM) ne "1"} { set wlm [qc_wire_load $corner] }
 read_saif -strip_path $::env(SAIF_STRIP) $::env(SAIF)
 update_power
 set o $::env(OUT)
@@ -28,7 +33,7 @@ redirect ${o}_hier.rpt  { report_power -nosplit -hierarchy -levels 3 }
 # RF macros, clock_network = ICGs, ...), the hierarchy to depth 2 (i_snax_core_0_acc_0_snax_streamer_gemmX =
 # GeMMX: streamer + GeMM array + SIMD rescale) and the annotation statistics
 set fh [open ${o}.txt w]
-puts $fh "period_ns $::env(QC_PERIOD) corner $corner saif $::env(SAIF)"
+puts $fh "period_ns $::env(QC_PERIOD) corner $corner wire_load $wlm saif $::env(SAIF)"
 redirect -variable pr { report_power -nosplit }
 puts $fh [regsub {^.*?(Power Group)} $pr {\1}]
 redirect -variable ph { report_power -nosplit -hierarchy -levels 2 }

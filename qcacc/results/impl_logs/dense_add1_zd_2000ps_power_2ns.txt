@@ -1,132 +1,132 @@
-period_ns 2 corner tt saif /tmp/ckp908/qcacc_ctlgls/zd/nn_dense_add1_zd_2000ps/layer.saif
+period_ns 2 corner tt wire_load WireAreaLowkCon/enclosed saif /tmp/ckp908/qcacc_ctlgls/zd/nn_dense_add1_zd_2000ps/layer.saif
 Power Group             Power     Power      Power      Power   (     %)  Attrs
 --------------------------------------------------------------------------------
-clock_network              0.0516 1.288e-03 9.418e-05    0.0530 (61.37%)  i
-register                2.292e-03 5.522e-05 3.711e-03 6.059e-03 ( 7.02%)  
-combinational           3.069e-03 2.855e-03 7.531e-03    0.0135 (15.58%)  
+clock_network              0.0516 3.034e-03 9.418e-05    0.0547 (60.00%)  i
+register                2.460e-03 1.177e-04 3.711e-03 6.288e-03 ( 6.89%)  
+combinational           3.149e-03 5.649e-03 7.531e-03    0.0163 (17.90%)  
 sequential                 0.0000    0.0000    0.0000    0.0000 ( 0.00%)  
-memory                  9.358e-03 1.380e-05 4.472e-03    0.0138 (16.03%)  
+memory                  9.371e-03 2.788e-05 4.472e-03    0.0139 (15.20%)  
 io_pad                     0.0000    0.0000    0.0000    0.0000 ( 0.00%)  
 black_box                  0.0000    0.0000    0.0000    0.0000 ( 0.00%)  
 
-  Net Switching Power  = 4.212e-03   ( 4.88%)
-  Cell Internal Power  =    0.0663   (76.81%)
-  Cell Leakage Power   =    0.0158   (18.31%)
+  Net Switching Power  = 8.829e-03   ( 9.68%)
+  Cell Internal Power  =    0.0666   (72.99%)
+  Cell Leakage Power   =    0.0158   (17.33%)
                          ---------
-Total Power            =    0.0863  (100.00%)
+Total Power            =    0.0912  (100.00%)
 
 1
 
 Hierarchy                             Power    Power    Power     Power    %
 --------------------------------------------------------------------------------
-KULCluster_snax_KUL_cluster_wrapper   6.63e-02 4.21e-03 1.58e-02  8.63e-02 100.0
-  i_snax_core_0_acc_0_snax_streamer_gemmX (KULCluster_snax_streamer_gemmX_wrapper_00000040_56_140242) 9.33e-03 1.33e-04 6.07e-03 1.55e-02  18.0
-    i_snax_csr_mux_demux (KULCluster_snax_csr_mux_demux_65_00000020_00000020) 6.00e-06 6.28e-06 3.69e-06 1.60e-05   0.0
-    i_snax_streamer_gemmX_shell_wrapper (KULCluster_snax_streamer_gemmX_shell_wrapper) 3.66e-03 9.04e-05 5.08e-03 8.83e-03  10.2
-    i_snax_streamer_gemmX_streamer_wrapper (KULCluster_snax_streamer_gemmX_streamer_wrapper_00000040_00000038_00000011_140242) 5.34e-03 1.48e-05 9.62e-04 6.32e-03   7.3
-    i_snax_streamer_gemmX_csrman_wrapper (KULCluster_snax_streamer_gemmX_csrman_wrapper_00000013_00000002) 3.16e-04 2.11e-05 3.12e-05 3.69e-04   0.4
-  i_snax_core_1_xdma (KULCluster_snax_KUL_cluster_xdma_wrapper_317242) 3.86e-03 3.16e-05 7.82e-04 4.67e-03   5.4
-    i_snax_KUL_cluster_xdma (KULCluster_snax_KUL_cluster_xdma) 3.86e-03 3.16e-05 7.82e-04 4.67e-03   5.4
-  i_cluster (KULCluster_snitch_cluster_48_64_512_00000002_00000001_00000002_00000002_1_2_00000200_64_64_00000020_16_8_00000100_00000080_00000002_0_0_0_0_0_0_0_0_0_0_0_2_0_0_0000000800000010_0000003000000000_24_48_1_2_1_0000000000000038_0000000700000047_00000008_00000037_0_0000000100000001_0000000400000004_0000000400000004_0000000400000004_0000000100000001_0000000100000001_0_0000000100000001_0000000400000004_0000001000000010_0000000000000000_0_2_1_1_1_1_0_1_1_0_0_0_0_0_3ff_3ff_32_32_4_4_1_164242) 5.31e-02 4.05e-03 8.95e-03 6.61e-02  76.6
-    gen_tcdm_super_bank_2__gen_tcdm_bank_4__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_11) 4.92e-05 5.49e-07 1.21e-05 6.19e-05   0.1
-    gen_tcdm_super_bank_0__gen_tcdm_bank_0__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_31) 4.94e-05 6.47e-07 1.20e-05 6.20e-05   0.1
-    gen_tcdm_super_bank_3__gen_tcdm_bank_5__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_2) 4.93e-05 5.68e-07 1.22e-05 6.21e-05   0.1
+KULCluster_snax_KUL_cluster_wrapper   6.66e-02 8.83e-03 1.58e-02  9.12e-02 100.0
+  i_snax_core_0_acc_0_snax_streamer_gemmX (KULCluster_snax_streamer_gemmX_wrapper_00000040_56_140242) 9.33e-03 5.70e-04 6.07e-03 1.60e-02  17.5
+    i_snax_csr_mux_demux (KULCluster_snax_csr_mux_demux_65_00000020_00000020) 6.08e-06 1.68e-05 3.69e-06 2.65e-05   0.0
+    i_snax_streamer_gemmX_shell_wrapper (KULCluster_snax_streamer_gemmX_shell_wrapper) 3.66e-03 4.78e-04 5.08e-03 9.22e-03  10.1
+    i_snax_streamer_gemmX_streamer_wrapper (KULCluster_snax_streamer_gemmX_streamer_wrapper_00000040_00000038_00000011_140242) 5.34e-03 3.25e-05 9.62e-04 6.34e-03   6.9
+    i_snax_streamer_gemmX_csrman_wrapper (KULCluster_snax_streamer_gemmX_csrman_wrapper_00000013_00000002) 3.20e-04 4.28e-05 3.12e-05 3.94e-04   0.4
+  i_snax_core_1_xdma (KULCluster_snax_KUL_cluster_xdma_wrapper_317242) 3.86e-03 6.35e-05 7.82e-04 4.71e-03   5.2
+    i_snax_KUL_cluster_xdma (KULCluster_snax_KUL_cluster_xdma) 3.86e-03 6.35e-05 7.82e-04 4.71e-03   5.2
+  i_cluster (KULCluster_snitch_cluster_48_64_512_00000002_00000001_00000002_00000002_1_2_00000200_64_64_00000020_16_8_00000100_00000080_00000002_0_0_0_0_0_0_0_0_0_0_0_2_0_0_0000000800000010_0000003000000000_24_48_1_2_1_0000000000000038_0000000700000047_00000008_00000037_0_0000000100000001_0000000400000004_0000000400000004_0000000400000004_0000000100000001_0000000100000001_0_0000000100000001_0000000400000004_0000001000000010_0000000000000000_0_2_1_1_1_1_0_1_1_0_0_0_0_0_3ff_3ff_32_32_4_4_1_164242) 5.34e-02 8.20e-03 8.95e-03 7.05e-02  77.3
+    gen_tcdm_super_bank_2__gen_tcdm_bank_4__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_11) 4.93e-05 9.68e-07 1.21e-05 6.23e-05   0.1
+    gen_tcdm_super_bank_0__gen_tcdm_bank_0__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_31) 4.94e-05 1.17e-06 1.20e-05 6.26e-05   0.1
+    gen_tcdm_super_bank_3__gen_tcdm_bank_5__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_2) 4.93e-05 1.02e-06 1.22e-05 6.26e-05   0.1
     gen_core_0__i_sync_msip (KULCluster_sync_STAGES2_4) 1.30e-05    0.000 6.80e-08 1.31e-05   0.0
     gen_tcdm_super_bank_2__gen_tcdm_bank_1__i_sram_pipe (KULCluster_shift_reg_0_320242_14)    0.000    0.000    0.000    0.000   N/A
-    gen_tcdm_super_bank_1__gen_tcdm_bank_1__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_22) 4.97e-05 8.31e-07 1.22e-05 6.27e-05   0.1
+    gen_tcdm_super_bank_1__gen_tcdm_bank_1__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_22) 4.97e-05 1.52e-06 1.22e-05 6.35e-05   0.1
     gen_core_0__i_sync_mtip (KULCluster_sync_STAGES2_5) 1.30e-05    0.000 7.57e-08 1.31e-05   0.0
     gen_tcdm_super_bank_0__gen_tcdm_bank_2__i_sram_pipe (KULCluster_shift_reg_0_320242_29)    0.000    0.000    0.000    0.000   N/A
-    gen_snax_control_connection_0__gen_snax_use_csr_ports_i_snax_intf_translator (KULCluster_snax_intf_translator_000003c0_573242_1) 4.89e-05 8.88e-06 4.55e-06 6.24e-05   0.1
+    gen_snax_control_connection_0__gen_snax_use_csr_ports_i_snax_intf_translator (KULCluster_snax_intf_translator_000003c0_573242_1) 4.91e-05 1.45e-05 4.55e-06 6.81e-05   0.1
     gen_tcdm_super_bank_2__gen_tcdm_bank_7__i_sram_pipe (KULCluster_shift_reg_0_320242_8)    0.000    0.000    0.000    0.000   N/A
-    gen_tcdm_super_bank_2__gen_tcdm_bank_2__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_13) 4.93e-05 6.31e-07 1.21e-05 6.21e-05   0.1
-    gen_tcdm_super_bank_3__gen_tcdm_bank_3__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_4) 4.93e-05 5.91e-07 1.19e-05 6.18e-05   0.1
+    gen_tcdm_super_bank_2__gen_tcdm_bank_2__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_13) 4.94e-05 1.10e-06 1.21e-05 6.26e-05   0.1
+    gen_tcdm_super_bank_3__gen_tcdm_bank_3__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_4) 4.93e-05 1.04e-06 1.19e-05 6.23e-05   0.1
     gen_tcdm_super_bank_3__gen_tcdm_bank_3__i_sram_pipe (KULCluster_shift_reg_0_320242_4)    0.000    0.000    0.000    0.000   N/A
     gen_tcdm_super_bank_1__gen_tcdm_bank_4__i_sram_pipe (KULCluster_shift_reg_0_320242_19)    0.000    0.000    0.000    0.000   N/A
-    gen_tcdm_super_bank_2__gen_tcdm_bank_0__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_15) 4.93e-05 6.38e-07 1.21e-05 6.20e-05   0.1
-    i_popcount_req (KULCluster_popcount_00000002_1) 6.43e-07 2.08e-07 1.47e-08 8.66e-07   0.0
-    gen_tcdm_super_bank_2__i_tcdm_mux (KULCluster_mem_wide_narrow_mux_00000040_00000200_471242_1) 3.63e-06 3.31e-06 1.89e-05 2.59e-05   0.0
-    gen_tcdm_super_bank_3__gen_tcdm_bank_1__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_6) 4.92e-05 5.78e-07 1.19e-05 6.17e-05   0.1
+    gen_tcdm_super_bank_2__gen_tcdm_bank_0__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_15) 4.94e-05 1.13e-06 1.21e-05 6.26e-05   0.1
+    i_popcount_req (KULCluster_popcount_00000002_1) 6.41e-07 5.00e-07 1.47e-08 1.16e-06   0.0
+    gen_tcdm_super_bank_2__i_tcdm_mux (KULCluster_mem_wide_narrow_mux_00000040_00000200_471242_1) 3.73e-06 1.91e-05 1.89e-05 4.17e-05   0.0
+    gen_tcdm_super_bank_3__gen_tcdm_bank_1__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_6) 4.93e-05 1.02e-06 1.19e-05 6.22e-05   0.1
     i_cut_ext_wide_out (KULCluster_axi_cut_168242) 4.04e-04    0.000 1.14e-04 5.18e-04   0.6
     gen_tcdm_super_bank_0__gen_tcdm_bank_1__i_sram_pipe (KULCluster_shift_reg_0_320242_30)    0.000    0.000    0.000    0.000   N/A
     gen_tcdm_super_bank_2__gen_tcdm_bank_6__i_sram_pipe (KULCluster_shift_reg_0_320242_9)    0.000    0.000    0.000    0.000   N/A
-    gen_tcdm_super_bank_0__i_tcdm_mux (KULCluster_mem_wide_narrow_mux_00000040_00000200_471242_3) 4.97e-06 3.96e-06 1.85e-05 2.75e-05   0.0
+    gen_tcdm_super_bank_0__i_tcdm_mux (KULCluster_mem_wide_narrow_mux_00000040_00000200_471242_3) 5.10e-06 2.18e-05 1.85e-05 4.55e-05   0.0
     gen_tcdm_super_bank_0__gen_tcdm_bank_7__i_sram_pipe (KULCluster_shift_reg_0_320242_24)    0.000    0.000    0.000    0.000   N/A
     i_snitch_barrier (KULCluster_snitch_barrier_s00000002) 1.30e-05    0.000 9.09e-08 1.31e-05   0.0
-    gen_tcdm_super_bank_0__gen_tcdm_bank_7__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_24) 4.99e-05 9.46e-07 1.23e-05 6.32e-05   0.1
+    gen_tcdm_super_bank_0__gen_tcdm_bank_7__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_24) 5.00e-05 1.68e-06 1.23e-05 6.40e-05   0.1
     gen_tcdm_super_bank_3__gen_tcdm_bank_2__i_sram_pipe (KULCluster_shift_reg_0_320242_5)    0.000    0.000    0.000    0.000   N/A
     gen_tcdm_super_bank_1__gen_tcdm_bank_3__i_sram_pipe (KULCluster_shift_reg_0_320242_20)    0.000    0.000    0.000    0.000   N/A
-    gen_tcdm_super_bank_0__gen_tcdm_bank_5__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_26) 4.99e-05 1.05e-06 1.27e-05 6.36e-05   0.1
-    gen_hive_0__i_snitch_hive (KULCluster_snitch_hive_00000002_00000100_00000080_00000002_0_00000030_00000040_00000200_0_183242) 8.84e-03 8.93e-04 9.20e-04 1.07e-02  12.3
+    gen_tcdm_super_bank_0__gen_tcdm_bank_5__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_26) 4.99e-05 2.47e-06 1.27e-05 6.51e-05   0.1
+    gen_hive_0__i_snitch_hive (KULCluster_snitch_hive_00000002_00000100_00000080_00000002_0_00000030_00000040_00000200_0_183242) 9.02e-03 1.79e-03 9.20e-04 1.17e-02  12.9
     i_cut_ext_narrow_slv (KULCluster_axi_cut_146242) 1.68e-04    0.000 2.85e-05 1.96e-04   0.2
-    gen_tcdm_super_bank_1__gen_tcdm_bank_6__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_17) 4.94e-05 6.56e-07 1.20e-05 6.20e-05   0.1
+    gen_tcdm_super_bank_1__gen_tcdm_bank_6__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_17) 4.94e-05 1.15e-06 1.20e-05 6.26e-05   0.1
     gen_tcdm_super_bank_0__gen_tcdm_bank_0__i_sram_pipe (KULCluster_shift_reg_0_320242_31)    0.000    0.000    0.000    0.000   N/A
     gen_tcdm_super_bank_2__gen_tcdm_bank_5__i_sram_pipe (KULCluster_shift_reg_0_320242_10)    0.000    0.000    0.000    0.000   N/A
-    gen_tcdm_super_bank_2__gen_tcdm_bank_7__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_8) 4.93e-05 6.62e-07 1.29e-05 6.28e-05   0.1
-    i_axi_to_mem_dma (KULCluster_axi_to_mem_interleaved_00000030_00000200_00000003_1_00000002_562242) 1.10e-03 1.46e-05 2.74e-04 1.39e-03   1.6
+    gen_tcdm_super_bank_2__gen_tcdm_bank_7__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_8) 4.93e-05 1.51e-06 1.29e-05 6.37e-05   0.1
+    i_axi_to_mem_dma (KULCluster_axi_to_mem_interleaved_00000030_00000200_00000003_1_00000002_562242) 1.10e-03 3.18e-05 2.74e-04 1.41e-03   1.5
     gen_core_1__i_sync_debug (KULCluster_sync_STAGES2_3) 1.30e-05    0.000 6.80e-08 1.31e-05   0.0
-    gen_tcdm_super_bank_0__gen_tcdm_bank_3__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_28) 4.97e-05 9.72e-07 1.27e-05 6.34e-05   0.1
+    gen_tcdm_super_bank_0__gen_tcdm_bank_3__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_28) 4.98e-05 2.22e-06 1.27e-05 6.47e-05   0.1
     gen_tcdm_super_bank_0__gen_tcdm_bank_6__i_sram_pipe (KULCluster_shift_reg_0_320242_25)    0.000    0.000    0.000    0.000   N/A
     gen_core_1__i_sync_meip (KULCluster_sync_STAGES2_2) 1.30e-05    0.000 6.80e-08 1.31e-05   0.0
-    gen_tcdm_super_bank_1__gen_tcdm_bank_4__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_19) 4.95e-05 7.02e-07 1.23e-05 6.25e-05   0.1
+    gen_tcdm_super_bank_1__gen_tcdm_bank_4__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_19) 4.95e-05 1.25e-06 1.23e-05 6.31e-05   0.1
     gen_tcdm_super_bank_2__gen_tcdm_bank_0__i_sram_pipe (KULCluster_shift_reg_0_320242_15)    0.000    0.000    0.000    0.000   N/A
     gen_core_0__i_sync_debug (KULCluster_sync_STAGES2_7) 1.30e-05    0.000 6.80e-08 1.31e-05   0.0
-    gen_tcdm_super_bank_2__gen_tcdm_bank_5__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_10) 4.92e-05 5.33e-07 1.18e-05 6.15e-05   0.1
+    gen_tcdm_super_bank_2__gen_tcdm_bank_5__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_10) 4.92e-05 9.61e-07 1.18e-05 6.20e-05   0.1
     gen_tcdm_super_bank_1__gen_tcdm_bank_2__i_sram_pipe (KULCluster_shift_reg_0_320242_21)    0.000    0.000    0.000    0.000   N/A
-    i_reqrsp_to_axi_core (KULCluster_reqrsp_to_axi_00000040_00000002_149242_0) 6.18e-05 1.60e-06 2.19e-06 6.55e-05   0.1
+    i_reqrsp_to_axi_core (KULCluster_reqrsp_to_axi_00000040_00000002_149242_0) 6.18e-05 2.98e-06 2.19e-06 6.69e-05   0.1
     gen_tcdm_super_bank_3__gen_tcdm_bank_7__i_sram_pipe (KULCluster_shift_reg_0_320242_0)    0.000    0.000    0.000    0.000   N/A
-    i_snitch_cluster_peripheral (KULCluster_snitch_cluster_peripheral_00000030_00000002_905242) 8.84e-03 3.63e-04 1.57e-04 9.36e-03  10.8
-    gen_tcdm_super_bank_0__gen_tcdm_bank_1__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_30) 4.94e-05 7.74e-07 1.26e-05 6.28e-05   0.1
-    gen_tcdm_super_bank_3__gen_tcdm_bank_6__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_1) 4.93e-05 6.45e-07 1.20e-05 6.20e-05   0.1
-    gen_tcdm_super_bank_1__gen_tcdm_bank_2__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_21) 4.96e-05 7.73e-07 1.24e-05 6.28e-05   0.1
-    gen_tcdm_super_bank_2__gen_tcdm_bank_3__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_12) 4.93e-05 6.01e-07 1.22e-05 6.21e-05   0.1
-    gen_snax_control_connection_1__gen_snax_use_csr_ports_i_snax_intf_translator (KULCluster_snax_intf_translator_000003c0_573242_0) 3.96e-05 2.77e-06 2.17e-06 4.46e-05   0.1
+    i_snitch_cluster_peripheral (KULCluster_snitch_cluster_peripheral_00000030_00000002_905242) 8.84e-03 7.97e-04 1.57e-04 9.80e-03  10.7
+    gen_tcdm_super_bank_0__gen_tcdm_bank_1__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_30) 4.95e-05 1.89e-06 1.26e-05 6.40e-05   0.1
+    gen_tcdm_super_bank_3__gen_tcdm_bank_6__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_1) 4.94e-05 1.14e-06 1.20e-05 6.25e-05   0.1
+    gen_tcdm_super_bank_1__gen_tcdm_bank_2__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_21) 4.97e-05 1.38e-06 1.24e-05 6.35e-05   0.1
+    gen_tcdm_super_bank_2__gen_tcdm_bank_3__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_12) 4.93e-05 1.07e-06 1.22e-05 6.26e-05   0.1
+    gen_snax_control_connection_1__gen_snax_use_csr_ports_i_snax_intf_translator (KULCluster_snax_intf_translator_000003c0_573242_0) 3.98e-05 5.32e-06 2.17e-06 4.73e-05   0.1
     gen_tcdm_super_bank_2__gen_tcdm_bank_4__i_sram_pipe (KULCluster_shift_reg_0_320242_11)    0.000    0.000    0.000    0.000   N/A
-    gen_tcdm_super_bank_3__gen_tcdm_bank_4__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_3) 4.93e-05 5.73e-07 1.21e-05 6.19e-05   0.1
-    gen_yes_snax_tcdm_interconnect_i_tcdm_interconnect (KULCluster_snitch_tcdm_interconnect_0000001b_00000020_00000002_00000009_00000040_00000001_0_500242) 7.03e-03 5.65e-04 6.91e-04 8.29e-03   9.6
+    gen_tcdm_super_bank_3__gen_tcdm_bank_4__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_3) 4.93e-05 1.04e-06 1.21e-05 6.24e-05   0.1
+    gen_yes_snax_tcdm_interconnect_i_tcdm_interconnect (KULCluster_snitch_tcdm_interconnect_0000001b_00000020_00000002_00000009_00000040_00000001_0_500242) 7.04e-03 1.33e-03 6.91e-04 9.07e-03   9.9
     gen_tcdm_super_bank_0__gen_tcdm_bank_5__i_sram_pipe (KULCluster_shift_reg_0_320242_26)    0.000    0.000    0.000    0.000   N/A
     gen_core_0__i_sync_meip (KULCluster_sync_STAGES2_6) 1.30e-05    0.000 6.80e-08 1.31e-05   0.0
-    gen_tcdm_super_bank_1__gen_tcdm_bank_0__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_23) 4.97e-05 8.20e-07 1.23e-05 6.28e-05   0.1
-    i_axi_to_reg (KULCluster_axi_to_reg_s00000030_s00000040_s00000004_s00000002_1_1_1_917242) 1.29e-03 2.92e-05 4.01e-05 1.36e-03   1.6
-    gen_tcdm_super_bank_2__gen_tcdm_bank_1__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_14) 4.93e-05 6.12e-07 1.22e-05 6.21e-05   0.1
+    gen_tcdm_super_bank_1__gen_tcdm_bank_0__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_23) 4.97e-05 1.48e-06 1.23e-05 6.35e-05   0.1
+    i_axi_to_reg (KULCluster_axi_to_reg_s00000030_s00000040_s00000004_s00000002_1_1_1_917242) 1.29e-03 6.25e-05 4.01e-05 1.39e-03   1.5
+    gen_tcdm_super_bank_2__gen_tcdm_bank_1__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_14) 4.93e-05 1.08e-06 1.22e-05 6.26e-05   0.1
     gen_tcdm_super_bank_1__gen_tcdm_bank_1__i_sram_pipe (KULCluster_shift_reg_0_320242_22)    0.000    0.000    0.000    0.000   N/A
-    gen_yes_wide_acc_connect_i_dma_interconnect (KULCluster_snitch_tcdm_interconnect_00000007_00000004_00000009_00000200__logic_Z_1yB__00000001_024242) 2.01e-04 3.95e-06 1.51e-04 3.55e-04   0.4
-    gen_tcdm_super_bank_3__i_tcdm_mux (KULCluster_mem_wide_narrow_mux_00000040_00000200_471242_0) 3.80e-06 3.44e-06 1.99e-05 2.71e-05   0.0
+    gen_yes_wide_acc_connect_i_dma_interconnect (KULCluster_snitch_tcdm_interconnect_00000007_00000004_00000009_00000200__logic_Z_1yB__00000001_024242) 2.01e-04 1.52e-05 1.51e-04 3.67e-04   0.4
+    gen_tcdm_super_bank_3__i_tcdm_mux (KULCluster_mem_wide_narrow_mux_00000040_00000200_471242_0) 3.90e-06 1.99e-05 1.99e-05 4.37e-05   0.0
     gen_tcdm_super_bank_3__gen_tcdm_bank_6__i_sram_pipe (KULCluster_shift_reg_0_320242_1)    0.000    0.000    0.000    0.000   N/A
-    gen_tcdm_super_bank_3__gen_tcdm_bank_2__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_5) 4.93e-05 5.80e-07 1.24e-05 6.23e-05   0.1
-    i_popcount_con (KULCluster_popcount_00000002_0) 1.96e-09 7.02e-10 1.40e-08 1.67e-08   0.0
+    gen_tcdm_super_bank_3__gen_tcdm_bank_2__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_5) 4.93e-05 1.04e-06 1.24e-05 6.28e-05   0.1
+    i_popcount_con (KULCluster_popcount_00000002_0) 1.95e-09 1.42e-09 1.40e-08 1.74e-08   0.0
     gen_tcdm_super_bank_1__gen_tcdm_bank_7__i_sram_pipe (KULCluster_shift_reg_0_320242_16)    0.000    0.000    0.000    0.000   N/A
-    i_axi_dma_xbar (KULCluster_axi_xbar_0_952242) 3.05e-03 1.05e-05 5.82e-04 3.65e-03   4.2
+    i_axi_dma_xbar (KULCluster_axi_xbar_0_952242) 3.05e-03 2.23e-05 5.82e-04 3.66e-03   4.0
     i_cut_ext_wide_in (KULCluster_axi_cut_109242) 4.04e-04    0.000 1.11e-04 5.15e-04   0.6
-    gen_core_1__i_snitch_cc (KULCluster_snitch_cc_00000030_00000040_00000200_00000001_00000010_00000008_00000011_0_0_0_0_0_0_0_0_0_0_1_0_0_0_0_00000001_00000004_00000004_00000004_00000001_00000001_00000010_00000001_00000004_00_0_1_1_1_1_0_0_0_0_1_166949) 8.37e-03 1.09e-03 7.88e-04 1.02e-02  11.9
-    gen_tcdm_super_bank_1__i_tcdm_mux (KULCluster_mem_wide_narrow_mux_00000040_00000200_471242_2) 4.56e-06 3.99e-06 1.88e-05 2.74e-05   0.0
+    gen_core_1__i_snitch_cc (KULCluster_snitch_cc_00000030_00000040_00000200_00000001_00000010_00000008_00000011_0_0_0_0_0_0_0_0_0_0_1_0_0_0_0_00000001_00000004_00000004_00000004_00000001_00000001_00000010_00000001_00000004_00_0_1_1_1_1_0_0_0_0_1_166949) 8.40e-03 2.11e-03 7.88e-04 1.13e-02  12.4
+    gen_tcdm_super_bank_1__i_tcdm_mux (KULCluster_mem_wide_narrow_mux_00000040_00000200_471242_2) 4.68e-06 2.30e-05 1.88e-05 4.65e-05   0.1
     gen_tcdm_super_bank_3__gen_tcdm_bank_1__i_sram_pipe (KULCluster_shift_reg_0_320242_6)    0.000    0.000    0.000    0.000   N/A
-    gen_tcdm_super_bank_3__gen_tcdm_bank_0__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_7) 4.92e-05 5.72e-07 1.23e-05 6.21e-05   0.1
+    gen_tcdm_super_bank_3__gen_tcdm_bank_0__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_7) 4.93e-05 1.02e-06 1.23e-05 6.26e-05   0.1
     gen_tcdm_super_bank_2__gen_tcdm_bank_3__i_sram_pipe (KULCluster_shift_reg_0_320242_12)    0.000    0.000    0.000    0.000   N/A
-    i_cluster_xbar (KULCluster_axi_xbar__900242) 2.45e-03 1.83e-05 1.57e-04 2.62e-03   3.0
+    i_cluster_xbar (KULCluster_axi_xbar__900242) 2.45e-03 3.95e-05 1.57e-04 2.64e-03   2.9
     gen_tcdm_super_bank_0__gen_tcdm_bank_4__i_sram_pipe (KULCluster_shift_reg_0_320242_27)    0.000    0.000    0.000    0.000   N/A
     gen_tcdm_super_bank_1__gen_tcdm_bank_0__i_sram_pipe (KULCluster_shift_reg_0_320242_23)    0.000    0.000    0.000    0.000   N/A
     gen_tcdm_super_bank_3__gen_tcdm_bank_5__i_sram_pipe (KULCluster_shift_reg_0_320242_2)    0.000    0.000    0.000    0.000   N/A
-    gen_tcdm_super_bank_0__gen_tcdm_bank_6__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_25) 4.99e-05 9.91e-07 1.20e-05 6.29e-05   0.1
+    gen_tcdm_super_bank_0__gen_tcdm_bank_6__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_25) 5.00e-05 1.75e-06 1.20e-05 6.37e-05   0.1
     gen_tcdm_super_bank_1__gen_tcdm_bank_6__i_sram_pipe (KULCluster_shift_reg_0_320242_17)    0.000    0.000    0.000    0.000   N/A
-    gen_tcdm_super_bank_1__gen_tcdm_bank_7__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_16) 4.94e-05 6.70e-07 1.22e-05 6.23e-05   0.1
-    i_cut_ext_narrow_mst (KULCluster_axi_cut_299242) 1.69e-04 1.53e-07 2.96e-05 1.99e-04   0.2
-    i_snitch_data_mem (KULCluster_snitch_data_mem_00000200_00000040_00000020_301242) 4.45e-03 1.58e-05 4.17e-03 8.64e-03  10.0
-    i_axi_zeromem (KULCluster_axi_zero_mem_00000030_00000200_00000003_1_1_562242) 1.99e-04 3.65e-06 1.61e-05 2.19e-04   0.3
-    gen_core_0__i_snitch_cc (KULCluster_snitch_cc_00000030_00000040_00000200_00000001_00000010_00000008_00000011_0_0_0_0_0_0_0_0_0_0_0_0_0_0_0_00000001_00000004_00000004_00000004_00000001_00000001_00000010_00000001_00000004_00_0_1_1_1_1_0_0_0_0_1_166949) 3.97e-03 9.73e-04 2.21e-04 5.16e-03   6.0
+    gen_tcdm_super_bank_1__gen_tcdm_bank_7__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_16) 4.94e-05 1.21e-06 1.22e-05 6.28e-05   0.1
+    i_cut_ext_narrow_mst (KULCluster_axi_cut_299242) 1.69e-04 3.03e-07 2.96e-05 1.99e-04   0.2
+    i_snitch_data_mem (KULCluster_snitch_data_mem_00000200_00000040_00000020_301242) 4.46e-03 2.18e-05 4.17e-03 8.64e-03   9.5
+    i_axi_zeromem (KULCluster_axi_zero_mem_00000030_00000200_00000003_1_1_562242) 1.99e-04 7.65e-06 1.61e-05 2.23e-04   0.2
+    gen_core_0__i_snitch_cc (KULCluster_snitch_cc_00000030_00000040_00000200_00000001_00000010_00000008_00000011_0_0_0_0_0_0_0_0_0_0_0_0_0_0_0_00000001_00000004_00000004_00000004_00000001_00000001_00000010_00000001_00000004_00_0_1_1_1_1_0_0_0_0_1_166949) 3.99e-03 1.78e-03 2.21e-04 6.00e-03   6.6
     gen_core_1__i_sync_msip (KULCluster_sync_STAGES2_0) 1.30e-05    0.000 6.80e-08 1.31e-05   0.0
     gen_tcdm_super_bank_3__gen_tcdm_bank_0__i_sram_pipe (KULCluster_shift_reg_0_320242_7)    0.000    0.000    0.000    0.000   N/A
     gen_tcdm_super_bank_2__gen_tcdm_bank_2__i_sram_pipe (KULCluster_shift_reg_0_320242_13)    0.000    0.000    0.000    0.000   N/A
-    gen_tcdm_super_bank_0__gen_tcdm_bank_4__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_27) 4.99e-05 9.53e-07 1.19e-05 6.28e-05   0.1
+    gen_tcdm_super_bank_0__gen_tcdm_bank_4__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_27) 5.00e-05 1.70e-06 1.19e-05 6.36e-05   0.1
     gen_core_1__i_sync_mtip (KULCluster_sync_STAGES2_1) 1.30e-05    0.000 7.57e-08 1.31e-05   0.0
     gen_tcdm_super_bank_0__gen_tcdm_bank_3__i_sram_pipe (KULCluster_shift_reg_0_320242_28)    0.000    0.000    0.000    0.000   N/A
-    gen_tcdm_super_bank_1__gen_tcdm_bank_5__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_18) 4.94e-05 7.85e-07 1.28e-05 6.30e-05   0.1
-    i_axi_to_tcdm (KULCluster_axi_to_tcdm_00000030_00000040_00000004_00000002_257242) 2.36e-04 7.30e-06 2.34e-05 2.67e-04   0.3
-    gen_tcdm_super_bank_2__gen_tcdm_bank_6__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_9) 4.92e-05 5.70e-07 1.20e-05 6.18e-05   0.1
-    gen_tcdm_super_bank_0__gen_tcdm_bank_2__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_29) 4.96e-05 7.53e-07 1.21e-05 6.24e-05   0.1
-    gen_tcdm_super_bank_3__gen_tcdm_bank_7__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_0) 4.94e-05 6.51e-07 1.20e-05 6.21e-05   0.1
+    gen_tcdm_super_bank_1__gen_tcdm_bank_5__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_18) 4.95e-05 1.88e-06 1.28e-05 6.41e-05   0.1
+    i_axi_to_tcdm (KULCluster_axi_to_tcdm_00000030_00000040_00000004_00000002_257242) 2.36e-04 1.59e-05 2.34e-05 2.76e-04   0.3
+    gen_tcdm_super_bank_2__gen_tcdm_bank_6__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_9) 4.93e-05 1.01e-06 1.20e-05 6.23e-05   0.1
+    gen_tcdm_super_bank_0__gen_tcdm_bank_2__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_29) 4.96e-05 1.35e-06 1.21e-05 6.30e-05   0.1
+    gen_tcdm_super_bank_3__gen_tcdm_bank_7__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_0) 4.94e-05 1.15e-06 1.20e-05 6.26e-05   0.1
     gen_tcdm_super_bank_3__gen_tcdm_bank_4__i_sram_pipe (KULCluster_shift_reg_0_320242_3)    0.000    0.000    0.000    0.000   N/A
-    i_reqrsp_mux_core (KULCluster_reqrsp_mux_00000002_00000030_00000040_2_388242) 7.05e-05 3.21e-06 2.79e-06 7.65e-05   0.1
-    gen_tcdm_super_bank_1__gen_tcdm_bank_3__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_20) 4.96e-05 9.06e-07 1.31e-05 6.36e-05   0.1
+    i_reqrsp_mux_core (KULCluster_reqrsp_mux_00000002_00000030_00000040_2_388242) 7.07e-05 8.76e-06 2.79e-06 8.23e-05   0.1
+    gen_tcdm_super_bank_1__gen_tcdm_bank_3__i_amo_shim (KULCluster_snitch_amo_shim_00000009_00000040_00000001_20) 4.97e-05 2.32e-06 1.31e-05 6.51e-05   0.1
     gen_tcdm_super_bank_1__gen_tcdm_bank_5__i_sram_pipe (KULCluster_shift_reg_0_320242_18)    0.000    0.000    0.000    0.000   N/A
 1
 

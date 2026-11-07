@@ -135,3 +135,24 @@ python3 nn/gls/energy.py --other build/nn_gls/add1_zd_2000ps build/nn_gls/conv1_
 ```
 The SAIF, the SDF, the netlist and the full PT reports stay on the server. Only the summaries in `gls_logs/`
 (design hierarchy, power groups, annotation statistics) are tracked.
+
+## Erratum (2026-11-07): PT wire-load
+
+`nn/gls/pt_power.tcl` never selected a wire-load model, so PrimeTime PX used the library default (WireAreaForZero:
+zero wire capacitance), whereas DC sized the netlist with the kit's WireAreaLowkCon (enclosed). The array ablation
+(`qcacc/results/ablation.md`) showed this reads 14-18 % low. `pt_power.tcl` now applies the synthesis WLM
+(`common/lib.tcl` `qc_wire_load`, as DC, PT timing and `qcacc/ablation`); `NN_PT_ZWLM=1` reproduces the numbers
+above. Same SAIFs, no new simulation. Summaries: `gls_logs/*_wlm.txt`, `gls_logs/energy_wlm.txt`. Corrected table:
+
+| SAIF from | clock | total | dynamic / leakage | GeMMX (array+SIMD / streamer) | rest of cluster | RF macros | conv1 energy | pJ/MAC cluster (GeMMX) | TOPS/W cluster (GeMMX) |
+|---|---|---|---|---|---|---|---|---|---|
+| SDF tt | **356.8 MHz** (2.8 ns) | **391 mW** (+17.6 %) | 375 / 15.8 mW | 237 mW, 61 % (213 / 24) | 154 mW | 84 mW | **6.73 uJ** (GeMMX 4.08) | **2.85 (1.73)** | **0.70 (1.16)** |
+| SDF tt | 200 MHz (5 ns) | 226 mW (+16.9 %) | 211 / 15.8 mW | 135 mW, 60 % (122 / 14) | 91 mW | 50 mW | 6.96 uJ (4.15) | 2.95 (1.76) | 0.68 (1.14) |
+| zero delay | 500 MHz (2 ns) | 448 mW (+17.1 %) | 433 / 15.8 mW | 247 mW, 55 % (218 / 29) | 201 mW | 115 mW | 5.55 uJ (3.06) | 2.35 (1.30) | 0.85 (1.54) |
+| zd, add1 window (cores only) | 500 MHz | 91 mW | 75 / 15.8 mW | 16 mW | 75 mW | 14 mW | 151 pJ dynamic / cycle | | |
+
+Energy per image (same extrapolation): **110.4 uJ** at 356.8 MHz (convs 38.9 + other 71.4; ~98 mW; 0.23 TOPS/W) and
+124.4 uJ at 200 MHz (40.3 + 84.2; ~62 mW), was 100.9 / 115.0 uJ. Leakage is unchanged; the RF macros barely move
+(the WLM adds net capacitance to logic). In the paper sanity check the conv1 cluster efficiency becomes 0.70 TOPS/W
+(1.16 GeMMX only): inside the scaled OpenGeMM range (0.53-0.71), x1.0 instead of x1.2-1.6; the other verdicts shift
+by the same factor 0.85.
