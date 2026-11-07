@@ -22,7 +22,7 @@ done
 shift $((OPTIND - 1))
 FLAGS="$*"
 TAG=${TAG:-img${FIRST}_n${IMAGES}$(echo "$FLAGS" | tr -d ' ' | sed 's/-DNN_/_/g' | tr 'A-Z' 'a-z')}
-L=$QCNN/build/nn_rtl/$TAG
+L=${NN_RTL_OUT:-$QCNN/build/nn_rtl}/$TAG
 R=${KUL_VSIM_DIR:-/tmp/ckp908/qcnn_kul}
 QUESTA=${KUL_QUESTA:-/CMC/scripts/siemens.questasim.2022.1_2.csh}
 rq() { ssh "$HOST" "tcsh -c 'source $QUESTA >& /dev/null; $*'"; }

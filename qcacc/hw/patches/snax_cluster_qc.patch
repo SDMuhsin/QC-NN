@@ -1,0 +1,73 @@
+diff --git a/hw/chisel/src/main/scala/snax/streamer/DesignParams.scala b/hw/chisel/src/main/scala/snax/streamer/DesignParams.scala
+index 9cc18288..26410a90 100644
+--- a/hw/chisel/src/main/scala/snax/streamer/DesignParams.scala
++++ b/hw/chisel/src/main/scala/snax/streamer/DesignParams.scala
+@@ -81,9 +81,10 @@ class StreamerParam(
+ 
+   // transpose parameters
+   if (hasTranspose) {
++    // qcacc: readers of another width (QC-GeMMX B: 1 x 64 b) get no transposer, see Streamer.scala
+     require(
+-      fifoWidthReader.forall(_ == 512),
+-      "Transpose only supports for readers with the same 512 data width"
++      fifoWidthReader.exists(_ == 512),
++      "Transpose only supports for readers with 512 data width"
+     )
+ 
+     require(
+@@ -100,6 +101,14 @@ class StreamerParam(
+      else
+        Seq[HasDataPathExtension]())
+ 
++  // qcacc: per reader, only the extensions whose data width matches the reader's
++  def dataPathABExtensionParamOf(i: Int): Seq[HasDataPathExtension] =
++    dataPathABExtensionParam.filter(_.extensionParam.dataWidth == fifoWidthReader(i))
++  // CSRs of the full A/B extension list (kept for every reader: same CSR map as without qcacc)
++  val dataPathABExtensionCsrNum: Int =
++    if (dataPathABExtensionParam.isEmpty) 0
++    else 1 + dataPathABExtensionParam.map(_.extensionParam.userCsrNum).sum
++
+   val dataPathCExtensionParam: Seq[HasDataPathExtension] =
+     (if (hasCBroadcast)
+        Seq[HasDataPathExtension](
+diff --git a/hw/chisel/src/main/scala/snax/streamer/Streamer.scala b/hw/chisel/src/main/scala/snax/streamer/Streamer.scala
+index 348306ba..798f9418 100644
+--- a/hw/chisel/src/main/scala/snax/streamer/Streamer.scala
++++ b/hw/chisel/src/main/scala/snax/streamer/Streamer.scala
+@@ -166,7 +166,7 @@ class Streamer(
+   val readerExtensions = (0 until param.readerParams.length).map { i =>
+     Module(
+       new DataPathExtensionHost(
+-        extensionList = param.dataPathABExtensionParam,
++        extensionList = param.dataPathABExtensionParamOf(i),
+         dataWidth = param.fifoWidthReader(i),
+         headCut = false,
+         tailCut = false,
+@@ -365,9 +365,14 @@ class Streamer(
+ 
+   // connect the csr configuration to the extension
+   for (i <- 0 until param.readerParams.length) {
++    val csrBefore = remainingCSR.length
+     remainingCSR = readerExtensions(i).io.connectCfgWithList(
+       remainingCSR
+     )
++    // qcacc: a reader without (width-matching) extensions leaves its CSR slots unused
++    remainingCSR = remainingCSR.drop(
++      param.dataPathABExtensionCsrNum - (csrBefore - remainingCSR.length)
++    )
+   }
+ 
+   // c broadcast
+diff --git a/util/snaxgen/snaxgen.py b/util/snaxgen/snaxgen.py
+index a9e7f2c1..7c9793e3 100755
+--- a/util/snaxgen/snaxgen.py
++++ b/util/snaxgen/snaxgen.py
+@@ -490,7 +490,7 @@ def main():
+                 )
+             gen_chisel_file(
+                 chisel_path=chisel_acc_path,
+-                chisel_param="snax_acc.gemmx.BlockGemmRescaleSIMDGen "
++                chisel_param="snax_acc.qcgemm.QcBlockGemmRescaleSIMDGen "  # qcacc: QC-GeMMX core
+                 + " --meshRow "
+                 + str(acc_cfgs[i]["snax_gemmx_mesh_row"])
+                 + " --meshCol "

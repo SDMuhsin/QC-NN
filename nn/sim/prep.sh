@@ -11,7 +11,7 @@ L=$1; FIRST=$2; IMAGES=$3; shift 3
 FLAGS="$*"
 mkdir -p "$L"
 echo "--first $FIRST --images $IMAGES $FLAGS" > "$L/cmd.txt"
-(cd "$QCNN" && python3 -m nn.compile.main --images "$IMAGES" --first "$FIRST" --check "$IMAGES" --out "$L/gen") > "$L/compile.txt"
+(cd "$QCNN" && ${NN_COMPILE:-python3 -m nn.compile.main} --images "$IMAGES" --first "$FIRST" --check "$IMAGES" --out "$L/gen") > "$L/compile.txt"
 NN_GEN=$L/gen NN_BUILD=$L/sw "$NN/sw/build.sh" $FLAGS > "$L/build.txt" 2>&1
 python3 "$NN/sim/memisl.py" banks "$L/sw/resnet8.memisl.elf" "$L/run/banks"
 mv "$L/run/banks/stub.elf" "$L/run/"

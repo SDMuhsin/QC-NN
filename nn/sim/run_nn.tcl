@@ -9,6 +9,7 @@ source memisl.tcl
 
 proc inst {du} { lindex [lindex [find instances -recursive -bydu $du] 0] 0 }
 set bg [inst KULCluster_BlockGemm]
+if {$bg == ""} { set bg [inst KULCluster_QcBlockGemm] }   ;# QC-GeMMX cluster (qcacc/hw)
 set st [inst KULCluster_snax_streamer_gemmX_Streamer]
 foreach {name sig} [list gemm_busy $bg/cstate simd_busy [file dirname $bg]/simd/io_busy_o str_busy $st/cstate] {
   when -label nn_$name "$sig'event" "echo \"NN_PROBE $name \[examine -radix unsigned $sig\] \$now\""

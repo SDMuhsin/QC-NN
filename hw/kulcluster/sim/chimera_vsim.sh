@@ -10,7 +10,8 @@ STEP=${1:-all}
 HOST=${KUL_VSIM_HOST:-tau1}
 R=${KUL_VSIM_DIR:-/tmp/ckp908/qcnn_kul}
 QUESTA=${KUL_QUESTA:-/CMC/scripts/siemens.questasim.2022.1_2.csh}
-WS=$KUL_BUILD/chimera_ws
+WS=${KUL_WS:-$KUL_BUILD/chimera_ws}
+GEN=${KUL_GEN:-$KUL_DIR/generated}   # cluster pickles (qcacc/hw/sim/run_rtl_qc.sh: the QC-GeMMX ones)
 ELF=${ELF:-$KUL_BUILD/sw/chimera_gemmx.memisl.elf}
 rq() { ssh "$HOST" "tcsh -c 'source $QUESTA >& /dev/null; cd $R; $*'"; }
 
@@ -24,7 +25,7 @@ if [ "$STEP" = compile ] || [ "$STEP" = all ]; then
   echo "vlog \"${CHS/$WS/$R/chimera_ws}/target/sim/src/elfloader.cpp\" -ccflags \"-std=c++11\"" >> $KUL_BUILD/compile.chimera_kul.tcl
   ssh $HOST "mkdir -p $R/hw/kulcluster $R/sw"
   rsync -a --delete --exclude '.git' --exclude '/.bender/git/db' --exclude 'work/' $WS/ $HOST:$R/chimera_ws/
-  rsync -a $KUL_DIR/generated $HOST:$R/hw/kulcluster/
+  rsync -a $GEN/ $HOST:$R/hw/kulcluster/generated/
   rsync -a $KUL_BUILD/compile.chimera_kul.tcl $HOST:$R/
   rq "rm -rf work; vlib work >& /dev/null; vsim -c -do \"source compile.chimera_kul.tcl; quit\" >& compile.log; grep -c Error: compile.log; tail -3 compile.log"
 fi

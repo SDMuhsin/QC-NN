@@ -77,3 +77,40 @@ Same `nn_conv_t` / `set_gemmx_streamer_csr` register map; the B reader has **1 s
 3. 42 calls instead of 9: CSR programming per call from TCDM (~120 cycles assumed) is not measured yet.
 4. conv0 padded input channels: decoded weights may be nonzero there (don't-care); correct only because the
    A padding holds the zero point (`subtraction_a`), as in `nn/`.
+
+# M2a — RTL (QC-GeMMX cluster) and first verification
+
+| file | contents |
+|---|---|
+| `hw/chisel/qcgemm/QcGemmArray.scala` | QC array: `QcRowButterfly` (per row: x = a - subtraction_a, s_p, d_p), `QcColumnDecoder` (per column, 64-bit code word), `QcTile` (4-term select-sum; accumulator / add-C / control = dense `Tile`), `QcMesh`, `QcGemmArray` (A / C / D bit layout = dense) |
+| `hw/chisel/qcgemm/QcBlockGemm.scala` | dense `BlockGemm` verbatim except the array and B width (64 b); `QcBlockGemmEmit` (unit TB) |
+| `hw/chisel/qcgemm/QcBlockGemmRescaleSIMD.scala` | dense `BlockGemmRescaleSIMD` verbatim with `QcBlockGemm`, emitted under the dense module name |
+| `hw/sv/snax_streamer_gemmX_shell_wrapper.sv` | upstream shell wrapper, `DataWidthB = 64` |
+| `hw/patches/snax_cluster_qc.patch` | snaxgen runs `QcBlockGemmRescaleSIMDGen`; streamer: the transposer only on 512-b readers (upstream `require`s every reader to be 512 b when `has_transpose`), the B reader keeps its unused CSR slot -> **CSR map identical** to the dense cluster |
+| `hw/cfg/snax_KUL_cluster_qc.hjson` | `hw/kulcluster` config with the B reader 1 ch x 64 b; B moves to the narrow TCDM ports (wide ports = 512-b superbank groups): A 0-7, B 8, D8 9-16, C/D32 17-48, xDMA 49-64 |
+| `hw/gen.sh` | `hw/kulcluster/gen.sh` on a separate checkout `build/qcacc/snax_cluster` + overlay -> `build/qcacc/generated/kulcluster_{sim,vlt,syn}.sv` (same `KULCluster_` prefix / top: drop-in) |
+| `hw/tb/` | Verilator TB of `QcBlockGemm` vs `model/array.py` (`vectors.py`, `tb_qc_blockgemm.cpp`, `run.sh`) |
+| `hw/sim/run_rtl_qc.sh`, `hw/sim/summary.py` | `nn/sim/run_rtl.sh` with the QC pickles (remote work dir `/tmp/ckp908/qcacc_kul`), the qc-mode compiler and the QC tree's headers; results in `build/qcacc/rtl/<tag>/` |
+
+Hooks in the base (defaults unchanged): `hw/kulcluster/sim/chimera_vsim.sh` env `KUL_WS`, `KUL_GEN`;
+`nn/sim/prep.sh` env `NN_COMPILE`; `nn/sim/run_rtl.sh` env `NN_RTL_OUT`; `nn/sim/run_nn.tcl` probes
+`KULCluster_QcBlockGemm` when there is no `KULCluster_BlockGemm`.
+
+```bash
+qcacc/hw/gen.sh                                  # ~2.5 min
+qcacc/hw/tb/run.sh [stall%]                      # unit TB, exit 0 = bit-exact
+qcacc/hw/sim/run_rtl_qc.sh -S conv1_g1 -H usask  # conv0 + conv1 in chimera (Questa), byte-exact check
+qcacc/hw/sim/run_rtl_qc.sh -H usask -n 1         # whole network, image 0
+```
+
+## M2a results (2026-11-07)
+* `gen.sh`: 2 min 18 s.  Unit TB (`hw/tb/run.sh 30`): 200 random cases + all 42 QC calls of s2 image 0
+  (29 574 fires, A/B/C/D random stalls on every other case): **0 bad D words**, bit-exact; full-rate cases busy
+  16 027 cycles vs M·N·(K+1) = 15 785.
+* chimera + QC cluster, Questa 2022.1 on usask (tau-02), cluster clock 2 ns:
+  * `-S conv1_g1` (NN_FULL_CHECK): conv0 + conv1 byte-exact.  conv1 (2 calls, 4608 fires): GeMMX busy 5372,
+    streamer 5374 (dense GeMMX conv1: 6162 busy, 1 call).
+  * whole network, image 0: **logits bit-exact**, every per-group checksum OK (incl. the sign-flipped rows of
+    conv5 / conv8, i.e. negative SIMD multipliers), 475 715 cycles (dense RTL 401.7 k); GeMMX busy 31 913.
+    The extra cycles are per-call overhead: ~2.2 k cycles per group call outside the GeMMX busy window
+    (cycle model assumed 120), x 42 calls.
