@@ -1,5 +1,7 @@
 # qc/ — ResNet-8 (MLPerf Tiny, CIFAR-10) with quasi-cyclic conv weights
 
+Results: [`RESULTS.md`](RESULTS.md) (best: signed QC b=2, 80.70 % float / 80.41 % int8 vs 87.19 / 87.30 dense; strict 0/1 QC b=2 66.93 / 66.67).
+
 Each conv's GEMM matrix `[cout, kh*kw*cin_pad]` (column order `(kh,kw,cin)`, or `(cin,kh,kw)` with
 `--view chw`; cin zero-padded to a multiple of b, conv0 3 -> 8) is tiled into b x b blocks; every block is
 zero or the sum of at most two distinct cyclically shifted identities (0/1 entries; `signed` mode also
@@ -16,6 +18,9 @@ Reuses `nn/model` (graph, Keras same padding, CIFAR-10 loader, pretrained `.h5`)
 | `export.py` | BN folded into each conv -> `.npz` params in the nn/model `load_h5` format (W = scale[co] * M, b; dense fc) |
 | `verify_int8.py` | proves the int8 weights from `nn.quant.quantize` are sign(scale[co]) * M and every block decomposes as QC |
 | `stats.py` | per-layer / total storage (QC slots vs dense int8) and additions vs dense MACs -> `results/<name>.md`, `results/summary.md` |
+| `final.sh` | one command per final model: `train NAME`, `int8 NAME` (verify, export, nn/quant int8, verify int8), `stats` |
+| `fetch.sh` | trained checkpoints (release asset `qc-v1`) + CIFAR-10 -> `/tmp/$USER/qc/final` |
+| `RESULTS.md` | **results write-up**: headline table, decisions, what was tried and failed |
 | `test_structure.py` | random QC matrices round-trip, non-QC matrices are rejected |
 
 Training (`--method staged`, default): one SGD nesterov + cosine run split by `--stages fA,fB,fC`:
