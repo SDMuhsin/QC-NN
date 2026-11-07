@@ -6,6 +6,11 @@ Scheme (chosen so that every conv is ONE GeMMX call with the SIMD stage doing re
     The network input is the raw pixel minus 128 (scale 1, zp -128): lossless.
   * conv weights: symmetric int8, one scale per SIMD lane (lane = out channel % 8; the 8
     lanes of the RescaleSIMD have their own multiplier/shift) or per tensor (--wgran tensor).
+    --wgran channel: one scale per output channel, sw_co = max|W_co| / --wq (reference model only;
+    on GeMMX a conv with cout > 8 then needs per-channel SIMD CSRs or one call per 8 channels).
+    For qc/export.py params (W_co = s_co * M_co, M 0/1 or -1/0/1) use --wgran channel --wq 1:
+    sw_co = |s_co| and the int8 weights are sign(s_co) * M_co exactly (the sign stays in the
+    weights, the multiplier is positive; zero rows get sw = 1).
   * conv bias: int32 in the GeMMX C input (broadcast per channel), + rounding offset
     2^(s-1)/m so that the SIMD floor-shift rounds to nearest.
   * input zero point -> GeMMX subtraction_a (padding is filled with the zero point);
@@ -16,7 +21,8 @@ The integer reference (IntResNet8) is plain PyTorch on int64 tensors (convs are 
 float64, exact because every partial sum is an integer < 2^53) and uses nn.quant.hw for the
 requant arithmetic.
 
-    python -m nn.quant.quantize [--wgran lane|tensor] [--calib N] [--pct P]
+    python -m nn.quant.quantize [--wgran lane|tensor|channel] [--wq Q] [--calib N] [--pct P]
+                                [--params PATH.h5|PATH.npz] [--out PATH]
         -> nn/build/qparams.pt, prints float and int8 accuracy on the full test set
 """
 import argparse
@@ -32,6 +38,7 @@ from .hw import ADD_SHIFT, core_add_requant, quantize_multiplier, simd_rescale
 
 BUILD = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "build")
 LANES = 8
+REAL_MIN = 2.0 ** -23    # smallest requant multiplier s_in * sw / s_out
 
 # conv name -> input tensor name;  add name -> (a, b) inputs
 CONV_IN = {"conv0": "input", "conv1": "conv0", "conv2": "conv1", "conv3": "add1", "conv4": "conv3",
@@ -57,7 +64,16 @@ def calibrate(model, x, pct):
     return rng
 
 
-def build_qparams(params, rng, wgran="lane"):
+def load_params(path):
+    """Keras .h5 (load_h5) or a .npz with keys "<layer>.W", "<layer>.b" (qc/export.py), same format."""
+    if path.endswith(".h5"):
+        return load_h5(path)
+    z = np.load(path)
+    return {k: (z[f"{k}.W"].astype(np.float64), z[f"{k}.b"].astype(np.float64))
+            for k in [c[0] for c in CONVS] + ["fc"]}
+
+
+def build_qparams(params, rng, wgran="lane", wq=127):
     """Float params + activation ranges -> integer parameters of every layer."""
     act = {"input": (1.0, -128)}
     for k, r in rng.items():
@@ -74,12 +90,17 @@ def build_qparams(params, rng, wgran="lane"):
         if wgran == "lane":
             lane_max = np.array([wmax[l::LANES].max() for l in range(min(LANES, cout))])
             sw = np.array([lane_max[c % LANES] for c in range(cout)]) / 127.0
+        elif wgran == "channel":
+            sw = np.where(wmax > 0, wmax, 1.0) / wq
         else:
             sw = np.full(cout, wmax.max() / 127.0)
         Wq = np.clip(np.round(W / sw[:, None, None, None]), -127, 127).astype(np.int64)
-        ms = [quantize_multiplier(s_in * sw[l] / s_out) for l in range(LANES)]  # lane l (cout >= 8)
-        mult = np.array([ms[c % LANES][0] for c in range(cout)], dtype=np.int64)
-        shift = np.array([ms[c % LANES][1] for c in range(cout)], dtype=np.int64)
+        # acc LSB scale for requant + bias, floored so that bias and shift fit (dead channels with ~0 BN
+        # scale in QC nets; never triggers for the Keras model): adds < 255 * 576 * 2^-23 < 0.02 output LSB
+        sw = np.maximum(sw, REAL_MIN * s_out / s_in)
+        ms = [quantize_multiplier(s_in * sw[c] / s_out) for c in range(cout)]  # equal within a lane
+        mult = np.array([m for m, _ in ms], dtype=np.int64)
+        shift = np.array([s for _, s in ms], dtype=np.int64)
         rnd = np.round(2.0 ** (shift - 1) / mult).astype(np.int64)
         bq = np.round(b / (s_in * sw)).astype(np.int64) + rnd
         assert np.all(np.abs(bq) < 2 ** 30)
@@ -156,25 +177,28 @@ class IntResNet8:
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--wgran", choices=["lane", "tensor"], default="lane")
+    ap.add_argument("--wgran", choices=["lane", "tensor", "channel"], default="lane")
+    ap.add_argument("--wq", type=int, default=127, help="--wgran channel: max |int weight| (QC params: 1)")
+    ap.add_argument("--params", default=H5_PATH, help="Keras .h5 or qc/export.py .npz")
     ap.add_argument("--calib", type=int, default=2000, help="calibration images (training set)")
     ap.add_argument("--pct", type=float, default=99.99, help="activation range percentile (100 = max)")
     ap.add_argument("--out", default=os.path.join(BUILD, "qparams.pt"))
     a = ap.parse_args()
     torch.manual_seed(0)
-    params = load_h5(H5_PATH)
+    params = load_params(a.params)
     fm = ResNet8(params)
     xt, yt = test_set()
     xtr, _ = train_set()
     calib = xtr[np.random.default_rng(0).permutation(len(xtr))[:a.calib]]
-    q = build_qparams(params, calibrate(fm, calib, a.pct), a.wgran)
+    q = build_qparams(params, calibrate(fm, calib, a.pct), a.wgran, a.wq)
     im = IntResNet8(q)
     acc_f = evaluate(fm.forward, xt, yt)
     acc_q = evaluate(im.forward, xt, yt)
     print(f"float {100 * acc_f:.2f} %   int8 ({a.wgran} weights, calib {a.calib} @ p{a.pct}) "
           f"{100 * acc_q:.2f} %   (CIFAR-10 test, 10000 images)")
     os.makedirs(os.path.dirname(a.out), exist_ok=True)
-    q["meta"] = dict(acc_float=acc_f, acc_int8=acc_q, wgran=a.wgran, calib=a.calib, pct=a.pct)
+    q["meta"] = dict(acc_float=acc_f, acc_int8=acc_q, wgran=a.wgran, calib=a.calib, pct=a.pct,
+                     wq=a.wq, params=a.params)
     torch.save(q, a.out)
     print("wrote", a.out)
 

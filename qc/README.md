@@ -13,6 +13,9 @@ Reuses `nn/model` (graph, Keras same padding, CIFAR-10 loader, pretrained `.h5`)
 | `model.py` | `QCResNet8`: the nn/model/resnet8.py graph with QCConv2d + BN (incl. conv5/conv8 shortcuts) |
 | `train.py` | one experiment per command; 45k/5k train/val split (seed 0), best-val checkpoint, test once at the end |
 | `verify.py` | folds BN, extracts each exact conv matrix, proves QC via `decompose`, re-evaluates the folded net; exit 1 on failure |
+| `export.py` | BN folded into each conv -> `.npz` params in the nn/model `load_h5` format (W = scale[co] * M, b; dense fc) |
+| `verify_int8.py` | proves the int8 weights from `nn.quant.quantize` are sign(scale[co]) * M and every block decomposes as QC |
+| `stats.py` | per-layer / total storage (QC slots vs dense int8) and additions vs dense MACs -> `results/<name>.md`, `results/summary.md` |
 | `test_structure.py` | random QC matrices round-trip, non-QC matrices are rejected |
 
 Training (`--method staged`, default): one SGD nesterov + cosine run split by `--stages fA,fB,fC`:
@@ -40,5 +43,11 @@ CUDA_VISIBLE_DEVICES=0 python3 -m qc.train --mode signed   --b 4 --epochs 100 --
 CUDA_VISIBLE_DEVICES=0 python3 -m qc.train --mode unsigned --b 4 --epochs 100 --stages 0.2,0.2,0.6 --thr 0.5 \
     --kd 0.5 --teacher /tmp/$USER/qc/runs/dense/best.pt --test 0 --out /tmp/$USER/qc/runs/u4
 python3 -m qc.verify /tmp/$USER/qc/runs/s8/best.pt
+# int8 through the nn/ flow: per-output-channel scale |s_co|, int8 weights = sign(s_co) * M (in {-1,0,1});
+# requant multipliers per channel, floored at 2^-23 for dead (~0 BN scale) channels
+python3 -m qc.export /tmp/$USER/qc/final/s4/best.pt --out /tmp/$USER/qc/export/s4.npz
+python3 -m nn.quant.quantize --params /tmp/$USER/qc/export/s4.npz --wgran channel --wq 1 --out /tmp/$USER/qc/int8/s4.pt
+python3 -m qc.verify_int8 /tmp/$USER/qc/final/s4/best.pt /tmp/$USER/qc/int8/s4.pt
+python3 -m qc.stats /tmp/$USER/qc/final/{s2,s4,s8,u2,u4,u8}/best.pt --int8 /tmp/$USER/qc/int8
 ```
 Runs, checkpoints and data never go inside the repo (`--out` must be outside it).
