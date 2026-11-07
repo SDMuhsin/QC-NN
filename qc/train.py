@@ -67,16 +67,20 @@ def stage(a, ep, model):
     E = a.epochs
     fa, fb, _ = (float(f) for f in a.stages.split(","))
     ea, eb = round(fa * E), round(fb * E)
-    k, lam = a.b, 0.0
-    if ea <= ep < ea + eb:
-        k = max(a.topk, -(-(a.b * (eb - (ep - ea + 1)) + a.topk * (ep - ea + 1)) // eb))   # b -> topk linearly
-    elif ep >= ea + eb:
-        k, lam = a.topk, min(1.0, (ep - ea - eb + 1) / max(1.0, a.ramp * (E - ea - eb)))
-    for m in model.conv.values():
-        if k < a.b:
+    lam, ks = 0.0, []
+    if ep >= ea + eb:
+        lam = min(1.0, (ep - ea - eb + 1) / max(1.0, a.ramp * (E - ea - eb)))
+    for m in model.conv.values():     # per-conv block size m.b
+        k = m.b
+        if ea <= ep < ea + eb:
+            k = max(a.topk, -(-(m.b * (eb - (ep - ea + 1)) + a.topk * (ep - ea + 1)) // eb))   # b -> topk linearly
+        elif ep >= ea + eb:
+            k = a.topk
+        if k < m.b:
             m.prune_to(k)
         m.lam.fill_(lam)
-    return k, lam
+        ks.append(min(k, m.b))
+    return max(ks), lam
 
 
 @torch.no_grad()
@@ -90,7 +94,7 @@ def accuracy(model, x, y, bs=2500, amp=False):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--mode", default="unsigned", choices=["unsigned", "signed", "dense"])
-    ap.add_argument("--b", type=int, default=8)
+    ap.add_argument("--b", default="8", help="block size, or one per conv in CONVS order, e.g. 4,4,4,8,8,8,8,8,8")
     ap.add_argument("--topk", type=int, default=2)
     ap.add_argument("--view", default="hwc", choices=["hwc", "chw"])
     ap.add_argument("--method", default="staged", choices=["staged", "ste"], help="see qc.layers")
@@ -112,6 +116,7 @@ def main():
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--out", required=True)
     a = ap.parse_args()
+    a.b = [int(v) for v in a.b.split(",")] if "," in a.b else int(a.b)
     assert not os.path.abspath(a.out).startswith(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     os.makedirs(a.out, exist_ok=True)
     # QC convs sum +-1 * raw activations and BN then removes a large mean: bf16/TF32 rounding of the
