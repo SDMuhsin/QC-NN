@@ -1,8 +1,10 @@
-# qcacc/ — QC-GeMMX accelerator for the `qc/` model s2 (milestone M1: host side)
+# qcacc/ — QC-GeMMX accelerator for the `qc/` model s2
 
-Spec: [`ARCH.md`](ARCH.md).  M1 = weight codec, bit-exact array model, compiler (two modes), schedule model,
-C runtime (native x86 + chimera ELF).  Reuses `nn/` by import (layouts, streamer CSRs, allocator, emitter,
-schedule model, `nn/sw` runtime unchanged).  No RTL yet.
+**Results and assessment: [`RESULTS.md`](RESULTS.md).**  Spec: [`ARCH.md`](ARCH.md).  Milestones below: M1 host side,
+M2 RTL, M3 TSMC 65 nm implementation, M4 array ablation.
+
+M1 = weight codec, bit-exact array model, compiler (two modes), schedule model, C runtime (native x86 + chimera ELF).
+Reuses `nn/` by import (layouts, streamer CSRs, allocator, emitter, schedule model, `nn/sw` runtime unchanged).
 
 | file | contents |
 |---|---|
@@ -49,7 +51,7 @@ Same `nn_conv_t` / `set_gemmx_streamer_csr` register map; the B reader has **1 s
 | `delta_local_b` | blob + group offset | 64 B aligned (8 B would suffice) |
 | `subtraction_b` | 0 | ignored by the QC array |
 
-## Results (s2, `/tmp/root/qc/final/int8/s2.pt`)
+## M1 results (s2, `/tmp/root/qc/final/int8/s2.pt`; qc column = 42-call M1 mode, since M2b 9 calls / 26 880 B blobs)
 | | dense baseline (`nn/`) | s2 `gemmx` (control) | s2 `qc` |
 |---|---|---|---|
 | int8 accuracy, 10k (`IntResNet8`) | 87.30 % | **80.41 %** | 80.41 % |
