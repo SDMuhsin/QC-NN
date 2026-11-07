@@ -21,6 +21,12 @@ the B epochs, then frozen); C ramp to hard coefficients (STE on the real ones) o
 Hard = 1 (unsigned) / sign (signed) if |coef| > `--thr` x mean |kept coef| of the block row, else 0 (the
 per-row scale is absorbed by BN).  BN statistics are recalibrated on train data before every hard-epoch val
 and at the end.  Only hard epochs are checkpointed.  Legacy `--method ste`: Adam on scores (`--score-lr`).
+`--method qat`: hard coefficients in every forward pass from step 0 (same quantizer), STE on the latent real
+coefficients (`--ste-clip`), Adam on them (`--qat-lr`, cosine, no weight decay), SGD for BN/FC; top-2 mask
+recomputed from the latent magnitudes every step for the first `--freeze` of the run, then frozen.
+`--soft F` (qat): first F of the run real-valued (two-stage, lr restarts); `--clamp0 1`: unsigned latent >= 0.
+`--teacher PATH --kd A`: distill from a dense qc.train checkpoint (the Keras model has seen the val split).
+`--init PATH`: start from a qc.train checkpoint (dense: projected onto block-circulant).
 fp32 for QC (bf16 for dense), torch.compile, GPU-resident data and augmentation (crop pad 4, h-flip).
 
 ```bash
@@ -28,7 +34,11 @@ python3 -m qc.test_structure
 CUDA_VISIBLE_DEVICES=0 python3 -m qc.train --mode dense    --epochs 200 --out /tmp/$USER/qc/runs/dense
 CUDA_VISIBLE_DEVICES=0 python3 -m qc.train --mode unsigned --b 8 --epochs 200 --stages 0.2,0.2,0.6 --thr 0.5 --out /tmp/$USER/qc/runs/u8
 CUDA_VISIBLE_DEVICES=0 python3 -m qc.train --mode signed   --b 8 --epochs 200 --stages 0.2,0.2,0.6 --thr 0.5 --out /tmp/$USER/qc/runs/s8 \
-    [--init dense] [--kd 0.5 --kd-t 4] [--view chw] [--topk 2] [--method ste] [--test 0]
+    [--init dense|PATH] [--kd 0.5 --kd-t 4 [--teacher PATH]] [--view chw] [--topk 2] [--method ste] [--test 0]
+# best recipes at b=4 (val, 2 seeds at 100 epochs): signed qat 74.6/73.2 (200 ep: 74.6), unsigned staged + KD 59.5/60.6 (200 ep: 62.8)
+CUDA_VISIBLE_DEVICES=0 python3 -m qc.train --mode signed   --b 4 --epochs 100 --method qat --thr 0.5 --wd 5e-5 --test 0 --out /tmp/$USER/qc/runs/s4
+CUDA_VISIBLE_DEVICES=0 python3 -m qc.train --mode unsigned --b 4 --epochs 100 --stages 0.2,0.2,0.6 --thr 0.5 \
+    --kd 0.5 --teacher /tmp/$USER/qc/runs/dense/best.pt --test 0 --out /tmp/$USER/qc/runs/u4
 python3 -m qc.verify /tmp/$USER/qc/runs/s8/best.pt
 ```
 Runs, checkpoints and data never go inside the repo (`--out` must be outside it).

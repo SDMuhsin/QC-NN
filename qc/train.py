@@ -11,6 +11,12 @@ once, at the end, with the best-val checkpoint (--test 0 skips it).  Writes best
   C  lam ramps 0 -> 1 over the first --ramp fraction of C (real -> hard 0/1 or -1/0/1, STE on the real
      coefficients), then hard.  Only hard (lam = 1) epochs are checkpoint candidates; their BN statistics are recalibrated on 10k train
      images before val.
+--method qat (see qc.layers): hard coefficients in the forward pass from the first step, STE on latent
+  real coefficients trained with Adam (--qat-lr, cosine -> 0, no weight decay); BN/FC keep SGD.  The top-k
+  shift mask is recomputed from the latent magnitudes every step during the first --freeze fraction of
+  the epochs, then frozen.  Every epoch is a checkpoint candidate.
+--teacher PATH: distill (--kd, --kd-t) from a dense qc.train checkpoint instead of the Keras model (which
+  was trained on all 50k train images, i.e. it has seen our val split).
 One SGD + cosine schedule over the whole run; at the end the BN statistics of the best checkpoint are
 recalibrated on the (unaugmented) train split and kept if val does not drop.
 """
@@ -97,13 +103,21 @@ def main():
     ap.add_argument("--b", default="8", help="block size, or one per conv in CONVS order, e.g. 4,4,4,8,8,8,8,8,8")
     ap.add_argument("--topk", type=int, default=2)
     ap.add_argument("--view", default="hwc", choices=["hwc", "chw"])
-    ap.add_argument("--method", default="staged", choices=["staged", "ste"], help="see qc.layers")
+    ap.add_argument("--method", default="staged", choices=["staged", "ste", "qat"], help="see qc.layers")
     ap.add_argument("--stages", default="0.3,0.3,0.4", help="staged: epoch fractions of stages A,B,C")
     ap.add_argument("--ramp", type=float, default=0.25, help="staged: fraction of stage C ramping lam 0->1")
     ap.add_argument("--thr", type=float, default=0.0, help="staged: q=0 below thr * mean|kept coef| of the block row")
     ap.add_argument("--coef-lr", type=float, default=1.0, help="staged: lr multiplier of the coefficients")
+    ap.add_argument("--qat-lr", type=float, default=1e-3, help="qat: Adam lr of the latent coefficients")
+    ap.add_argument("--freeze", type=float, default=0.5, help="qat: fraction of epochs with a per-step top-k mask")
+    ap.add_argument("--ste-clip", type=float, default=0.0, help="qat: no gradient where |coef| > clip*alpha (0 = off)")
+    ap.add_argument("--clamp0", type=int, default=0, help="qat unsigned: project latent coef to >= 0 (as staged)")
+    ap.add_argument("--teacher", default="", help="dense qc.train checkpoint used as KD teacher")
     ap.add_argument("--test", type=int, default=1, help="evaluate the test set at the end")
-    ap.add_argument("--init", default="random", choices=["random", "dense"])
+    ap.add_argument("--init", default="random", help="random | dense (Keras .h5) | PATH of a qc.train checkpoint "
+                    "(dense: projected onto block-circulant; QC: copied)")
+    ap.add_argument("--soft", type=float, default=0.0, help="qat: first fraction of epochs with real coefficients "
+                    "(two-stage; the lr schedules restart at the switch to hard)")
     ap.add_argument("--epochs", type=int, default=200)
     ap.add_argument("--bs", type=int, default=128)
     ap.add_argument("--lr", type=float, default=0.1)
@@ -129,15 +143,33 @@ def main():
     (xtr, ytr), (xva, yva) = split(dev)
     model = QCResNet8(a.mode, a.b, a.topk, a.view, a.method, a.thr).to(dev)
     staged = a.mode != "dense" and a.method == "staged"
-    if a.init == "dense" or a.kd > 0:
+    qat = a.mode != "dense" and a.method == "qat"
+    if qat:
+        for m in model.conv.values():
+            m.lam.fill_(1.0)
+            m.clip = a.ste_clip
+    if a.init == "dense" or (a.kd > 0 and not a.teacher):
         params = load_h5(H5_PATH)
+    if a.init not in ("random", "dense"):
+        st = torch.load(a.init, map_location=dev)["state"]
+        if a.mode != "dense" and "conv.conv0.weight" in st:
+            for n, *_ in CONVS:
+                model.conv[n].init_from_dense(st.pop(f"conv.{n}.weight").cpu())
+        st = {k: v for k, v in st.items() if not k.endswith((".lam", ".mask"))}
+        print("init from", a.init, model.load_state_dict(st, strict=False))
     if a.init == "dense":
         for n, *_ in CONVS:
             if a.mode == "dense":
                 model.conv[n].weight.data.copy_(torch.as_tensor(params[n][0]))
             else:
                 model.conv[n].init_from_dense(params[n][0])
-    teacher = ResNet8(params, torch.float32, dev) if a.kd > 0 else None
+    teacher = ResNet8(params, torch.float32, dev) if a.kd > 0 and not a.teacher else None
+    if a.kd > 0 and a.teacher:
+        tck = torch.load(a.teacher, map_location=dev)
+        tm = QCResNet8("dense").to(dev)
+        tm.load_state_dict(tck["state"])
+        tm.eval()
+        teacher = type("T", (), dict(forward=lambda self, x: tm(x)))()
 
     # QC scores only matter through their ranking/sign and their gradients are tiny next to their
     # scale (BN after +-1 weights), so they get Adam without weight decay; the rest is SGD.
@@ -145,18 +177,27 @@ def main():
     rest = [p for n, p in model.named_parameters() if not n.endswith("scores")]
     coef = [p for n, p in model.named_parameters() if n.endswith("coef")]
     rest = [p for p in rest if all(p is not q for q in coef)]
-    groups = [dict(params=rest)] + ([dict(params=coef, lr=a.lr * a.coef_lr)] if coef else [])
+    groups = [dict(params=rest)] + ([dict(params=coef, lr=a.lr * a.coef_lr)] if coef and not qat else [])
     opts = [torch.optim.SGD(groups, lr=a.lr, momentum=0.9, nesterov=True, weight_decay=a.wd)]
+    if qat:
+        opts.append(torch.optim.Adam(coef, lr=a.qat_lr, weight_decay=0.0))
     if scores:
         opts.append(torch.optim.Adam(scores, lr=a.score_lr))
     steps = a.epochs * (len(xtr) // a.bs)
-    scheds = [torch.optim.lr_scheduler.CosineAnnealingLR(o, steps) for o in opts]
+    s1 = round(a.soft * a.epochs) * (len(xtr) // a.bs) if qat else 0
+    cos = lambda t: 0.5 * (1 + np.cos(np.pi * (t / s1 if t < s1 else (t - s1) / (steps - s1))))
+    scheds = [torch.optim.lr_scheduler.LambdaLR(o, cos) for o in opts] if s1 else \
+        [torch.optim.lr_scheduler.CosineAnnealingLR(o, steps) for o in opts]
     fwd = torch.compile(model) if a.compile else model
     best, hist = (-1.0, 0), []
     k, lam = None, 1.0
     for ep in range(a.epochs):
         if staged:
             k, lam = stage(a, ep, model)
+        if qat:
+            lam = float(ep >= round(a.soft * a.epochs))
+            for m in model.conv.values():
+                m.lam.fill_(lam)
         model.train()
         t0 = time.time()
         perm = torch.randperm(len(xtr), device=dev)
@@ -164,12 +205,15 @@ def main():
         for i in range(len(xtr) // a.bs):
             idx = perm[i * a.bs:(i + 1) * a.bs]
             x, y = augment(xtr[idx]), ytr[idx]
+            if qat and ep < round(a.freeze * a.epochs):
+                for m in model.conv.values():
+                    m.topk_mask()
             with torch.autocast("cuda", torch.bfloat16, enabled=a.amp):
                 out = fwd(x)
             loss = F.cross_entropy(out.float(), y)
             if teacher is not None:
-                with torch.no_grad():
-                    tlog = teacher.forward(x.float())
+                with torch.no_grad(), torch.autocast("cuda", torch.bfloat16, enabled=bool(a.teacher)):
+                    tlog = teacher.forward(x.float()).float()
                 kl = F.kl_div(F.log_softmax(out.float() / a.kd_t, 1), F.softmax(tlog / a.kd_t, 1),
                               reduction="batchmean") * a.kd_t ** 2
                 loss = (1 - a.kd) * loss + a.kd * kl
@@ -179,12 +223,12 @@ def main():
             for o, sc in zip(opts, scheds):
                 o.step()
                 sc.step()
-            if staged and a.mode == "unsigned":
+            if (staged or (qat and a.clamp0)) and a.mode == "unsigned":
                 with torch.no_grad():
                     for m in model.conv.values():
                         m.coef.clamp_(min=0)
             tl += loss.detach()
-        if staged and lam >= 1:     # running stats lag the flipping hard weights: recalibrate before val
+        if (staged or qat) and lam >= 1:     # running stats lag the flipping hard weights: recalibrate before val
             recal_bn(model, xtr[:10000])
         va = accuracy(model, xva, yva, amp=a.amp)
         dt = time.time() - t0
@@ -202,7 +246,7 @@ def main():
     ck = torch.load(os.path.join(a.out, "best.pt"), map_location=dev)
     model.load_state_dict(ck["state"])
     val_pre = None
-    if staged:
+    if staged or qat:
         val_pre = best[0]
         recal_bn(model, xtr)
         va = accuracy(model, xva, yva, amp=a.amp)
