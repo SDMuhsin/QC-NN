@@ -16,6 +16,7 @@ Reuses `qc.structure` (views, `expand`, `decompose`) and the 45k/5k split + augm
 | `stats.py` | per-layer/total QC storage vs dense int8, density, additions vs dense MACs (FC excluded) -> `results/<run>.md`, `results/summary.md` |
 | `ablate.sh`, `ablate_driver.sh` | 60-epoch ablation batch (relaxations, b, Adam vs AdamW, unsigned fixes, KD) and its 3-job queue driver |
 | `homotopy.sh` | 60-epoch homotopy batch (Gibbs-mean / ramp training forward, relaxed -> hard; run with `ablate_driver.sh`) |
+| `freeze.sh` | 60-epoch structure-freeze batch (`--freeze-v-epoch` 15/30/45 vs off, seeds 0/1) |
 | `test_qcconv.py` | hard projection vs brute force over V, Gibbs backward vs autograd Jacobian, model weights decompose, homotopy (ends in the hard forward + STE) |
 
 Eval mode uses the stored hard `v` (refreshed from theta after every epoch), so the checkpoint is exactly the
@@ -36,6 +37,7 @@ CUDA_VISIBLE_DEVICES=0 python3 -m qc18.train --mode unsigned --b 2 --estimator g
 #   --homotopy gibbs|ramp --h-frac F: training forward relaxed -> hard over the first F of the steps (gibbs: E_p[v],
 #     tau tau0 -> 0.01 tau0 geometric, exact Jacobian; ramp: (1-lam) top2(theta)/alpha_r + lam (hard + STE), lam 0 -> 1),
 #     then hard + STE; BN recal + val on the hard net, best checkpoint only among hard-phase epochs (homotopy.sh)
+#   --freeze-v-epoch E: after epoch E (1-based) every conv keeps its hard v fixed (theta untrained, no flips) (freeze.sh)
 #   diagnostics (diag.sh): --relax circ|top2 (real-weight relaxations, NOT QC, verify refuses them)
 #                   --kd A --kd-t T --teacher DENSE_CKPT (distillation from a qc18 dense checkpoint)
 CUDA_VISIBLE_DEVICES=0 python3 -m qc18.verify /tmp/$USER/qc18/runs/signed_b8_gibbs_s0/best.pt [--test]
