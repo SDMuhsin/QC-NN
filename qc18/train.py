@@ -33,6 +33,7 @@ import torch
 import torch.nn.functional as F
 
 from .data import augment, prep, split, test
+from .diag.snap import Snapper
 from .model import QCResNet18
 from .qcconv import QCConv2d, sphere_
 
@@ -118,6 +119,10 @@ def main():
     ap.add_argument("--recal", type=int, default=10000, help="QC: train images for BN recalibration before val")
     ap.add_argument("--test", type=int, default=0, help="evaluate the test set once at the end")
     ap.add_argument("--out", default="")
+    ap.add_argument("--snap", type=int, default=0, help="save hard-v snapshots (qc18/diag/snap.py)")
+    ap.add_argument("--snap-ckpt", default="10,30,60", help="--snap: full checkpoints at these epoch ends (1-based)")
+    ap.add_argument("--snap-steps", default="10,30", help="--snap: v every --snap-every steps in these epochs")
+    ap.add_argument("--snap-every", type=int, default=20)
     a = ap.parse_args()
     if not a.out:
         name = "dense" if a.mode == "dense" else f"{a.mode}_b{a.b}_{a.estimator}" + \
@@ -190,6 +195,7 @@ def main():
         torch.save(dict(args=vars(a), state=model.state_dict(), epoch=ep, val=va), path)
 
     best, hist = (-1.0, -1), []
+    snap = Snapper(a, model)
     torch.cuda.reset_peak_memory_stats()
     for ep in range(a.epochs):
         tau = tau_at(a, ep)
@@ -202,6 +208,7 @@ def main():
         perm = torch.randperm(len(xtr), device=dev)
         tl = torch.zeros((), device=dev)
         tc = torch.zeros((), device=dev)
+        snap.epoch_start(ep)
         for i in range(spe):
             idx = perm[i * a.bs:(i + 1) * a.bs]
             x, y = prep(augment(xtr[idx])), ytr[idx]
@@ -226,6 +233,7 @@ def main():
             if a.qopt == "sphere":
                 for t in theta:
                     sphere_(t)
+            snap.step(ep, i)
             tl += loss.detach()
             tc += (out.argmax(1) == y).sum()
         torch.cuda.synchronize()
@@ -245,6 +253,7 @@ def main():
             best = (va, ep)
             save(os.path.join(a.out, "best.pt"), ep, va)
         save(os.path.join(a.out, "last.pt"), ep, va)
+        snap.epoch_end(ep, lambda p: save(p, ep, va))
         print(f"ep {ep:3d}  loss {hist[-1]['loss']:.4f}  train {100 * hist[-1]['train_acc']:.2f}  val {100 * va:.2f}  "
               f"best {100 * best[0]:.2f}@{best[1]}  flip {fr:.4f}  tau {tau:.3g}  {ttrain:.1f}s/{dt:.1f}s", flush=True)
 
