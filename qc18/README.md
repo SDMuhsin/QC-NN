@@ -27,6 +27,8 @@ CUDA_VISIBLE_DEVICES=0 python3 -m qc18.train --mode signed   --b 8 --estimator g
 CUDA_VISIBLE_DEVICES=0 python3 -m qc18.train --mode unsigned --b 2 --estimator gibbs --tau0 1 --tau1 0.1 --epochs 200
 #   common options: --bs 128 --lr 0.1 --wd 5e-4 --warmup 2 --qlr 1e-2 --qopt adam|sgd --tau-sched geometric|cosine
 #                   --bn-sign 0|1 --qinit-k K --seed 0 --test 0 --out DIR
+#   diagnostics (diag.sh): --relax circ|top2 (real-weight relaxations, NOT QC, verify refuses them)
+#                   --kd A --kd-t T --teacher DENSE_CKPT (distillation from a qc18 dense checkpoint)
 CUDA_VISIBLE_DEVICES=0 python3 -m qc18.verify /tmp/$USER/qc18/runs/signed_b8_gibbs_s0/best.pt [--test]
 ```
 

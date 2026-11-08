@@ -64,6 +64,9 @@ def main():
     if args["mode"] == "dense":
         print("FAIL: dense checkpoint (no QC structure)")
         return 1
+    if args.get("relax", "none") != "none":
+        print(f"FAIL: relax={args['relax']} checkpoint (diagnostic, real weights, not QC)")
+        return 1
     signed, b = args["mode"] == "signed", args["b"]
     print(f"{a.ckpt}: mode {args['mode']}, b {b}, estimator {args['estimator']}, epoch {ck['epoch']}")
     print(f"{'layer':16s} {'matrix':>12s} {'density':>8s} {'zero':>6s} {'1sh':>6s} {'2sh':>6s} {'theta!=v':>8s}  result")

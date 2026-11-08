@@ -17,6 +17,10 @@ Backward (estimator):
 The hard coefficients are stored in the buffer `v` (refresh()); in eval mode the layer uses `v`, so the
 checkpoint holds exactly the network that was evaluated (no device/precision-dependent re-derivation).
 mode="dense": ordinary conv weight.  No conv bias (a BatchNorm follows).
+relax (diagnostic only; the result is NOT a QC network, real weights): "circ" = forward uses theta itself (real
+block-circulant, all b shifts); "top2" = forward uses theta on the top-2 |theta| shifts per block (exact mask,
+zeros elsewhere, gradient straight through the mask).  Train and eval use the relaxed weights; `v` still holds
+hard(theta) so the flip rate stays comparable.
 """
 import itertools
 
@@ -62,6 +66,14 @@ def hard(theta, alpha, signed):
     return torch.zeros_like(t).scatter(-1, idx, keep.to(t.dtype) * val)
 
 
+def top2(theta):
+    """theta on the top-2 |theta| shifts per block (stable sort), zeros elsewhere; gradient identity."""
+    t = theta.detach()
+    idx = t.abs().sort(dim=-1, descending=True, stable=True).indices[..., :2]
+    m = torch.zeros_like(t).scatter(-1, idx, 1.0)
+    return t * m + (theta - t)
+
+
 def gibbs_vjp(theta, alpha, tau, V, g, chunk=1 << 22):
     """Cov_p(v) g / (tau alpha) per block, p(v) ∝ exp((<theta,v> - alpha/2 |v|_0) / (tau alpha)).
     theta, g [R, Cb, b]; alpha [R, 1, 1]; V [K, b].  Chunked over blocks to bound the [N, K] buffers."""
@@ -97,16 +109,17 @@ class GibbsProject(torch.autograd.Function):
 
 
 class QCConv2d(nn.Module):
-    def __init__(self, cin, cout, k, stride=1, padding=0, mode="dense", b=8, estimator="ste", tau=1.0):
+    def __init__(self, cin, cout, k, stride=1, padding=0, mode="dense", b=8, estimator="ste", tau=1.0, relax="none"):
         super().__init__()
         self.cin, self.cout, self.k, self.stride, self.padding = cin, cout, k, stride, padding
-        self.mode, self.b, self.estimator = mode, b, estimator
+        self.mode, self.b, self.estimator, self.relax = mode, b, estimator, relax
         W = torch.empty(cout, cin, k, k)
         nn.init.kaiming_normal_(W, nonlinearity="relu")
         if mode == "dense":
             self.weight = nn.Parameter(W)
             return
         assert mode in ("signed", "unsigned") and estimator in ("ste", "gibbs") and cout % b == 0
+        assert relax in ("none", "circ", "top2")
         self.signed = mode == "signed"
         theta = self.circulant_projection(W, b)
         theta = theta / theta.std()                                      # unit std (scale is free: BN follows)
@@ -131,6 +144,10 @@ class QCConv2d(nn.Module):
 
     def coef(self):
         """Coefficients [R, Cb, b] of the forward pass: exact hard values, estimator gradient (training)."""
+        if self.relax == "circ":
+            return self.theta
+        if self.relax == "top2":
+            return top2(self.theta)
         if not self.training:
             return self.v
         th = self.theta
@@ -155,4 +172,7 @@ class QCConv2d(nn.Module):
 
     def extra_repr(self):
         s = f"{self.cin}, {self.cout}, k={self.k}, stride={self.stride}, mode={self.mode}"
-        return s if self.mode == "dense" else s + f", b={self.b}, cin_pad={cin_pad(self.cin, self.b)}, {self.estimator}"
+        if self.mode == "dense":
+            return s
+        s += f", b={self.b}, cin_pad={cin_pad(self.cin, self.b)}, {self.estimator}"
+        return s if self.relax == "none" else s + f", relax={self.relax}"

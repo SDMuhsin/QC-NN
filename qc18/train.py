@@ -8,6 +8,9 @@ statistics are recalibrated on 10k unaugmented train images.  Writes best.pt, la
 Optimisers: SGD nesterov 0.9 (dense conv weights, BN, FC; wd only on dense conv / FC weights; linear warmup
 then cosine) and Adam (or SGD momentum 0.9, --qopt) on theta (cosine, no wd).  tau annealed tau0 -> tau1 per
 epoch (--tau-sched).  Unsigned-mode init options: --bn-sign (random +-1 BN gamma), --qinit-k (sparse theta).
+Diagnostics: --relax circ|top2 (real-weight relaxations, NOT QC; see qcconv); --kd A --kd-t T --teacher PATH
+(loss = (1-A) CE + A T^2 KL(softmax(teacher/T) || softmax(student/T)), teacher a qc18 dense checkpoint, eval mode,
+no grad, same augmented batch).
 Speed: GPU-resident data + augmentation, bf16 autocast for training (eval/recal fp32), channels_last,
 torch.compile; dense and QC share the pipeline.
 """
@@ -86,6 +89,11 @@ def main():
     ap.add_argument("--qopt", default="adam", choices=["adam", "sgd"], help="theta optimiser (sgd: momentum 0.9)")
     ap.add_argument("--qinit-k", type=int, default=0, help="QC init: only k random blocks per block row on (0: off)")
     ap.add_argument("--bn-sign", type=int, default=0, help="init BN gamma with random +-1 signs (per channel)")
+    ap.add_argument("--relax", default="none", choices=["none", "circ", "top2"],
+                    help="diagnostic real-weight relaxation (not QC): circ = theta, top2 = theta on top-2 shifts")
+    ap.add_argument("--kd", type=float, default=0.0, help="distillation weight A (0: off)")
+    ap.add_argument("--kd-t", type=float, default=4.0, help="distillation temperature T")
+    ap.add_argument("--teacher", default="", help="qc18 dense checkpoint (best.pt) for --kd")
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--amp", type=int, default=1, help="bf16 autocast in training")
     ap.add_argument("--compile", type=int, default=1)
@@ -94,7 +102,8 @@ def main():
     ap.add_argument("--out", default="")
     a = ap.parse_args()
     if not a.out:
-        name = "dense" if a.mode == "dense" else f"{a.mode}_b{a.b}_{a.estimator}"
+        name = "dense" if a.mode == "dense" else f"{a.mode}_b{a.b}_{a.estimator}" + \
+            ("" if a.relax == "none" else f"_{a.relax}")
         a.out = f"/tmp/{getpass.getuser()}/qc18/runs/{name}_s{a.seed}"
     a.out = os.path.abspath(a.out)
     assert not (a.out + "/").startswith(REPO + "/"), "--out must be outside the repo"
@@ -105,7 +114,7 @@ def main():
     dev = "cuda"
 
     (xtr, ytr), (xva, yva) = split(dev)
-    model = QCResNet18(a.mode, a.b, a.estimator, a.tau0).to(dev).to(memory_format=torch.channels_last)
+    model = QCResNet18(a.mode, a.b, a.estimator, a.tau0, relax=a.relax).to(dev).to(memory_format=torch.channels_last)
     qc = a.mode != "dense"
     if a.qinit_k:                           # sparse init: other blocks get theta = -|theta| (hard v = 0 there)
         with torch.no_grad():
@@ -133,6 +142,15 @@ def main():
                     torch.optim.SGD(theta, lr=a.qlr, momentum=0.9))
         sched.append(torch.optim.lr_scheduler.LambdaLR(opts[1], cos))
     fwd = torch.compile(model) if a.compile else model
+    tfwd = None
+    if a.kd:
+        ck = torch.load(a.teacher, map_location=dev)
+        assert ck["args"]["mode"] == "dense", "teacher must be a qc18 dense checkpoint"
+        teacher = QCResNet18("dense").to(dev).to(memory_format=torch.channels_last)
+        teacher.load_state_dict(ck["state"])
+        teacher.eval().requires_grad_(False)
+        tfwd = torch.compile(teacher) if a.compile else teacher
+        print(f"teacher {a.teacher} (val {100 * ck['val']:.2f})", flush=True)
 
     def save(path, ep, va):
         torch.save(dict(args=vars(a), state=model.state_dict(), epoch=ep, val=va), path)
@@ -155,6 +173,13 @@ def main():
             with torch.autocast("cuda", torch.bfloat16, enabled=bool(a.amp)):
                 out = fwd(x)
             loss = F.cross_entropy(out.float(), y)
+            if tfwd is not None:
+                with torch.no_grad(), torch.autocast("cuda", torch.bfloat16, enabled=bool(a.amp)):
+                    tout = tfwd(x)
+                T = a.kd_t
+                kl = F.kl_div(F.log_softmax(out.float() / T, 1), F.log_softmax(tout.float() / T, 1),
+                              reduction="batchmean", log_target=True)
+                loss = (1 - a.kd) * loss + a.kd * T * T * kl
             for o in opts:
                 o.zero_grad(set_to_none=True)
             loss.backward()
@@ -191,7 +216,8 @@ def main():
              history=hist)
     with open(os.path.join(a.out, "metrics.json"), "w") as f:
         json.dump(m, f, indent=1)
-    print(f"RESULT {a.mode} b={a.b} {a.estimator}: best val {100 * best[0]:.2f} (epoch {best[1]})  "
+    print(f"RESULT {a.mode} b={a.b} {a.estimator}{'' if a.relax == 'none' else ' relax=' + a.relax}"
+          f"{f' kd={a.kd}' if a.kd else ''}: best val {100 * best[0]:.2f} (epoch {best[1]})  "
           f"test {100 * te:.2f}  {m['epoch_sec_median']:.1f} s/epoch  peak {m['peak_mem_gb']:.2f} GB  -> {a.out}")
 
 
