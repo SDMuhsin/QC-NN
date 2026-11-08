@@ -6,7 +6,9 @@ Fixed 45k/5k train/val split (qc.train.split, seed 0); best epoch selected on va
 once at the end (best-val checkpoint) only with --test 1.  QC val is the hard network (stored v) after BN
 statistics are recalibrated on 10k unaugmented train images.  Writes best.pt, last.pt, metrics.json to --out.
 Optimisers: SGD nesterov 0.9 (dense conv weights, BN, FC; wd only on dense conv / FC weights; linear warmup
-then cosine) and Adam (or SGD momentum 0.9, --qopt) on theta (cosine, no wd).  tau annealed tau0 -> tau1 per
+then cosine) and on theta (--qopt): AdamW (wd --qwd, default 0 = Adam) or SGD momentum 0.9 (cosine), or
+sgdeq = "dense-equivalent" SGD: theta joins the main SGD (same nesterov, warmup, cosine) with lr = lr/b and
+wd = wd*b (W = expand(theta) repeats each entry b times; scaled by --eq-lr / --eq-wd).  tau annealed tau0 -> tau1 per
 epoch (--tau-sched).  Unsigned-mode init options: --bn-sign (random +-1 BN gamma), --qinit-k (sparse theta).
 Diagnostics: --relax circ|top2 (real-weight relaxations, NOT QC; see qcconv); --kd A --kd-t T --teacher PATH
 (loss = (1-A) CE + A T^2 KL(softmax(teacher/T) || softmax(student/T)), teacher a qc18 dense checkpoint, eval mode,
@@ -86,7 +88,11 @@ def main():
     ap.add_argument("--wd", type=float, default=5e-4, help="SGD weight decay on dense conv / FC weights")
     ap.add_argument("--warmup", type=float, default=2, help="SGD linear warmup epochs")
     ap.add_argument("--qlr", type=float, default=1e-2, help="theta lr (unit-std init)")
-    ap.add_argument("--qopt", default="adam", choices=["adam", "sgd"], help="theta optimiser (sgd: momentum 0.9)")
+    ap.add_argument("--qopt", default="adam", choices=["adam", "sgd", "sgdeq"],
+                    help="theta optimiser (adam: AdamW wd --qwd; sgd: momentum 0.9; sgdeq: main SGD, lr/b, wd*b)")
+    ap.add_argument("--qwd", type=float, default=0.0, help="adam: decoupled (AdamW) weight decay on theta")
+    ap.add_argument("--eq-lr", type=float, default=1.0, help="sgdeq: theta lr = eq_lr * lr / b")
+    ap.add_argument("--eq-wd", type=float, default=1.0, help="sgdeq: theta wd = eq_wd * wd * b")
     ap.add_argument("--qinit-k", type=int, default=0, help="QC init: only k random blocks per block row on (0: off)")
     ap.add_argument("--bn-sign", type=int, default=0, help="init BN gamma with random +-1 signs (per channel)")
     ap.add_argument("--relax", default="none", choices=["none", "circ", "top2"],
@@ -131,14 +137,16 @@ def main():
     theta = [p for n, p in model.named_parameters() if n.endswith("theta")]
     decay = [m.weight for m in model.modules() if isinstance(m, QCConv2d) and m.mode == "dense"] + [model.fc.weight]
     other = [p for p in model.parameters() if all(p is not q for q in theta + decay)]
-    opts = [torch.optim.SGD([dict(params=decay, weight_decay=a.wd), dict(params=other, weight_decay=0.0)],
-                            lr=a.lr, momentum=0.9, nesterov=True)]
+    groups = [dict(params=decay, weight_decay=a.wd), dict(params=other, weight_decay=0.0)]
+    if theta and a.qopt == "sgdeq":
+        groups.append(dict(params=theta, lr=a.eq_lr * a.lr / a.b, weight_decay=a.eq_wd * a.wd * a.b))
+    opts = [torch.optim.SGD(groups, lr=a.lr, momentum=0.9, nesterov=True)]
     spe = len(xtr) // a.bs
     steps, warm = a.epochs * spe, int(min(a.warmup, a.epochs / 10) * spe)
     cos = lambda t: 0.5 * (1 + math.cos(math.pi * t / steps))
     sched = [torch.optim.lr_scheduler.LambdaLR(opts[0], lambda t: (t + 1) / warm if t < warm else cos(t))]
-    if theta:
-        opts.append(torch.optim.Adam(theta, lr=a.qlr) if a.qopt == "adam" else
+    if theta and a.qopt != "sgdeq":
+        opts.append(torch.optim.AdamW(theta, lr=a.qlr, weight_decay=a.qwd) if a.qopt == "adam" else
                     torch.optim.SGD(theta, lr=a.qlr, momentum=0.9))
         sched.append(torch.optim.lr_scheduler.LambdaLR(opts[1], cos))
     fwd = torch.compile(model) if a.compile else model

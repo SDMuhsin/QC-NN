@@ -10,7 +10,7 @@ Reuses `qc.structure` (views, `expand`, `decompose`) and the 45k/5k split + augm
 | `qcconv.py` | `QCConv2d`: latent theta[R, Cb, b]; forward = exact projection onto V (top-2 shifts above alpha_r/2, stable sort), stored in buffer `v`; backward `ste` (identity) or `gibbs` (Cov_p(v) g / (tau alpha_r), p over all of V) |
 | `model.py` | `QCResNet18` (kuangliu layout), every conv a `QCConv2d` + BN (`ConvBN`) |
 | `data.py` | GPU split/augmentation (from `qc.train`), mean/std normalisation -> NCHW channels_last |
-| `train.py` | one experiment per command; SGD (dense weights, BN, FC) + Adam (theta); tau anneal; bf16, torch.compile; best/last checkpoints, `metrics.json` (loss, train/val acc, time, flip rate) |
+| `train.py` | one experiment per command; SGD (dense weights, BN, FC) + Adam/AdamW/SGD or dense-equivalent SGD (theta, `--qopt`); tau anneal; bf16, torch.compile; best/last checkpoints, `metrics.json` (loss, train/val acc, time, flip rate) |
 | `verify.py` | folds BN, recovers the exact integer M of every conv, proves QC via `decompose`, re-evaluates the folded fp64 network vs the model; exit 1 on failure |
 | `test_qcconv.py` | hard projection vs brute force over V, Gibbs backward vs autograd Jacobian, model weights decompose |
 
@@ -25,8 +25,9 @@ CUDA_VISIBLE_DEVICES=0 python3 -m qc18.train --mode dense --epochs 200
 CUDA_VISIBLE_DEVICES=0 python3 -m qc18.train --mode signed   --b 8 --estimator ste   --epochs 200
 CUDA_VISIBLE_DEVICES=0 python3 -m qc18.train --mode signed   --b 8 --estimator gibbs --tau0 1 --tau1 0.1 --epochs 200
 CUDA_VISIBLE_DEVICES=0 python3 -m qc18.train --mode unsigned --b 2 --estimator gibbs --tau0 1 --tau1 0.1 --epochs 200
-#   common options: --bs 128 --lr 0.1 --wd 5e-4 --warmup 2 --qlr 1e-2 --qopt adam|sgd --tau-sched geometric|cosine
+#   common options: --bs 128 --lr 0.1 --wd 5e-4 --warmup 2 --qlr 1e-2 --qopt adam|sgd|sgdeq --qwd 0 --tau-sched geometric|cosine
 #                   --bn-sign 0|1 --qinit-k K --seed 0 --test 0 --out DIR
+#   --qopt sgdeq: theta in the main SGD with lr*eq_lr/b, wd*eq_wd*b (dense SGD projected on circulant; opt.sh)
 #   diagnostics (diag.sh): --relax circ|top2 (real-weight relaxations, NOT QC, verify refuses them)
 #                   --kd A --kd-t T --teacher DENSE_CKPT (distillation from a qc18 dense checkpoint)
 CUDA_VISIBLE_DEVICES=0 python3 -m qc18.verify /tmp/$USER/qc18/runs/signed_b8_gibbs_s0/best.pt [--test]
