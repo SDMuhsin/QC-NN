@@ -5,7 +5,7 @@
 cd "$(dirname "$0")/.."
 S=$1 J=${J:-3}; O=/tmp/${USER:-$(whoami)}/qc18/abl; mkdir -p $O
 eval "$(grep '^P=' $S)"
-grep '^CUDA_VISIBLE_DEVICES' $S | while read -r line; do
+grep '^CUDA_VISIBLE_DEVICES' $S | { while read -r line; do
   while [ "$(jobs -rp | wc -l)" -ge "$J" ]; do sleep 10; done
   out=$(eval echo "$line" | sed 's/.*--out //; s/ .*//'); name=$(basename $out)
   echo "START $name $(date +%T)" >> $O/driver.log
@@ -16,5 +16,5 @@ grep '^CUDA_VISIBLE_DEVICES' $S | while read -r line; do
       if awk "BEGIN{exit !($v < 15)}"; then pkill -f "qc18.train.*--out $out"; echo "KILLED $name ep10 val $v" >> $O/driver.log; fi ) &
   fi
   sleep 5
-done
-wait; echo "ALLDONE $(date +%T)" >> $O/driver.log
+done; wait; }
+echo "ALLDONE $(date +%T)" >> $O/driver.log
