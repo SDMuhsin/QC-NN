@@ -56,6 +56,15 @@ def row_alpha(theta):
     return top.mean(-1)[:, None, None].clamp(min=1e-12)
 
 
+@torch.no_grad()
+def sphere_(theta):
+    """In place: rescale each block row's latents theta[r] to unit RMS (norm sqrt(Cb*b)).  hard() is invariant
+    to positive per-row rescaling (alpha_r scales with theta_r), so the network is unchanged."""
+    n = theta[0].numel()
+    theta.mul_(n ** 0.5 / theta.flatten(1).norm(dim=1).clamp(min=1e-12)[:, None, None])
+    return theta
+
+
 def hard(theta, alpha, signed):
     """Exact argmax over V of <theta, v> - alpha/2 |v|_0 per block (see module doc)."""
     t = theta.detach()

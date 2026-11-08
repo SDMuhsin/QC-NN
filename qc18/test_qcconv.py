@@ -1,12 +1,13 @@
 """Unit tests:  python3 -m qc18.test_qcconv
 (a) hard(theta) == brute-force argmax of the score over V;  (b) Gibbs backward == autograd Jacobian of the
-smoothed mean E_p[v](theta);  (c) model forward weights (train and eval) are QC per qc.structure.decompose."""
+smoothed mean E_p[v](theta);  (c) model forward weights (train and eval) are QC per qc.structure.decompose;  (d) per-row renormalisation
+(sphere_, --qopt sphere) leaves hard(theta) unchanged."""
 import torch
 
 from qc.structure import decompose, from_matrix
 
 from .model import QCResNet18
-from .qcconv import GibbsProject, hard, row_alpha, vset
+from .qcconv import GibbsProject, hard, row_alpha, sphere_, vset
 
 BS = (2, 4, 8)
 MODES = ("signed", "unsigned")
@@ -91,8 +92,24 @@ def test_model_weights_qc():
                             assert C.min() >= 0
 
 
+def test_sphere_invariant():
+    """--qopt sphere: per-row renormalisation to unit RMS leaves the hard weights unchanged."""
+    g = torch.Generator().manual_seed(1)
+    for b in BS:
+        for mode in MODES:
+            for dt in (torch.float64, torch.float32):
+                theta = torch.randn(16, 64, b, generator=g, dtype=dt) * torch.rand(16, 1, 1, generator=g, dtype=dt) * 5
+                theta[:4] += 0.5
+                v = hard(theta, row_alpha(theta), mode == "signed")
+                th = sphere_(theta.clone())
+                rms = th.flatten(1).pow(2).mean(1).sqrt()
+                assert torch.allclose(rms, torch.ones_like(rms), atol=1e-5)
+                vs = hard(th, row_alpha(th), mode == "signed")
+                assert (vs != v).any(-1).float().mean() < (1e-3 if dt == torch.float32 else 1e-9), (b, mode, dt)
+
+
 if __name__ == "__main__":
-    for t in (test_sizes, test_hard_bruteforce, test_gibbs_jacobian, test_model_weights_qc):
+    for t in (test_sizes, test_hard_bruteforce, test_gibbs_jacobian, test_model_weights_qc, test_sphere_invariant):
         t()
         print("PASS", t.__name__, flush=True)
     print("ALL PASS")
