@@ -6,7 +6,8 @@ Fixed 45k/5k train/val split (qc.train.split, seed 0); best epoch selected on va
 once at the end (best-val checkpoint) only with --test 1.  QC val is the hard network (stored v) after BN
 statistics are recalibrated on 10k unaugmented train images.  Writes best.pt, last.pt, metrics.json to --out.
 Optimisers: SGD nesterov 0.9 (dense conv weights, BN, FC; wd only on dense conv / FC weights; linear warmup
-then cosine) and Adam on theta (cosine, no wd).  tau annealed tau0 -> tau1 per epoch (--tau-sched).
+then cosine) and Adam (or SGD momentum 0.9, --qopt) on theta (cosine, no wd).  tau annealed tau0 -> tau1 per
+epoch (--tau-sched).  Unsigned-mode init options: --bn-sign (random +-1 BN gamma), --qinit-k (sparse theta).
 Speed: GPU-resident data + augmentation, bf16 autocast for training (eval/recal fp32), channels_last,
 torch.compile; dense and QC share the pipeline.
 """
@@ -81,7 +82,10 @@ def main():
     ap.add_argument("--lr", type=float, default=0.1, help="SGD lr (dense conv weights, BN, FC)")
     ap.add_argument("--wd", type=float, default=5e-4, help="SGD weight decay on dense conv / FC weights")
     ap.add_argument("--warmup", type=float, default=2, help="SGD linear warmup epochs")
-    ap.add_argument("--qlr", type=float, default=1e-2, help="Adam lr for theta (unit-std init)")
+    ap.add_argument("--qlr", type=float, default=1e-2, help="theta lr (unit-std init)")
+    ap.add_argument("--qopt", default="adam", choices=["adam", "sgd"], help="theta optimiser (sgd: momentum 0.9)")
+    ap.add_argument("--qinit-k", type=int, default=0, help="QC init: only k random blocks per block row on (0: off)")
+    ap.add_argument("--bn-sign", type=int, default=0, help="init BN gamma with random +-1 signs (per channel)")
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--amp", type=int, default=1, help="bf16 autocast in training")
     ap.add_argument("--compile", type=int, default=1)
@@ -103,6 +107,17 @@ def main():
     (xtr, ytr), (xva, yva) = split(dev)
     model = QCResNet18(a.mode, a.b, a.estimator, a.tau0).to(dev).to(memory_format=torch.channels_last)
     qc = a.mode != "dense"
+    if a.qinit_k:                           # sparse init: other blocks get theta = -|theta| (hard v = 0 there)
+        with torch.no_grad():
+            for c in model.qconvs():
+                on = torch.zeros(c.theta.shape[:2], dtype=torch.bool, device=dev)
+                on.scatter_(1, torch.rand(on.shape, device=dev).argsort(1)[:, :a.qinit_k], True)
+                c.theta.copy_(torch.where(on[..., None], c.theta, -c.theta.abs()))
+                c.refresh()
+    if a.bn_sign:                           # signed per-output-channel scale (allowed by the QC definition)
+        with torch.no_grad():
+            for _, cb in model.convbns():
+                cb.bn.weight.copy_(torch.randint(0, 2, cb.bn.weight.shape, device=dev) * 2.0 - 1)
 
     theta = [p for n, p in model.named_parameters() if n.endswith("theta")]
     decay = [m.weight for m in model.modules() if isinstance(m, QCConv2d) and m.mode == "dense"] + [model.fc.weight]
@@ -114,7 +129,8 @@ def main():
     cos = lambda t: 0.5 * (1 + math.cos(math.pi * t / steps))
     sched = [torch.optim.lr_scheduler.LambdaLR(opts[0], lambda t: (t + 1) / warm if t < warm else cos(t))]
     if theta:
-        opts.append(torch.optim.Adam(theta, lr=a.qlr, weight_decay=0.0))
+        opts.append(torch.optim.Adam(theta, lr=a.qlr) if a.qopt == "adam" else
+                    torch.optim.SGD(theta, lr=a.qlr, momentum=0.9))
         sched.append(torch.optim.lr_scheduler.LambdaLR(opts[1], cos))
     fwd = torch.compile(model) if a.compile else model
 
