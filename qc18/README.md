@@ -26,7 +26,7 @@ CUDA_VISIBLE_DEVICES=0 python3 -m qc18.train --mode signed   --b 8 --estimator s
 CUDA_VISIBLE_DEVICES=0 python3 -m qc18.train --mode signed   --b 8 --estimator gibbs --tau0 1 --tau1 0.1 --epochs 200
 CUDA_VISIBLE_DEVICES=0 python3 -m qc18.train --mode unsigned --b 2 --estimator gibbs --tau0 1 --tau1 0.1 --epochs 200
 #   common options: --bs 128 --lr 0.1 --wd 5e-4 --warmup 2 --qlr 1e-2 --qopt adam|sgd|sgdeq --qwd 0 --tau-sched geometric|cosine
-#                   --bn-sign 0|1 --qinit-k K --seed 0 --test 0 --out DIR
+#                   --bn-sign 0|1 --qinit-k K --qinit-scale unit|dense --seed 0 --test 0 --out DIR
 #   --qopt sgdeq: theta in the main SGD with lr*eq_lr/b, wd*eq_wd*b (dense SGD projected on circulant; opt.sh)
 #   diagnostics (diag.sh): --relax circ|top2 (real-weight relaxations, NOT QC, verify refuses them)
 #                   --kd A --kd-t T --teacher DENSE_CKPT (distillation from a qc18 dense checkpoint)

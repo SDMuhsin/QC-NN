@@ -34,11 +34,11 @@ class BasicBlock(nn.Module):
 
 
 class QCResNet18(nn.Module):
-    def __init__(self, mode="dense", b=8, estimator="ste", tau=1.0, num_classes=10, relax="none"):
+    def __init__(self, mode="dense", b=8, estimator="ste", tau=1.0, num_classes=10, relax="none", qinit_scale="unit"):
         super().__init__()
         qc = dict(mode=mode, b=b, estimator=estimator, tau=tau)
         if mode != "dense":
-            qc["relax"] = relax
+            qc["relax"], qc["qinit_scale"] = relax, qinit_scale
         self.mode = mode
         self.stem = ConvBN(3, 64, 3, 1, **qc)
         blocks, cin = [], 64

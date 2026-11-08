@@ -94,6 +94,8 @@ def main():
     ap.add_argument("--eq-lr", type=float, default=1.0, help="sgdeq: theta lr = eq_lr * lr / b")
     ap.add_argument("--eq-wd", type=float, default=1.0, help="sgdeq: theta wd = eq_wd * wd * b")
     ap.add_argument("--qinit-k", type=int, default=0, help="QC init: only k random blocks per block row on (0: off)")
+    ap.add_argument("--qinit-scale", default="unit", choices=["unit", "dense"],
+                    help="theta init: unit std, or the projected Kaiming init at its dense scale")
     ap.add_argument("--bn-sign", type=int, default=0, help="init BN gamma with random +-1 signs (per channel)")
     ap.add_argument("--relax", default="none", choices=["none", "circ", "top2"],
                     help="diagnostic real-weight relaxation (not QC): circ = theta, top2 = theta on top-2 shifts")
@@ -120,7 +122,7 @@ def main():
     dev = "cuda"
 
     (xtr, ytr), (xva, yva) = split(dev)
-    model = QCResNet18(a.mode, a.b, a.estimator, a.tau0, relax=a.relax).to(dev).to(memory_format=torch.channels_last)
+    model = QCResNet18(a.mode, a.b, a.estimator, a.tau0, relax=a.relax, qinit_scale=a.qinit_scale).to(dev).to(memory_format=torch.channels_last)
     qc = a.mode != "dense"
     if a.qinit_k:                           # sparse init: other blocks get theta = -|theta| (hard v = 0 there)
         with torch.no_grad():

@@ -109,7 +109,8 @@ class GibbsProject(torch.autograd.Function):
 
 
 class QCConv2d(nn.Module):
-    def __init__(self, cin, cout, k, stride=1, padding=0, mode="dense", b=8, estimator="ste", tau=1.0, relax="none"):
+    def __init__(self, cin, cout, k, stride=1, padding=0, mode="dense", b=8, estimator="ste", tau=1.0, relax="none",
+                 qinit_scale="unit"):
         super().__init__()
         self.cin, self.cout, self.k, self.stride, self.padding = cin, cout, k, stride, padding
         self.mode, self.b, self.estimator, self.relax = mode, b, estimator, relax
@@ -122,7 +123,10 @@ class QCConv2d(nn.Module):
         assert relax in ("none", "circ", "top2")
         self.signed = mode == "signed"
         theta = self.circulant_projection(W, b)
-        theta = theta / theta.std()                                      # unit std (scale is free: BN follows)
+        if qinit_scale == "unit":                                        # unit std (scale is free: BN follows)
+            theta = theta / theta.std()
+        else:                                                            # "dense": keep the Kaiming-projected scale
+            assert qinit_scale == "dense"
         self.theta = nn.Parameter(theta)
         self.register_buffer("v", hard(theta, row_alpha(theta), self.signed))
         self.register_buffer("tau", torch.tensor(float(tau)))
