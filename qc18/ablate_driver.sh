@@ -3,8 +3,8 @@
 #   nohup qc18/ablate_driver.sh qc18/ablate.sh > /tmp/$USER/qc18/abl/driver.out 2>&1 &
 # Kill rule: u2nofix is stopped after epoch 10 if its val is < 15 %.  Logs: <out>.log, driver.log.
 cd "$(dirname "$0")/.."
-S=$1 J=${J:-3}; O=/tmp/${USER:-$(whoami)}/qc18/abl; mkdir -p $O
-eval "$(grep '^P=' $S)"
+S=$1 J=${J:-3}; O=/tmp/${USER:-$(whoami)}/qc18/abl
+eval "$(grep '^P=' $S)"; mkdir -p $O          # the sweep's P= line may set its own output dir O
 grep '^CUDA_VISIBLE_DEVICES' $S | { while read -r line; do
   while [ "$(jobs -rp | wc -l)" -ge "$J" ]; do sleep 10; done
   out=$(eval echo "$line" | sed 's/.*--out //; s/ .*//'); name=$(basename $out)

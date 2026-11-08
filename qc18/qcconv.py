@@ -21,6 +21,11 @@ relax (diagnostic only; the result is NOT a QC network, real weights): "circ" = 
 block-circulant, all b shifts); "top2" = forward uses theta on the top-2 |theta| shifts per block (exact mask,
 zeros elsewhere, gradient straight through the mask).  Train and eval use the relaxed weights; `v` still holds
 hard(theta) so the flip rate stays comparable.
+homotopy (training forward only; eval always uses the stored hard `v`): while the layer's `h_on` flag is set,
+  gibbs: forward = Gibbs mean E_p[v](theta) (p as above, temperature buffer tau), exact autograd Jacobian;
+  ramp:  forward = (1 - lam) r + lam (hard(theta) + STE), r = top2 mask * theta / alpha_r (exact gradient through r,
+         mask and alpha_r detached), lam = buffer `hlam`.
+The trainer sets tau / hlam each step and clears `h_on` when the homotopy ends -> forward = hard + STE.
 """
 import itertools
 
@@ -83,6 +88,21 @@ def top2(theta):
     return t * m + (theta - t)
 
 
+def gibbs_mean(theta, alpha, tau, V):
+    """E_p[v] per block, p(v) ∝ exp(score(v) / (tau alpha)) over all of V (alpha detached); differentiable."""
+    nnz = (V != 0).sum(1).to(theta.dtype)
+    p = torch.softmax((theta @ V.T - 0.5 * alpha * nnz) / (tau * alpha), dim=-1)
+    return p @ V
+
+
+def ramp(theta, alpha, lam, signed):
+    """(1 - lam) top2(theta) / alpha + lam (hard(theta) + STE)."""
+    t = theta.detach()
+    idx = t.abs().sort(dim=-1, descending=True, stable=True).indices[..., :2]
+    r = theta * torch.zeros_like(t).scatter(-1, idx, 1.0) / alpha
+    return (1 - lam) * r + lam * (hard(theta, alpha, signed) + (theta - t))
+
+
 def gibbs_vjp(theta, alpha, tau, V, g, chunk=1 << 22):
     """Cov_p(v) g / (tau alpha) per block, p(v) ∝ exp((<theta,v> - alpha/2 |v|_0) / (tau alpha)).
     theta, g [R, Cb, b]; alpha [R, 1, 1]; V [K, b].  Chunked over blocks to bound the [N, K] buffers."""
@@ -119,17 +139,19 @@ class GibbsProject(torch.autograd.Function):
 
 class QCConv2d(nn.Module):
     def __init__(self, cin, cout, k, stride=1, padding=0, mode="dense", b=8, estimator="ste", tau=1.0, relax="none",
-                 qinit_scale="unit"):
+                 qinit_scale="unit", homotopy="none"):
         super().__init__()
         self.cin, self.cout, self.k, self.stride, self.padding = cin, cout, k, stride, padding
         self.mode, self.b, self.estimator, self.relax = mode, b, estimator, relax
+        self.homotopy, self.h_on = homotopy, homotopy != "none"
         W = torch.empty(cout, cin, k, k)
         nn.init.kaiming_normal_(W, nonlinearity="relu")
         if mode == "dense":
             self.weight = nn.Parameter(W)
             return
         assert mode in ("signed", "unsigned") and estimator in ("ste", "gibbs") and cout % b == 0
-        assert relax in ("none", "circ", "top2")
+        assert relax in ("none", "circ", "top2") and homotopy in ("none", "gibbs", "ramp")
+        assert homotopy == "none" or (relax == "none" and estimator == "ste")
         self.signed = mode == "signed"
         theta = self.circulant_projection(W, b)
         if qinit_scale == "unit":                                        # unit std (scale is free: BN follows)
@@ -139,6 +161,7 @@ class QCConv2d(nn.Module):
         self.theta = nn.Parameter(theta)
         self.register_buffer("v", hard(theta, row_alpha(theta), self.signed))
         self.register_buffer("tau", torch.tensor(float(tau)))
+        self.register_buffer("hlam", torch.tensor(0.0), persistent=False)
         self.register_buffer("V", vset(b, self.signed), persistent=False)
 
     @staticmethod
@@ -165,6 +188,10 @@ class QCConv2d(nn.Module):
             return self.v
         th = self.theta
         alpha = row_alpha(th)
+        if self.h_on and self.homotopy == "gibbs":
+            return gibbs_mean(th, alpha, self.tau, self.V)
+        if self.h_on and self.homotopy == "ramp":
+            return ramp(th, alpha, self.hlam, self.signed)
         if self.estimator == "ste":
             return hard(th, alpha, self.signed) + (th - th.detach())
         return GibbsProject.apply(th, alpha, self.tau, self.V, self.signed)
@@ -188,4 +215,5 @@ class QCConv2d(nn.Module):
         if self.mode == "dense":
             return s
         s += f", b={self.b}, cin_pad={cin_pad(self.cin, self.b)}, {self.estimator}"
+        s += "" if self.homotopy == "none" else f", homotopy={self.homotopy}"
         return s if self.relax == "none" else s + f", relax={self.relax}"

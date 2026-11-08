@@ -34,11 +34,12 @@ class BasicBlock(nn.Module):
 
 
 class QCResNet18(nn.Module):
-    def __init__(self, mode="dense", b=8, estimator="ste", tau=1.0, num_classes=10, relax="none", qinit_scale="unit"):
+    def __init__(self, mode="dense", b=8, estimator="ste", tau=1.0, num_classes=10, relax="none", qinit_scale="unit",
+                 homotopy="none"):
         super().__init__()
         qc = dict(mode=mode, b=b, estimator=estimator, tau=tau)
         if mode != "dense":
-            qc["relax"], qc["qinit_scale"] = relax, qinit_scale
+            qc["relax"], qc["qinit_scale"], qc["homotopy"] = relax, qinit_scale, homotopy
         self.mode = mode
         self.stem = ConvBN(3, 64, 3, 1, **qc)
         blocks, cin = [], 64
@@ -63,6 +64,15 @@ class QCResNet18(nn.Module):
     def set_tau(self, tau):
         for c in self.qconvs():
             c.tau.fill_(tau)
+
+    def set_homotopy(self, on, tau=None, lam=None):
+        """Homotopy forward on/off (off = hard + STE); gibbs temperature tau / ramp weight lam."""
+        for c in self.qconvs():
+            c.h_on = on
+            if tau is not None:
+                c.tau.fill_(tau)
+            if lam is not None:
+                c.hlam.fill_(lam)
 
     def refresh(self):
         for c in self.qconvs():

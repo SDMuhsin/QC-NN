@@ -1,13 +1,15 @@
 """Unit tests:  python3 -m qc18.test_qcconv
 (a) hard(theta) == brute-force argmax of the score over V;  (b) Gibbs backward == autograd Jacobian of the
 smoothed mean E_p[v](theta);  (c) model forward weights (train and eval) are QC per qc.structure.decompose;  (d) per-row renormalisation
-(sphere_, --qopt sphere) leaves hard(theta) unchanged."""
+(sphere_, --qopt sphere) leaves hard(theta) unchanged;  (e) homotopy: gibbs forward = E_p[v] with gradient = the Gibbs
+VJP, ramp endpoints (lam 0: top2/alpha, 1: hard), eval = stored hard v, and once the homotopy has ended
+(set_homotopy(False)) the training forward equals the hard projection with STE gradient."""
 import torch
 
 from qc.structure import decompose, from_matrix
 
 from .model import QCResNet18
-from .qcconv import GibbsProject, hard, row_alpha, sphere_, vset
+from .qcconv import GibbsProject, gibbs_mean, gibbs_vjp, hard, row_alpha, sphere_, vset
 
 BS = (2, 4, 8)
 MODES = ("signed", "unsigned")
@@ -108,8 +110,63 @@ def test_sphere_invariant():
                 assert (vs != v).any(-1).float().mean() < (1e-3 if dt == torch.float32 else 1e-9), (b, mode, dt)
 
 
+def test_homotopy():
+    torch.manual_seed(0)
+    g = torch.Generator().manual_seed(2)
+    for b in BS:
+        for mode in MODES:
+            signed = mode == "signed"
+            V = vset(b, signed, torch.float64)
+            theta = torch.randn(4, 6, b, generator=g, dtype=torch.float64)
+            alpha = row_alpha(theta)
+            gout = torch.randn(4, 6, b, generator=g, dtype=torch.float64)
+            th = theta.clone().requires_grad_()
+            m = gibbs_mean(th, alpha, torch.tensor(0.5, dtype=torch.float64), V)
+            p = torch.softmax(score(theta, alpha, V) / (0.5 * alpha), -1)
+            assert torch.allclose(m, p @ V)
+            m.backward(gout)
+            assert torch.allclose(th.grad, gibbs_vjp(theta, alpha, torch.tensor(0.5, dtype=torch.float64), V, gout))
+            # small tau: the Gibbs mean approaches the hard projection
+            m0 = gibbs_mean(theta, alpha, torch.tensor(1e-4, dtype=torch.float64), V)
+            assert (m0 - hard(theta, alpha, signed)).abs().max() < 1e-6
+        for hom in ("gibbs", "ramp"):
+            model = QCResNet18("signed", b, "ste", homotopy=hom).train()
+            for c in model.qconvs():
+                with torch.no_grad():
+                    c.theta.add_(0.3 * torch.randn_like(c.theta))     # theta != v-consistent init
+            model.set_homotopy(True, tau=0.5, lam=0.0)
+            for c in model.qconvs():
+                hv = hard(c.theta, row_alpha(c.theta), True)
+                w = c.coef()
+                assert not torch.equal(w.detach(), hv)
+                if hom == "ramp":
+                    t = c.theta.detach()
+                    idx = t.abs().sort(dim=-1, descending=True, stable=True).indices[..., :2]
+                    r = t * torch.zeros_like(t).scatter(-1, idx, 1.0) / row_alpha(t)
+                    assert torch.allclose(w, r)
+                    c.hlam.fill_(1.0)
+                    assert torch.allclose(c.coef(), hv)
+                c.refresh()
+                c.eval()
+                assert torch.equal(c.coef(), c.v)                      # eval: stored hard v during homotopy
+                c.train()
+            model.set_homotopy(False)                                  # homotopy ended
+            for c in model.qconvs():
+                th = c.theta
+                w = c.coef()
+                assert torch.equal(w.detach(), hard(th, row_alpha(th), True))
+                gw = torch.randn_like(w)
+                th.grad = None
+                w.backward(gw)
+                assert torch.equal(th.grad, gw)                        # STE
+                C = decompose(c.matrix(), b, signed=True)
+                assert torch.equal(from_matrix(c.matrix(), c.cin, c.k, b), c.get_weight().detach())
+                assert (C != 0).sum(-1).max() <= 2
+
+
 if __name__ == "__main__":
-    for t in (test_sizes, test_hard_bruteforce, test_gibbs_jacobian, test_model_weights_qc, test_sphere_invariant):
+    for t in (test_sizes, test_hard_bruteforce, test_gibbs_jacobian, test_model_weights_qc, test_sphere_invariant,
+              test_homotopy):
         t()
         print("PASS", t.__name__, flush=True)
     print("ALL PASS")

@@ -15,7 +15,8 @@ Reuses `qc.structure` (views, `expand`, `decompose`) and the 45k/5k split + augm
 | `int8.py` | integer-exact int8 inference of a verified checkpoint: int8 conv weights sign(s_c) M (QC re-proved with `decompose`), per-channel scale \|s_c\|, per-tensor activation scales (max on train[:2000]), int32 accumulation, fixed-point multiplier+shift requant, residual add at the block-output scale, integer pool; `<run>/int8.txt` |
 | `stats.py` | per-layer/total QC storage vs dense int8, density, additions vs dense MACs (FC excluded) -> `results/<run>.md`, `results/summary.md` |
 | `ablate.sh`, `ablate_driver.sh` | 60-epoch ablation batch (relaxations, b, Adam vs AdamW, unsigned fixes, KD) and its 3-job queue driver |
-| `test_qcconv.py` | hard projection vs brute force over V, Gibbs backward vs autograd Jacobian, model weights decompose |
+| `homotopy.sh` | 60-epoch homotopy batch (Gibbs-mean / ramp training forward, relaxed -> hard; run with `ablate_driver.sh`) |
+| `test_qcconv.py` | hard projection vs brute force over V, Gibbs backward vs autograd Jacobian, model weights decompose, homotopy (ends in the hard forward + STE) |
 
 Eval mode uses the stored hard `v` (refreshed from theta after every epoch), so the checkpoint is exactly the
 evaluated/verified network.  QC val is measured after BN recalibration on 10k train images; eval is fp32.
@@ -32,6 +33,9 @@ CUDA_VISIBLE_DEVICES=0 python3 -m qc18.train --mode unsigned --b 2 --estimator g
 #                   --bn-sign 0|1 --qinit-k K --qinit-scale unit|dense --seed 0 --test 0 --out DIR
 #   --qopt sphere: Adam (no wd) + every block row of theta renormalised to unit RMS after each step (sph.sh)
 #   --qopt sgdeq: theta in the main SGD with lr*eq_lr/b, wd*eq_wd*b (dense SGD projected on circulant; opt.sh)
+#   --homotopy gibbs|ramp --h-frac F: training forward relaxed -> hard over the first F of the steps (gibbs: E_p[v],
+#     tau tau0 -> 0.01 tau0 geometric, exact Jacobian; ramp: (1-lam) top2(theta)/alpha_r + lam (hard + STE), lam 0 -> 1),
+#     then hard + STE; BN recal + val on the hard net, best checkpoint only among hard-phase epochs (homotopy.sh)
 #   diagnostics (diag.sh): --relax circ|top2 (real-weight relaxations, NOT QC, verify refuses them)
 #                   --kd A --kd-t T --teacher DENSE_CKPT (distillation from a qc18 dense checkpoint)
 CUDA_VISIBLE_DEVICES=0 python3 -m qc18.verify /tmp/$USER/qc18/runs/signed_b8_gibbs_s0/best.pt [--test]
