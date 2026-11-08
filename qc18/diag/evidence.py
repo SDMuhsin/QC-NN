@@ -9,7 +9,7 @@ D4: the 45k train split -> 10 disjoint contiguous chunks of 4500.  Per chunk c: 
   se(v') = std_c (ddof 1) / sqrt(nchunks).  best = argmin_{v' != v} m;  z = m_best / se_best.
   Move type of the best move: nnz (|v'|_0 != |v|_0), sign (same support, signs differ), swap (same |.|_0, other support).
 D5: rank the z < -3 tiles by m_best (most negative first); for q in {1, 5, 20} % of ALL tiles (capped at the number
-  of z < -3 tiles) apply the best moves of the top-q tiles at once, recalibrate BN (train.recal_bn on train[:10000],
+  of z < -3 tiles) apply the best moves of the top-q tiles at once, recalibrate BN (common.recal_v on train[:10000],
   as at checkpoint time; verify.py itself evaluates the stored stats), measure train loss (eval mode, fixed 10k train
   subset: seeded permutation 4321 of the 45k) and val accuracy.  Control: the same count of uniformly random tiles,
   each moved to a uniformly random legal v' != v (3 seeds).  Iterative: 3 rounds of [D4 with 5 chunks of 9000 on the
@@ -26,8 +26,8 @@ import torch.nn.functional as F
 
 from ..data import prep, split
 from ..qcconv import vset
-from ..train import accuracy, recal_bn
-from .common import layer_names, load
+from ..train import accuracy
+from .common import layer_names, load, recal_v
 from .local_model import grads
 
 QS = (0.01, 0.05, 0.20)
@@ -124,7 +124,7 @@ def train_loss(model, x, y, bs=1000):
 
 def measure(model, xr, xl, yl, xva, yva, recal=True):
     if recal:
-        recal_bn(model, xr)
+        recal_v(model, xr)
     return dict(train_loss=train_loss(model, xl, yl), val=accuracy(model, xva, yva))
 
 

@@ -26,6 +26,8 @@ homotopy (training forward only; eval always uses the stored hard `v`): while th
   ramp:  forward = (1 - lam) r + lam (hard(theta) + STE), r = top2 mask * theta / alpha_r (exact gradient through r,
          mask and alpha_r detached), lam = buffer `hlam`.
 The trainer sets tau / hlam each step and clears `h_on` when the homotopy ends -> forward = hard + STE.
+freeze() (train.py --freeze-v-epoch): the forward uses the stored v as a fixed buffer in train mode too; theta gets
+requires_grad False (no gradient, so the optimiser skips it) and v is never refreshed again.
 """
 import itertools
 
@@ -143,7 +145,7 @@ class QCConv2d(nn.Module):
         super().__init__()
         self.cin, self.cout, self.k, self.stride, self.padding = cin, cout, k, stride, padding
         self.mode, self.b, self.estimator, self.relax = mode, b, estimator, relax
-        self.homotopy, self.h_on = homotopy, homotopy != "none"
+        self.homotopy, self.h_on, self.frozen = homotopy, homotopy != "none", False
         W = torch.empty(cout, cin, k, k)
         nn.init.kaiming_normal_(W, nonlinearity="relu")
         if mode == "dense":
@@ -176,7 +178,16 @@ class QCConv2d(nn.Module):
     @torch.no_grad()
     def refresh(self):
         """Store the hard coefficients of the current theta (used in eval mode and saved in checkpoints)."""
+        if self.frozen:
+            return
         self.v.copy_(hard(self.theta, row_alpha(self.theta), self.signed))
+
+    def freeze(self):
+        """From now on the forward (train and eval) uses the current stored v; theta is no longer trained."""
+        assert self.mode != "dense" and self.relax == "none"
+        self.frozen = True
+        self.theta.requires_grad_(False)
+        self.theta.grad = None
 
     def coef(self):
         """Coefficients [R, Cb, b] of the forward pass: exact hard values, estimator gradient (training)."""
@@ -184,7 +195,7 @@ class QCConv2d(nn.Module):
             return self.theta
         if self.relax == "top2":
             return top2(self.theta)
-        if not self.training:
+        if not self.training or self.frozen:
             return self.v
         th = self.theta
         alpha = row_alpha(th)

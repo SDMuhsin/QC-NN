@@ -19,6 +19,8 @@ Homotopy (--homotopy gibbs|ramp, --h-frac F; QC, ste): over the first F of the t
 moves from relaxed to hard, per step: gibbs = Gibbs mean E_p[v] with tau = tau0 * 0.01^(t/H) (exact Jacobian);
 ramp = (1-lam) top2(theta)/alpha_r + lam (hard + STE), lam = t/H.  Then forward = hard + STE.  BN recalibration and
 val always use the hard network; the best checkpoint is chosen only among epochs trained entirely in the hard phase.
+Structure freeze (--freeze-v-epoch E, 1-based, QC): after epoch E's refresh every QCConv2d keeps its hard v as a fixed
+buffer (theta frozen, no flips); BN / FC / dense params and all lr schedules continue unchanged.
 Speed: GPU-resident data + augmentation, bf16 autocast for training (eval/recal fp32), channels_last,
 torch.compile; dense and QC share the pipeline.
 """
@@ -113,6 +115,8 @@ def main():
     ap.add_argument("--kd", type=float, default=0.0, help="distillation weight A (0: off)")
     ap.add_argument("--kd-t", type=float, default=4.0, help="distillation temperature T")
     ap.add_argument("--teacher", default="", help="qc18 dense checkpoint (best.pt) for --kd")
+    ap.add_argument("--freeze-v-epoch", type=int, default=0,
+                    help="QC: freeze the hard v at the end of this epoch (1-based) for the rest of training (0: off)")
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--amp", type=int, default=1, help="bf16 autocast in training")
     ap.add_argument("--compile", type=int, default=1)
@@ -240,6 +244,8 @@ def main():
         ttrain = time.time() - t0
         model.refresh()                     # store hard v of the final theta of this epoch
         hard_ep = ep * spe >= hsteps        # every step of this epoch used the hard forward
+        if qc and ep + 1 == a.freeze_v_epoch:
+            model.freeze_v()                # structure fixed from here on (v = hard(theta) of this epoch)
         if hsteps:
             model.set_homotopy(False)       # BN recalibration (train mode) on the hard network
         fr = flip_rate(model, prev)

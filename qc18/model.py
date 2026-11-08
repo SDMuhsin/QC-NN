@@ -77,3 +77,7 @@ class QCResNet18(nn.Module):
     def refresh(self):
         for c in self.qconvs():
             c.refresh()
+
+    def freeze_v(self):
+        for c in self.qconvs():
+            c.freeze()

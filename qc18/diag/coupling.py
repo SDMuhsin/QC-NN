@@ -33,7 +33,7 @@ import torch.nn.functional as F
 from ..data import augment, prep, split
 from ..model import QCResNet18
 from ..qcconv import vset
-from .common import layer_names, load
+from .common import layer_names, load, recal_v
 from .evidence import apply, flat_v, train_loss
 from .local_model import block_index, cache_inputs, tail
 from .polish import locate, predicted_best
@@ -108,24 +108,6 @@ def activations(model, x):
     for h in hooks:
         h.remove()
     return out
-
-
-@torch.no_grad()
-def recal_v(model, x):
-    """train.recal_bn with every QCConv2d kept in eval mode, i.e. BN statistics of the network of the stored v
-    (train.recal_bn runs the convs in train mode = hard(theta), which ignores moves written into v)."""
-    model.train()
-    for c in model.qconvs():
-        c.eval()
-    bns = [m for m in model.modules() if isinstance(m, torch.nn.BatchNorm2d)]
-    for m in bns:
-        m.reset_running_stats()
-        m.momentum = None
-    for i in range(0, len(x), 500):
-        model(prep(x[i:i + 500]))
-    for m in bns:
-        m.momentum = 0.1
-    model.eval()
 
 
 def joint(model, state0, off, tiles, vnew, xa_raw, ya, xr, L0):

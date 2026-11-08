@@ -6,15 +6,16 @@ model.eval() (fixed function given BN stats), fp32 (no TF32), unaugmented train 
 Fixed disjoint subsets of the 45k train split (seeded permutation 4321): A = perm[:10000] (selection; = the D5 loss
 subset of evidence.py), B = perm[10000:20000] (held-out train loss); the 5k val split for accuracy only.
 Per round:
- 1. recal_bn on train[:10000] (as at checkpoint time / evidence.py).  g = dL_A/dv (mean CE over A) and, per tile,
-    the best legal v' != v in V by first-order predicted dL = g . (v' - v).
+ 1. recal_v (common.py: BN stats of the network of the stored v) on train[:10000] (as at checkpoint time /
+    evidence.py).  g = dL_A/dv (mean CE over A) and, per tile, the best legal v' != v in V by first-order
+    predicted dL = g . (v' - v).
  2. Candidates: the --cands tiles with the most negative predicted dL (--control: --cands uniformly random tiles,
     each with a uniformly random legal v' != v).  Exact single-move dL on A per candidate (forward resumed from the
     cached input of the block containing the conv; whole A in one batch).  Keep measured dL < 0, sorted ascending.
  3. Greedy: add kept moves in that order; after every --block additions (and after the last partial block) measure
     the joint loss on A (full forward, same BN stats); if it went up versus before this block, revert the block and
     stop this round.
- 4. Log loss A before / after (round-start BN stats), then recal_bn and log loss A, loss B, val accuracy.
+ 4. Log loss A before / after (round-start BN stats), then recal_v and log loss A, loss B, val accuracy.
 Stop after --rounds rounds, after 2 consecutive rounds with 0 accepted, or when the next round (estimated by the
 last round's duration) would exceed --minutes.  Saves the polished checkpoint (BN recalibrated, same format as
 best.pt: args, state, epoch, val) and DIR/<name>.json.
@@ -28,8 +29,8 @@ import torch
 
 from ..data import prep, split
 from ..qcconv import vset
-from ..train import accuracy, recal_bn
-from .common import load
+from ..train import accuracy
+from .common import load, recal_v
 from .evidence import apply, flat_v, train_loss, v_index
 from .local_model import Evaluator, grads
 
@@ -55,7 +56,7 @@ def locate(model, off, t):
 
 def run_round(model, a, V, xa, ya, xa_raw, xr, xb, yb, xva, yva, gen):
     t0 = time.time()
-    recal_bn(model, xr)
+    recal_v(model, xr)
     model.eval()
     v, off = flat_v(model)
     N = len(v)
@@ -95,7 +96,7 @@ def run_round(model, a, V, xa, ya, xa_raw, xr, xb, yb, xva, yva, gen):
             break
         acc, Lprev = acc + len(tb), Lj
     L_after = Lprev
-    recal_bn(model, xr)
+    recal_v(model, xr)
     r = dict(n_cand=len(tiles), n_kept=len(keep), n_accepted=acc, loss_A_before=L0, loss_A_after=L_after,
              joint_losses=joint, sum_measured_kept=meas[keep].sum().item(),
              sum_measured_accepted=meas[keep[:acc]].sum().item(),
@@ -132,7 +133,7 @@ def main():
     xa, xr = prep(xa_raw), xtr[:10000]
     gen = torch.Generator(device="cuda").manual_seed(a.seed)
     res = dict(ckpt=a.ckpt, name=a.name, control=a.control, epoch=ck["epoch"] + 1, val_ckpt=ck["val"], args=vars(a))
-    recal_bn(model, xr)
+    recal_v(model, xr)
     res["round0"] = dict(loss_A=train_loss(model, xa_raw, ya), loss_B=train_loss(model, xb, yb),
                          val=accuracy(model, xva, yva))
     print(a.name, "round 0", json.dumps(res["round0"]), flush=True)

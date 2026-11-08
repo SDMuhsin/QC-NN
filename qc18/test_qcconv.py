@@ -3,7 +3,8 @@
 smoothed mean E_p[v](theta);  (c) model forward weights (train and eval) are QC per qc.structure.decompose;  (d) per-row renormalisation
 (sphere_, --qopt sphere) leaves hard(theta) unchanged;  (e) homotopy: gibbs forward = E_p[v] with gradient = the Gibbs
 VJP, ramp endpoints (lam 0: top2/alpha, 1: hard), eval = stored hard v, and once the homotopy has ended
-(set_homotopy(False)) the training forward equals the hard projection with STE gradient."""
+(set_homotopy(False)) the training forward equals the hard projection with STE gradient;  (f) freeze_v
+(--freeze-v-epoch): v and theta unchanged by further training steps (SGD + AdamW with wd), BN / FC still train."""
 import torch
 
 from qc.structure import decompose, from_matrix
@@ -164,9 +165,40 @@ def test_homotopy():
                 assert (C != 0).sum(-1).max() <= 2
 
 
+def test_freeze():
+    torch.manual_seed(0)
+    model = QCResNet18("signed", 8, "ste").train()
+    theta = [p for n, p in model.named_parameters() if n.endswith("theta")]
+    other = [p for p in model.parameters() if all(p is not q for q in theta)]
+    opts = [torch.optim.SGD(other, lr=0.1, momentum=0.9), torch.optim.AdamW(theta, lr=1e-1, weight_decay=0.1)]
+    x, y = torch.randn(8, 3, 32, 32), torch.randint(0, 10, (8,))
+
+    def steps(n):
+        for _ in range(n):
+            for o in opts:
+                o.zero_grad(set_to_none=True)
+            torch.nn.functional.cross_entropy(model(x), y).backward()
+            for o in opts:
+                o.step()
+        model.refresh()
+
+    steps(3)
+    v0 = [c.v.clone() for c in model.qconvs()]
+    model.freeze_v()
+    v1, th1 = [c.v.clone() for c in model.qconvs()], [t.clone() for t in theta]
+    bns = [p for n, p in model.named_parameters() if ".bn." in n]
+    fc1, bn1 = model.fc.weight.clone(), [p.clone() for p in bns]
+    assert all(torch.equal(a, b) for a, b in zip(v0, v1))
+    steps(3)
+    assert all(torch.equal(c.v, w) for c, w in zip(model.qconvs(), v1))
+    assert all(torch.equal(t, w) for t, w in zip(theta, th1))
+    assert all(torch.equal(c.coef(), c.v) for c in model.qconvs())          # train-mode forward = stored v
+    assert not torch.equal(model.fc.weight, fc1) and any(not torch.equal(p, q) for p, q in zip(bns, bn1))
+
+
 if __name__ == "__main__":
     for t in (test_sizes, test_hard_bruteforce, test_gibbs_jacobian, test_model_weights_qc, test_sphere_invariant,
-              test_homotopy):
+              test_homotopy, test_freeze):
         t()
         print("PASS", t.__name__, flush=True)
     print("ALL PASS")
