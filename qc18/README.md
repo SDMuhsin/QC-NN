@@ -12,6 +12,9 @@ Reuses `qc.structure` (views, `expand`, `decompose`) and the 45k/5k split + augm
 | `data.py` | GPU split/augmentation (from `qc.train`), mean/std normalisation -> NCHW channels_last |
 | `train.py` | one experiment per command; SGD (dense weights, BN, FC) + Adam/AdamW/SGD or dense-equivalent SGD (theta, `--qopt`); tau anneal; bf16, torch.compile; best/last checkpoints, `metrics.json` (loss, train/val acc, time, flip rate) |
 | `verify.py` | folds BN, recovers the exact integer M of every conv, proves QC via `decompose`, re-evaluates the folded fp64 network vs the model; exit 1 on failure |
+| `int8.py` | integer-exact int8 inference of a verified checkpoint: int8 conv weights sign(s_c) M (QC re-proved with `decompose`), per-channel scale \|s_c\|, per-tensor activation scales (max on train[:2000]), int32 accumulation, fixed-point multiplier+shift requant, residual add at the block-output scale, integer pool; `<run>/int8.txt` |
+| `stats.py` | per-layer/total QC storage vs dense int8, density, additions vs dense MACs (FC excluded) -> `results/<run>.md`, `results/summary.md` |
+| `ablate.sh`, `ablate_driver.sh` | 60-epoch ablation batch (relaxations, b, Adam vs AdamW, unsigned fixes, KD) and its 3-job queue driver |
 | `test_qcconv.py` | hard projection vs brute force over V, Gibbs backward vs autograd Jacobian, model weights decompose |
 
 Eval mode uses the stored hard `v` (refreshed from theta after every epoch), so the checkpoint is exactly the
@@ -32,6 +35,8 @@ CUDA_VISIBLE_DEVICES=0 python3 -m qc18.train --mode unsigned --b 2 --estimator g
 #   diagnostics (diag.sh): --relax circ|top2 (real-weight relaxations, NOT QC, verify refuses them)
 #                   --kd A --kd-t T --teacher DENSE_CKPT (distillation from a qc18 dense checkpoint)
 CUDA_VISIBLE_DEVICES=0 python3 -m qc18.verify /tmp/$USER/qc18/runs/signed_b8_gibbs_s0/best.pt [--test]
+CUDA_VISIBLE_DEVICES=0 python3 -m qc18.int8 /tmp/$USER/qc18/final/s8_s0/best.pt [--test]   # test once per model
+python3 -m qc18.stats /tmp/$USER/qc18/final/s8_s0 [...]
 ```
 
 Speed (A40, bs 128, bf16 + compile): ~8.5 s/epoch dense, ~8-11 s/epoch QC (b=2/8, ste/gibbs), ~6 GB peak;
