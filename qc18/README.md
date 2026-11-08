@@ -43,6 +43,8 @@ CUDA_VISIBLE_DEVICES=0 python3 -m qc18.train --mode unsigned --b 2 --estimator g
 CUDA_VISIBLE_DEVICES=0 python3 -m qc18.verify /tmp/$USER/qc18/runs/signed_b8_gibbs_s0/best.pt [--test]
 CUDA_VISIBLE_DEVICES=0 python3 -m qc18.int8 /tmp/$USER/qc18/final/s8_s0/best.pt [--test]   # test once per model
 python3 -m qc18.stats /tmp/$USER/qc18/final/s8_s0 [...]
+CUDA_VISIBLE_DEVICES= python3 -m qc18.table   # markdown table of all verified final runs, mean +- std over seeds
+qc18/fetch.sh   # final checkpoints (release qc18-v1, or QC18_TARBALL=local) -> /tmp/$USER/qc18/final; qc18/pack.sh builds it
 ```
 
 Speed (A40, bs 128, bf16 + compile): ~8.5 s/epoch dense, ~8-11 s/epoch QC (b=2/8, ste/gibbs), ~6 GB peak;
