@@ -25,7 +25,7 @@ def run(sub):
 def impl(tag):
     a = (Q / "impl" / "results" / tag / "area.txt").read_text()
     t = (Q / "impl" / "results" / tag / "timing.txt").read_text()
-    g = lambda pat, s=a: float(re.search(pat, s).group(1))
+    g = lambda pat, s=a: float(re.search(pat, s, re.M).group(1))
     f = {c: g(rf"^{c} clock qa_clk .* fmax_mhz (\S+)", t) for c in ("ss", "tt", "ff")}
     return dict(total=g(r"total_mm2 (\S+)"), logic=g(r"logic_mm2 (\S+)"), kge=g(r"logic_kGE (\S+)"),
                 pe=g(r"one PE .* = (\S+) kGE"), arr=float(re.search(r"^pe_array.*\s(\S+)\s+\S+\s*$", a, re.M).group(1)), **f)
