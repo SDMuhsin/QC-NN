@@ -72,7 +72,7 @@ if pe.exists():
     chk = re.search(r"pe:sum_groups (\S+) pe:hier_total (\S+) array_total (\S+)", txt)
     names = dict(rot="rotators (u_rot1 + u_rot2, mux cells)", tadd="trit / negate + 2-term adders (u_tadd)",
                  accadd="accumulator adders (u_acc)", accreg="accumulator registers (160 b, data part)",
-                 shreg="shadow registers (160 b, data part) + capture / drain muxes", clock="clock: DC clock gates + register clock pins")
+                 shreg="shadow registers (160 b, data part)", top="PE top-level logic: shadow capture / shift-in (drain) muxes", clock="clock: DC clock gates + register clock pins")
     print(f"\nPE-internal breakdown, v2 {mode} SAIF {per} ns, per PE averaged over 64 PEs (sum of groups "
           f"{float(chk[1]) * 1e6:.1f} uW = PE hierarchy {float(chk[2]) * 1e6:.1f} uW; PE array {float(chk[3]) * 1e3:.2f} mW):\n")
     print("| group | internal uW | switching uW | leakage uW | total uW | % of PE | x64 mW |")

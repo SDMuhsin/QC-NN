@@ -7,8 +7,9 @@
 #   tadd     cells under u_tadd (qa_pe_tadd: trit negate / zero + 2-term add)
 #   accadd   cells under u_acc (qa_pe_acc: accumulate add incl. the first-step zeroing)
 #   accreg   acc_q_reg* registers (data part: internal power without the clock pin, Q-net switching, leakage)
-#   shreg    sh_out_reg* registers (data part) + every other leaf cell at the PE top level (the capture / shift-in
-#            muxes of the shadow chain = drain path)
+#   shreg    sh_out_reg* registers (data part)
+#   top      every other leaf cell at the PE top level: v2 = the capture / shift-in muxes of the shadow chain (drain
+#            path); v1 (flat qa_pe, acc_reg*) = all of the PE's combinational logic (rotators, trits, adders, muxes)
 #   clock    the DC clock gates (clk_gate_* hierarchies: CKLNQD, incl. the gated-clock net switching) + the clock-pin
 #            internal power of all PE registers (PT power group clock_network, per cell: report_power -cell_power
 #            -groups clock_network), which is moved out of accreg / shreg
@@ -35,7 +36,7 @@ set o $::env(OUT)
 set pes [get_cells -filter "is_hierarchical==true" u_array/*u_pe]
 set npe [sizeof_collection $pes]
 array set G {}
-foreach g {rot tadd accadd accreg shreg clock} { foreach k {int sw leak tot} { set G($g,$k) 0.0 } }
+foreach g {rot tadd accadd accreg shreg top clock} { foreach k {int sw leak tot} { set G($g,$k) 0.0 } }
 proc acc {g c} {
     global G
     foreach a {internal_power switching_power leakage_power total_power} k {int sw leak tot} {
@@ -54,7 +55,8 @@ foreach_in_collection pe $pes {
         set n [string range [get_attribute $c full_name] [expr {[string length $pn] + 1}] end]
         if {[string match u_rot* $n]} { set g rot } elseif {[string match u_tadd/* $n]} { set g tadd } \
         elseif {[string match u_acc/* $n]} { set g accadd } elseif {[string match clk_gate_* $n]} { set g clock } \
-        elseif {[string match acc_q_reg* $n]} { set g accreg } else { set g shreg }
+        elseif {[string match acc_q_reg* $n] || [string match acc_reg* $n]} { set g accreg } \
+        elseif {[string match sh_out_reg* $n]} { set g shreg } else { set g top }
         acc $g $c
     }
 }
@@ -67,7 +69,7 @@ set ck(accreg) 0.0; set ck(shreg) 0.0; set nck 0
 foreach l [split $rp "\n"] {
     if {[regexp {^\S*u_pe/(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)} $l -> n i s k t] && [string is double $i]} {
         if {[string match clk_gate_* $n]} { continue }
-        set g [expr {[string match acc_q_reg* $n] ? "accreg" : "shreg"}]
+        set g [expr {[string match acc*_reg* $n] ? "accreg" : "shreg"}]
         set ck($g) [expr {$ck($g) + $i}]
         incr nck
     }
@@ -80,7 +82,7 @@ set fh [open ${o}_pe.txt w]
 puts $fh "# per-PE average over $npe PEs, W (period_ns $::env(QC_PERIOD), wire_load $wlm); register clock pins: $nck cells"
 puts $fh "# group internal_W switching_W leakage_W total_W"
 set s 0.0
-foreach g {rot tadd accadd accreg shreg clock} {
+foreach g {rot tadd accadd accreg shreg top clock} {
     puts $fh [format "pe:%s %.6e %.6e %.6e %.6e" $g [expr {$G($g,int)/$npe}] [expr {$G($g,sw)/$npe}] \
         [expr {$G($g,leak)/$npe}] [expr {$G($g,tot)/$npe}]]
     set s [expr {$s + $G($g,tot)}]
