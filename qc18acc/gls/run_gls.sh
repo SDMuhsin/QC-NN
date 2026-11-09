@@ -41,8 +41,8 @@ start)
     ssh "$HOST" "set -e; cd $RDIR/repo && git pull -q --ff-only && git log -1 --format='%h %s'
       N=$RDIR/build/syn/$T/qa_top.v; test -f \$N || { echo no netlist \$N; exit 1; }
       python3 -I qc18acc/gls/gen_snap.py \$N > $G/qa_gls_snap.svh; head -1 $G/qa_gls_snap.svh
-      . flow/tsmc65/site/sram.sh; export QC_MC_OUT QA_NETLIST=\$N QC_BUILD=$RDIR/build QC_GLS=1
-      export QC_VCS_OPTS='+define+QA_GLS+QA_SAIF +incdir+$G' QC_PASS_RE='RESULT PASS' QC_FAIL_RE='RESULT FAIL|MISMATCH|Error|Fatal'
+      . flow/tsmc65/site/sram.sh; export QC_MC_OUT QA_NETLIST=\$N QC_BUILD=$RDIR/build QC_GLS=$GLSV
+      export QC_VCS_OPTS='$VOPT' QC_PASS_RE='RESULT PASS' QC_FAIL_RE='RESULT FAIL|MISMATCH|Error|Fatal'
       export QC_SIM_OPTS='+DIR=$RDIR/export_rtl +IMG0=$IMG0 +NIMG=$NIMG +SAIF=$G/qa_top_img$IMG0$SFX.saif'
       nohup flow/tsmc65/sim/run_vcs.sh gls_$T$SFX qa_tb qc18acc/gls/gls.f qc18acc/hw/tech/macros_sim.f qc18acc/hw/tb/tb.f > $G/run$SFX.log 2>&1 < /dev/null &
       echo GLS started on \$(hostname -s): $RDIR/build/sim/gls_$T$SFX" ;;
