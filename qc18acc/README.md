@@ -9,7 +9,9 @@ integrated clock gate (CKLNQD) enabled by the access request (`hw/tech/qa_sram_t
 unchanged); (2) per-tile tap order kh, cb, kw with an 8-word kw sliding window in the S3 registers (ARCH.md
 "kw window"): a kw step shifts the window and reads only the new word, x0.433 array act-bank reads; (3) the PE is
 split into function sub-instances (rotators, trit + 2-term add, accumulate add) for the power breakdown.
-Numbers below this line are v1 unless marked v2.
+**v3** (Kb = 2, two QC blocks per PE per cycle; section "v3" below, results [results/v3.md](results/v3.md), netlist
+tag `qa3_w3.3`): separate small trees `compile3/`, `hw3/`, `impl/v3/`, selected by `QA_V=3` in the shared impl / GLS /
+power scripts; v2 stays the default build.  Numbers below this line are v1 unless marked v2 / v3.
 
 ## Compiler + golden model (`compile/`)
 
@@ -173,6 +175,46 @@ PE array 41 %, activation macros 27 %, weight macros 13 %, PPU 11 %; glitch fact
 violations; `power.sh -o power_v2 -e qa2_w3.3 sdf` + `compare.py sdf 2.5`: **231.0 mW, 92.4 uJ / inference** at
 400 MHz (v1 308.4 mW, 123.3 uJ): macro deselected clocks 60.5 -> 0 mW, act macro reads 6.16 -> 2.83 / cycle;
 PE-internal breakdown in section 5 (`power/pe_power.tcl`).
+
+## v3: two blocks per PE per cycle, Kb = 2 (`compile3/`, `hw3/`, `impl/v3/`; [results/v3.md](results/v3.md))
+
+ARCH.md section "v3 (implemented)".  Per step a PE takes the blocks of input groups 2j and 2j + 1 (one 128-b pair
+word per row: 2 x 512 x 64 rf macros per bank, 48 in total; even / odd weight halves of 3 x 4096 x 80 read at the
+same address) and adds `acc + 4 trit terms` as one fused sum (`hw3/rtl/qa_pe.sv`, `u_acc`); the drain takes 2
+columns per read into a 16-lane PPU (20-b v, 20 x 31 multipliers).  v2 modules reused unchanged: `qa_seq`,
+`qa_sram`, `qa_bankmem`.
+
+| file | contents |
+|---|---|
+| `compile3/layout.py` | pair layout (128-b words as (lo, hi) uint64), AGU / kw window on pairs (v2 functions on a pair view), int16 R byte-plane order |
+| `compile3/program.py` | `from_v2`: re-pack of the v2 program (even / odd weight words, FC in the even half), v3 proofs (\|d acc + bias\| < 2^19, \|bias\| < 2^19, capacity) |
+| `compile3/golden.py`, `export.py`, `main.py`, `test_compile.py` | v3 golden (GEMM + literal 4-term path through the 128-b window), cycle MODEL, `$readmemh` images, CLI, unit tests |
+| `hw3/rtl/*` | v3 RTL: `qa_pkg`, `qa_pe` (4 rotators + `qa_pe_acc4`), `qa_array`, `qa_xbar` (128-b window), `qa_agu` (pair loop), `qa_drain` (2 columns / read), `qa_ppu(_lane)` (16 lanes, 20-b v), `qa_head` (half select), `qa_actmem` (48 halves), `qa_host`, `qa_top`; file list `qc18acc.f` |
+| `hw3/tech/*` | `qa_sram_tech.sv` (512x64 -> `qa_act_512x64m4`), `qc18acc_tech.f`, `macros_sim.f` |
+| `hw3/tb/*`, `hw3/sim/*` | full-network TB, `tb_pe`, mini program; `run_rtl.sh`, `run_unit.sh`, `cycles.py` |
+| `impl/v3/` | `sweep.txt` / `sweep_result.txt` (act macro shapes), `macros.txt` |
+| `power/compare3.py` | v2 vs v3 tables (energy, blocks, macros, area, fmax, PE groups per QC block, predictions) |
+
+```bash
+python3 -m qc18acc.compile3.test_compile                                        # unit tests
+CUDA_VISIBLE_DEVICES=0 python3 -m qc18acc.compile3.main --n 1000 --literal 4 --acc   # proofs, cycle model, bit-exact, 10k acc
+qc18acc/hw3/sim/run_unit.sh mini                                                # iverilog: tb_pe + mini program
+qc18acc/hw3/sim/run_rtl.sh usask 0 4                                            # VCS RTL images 0..3 (QC_TECH=1: macro models)
+ssh <host> 'cd /tmp/ckp908/qc18acc/repo && QA_V=3 qc18acc/impl/run.sh macros'  # 512x64 act macro views (~2 min)
+ssh <host> 'cd /tmp/ckp908/qc18acc/repo && QA_V=3 qc18acc/impl/run.sh all 3.3 qa3_w3.3'   # DC + PT ss/tt/ff (~25 min)
+QA_V=3 qc18acc/gls/run_gls.sh start <host> qa3_w3.3 0 1                         # GLS zero delay + SAIF (~18 min); then check
+QA_V=3 qc18acc/gls/run_gls.sh sdf <host> qa3_w3.3                               # tt SDF + ideal-clock view (call until listed)
+QA_V=3 QA_SDF=1 qc18acc/gls/run_gls.sh start <host> qa3_w3.3 0 1                # tt-SDF GLS (~80 min); then check
+QA_V=3 qc18acc/power/power.sh -H <host> -o power_v3 -e qa3_w3.3 sdf             # PTPX + PE groups + macro model (also zd)
+QA_V=3 python3 qc18acc/power/energy.py qc18acc/results/power_v3; python3 qc18acc/power/compare3.py sdf 2.5
+```
+
+Results (labels as in results/v3.md: measured / synthesis estimate / model): golden bit-exact 1000 images, 10k
+test 91.33 % (= v2); VCS RTL images 0..3 and GLS zero delay + tt SDF (image 0, 0 timing violations) bit-exact,
+**81 438 cycles / image** (v2 159 982, x0.509; model 84 560); `qa3_w3.3` **6.514 mm2**, logic **816.4 kGE** (PE 7.92
+kGE), fmax ss 303.2 / tt 463.4 / ff 662.0 MHz (same head-FC critical path as v2); at 400 MHz tt **336.2 mW,
+68.5 uJ / inference** (v2 231.0 mW, 92.4 uJ; predicted ~70 uJ), PE array energy per QC block x0.684 (predicted
+x0.7), 4 912 inferences / s.
 
 ## Array ablation: QC vs TERNARY vs INT8 PE (`ablation/`, results [results/ablation.md](results/ablation.md))
 

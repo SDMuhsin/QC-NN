@@ -1,4 +1,4 @@
-# QC18-ACC: architecture spec (v2)
+# QC18-ACC: architecture spec (v2; v3 = last section)
 
 v2 = v1 (git tag `qc18acc-v1`, results in `results/power.md`) + the kw sliding window (tap order kh, cb, kw; section
 "kw window") + gated macro clocks (implementation, `hw/tech/qa_sram_tech.sv`) + PE function sub-instances.
@@ -219,7 +219,12 @@ count (one per valid lane); equal to the RTL counter `CSR_ACT_RD` (0x0d) per ima
 `tiles = H_out W_out / 8 * Cout / 64`, drain 64 cycles (128 for RAW16 / RES_R), and a head estimate
 `64 * (16 + 10) + 16`.
 
-## v3 (planned): two blocks per PE per cycle (Kb = 2)
+## v3 (implemented): two blocks per PE per cycle (Kb = 2)
+
+Implemented in `compile3/` (compiler re-pack + golden), `hw3/` (RTL, tech mapping, TB), `impl/v3/` (macros); v2 is
+unchanged and still built by default (`QA_V=3` selects v3 in `impl/run.sh`, `gls/run_gls.sh`, `power/power.sh`,
+`power/energy.py`).  Results and every measured / synthesis-estimated / modelled number: `results/v3.md`.
+The text below is the plan, with the implementation notes and deviations marked **[impl]**.
 
 **Why (measured, `results/power_v2.md`, PE-internal breakdown).** 68 % of a PE's power is paid once per
 accumulator update, whatever the work per update: clock gates and register clock pins 35 %, the 20-b accumulate
@@ -228,6 +233,10 @@ Summing two blocks before each accumulate amortises the fixed part. Prediction (
 PE energy per block about x0.7; cycles per image about x0.53 (so leakage and control energy per image about x0.55);
 image energy about 92 -> ~70 uJ at 400 MHz; throughput about x1.9. With Kb = 2, the per-block reduction is a larger
 share of PE energy than at Kb = 1, so the QC-vs-ternary gap should widen (ablation rerun at Kb = 2).
+**[impl]** Measured (`results/v3.md`, image 0, 400 MHz tt, SDF SAIF, +dat): 81 438 cycles / image (x0.509),
+68.5 uJ / inference (-2.2 % vs ~70), PE array energy per QC block x0.684, 4 912 inferences / s (x1.96); 6.514 mm2,
+816.4 kGE, fmax unchanged (ss 303.2 MHz).  Control energy is x0.765, not x0.55: the xbar's data volume is not
+cycle-proportional (results/v3.md 5.3).  The ablation rerun at Kb = 2 is not done (open).
 
 * **Pairs of input-channel groups.** A PE consumes, per cycle, the blocks of input-channel groups `cb = 2j` and
   `2j + 1` of the same tap (kh, kw). `y_i += B_even x_even + B_odd x_odd`, written as ONE combinational sum
@@ -248,3 +257,27 @@ share of PE energy than at Kb = 1, so the QC-vs-ternary gap should widen (ablati
 * **Unchanged:** the AGU index rule and layouts, the kw window logic (on 128-b words), the head, host, descriptors
   (fields for pairs where needed), the 8 x 8 geometry, accumulator width, clock gating of macros, and the bit-exact
   chain.
+
+**[impl] notes and deviations.**
+
+* Compiler (`compile3/program.py`): v3 is a re-pack of the v2 program (`from_v2`): same pass schedule, buffers,
+  layouts, params and descriptors (the descriptor keeps `cin8` = group count; the AGU derives ceil(cin8 / 2)).
+  Weight word of step (og, kh, j, kw): even half = v2 word of tap (kh, kw, 2j), odd half = (kh, kw, 2j + 1) or a
+  zero word (stem); both halves at the same address `wbase + og*S + s`; FC words in the even half after the convs.
+  Proofs added: |d acc + bias| < 2^19 (max 105 140 over all layers, worst case), |bias| < 2^19.  Golden
+  `compile3/golden.py` (GEMM path + literal 4-term path through the 128-b window).
+* int16 R planes (RAW16 / RES_R): output pair j -> pair plane 2j = low bytes of groups 2j, 2j + 1, pair plane
+  2j + 1 = high bytes (int8 group order lo(2j), lo(2j + 1), hi(2j), hi(2j + 1)); the two words are in the same bank
+  (index + H W), 2 cycles per pair word as planned.
+* Act macros: sweep `impl/v3/sweep_result.txt`: rf_sp_adv 512 x 64 mux 4 (53 045 um2) is the densest legal
+  shape; 512 x 128 exists only as sram_sp_adv mux 8 (167 678 um2 > 2 x 53 045).  48 x `qa_act_512x64m4`
+  (2.546 mm2 vs v2 24 x 1024x64 2.756 mm2).  The array reads both halves of a bank word (also for the stem, whose
+  high half is zero), the head one half, the PPU whole words, the host 64-b halves (host act address bit 0 = half;
+  weight address bit 14 = odd half).
+* PE (`hw3/rtl/qa_pe.sv`): 4 rotators (`u_rot1..4`) + one module `u_acc` (`qa_pe_acc4`) computing per lane
+  `(first ? 0 : acc) + sum_k ((sext(e_k ? x_k : 0) ^ n_k) + n_k)` as one 6-operand sum (the four +n carry-ins are one
+  3-b operand), so no hierarchy split between the term adds and the accumulate.  DC clock gating as v2.
+* Drain: 2 columns per read, 32 reads per tile (64 cycles for RAW16 / RES_R); PPU 16 lanes, bias kept 20 b in the
+  RF, `v` 20 b, multiplier 20 x 31 (two 20 x 16 / 20 x 15 partial products as v2); the 64-b rounding sum kept.
+* Head: unchanged schedule / arithmetic; group cb is the half cb[0] of pair plane cb >> 1 (one half enabled).
+* Weight memory: 2 x `qa_bankmem` (3 x 4096 x 80, `u_wmem_e` / `u_wmem_o`), same 6 macros as v2.
