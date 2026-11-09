@@ -1,6 +1,7 @@
 // QC18-ACC full-network testbench.
 //   +DIR=<export dir>  (python3 -m qc18acc.compile.main --export DIR --images ...)   +IMG0=<first image id>
-//   +NIMG=<number of images>   +MAXCYC=<per-image cycle limit>   +NOMAPS (logits only)
+//   +NIMG=<number of images> (DIR/names.txt = pass names of DIR/program.txt, one per line, written by run_rtl.sh)
+//     +MAXCYC=<per-image cycle limit>   +NOMAPS (logits only)
 // Loading: EVERYTHING through the host port (descriptors, weight / param SRAM words with the WSTAGE registers,
 // then per image the 1024-word input plane into the stem's input buffer).  Per image: START, poll STATUS, read
 // the 10 logits and the perf counters through the host port.
@@ -105,12 +106,11 @@ module qa_tb;
     nd = nd + 8;
     npass_conv = nd / 8 - 1;
     img_buf = dimg[0][12:11]; img_base = dimg[3][9:0];
-    $sformat(fn, "%0s/program.txt", dir);
+    $sformat(fn, "%0s/names.txt", dir);                       // pass names, one per line (run_rtl.sh, from program.txt)
     fd = $fopen(fn, "r");
-    while (!$feof(fd)) begin
-      r = $fgets(line, fd);
-      if ($sscanf(line, "pass %d %s", n, nm) == 2) pname[n] = nm;
-    end
+    if (fd == 0) begin $display("FAIL: cannot open %0s", fn); $finish; end
+    n = 0;
+    while (n < MAXPASS && $fscanf(fd, "%s", nm) == 1) begin pname[n] = nm; n = n + 1; end
     $fclose(fd);
     $display("TB: dir %0s, %0d weight words, %0d param words, %0d descriptor words (%0d conv passes + head), images %0d..%0d",
              dir, nw, np, nd, npass_conv, img0, img0 + nimg - 1);

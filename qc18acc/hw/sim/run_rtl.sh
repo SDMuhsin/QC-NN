@@ -27,6 +27,7 @@ if [ "${QC_SKIP_EXPORT:-0}" != 1 ]; then
         python3 -m qc18acc.compile.main --ckpt "$CKPT" --n 0 --literal 0 --export "$EXP" --images "$ids" | tail -3
     fi
 fi
+awk '$1 == "pass" { print $3 }' "$EXP/program.txt" > "$EXP/names.txt"
 ssh "$HOST" "mkdir -p $RDIR/export_rtl $RDIR/build"
 rsync -a --delete "$EXP/" "$HOST:$RDIR/export_rtl/"
 ssh "$HOST" "cd $RDIR/repo && git pull -q --ff-only && git log -1 --format='%h %s' &&
