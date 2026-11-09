@@ -16,4 +16,4 @@ if {[qc_env QC_ELAB_ONLY 0]} {
 # pre-existing integrated clock gates (report_clock_gating, rpt/clock_gating.rpt).
 set mcg [get_cells -quiet -hierarchical -filter "is_hierarchical==false && ref_name=~CKLNQD*"]
 puts "QC_MACRO_CG [sizeof_collection $mcg] macro clock gates"
-if {[sizeof_collection $mcg]} { set_size_only $mcg }
+if {[sizeof_collection $mcg]} { set_size_only -all_instances $mcg }

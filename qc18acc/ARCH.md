@@ -1,4 +1,8 @@
-# QC18-ACC: architecture spec (v1)
+# QC18-ACC: architecture spec (v2)
+
+v2 = v1 (git tag `qc18acc-v1`, results in `results/power.md`) + the kw sliding window (tap order kh, cb, kw; section
+"kw window") + gated macro clocks (implementation, `hw/tech/qa_sram_tech.sv`) + PE function sub-instances.
+Results of v2: `results/power_v2.md`.
 
 Target network: `qc18` model **s8kd** (signed, b = 8, distilled; int8 test 91.33 / 91.20 % for seeds 0 / 1; this design uses seed 0),
 integer-exact reference `qc18/int8.py` (`IntNet`). Every conv GEMM matrix `M[cout, (kh, kw, cin)]` consists of
@@ -48,17 +52,19 @@ VCS, OpenROAD), and the power / energy method and scripts of `qcacc/gls` + `nn/g
   Term order is canonical: ascending shift, and a zero term is `(0, 00)`. Block output:
   `y[i] = t1 * x[(i + k1) mod 8] + t2 * x[(i + k2) mod 8]`.
   The weight word is 80 b: the codes of 8 output groups (64 output channels, column g = channel group g) for
-  one (kh, kw, cb). Words are ordered per pass as `og` (64-channel group), then kh, kw, cb, which is the order
-  the array consumes them.
+  one (kh, kw, cb). Words are ordered per pass as `og` (64-channel group), then kh, cb, kw (v2; v1: kh, kw, cb),
+  which is the order the array consumes them.  The kw sequence is 0, 1, 2, except stride-2 3x3 passes: 0, 2, 1.
 * **Channel params** (per conv output channel, 72-b word): `bias` int32, `m0` 31 b (unsigned), `sh` 6 b, `d` 1 b
   (1 = negate the accumulator), 2 b spare.
 
 ## PE array: 8 rows (pixels p) x 8 columns (output groups g)
 
 * Row p receives the activation word of tile pixel `o0 + p` for the current (kh, kw, cb). It is zero if padded.
+  The words come through the kw window (below).
 * Column g receives the code of block (og*8 + g, kh, kw, cb).
 * PE(p, g): two 8-lane rotators (3-stage log shifter, 8-b lanes), trit apply (negate / zero, 9 b), 8 adders,
-  8 accumulators of 20 b. The worst case is 2 * 576 * 127 < 2^18, and the compiler asserts the bound per layer.
+  8 accumulators of 20 b. v2 RTL: sub-instances `u_rot1`, `u_rot2` (rotators), `u_tadd` (trits + 2-term add,
+  10 b), `u_acc` (accumulate add, 20 b); v1 had one 3-input add per lane in a flat PE. The worst case is 2 * 576 * 127 < 2^18, and the compiler asserts the bound per layer.
 * Output-stationary. A tile (8 pixels x 64 channels) accumulates over `K = kh*kw*Cin/8` cycles, one block per
   PE per cycle (stem: Cin padded to 8, K = 9). At the end of a tile the accumulators move to a shadow register
   in 1 cycle and the next tile starts.
@@ -67,6 +73,25 @@ VCS, OpenROAD), and the power / energy method and scripts of `qcacc/gls` + `nn/g
   cycles. If the next tile ends before the drain is done, the array stalls (stem K = 9, 1x1 shortcuts K = 8..32).
 * Pipeline: the AGU + SRAM read and the code read are aligned to the same cycle. Register stages are free, and
   are documented in the RTL.
+
+## kw window (v2)
+
+Per tile the taps run kh (outer), cb, kw (inner). For a tap with base index `B = o0 + c(kh, kw, cb)` lane p reads
+index `B + p`. In a kw run the next tap has `B' = B + 1` in both layouts: stride 1 raster, kw -> kw + 1 adds 1;
+stride 2 phase (pad 1), kw = 0 and kw = 2 read the same odd-x phase plane at x offsets `ex >> 1` = -1 and 0, so the
+stride-2 run visits kw 0, 2, 1 and the step 0 -> 2 is a shift (2 -> 1 changes plane). Hardware:
+
+* the S3 window `W[0..7]` holds raw 64-b words, slot j = index `B + j` (bank `(B + j) mod 8`), never masked;
+* a SHIFT step (structural: kw index 1 or 2 of a stride-1 run, kw index 1 of a stride-2 run; the RTL checks in
+  simulation that it is exactly `B == B_prev + 1`) moves slot j + 1 to slot j;
+* the AGU keeps `have[j]` = slot j holds its word: `held = shift ? have >> 1 : 0`, `rd = lane & ~held`,
+  `have <= held | lane`; only the `rd` banks are read (one bank per shift step, except at the row wrap of 4-wide
+  maps where a lane that was padding becomes valid; the valid lanes on the first step of a run);
+* row p = `lane[p] ? W[p] : 0`: the per-tap padding mask (registered) is applied at the array input, so an
+  out-of-map word that sits in the window never reaches a PE; padding slots are never read.
+
+Array act-bank reads per image (s8kd, counter `CSR_ACT_RD` = model `layout.act_reads`): 409 572 vs 946 644 in v1
+(one per valid lane), x0.433. Cycles are unchanged (159 982 / image).
 
 ## PPU (8 lanes, one output word per cycle)
 
@@ -150,8 +175,8 @@ The exact per-pass assignment is printed by `main.py` and written to `program.tx
 R planes: R channel group cb -> plane 2 cb = low bytes (lane i = bits 7:0 of R[8 cb + i]), plane 2 cb + 1 = high
 bytes (bits 15:8, so R = 256 * signed(high) + unsigned(low)).
 
-**Weight SRAM** (80 b, `weights.hex`, 20 digits). Per conv pass, from `wbase`: words in order og, kh, kw, cb
-(`og` outer), `cout64 * k * k * cin8` words. Word bits [10g+9 : 10g] = code of block (row group og*8 + g, column
+**Weight SRAM** (80 b, `weights.hex`, 20 digits). Per conv pass, from `wbase`: words in order og, kh, cb, kw
+(`og` outer; v2, `layout.tap_order`; kw sequence 0, 1, 2 or, for stride-2 3x3 passes, 0, 2, 1), `cout64 * k * k * cin8` words. Word bits [10g+9 : 10g] = code of block (row group og*8 + g, column
 block (kh, kw, cb)). Code bits [4:0] = term 1 = {k1[2:0], t1[1:0]}, bits [9:5] = term 2; trits 00 = 0, 01 = +1,
 11 = -1 (10 illegal); canonical: nonzero terms first in ascending shift, unused terms (0, 00). The code is of the QC
 matrix `M` (not `d M`); the sign `d` is in the param word. After the conv weights, the FC words (head `wbase`):
@@ -187,6 +212,9 @@ in C, everything else 0), `input.hex` (1024 words in raster index order), `logit
 FC accumulator + bias), `pass<ii>_<name>.hex` (the output buffer after pass ii, 8192 lines, line = bank * 1024 +
 address; words not written by the pass are `x`). `DIR/program.txt` lists the passes, buffers, bases and sizes.
 
-**Cycle model** (`golden.cycles`, a MODEL): per pass `tiles * max(K, drain) + 64 * Cout/64` with
+**Act-read model** (`golden.act_reads`, v2): per pass the kw-window bank reads (`layout.window_plan`) and the v1
+count (one per valid lane); equal to the RTL counter `CSR_ACT_RD` (0x0d) per image.
+
+**Cycle model** (`golden.cycles`, a MODEL, unchanged in v2): per pass `tiles * max(K, drain) + 64 * Cout/64` with
 `tiles = H_out W_out / 8 * Cout / 64`, drain 64 cycles (128 for RAW16 / RES_R), and a head estimate
 `64 * (16 + 10) + 16`.
