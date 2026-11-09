@@ -60,6 +60,9 @@ foreach m {qa_act_1024x64m8 qa_wgt_4096x80m8 qa_par_4096x72m8 qa_dsc_256x32m2} {
     puts $fh "macro:$m [pw $mc]   n [sizeof_collection $mc]"
 }
 puts $fh "glue:top_leaf_cells [pw [get_cells -quiet -filter is_hierarchical==false]]"
+# v2: the macro clock gates (hw/tech/qa_sram_tech.sv u_cg, inside the memory wrappers' logic)
+set mcg [get_cells -quiet -hierarchical -filter "is_hierarchical==false && ref_name=~CKLNQD* && full_name=~*u_cg"]
+if {[sizeof_collection $mcg]} { puts $fh "cg:macro_icg [pw $mcg]   n [sizeof_collection $mcg]" }
 puts $fh "design:$top [pw [get_cells -quiet -hierarchical -filter is_hierarchical==false]]"
 close $fh
 
