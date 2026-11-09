@@ -14,7 +14,8 @@ shift $((OPTIND - 1))
 T=${1:?syn_tag}; MODE=${2:?zd|sdf}
 RDIR=${QC_RDIR:-/tmp/ckp908/qc18acc}
 G=$RDIR/gls/$T; SYN=$RDIR/build/syn/$T; R=$RDIR/repo
-SAIF=$G/qa_top_img0$([ "$MODE" = sdf ] && echo _sdf).saif
+SFX=""; [ "$MODE" = sdf ] && SFX=_sdf
+SAIF=$G/qa_top_img0$SFX.saif
 D=$G/power/${MODE}_${P}ns
 OUTL=$Q/../results/power; mkdir -p "$OUTL"
 DBTT=$(ssh "$H" ". $SYN/run.env; echo \$QC_EXTRA_DB_TT")
