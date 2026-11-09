@@ -9,7 +9,7 @@ views stay there).  Post-route analysis: `run.sh pt` (`pt_post_qa.tcl`), `power.
 `pt_power_post.tcl`, `macro_dat.py`), `report.py`.  Raw summaries: `results/pnr/`.
 
 **Stage reached: complete** — floorplan, PDN, placement, CTS, global + detailed route (255 residual DRC markers),
-SPEF (captable RC, def2spef), PrimeTime ss / tt, PTPX tt with the v2 SAIF, zero-delay GLS (post-CTS PASS; routed see §6).
+SPEF (captable RC, def2spef), PrimeTime ss / tt, PTPX tt with the v2 SAIF, zero-delay GLS of the post-CTS and routed netlists (both bit-exact).
 
 ## 1. Floorplan and PDN
 
@@ -132,3 +132,5 @@ incl. ICGs and register clock pins 31.2 %).
 names; TB `QA_NPASS` define for the flat npass nets).
 * post-CTS netlist (`db/cts.odb`, tag qa2_cts): **RESULT PASS** — all logits + 20 stored maps bit-exact, 22 cycle
   counters = RTL (159 982 cycles).
+* **routed netlist** (`out/qa_top.v` of qa_t1, with clock tree, repair / hold buffers, decaps; tag qa2_pnr):
+  **RESULT PASS** — all logits + 20 stored maps bit-exact, 22 cycle counters = RTL (159 982 cycles), 0 differ.

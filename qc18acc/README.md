@@ -212,4 +212,4 @@ post-GRT repair), `run.sh pt <tag>` (PrimeTime ss / tt with the def2spef SPEF, r
 <period>` (PTPX tt with the v2 SDF SAIF flattened onto the routed netlist, `saif_flat.py`; macro datatable model),
 `report.py <period>`.  Result (run qa_t1): die 8.858 mm2, 255 DRC markers, 192 antenna nets, post-route fmax
 ss 172.5 / tt 288.3 MHz (reg2reg; pre-route 303 / 463), 272.2 mW = 152.4 uJ / inference at 286 MHz tt (clock tree
-17.7 %, SAIF annotation 89 %), post-CTS GLS bit-exact.  Low-voltage point: [results/lowv.md](results/lowv.md).
+17.7 %, SAIF annotation 89 %), post-CTS and routed-netlist GLS bit-exact.  Low-voltage point: [results/lowv.md](results/lowv.md).
