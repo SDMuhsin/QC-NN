@@ -79,7 +79,10 @@ Builds and kit-derived views stay on the build host (`/tmp/$USER/qc18acc/build`,
 | `hw/tech/qa_sram_tech.sv` | `qa_sram` on the macros: 1024x64 -> `qa_act_1024x64m8`, 4096x80 -> `qa_wgt_4096x80m8`, 4096x72 -> `qa_par_4096x72m8`, 256x32 -> `qa_dsc_256x32m2` (flip-flops otherwise); hold register for the write-through macros (rdata = last read data, held over writes, like `qa_sram`) |
 | `hw/tech/qc18acc_tech.f`, `hw/tech/macros_sim.f` | RTL file list with the tech `qa_sram`; macro Verilog models (`${QC_MC_OUT}`) |
 | `impl/run.sh`, `constraints.sdc`, `dc_hook.tcl`, `pt_hook.tcl`, `summarize.py` | DC / PT (`macros`, `elab`, `syn`, `pt`, `summary`, `all <period>`), area per block / per PE, per-corner WNS / fmax / paths |
-| `gls/run_gls.sh`, `gls/gen_snap.py`, `gls/gls.f` | zero-delay GLS of the full network on a netlist (VCS, cell + macro models), TB backdoor names from the netlist, SAIF over START..DONE of the first image |
+| `gls/run_gls.sh`, `gls/gen_snap.py`, `gls/gls.f` | zero-delay GLS of the full network on a netlist (VCS, cell + macro models), TB backdoor names from the netlist, SAIF over START..DONE of the first image; `QA_SDF=1`: tt-SDF timing-annotated run |
+| `gls/write_sdf.tcl` | DC tt SDF of the netlist (synthesis WLM), made STA-consistent by `flow/tsmc65/sim/sdf_idealclk.py` (`run_gls.sh sdf`) |
+| `power/power.sh`, `power/pt_power.tcl` | PrimeTime PX (tt, synthesis WLM, ideal clock) on a GLS SAIF: power groups, blocks, macro activity -> `results/power/` |
+| `power/saif_scale.py`, `power/macro_dat.py`, `power/energy.py` | SAIF rescale to another clock (same toggles / cycle); macro access energy from the ARM datatables (the .lib CLK energies are 0); energy tables |
 
 ```bash
 # on the build host, in the host-local clone /tmp/$USER/qc18acc/repo (git pull):
@@ -136,3 +139,18 @@ image START..DONE equal to RTL (44 counters compared); ~23 min CPU for load + 2 
 cycles at the TB clock 2.5 ns): `usask:/tmp/ckp908/qc18acc/gls/qa_w3.3/qa_top_img0.saif` (41 MB, host-local; for PT
 power: `read_saif -strip_path qa_tb/dut`, rescale to the analysed clock).  The `qa_w3.5` netlist passed the same run
 (image 0) on tau5.
+
+Timing-annotated GLS and power ([results/power.md](results/power.md)):
+
+```bash
+qc18acc/gls/run_gls.sh sdf usask qa_w3.3                   # DC tt SDF + ideal-clock view (~1 min; call until listed)
+QA_SDF=1 qc18acc/gls/run_gls.sh start usask qa_w3.3 0 1     # tt SDF, timing checks on, 2.5 ns (~1 h for load + 1 image)
+QA_SDF=1 qc18acc/gls/run_gls.sh check usask qa_w3.3
+qc18acc/power/power.sh [-p 3.3] qa_w3.3 sdf|zd             # PrimeTime PX on the SAIF (~1 min) -> results/power/
+python3 qc18acc/power/energy.py                             # tables of results/power.md
+```
+
+SDF run (tt, 400 MHz, full image 0): RESULT PASS, all logits and maps bit-exact, 159 982 cycles and every pass
+counter equal to RTL, 0 timing-check violations.  Power at 400 MHz (SDF SAIF, macros from the datatable model since
+the macro .lib CLK energies are 0): **308 mW, 123 uJ / inference, 0.22 pJ / dense-equivalent MAC**, leakage 7.1 %;
+PE array 41 %, activation macros 27 %, weight macros 13 %, PPU 11 %; glitch factor SDF / zd 1.34.
