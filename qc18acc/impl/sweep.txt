@@ -1,0 +1,14 @@
+# candidate shapes for the QC18-ACC memories (flow/tsmc65/sram/mc_gen.sh sweep)
+# act bank 1024 x 64 (24x), weight 4096 x 80 (6x) or 8192 x 80 (3x), param 4096/2048 x 72
+a_sp_1024x64m4   sram_sp_adv 1024 64 4
+a_sp_1024x64m8   sram_sp_adv 1024 64 8
+a_sp_1024x64m16  sram_sp_adv 1024 64 16
+a_rf_1024x64m4   rf_sp_adv   1024 64 4
+a_rf_1024x64m8   rf_sp_adv   1024 64 8
+w_sp_4096x80m8   sram_sp_adv 4096 80 8
+w_sp_4096x80m16  sram_sp_adv 4096 80 16
+w_sp_8192x80m16  sram_sp_adv 8192 80 16
+w_sp_2048x80m8   sram_sp_adv 2048 80 8
+p_sp_4096x72m8   sram_sp_adv 4096 72 8
+p_sp_2048x72m8   sram_sp_adv 2048 72 8
+p_sp_1024x72m4   sram_sp_adv 1024 72 4
