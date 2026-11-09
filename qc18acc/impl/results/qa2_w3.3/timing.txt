@@ -1,0 +1,25 @@
+dc design qa_top top qa_top corner ss period_ns 3.3 topo 0 wire_load WireAreaLowkCon/enclosed setup_wns_ns 1.62125e-05 setup_tns_ns 0.000 setup_viol_endpoints 0 hold_wns_ns -0.0726011 hold_tns_ns -29.906 hold_viol_endpoints 656
+ff setup_wns_ns 1.780309 setup_tns_ns 0.000 setup_viol_endpoints 0
+ff setup_worst_path u_seq/dw_reg_2__0_/CP -> u_seq/cyc_stall_reg_31_/D
+ff hold_wns_ns -0.073061 hold_tns_ns -30.325 hold_viol_endpoints 656
+ff hold_worst_path u_host/ws2_reg_8_/CP -> u_wmem/g_bank_5__u_ram/g_mac_g_wgt_u_mac/D[72]
+ff clock qa_clk period_ns 3.300 wns_ns 1.780 fmax_mhz 658.0 path u_seq/dw_reg_2__0_/CP -> u_seq/cyc_stall_reg_31_/D
+ff path_to_macro slack_ns 1.841 u_seq/f_lwi_reg_0_/CP -> u_act/g_buf_1__g_bank_4__u_ram/g_mac_g_act_u_mac/A[9]
+ff path_from_macro slack_ns 2.068 u_wmem/g_bank_4__u_ram/g_mac_g_wgt_u_mac/CLK -> u_head/dot2_reg_16_/D
+ff macros 33 macro_area_um2 5547754
+ss setup_wns_ns 0.002301 setup_tns_ns 0.000 setup_viol_endpoints 0
+ss setup_worst_path u_wmem/g_bank_2__u_ram/g_mac_g_wgt_u_mac/CLK -> u_head/dot2_reg_16_/D
+ss hold_wns_ns -0.132934 hold_tns_ns -43.076 hold_viol_endpoints 624
+ss hold_worst_path u_host/ws2_reg_8_/CP -> u_wmem/g_bank_5__u_ram/g_mac_g_wgt_u_mac/D[72]
+ss clock qa_clk period_ns 3.300 wns_ns 0.002 fmax_mhz 303.2 path u_wmem/g_bank_2__u_ram/g_mac_g_wgt_u_mac/CLK -> u_head/dot2_reg_16_/D
+ss path_to_macro slack_ns 0.032 u_seq/f_lwi_reg_0_/CP -> u_act/g_buf_1__g_bank_4__u_ram/g_mac_g_act_u_mac/A[9]
+ss path_from_macro slack_ns 0.002 u_wmem/g_bank_2__u_ram/g_mac_g_wgt_u_mac/CLK -> u_head/dot2_reg_16_/D
+ss macros 33 macro_area_um2 5547754
+tt setup_wns_ns 1.141379 setup_tns_ns 0.000 setup_viol_endpoints 0
+tt setup_worst_path u_wmem/g_bank_0__u_ram/g_mac_g_wgt_u_mac/CLK -> u_head/dot2_reg_16_/D
+tt hold_wns_ns -0.083005 hold_tns_ns -29.535 hold_viol_endpoints 624
+tt hold_worst_path u_host/ws2_reg_8_/CP -> u_wmem/g_bank_5__u_ram/g_mac_g_wgt_u_mac/D[72]
+tt clock qa_clk period_ns 3.300 wns_ns 1.141 fmax_mhz 463.3 path u_wmem/g_bank_0__u_ram/g_mac_g_wgt_u_mac/CLK -> u_head/dot2_reg_16_/D
+tt path_to_macro slack_ns 1.199 u_seq/f_lwi_reg_0_/CP -> u_act/g_buf_1__g_bank_4__u_ram/g_mac_g_act_u_mac/A[9]
+tt path_from_macro slack_ns 1.141 u_wmem/g_bank_0__u_ram/g_mac_g_wgt_u_mac/CLK -> u_head/dot2_reg_16_/D
+tt macros 33 macro_area_um2 5547754
