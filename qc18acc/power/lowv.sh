@@ -6,7 +6,7 @@
 #        -> qc18acc/results/lowv/sta_<lib>.txt
 # power: pt_power.tcl with QC_PT_LIB = <lib> on the SDF SAIF of the v2 GLS (rescaled to <period_ns>, same toggles
 #        per cycle), then macro_dat.py with the datatable energies x (volt / 1.0)^2 (MODELLED: the ARM compilers of
-#        the kit have no corner below 0.9 V) -> qc18acc/results/lowv/sdf_<p>ns{,_blocks,_macros}.txt; lowv.py combines.
+#        the kit have no corner below 0.9 V) -> qc18acc/results/lowv/sdf_<p>ns_<lib>{,_blocks,_macros}.txt; lowv.py combines.
 # Environment: QC_RDIR (default /tmp/ckp908/qc18acc).
 set -euo pipefail
 Q=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
@@ -38,9 +38,9 @@ power)
       grep '^Error' pt.log | sort | uniq -c | head; sed -n '/Power Group/,/^ *Total/p' pt.txt
       . $R/flow/tsmc65/site/sram.sh; python3 -I $R/qc18acc/power/macro_dat.py \$QC_MC_OUT pt_macros.txt tt_1p0v_25c $ES > pt_macro_dat.txt
       cat pt_macro_dat.txt; rm -f scaled.saif"
-    scp -q "$H:$D/pt.txt" "$OUTL/sdf_${P}ns.txt"
-    scp -q "$H:$D/pt_blocks.txt" "$OUTL/sdf_${P}ns_blocks.txt"
-    scp -q "$H:$D/pt_macro_dat.txt" "$OUTL/sdf_${P}ns_macros.txt" ;;
+    scp -q "$H:$D/pt.txt" "$OUTL/sdf_${P}ns_$LIB.txt"
+    scp -q "$H:$D/pt_blocks.txt" "$OUTL/sdf_${P}ns_${LIB}_blocks.txt"
+    scp -q "$H:$D/pt_macro_dat.txt" "$OUTL/sdf_${P}ns_${LIB}_macros.txt" ;;
 *)  sed -n 2,9p "$0"; exit 2 ;;
 esac
 echo "LOWV_DONE $CMD $T"
