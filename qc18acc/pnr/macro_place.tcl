@@ -75,3 +75,5 @@ lappend P(MACRO_PLACE) [list u_desc/g_mac_g_dsc_u_mac [qa_snap [expr {$xl + [lin
 set P(MACRO_AUTO) 0
 set ::QA_IO_Y0 [expr {$yB1 + $hA + $qa_halo}]
 set ::QA_IO_Y1 [expr {$yT1 - $qa_halo}]
+set ::QA_Y_BW $yBw
+set ::QA_Y_TW_TOP [expr {$yTw + $hW}]
