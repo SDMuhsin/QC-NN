@@ -1,0 +1,8 @@
+design qab_top_int8 top qab_top_int8 corner ss period_ns 3.3 topo 0 wire_load WireAreaLowkCon/enclosed
+cell_area_um2 3325036.287656 gate_eq_kGE 2309.05 cells 715178 regs 37387
+setup_wns_ns -0.0106032 setup_tns_ns -1.083 setup_viol_endpoints 462
+setup_worst_path u_wrap/w_reg_2153_/CP -> u_wrap/g_d_u_array/g_col_4__g_row_6__u_pe/sh_out_reg_60_/D
+hold_wns_ns 0.0259417 hold_tns_ns 0.000 hold_viol_endpoints 0
+hold_worst_path u_wrap/g_d_u_array/g_col_0__g_row_5__u_pe/sh_out_reg_63_/CP -> u_wrap/g_d_u_array/g_col_0__g_row_4__u_pe/sh_out_reg_63_/D
+dc_wall_s 4346
+wall 1:12:30 peak_rss_mb 5350

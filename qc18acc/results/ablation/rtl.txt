@@ -1,0 +1,8 @@
+rtl qc_L2 QAB_RESULT PASS tiles 16 rows_checked 128 bad 0 steps 2304
+rtl qc_L4 QAB_RESULT PASS tiles 4 rows_checked 32 bad 0 steps 2304
+rtl tern_L2 QAB_RESULT PASS tiles 16 rows_checked 128 bad 0 steps 2304
+rtl tern_L4 QAB_RESULT PASS tiles 4 rows_checked 32 bad 0 steps 2304
+rtl int8_L2 QAB_RESULT PASS tiles 16 rows_checked 128 bad 0 steps 2304
+rtl int8_L4 QAB_RESULT PASS tiles 4 rows_checked 32 bad 0 steps 2304
+rtl int8c_L2 QAB_RESULT PASS tiles 16 rows_checked 128 bad 0 steps 2304
+rtl int8c_L4 QAB_RESULT PASS tiles 4 rows_checked 32 bad 0 steps 2304

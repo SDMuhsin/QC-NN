@@ -1,0 +1,12 @@
+Number of ports:                        92006
+Number of nets:                        403937
+Number of cells:                       288561
+Number of combinational cells:         263780
+Number of sequential cells:             23819
+Number of macros/black boxes:               0
+Number of buf/inv:                      45913
+Number of references:                       1
+Combinational area:             911058.843971
+Buf/Inv area:                    84994.561831
+Noncombinational area:          164871.002884
+Total cell area:               1075929.846855

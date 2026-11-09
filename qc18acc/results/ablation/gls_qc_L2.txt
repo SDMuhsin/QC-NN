@@ -1,0 +1,5 @@
+QAB_INFO vec /tmp/ckp908/qc18acc/abl/vec/qc_L2.txt K 144 tiles 16 steps 2304 period_ps 2500
+QAB_SAIF /tmp/ckp908/qc18acc/abl/gls/qc/qc_L2.saif cycles 1..2304 (2304)
+QAB_RESULT PASS tiles 16 rows_checked 128 bad 0 steps 2304
+sdf_annotation 3 timing_violations 0
+error_lines 0 saif_bytes 35590781

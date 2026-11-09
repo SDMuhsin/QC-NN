@@ -1,0 +1,5 @@
+QAB_INFO vec /tmp/ckp908/qc18acc/abl/vec/int8c_L4.txt K 576 tiles 4 steps 2304 period_ps 2500
+QAB_SAIF /tmp/ckp908/qc18acc/abl/gls_zd/int8/int8c_L4.saif cycles 1..2304 (2304)
+QAB_RESULT PASS tiles 4 rows_checked 32 bad 0 steps 2304
+sdf_annotation 0 timing_violations 0
+error_lines 0 saif_bytes 152355475

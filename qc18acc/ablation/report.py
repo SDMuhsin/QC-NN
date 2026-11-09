@@ -74,9 +74,12 @@ def gls(L, v, pt):
     return dict(ok=m.group(1), rows=int(m.group(3)), bad=int(m.group(4)), steps=int(m.group(5)), tviol=tv)
 
 
-def power(L, v, pt):
+def power(L, v, pt, x=""):
     rows = {}
-    for line in open(os.path.join(L, "out", v, f"power_{pt}_cells.txt")):
+    fn = os.path.join(L, "out", v, f"power{x}_{pt}_cells.txt")
+    if x and not os.path.exists(fn):
+        return None
+    for line in open(fn):
         if line.startswith("#"):
             continue
         t = line.split()
@@ -90,7 +93,7 @@ def power(L, v, pt):
         if k.startswith(arr + "/") and n and "u_pe" in k.rsplit("/", 2)[-2] + k.rsplit("/", 1)[0]:
             sub[n[0]] = [a + b for a, b in zip(sub.get(n[0], [0.0] * 4), rows[k])]
     pet = [sum(rows[k][i] for k in pe) for i in range(4)]
-    txt = open(os.path.join(L, "out", v, f"power_{pt}.txt")).read()
+    txt = open(os.path.join(L, "out", v, f"power{x}_{pt}.txt")).read()
     grp = {g: float(re.search(rf"^{g}\s+\S+\s+\S+\s+\S+\s+(\S+)", txt, re.M).group(1))
            for g in ("clock_network", "register", "combinational")}
     return dict(arr=rows[arr], non=rows["NONARRAY_LEAF"], des=rows["DESIGN"], pe=pet, sub=sub, grp=grp)
@@ -134,6 +137,8 @@ def main():
     S = {v: syn(L, v) for v in V}
     G = {pt: gls(L, v, pt) for v in V for pt in PTS[v]}
     P = {pt: power(L, v, pt) for v in V for pt in PTS[v]}
+    Z = {pt: power(L, v, pt, "_zd") for v in V for pt in PTS[v]}
+    zd = all(Z.values())
     rtl = open(os.path.join(L, "rtl.txt")).read()
     w2 = v2_numbers()
     out = []
@@ -175,15 +180,16 @@ def main():
     if all(pr.values()):
         o("| fmax probe: synthesized at 2.0 ns, ss / tt MHz (top kGE) | " + " | ".join(
             f"{pr[v]['ss'][1]:.1f} / {pr[v]['tt'][1]:.1f} ({pr[v]['kge']:.0f})" for v in V) + " |")
-    o("\nAt the 3.3 ns target DC meets timing for every variant (it sizes to the constraint), so the 3.3 ns fmax is "
+    o("\nAt the 3.3 ns target DC closes timing for every variant (INT8: ss WNS -6 ps, i.e. 302 MHz; DC sizes to the constraint), so the 3.3 ns fmax is "
       "the target, not a limit; the 2.0 ns probe (same flow, `QAB_PERIOD=2.0 remote.sh syn <v>`, area grows) shows "
       "the achievable ss / tt clock.")
     o("\nWorst ss paths: " + "; ".join(f"{NAME[v]} `{S[v]['tim']['ss']['path']}`" for v in V) + ".  v2 in-chip QC "
       f"array: {w2['area']['pe_array'][0] / 1e6:.3f} mm2 (396.4 kGE, 6.17 kGE / PE).\n")
     o("## 3. Bit-exact check and energy (GLS tt SDF 2.5 ns, PT PX tt)\n")
     o("| point | weights | RTL (Verilator) | GLS SDF: rows checked / bad, timing violations | array mW | array pJ / block-op | "
-      "pJ / dense-eq. MAC | + weight-input reg delta pJ / block-op | PE: clock+regs / dot / acc uW |")
-    o("|---|---|---|---|---|---|---|---|---|")
+      "pJ / dense-eq. MAC | + weight-input reg delta pJ / block-op | PE: clock+regs / dot / acc uW |"
+      + (" zero-delay GLS: array mW, SDF / zd |" if zd else ""))
+    o("|---|---|---|---|---|---|---|---|---|" + ("---|" if zd else ""))
     E = {}
     for v in V:
         for pt in PTS[v]:
@@ -199,7 +205,11 @@ def main():
             acc = p["sub"].get("u_acc", [0] * 4)[3] / 64 * 1e6
             wt = {"qc": "s8kd QC", "tern": "s8kd expanded", "int8": "dense_s0 int8", "int8c": "s8kd as int8"}[pt.split("_")[0]]
             o(f"| {pt} | {wt} | {r} | {g['ok']}: {g['rows']} / {g['bad']}, {g['tviol']} | {p['arr'][3] * 1e3:.2f} | "
-              f"{e_arr:.2f} | {e_arr / 64:.4f} | {e_d:+.2f} | {pe - dot - acc:.0f} / {dot:.0f} / {acc:.0f} |")
+              f"{e_arr:.2f} | {e_arr / 64:.4f} | {e_d:+.2f} | {pe - dot - acc:.0f} / {dot:.0f} / {acc:.0f} |"
+              + (f" {Z[pt]['arr'][3] * 1e3:.2f}, {p['arr'][3] / Z[pt]['arr'][3]:.2f} |" if zd else ""))
+            if zd:
+                E[pt]["zarr"] = Z[pt]["arr"][3] * T_CLK / 64 * 1e12
+                E[pt]["zwd"] = (Z[pt]["non"][3] - Z["qc_" + l]["non"][3]) * T_CLK / 64 * 1e12
     o("\nblock-op = one PE processing one 8x8 block (64 MACs) in one cycle; array power = PT u_array (64 PEs + shadow "
       "chains) over the 2304-cycle busy window, energy = P x 2.5 ns / 64.  Weight-input reg delta = PT power of the "
       "leaf cells outside u_array (input registers) minus the QC run's (the x stream is identical, so this is the "
@@ -262,11 +272,17 @@ def main():
     o("| A1 rest uJ | " + " | ".join(f(E_rest) for v in V) + " |")
     o("| A2 array uJ | " + " | ".join(f(E_arr[v]) for v in V) + " |")
     E_cal = {v: E_qc_meas * E_arr[v] / E_arr["qc"] for v in V}
+    if zd:
+        ez = {v: sum(E[f"{v}_{l}"]["zarr"] + E[f"{v}_{l}"]["zwd"] for l in ("L2", "L4")) / 2 for v in V}
+        Ez = {v: (bops * ez[v] * 1e-12 + idle * T_CLK * leak[v]) * 1e6 for v in V}
+        o("| A2z array uJ from the zero-delay GLS (no glitches; lower bound, sensitivity) | " + " | ".join(f(Ez[v]) for v in V) + " |")
     o("| A2' array uJ, calibrated: v2 in-chip u_array x A2(v) / A2(QC) (sensitivity) | " + " | ".join(f(E_cal[v]) for v in V) + " |")
     o("| (i) weight SRAM read uJ | " + " | ".join(f(E_wrd[v]) for v in V) + " |")
     o("| (i) weight SRAM leakage uJ | " + " | ".join(f(E_wlk[v]) for v in V) + " |")
     o("| **(i) total uJ / inference** | " + " | ".join(f"**{E_i[v]:.1f}**" for v in V) + " |")
     o("| (i) total with A2' uJ | " + " | ".join(f(E_i[v] - E_arr[v] + E_cal[v], 1) for v in V) + " |")
+    if zd:
+        o("| (i) total with A2z uJ | " + " | ".join(f(E_i[v] - E_arr[v] + Ez[v], 1) for v in V) + " |")
     o("| (i) vs QC | " + " | ".join(f(E_i[v] / E_i["qc"], 2) + "x" for v in V) + " |")
     for e in (20, 70):
         o(f"| (ii) DRAM {e} pJ / b: DRAM uJ | " + " | ".join(f(bits[v] * e * 1e-6, 1) for v in V) + " |")
@@ -283,6 +299,9 @@ def main():
     tot = E_i["int8"] - E_i["qc"]
     o(f"Scenario (i), INT8 -> QC saves {tot:.1f} uJ / inference ({E_i['int8'] / E_i['qc']:.2f}x):")
     o(f"- compute, INT8 -> TERNARY PE: array {E_arr['int8'] / E_arr['tern']:.2f}x, {dc1:.1f} uJ ({100 * dc1 / tot:.1f} %)")
+    ec = {v: sum(E[f"{v}_{l}"]["arr"] + E[f"{v}_{l}"]["wd"] for l in ("L2", "L4")) / 2 for v in ("int8c", "tern", "int8")}
+    o(f"  - of which arithmetic on identical operands (INT8c / TERNARY, s8kd blocks) {ec['int8c'] / ec['tern']:.2f}x and "
+      f"dense weight statistics (INT8 / INT8c) {ec['int8'] / ec['int8c']:.2f}x (array + w-reg pJ / block-op, mean L2 / L4)")
     o(f"- compute, TERNARY -> QC PE: array {E_arr['tern'] / E_arr['qc']:.2f}x, {dc2:.1f} uJ ({100 * dc2 / tot:.1f} %)")
     o(f"- weight storage / traffic, int8 -> 2-b trits: weight SRAM {(E_wrd['int8'] + E_wlk['int8']) / (E_wrd['tern'] + E_wlk['tern']):.2f}x, "
       f"{dw1:.1f} uJ ({100 * dw1 / tot:.1f} %)")
@@ -294,14 +313,38 @@ def main():
         o(f"- scenario (ii) {e} pJ / b: INT8 -> QC saves >= {t2:.1f} uJ ({E_ii[('int8', e)] / E_ii[('qc', e)]:.2f}x), "
           f"of which compute {dc1 + dc2:.1f} uJ ({100 * (dc1 + dc2) / t2:.1f} %) and weight traffic (DRAM, minus QC's "
           f"on-chip SRAM) {dd:.1f} uJ ({100 * dd / t2:.1f} %); TERNARY -> QC >= {E_ii[('tern', e)] - E_ii[('qc', e)]:.1f} uJ")
+    o("\n## 6. Caveats\n")
+    o("- Pre-CTS netlists, wire-load model, ideal clock (no clock-tree power; INT8 has the most registers / clock gates), "
+      "no P&R; tt 25 C leakage.  Same flow and settings for all three variants.")
+    o("- Activity from two passes of one image (L2, L4: 2304 steps each); the whole-image array energy uses their mean "
+      f"(QC model {E_arr['qc']:.1f} uJ vs {E_qc_meas:.1f} uJ measured in-chip: row A2' rescales all variants to the in-chip "
+      "QC number).  The zero-delay rows bound the glitch contribution (SDF / zd ratio per point in section 3).")
+    o("- No operand isolation / zero-skipping in any PE (v2 has none either).  The activations of these passes are 57 % "
+      "(L2) and 94 % (L4) zero lanes (ReLU + padding), and the weight register reloads every cycle; an INT8 design with "
+      "zero-gated multipliers or weight-stationary reuse would cut its array energy, so INT8 compute here is an upper "
+      "estimate for a different design point, exact for this dataflow.")
+    o("- INT8 weights are dense_s0's (realistic dense weight statistics) but driven with the s8kd activation stream (the "
+      "same stream for all variants); INT8c (s8kd blocks as int8) isolates the arithmetic: same operands as QC.")
+    o("- Accuracy is not part of this ablation (dense_s0 and s8kd are different networks); every variant runs the same "
+      f"{CYC}-cycle schedule.")
+    o("- Weight memory: linear per-bit model of one compiled 4096x80 macro (larger / wider macros, periphery sharing, "
+      "low-leakage or power-gated arrays would lower the dense variants' cost); scenario (ii) is a lower bound for "
+      "TERNARY / INT8 (no on-chip weight buffer, area and energy) and charges QC its measured on-chip SRAM.")
+    o("- fmax: all variants close 3.3 ns (synthesis target); the 2.0 ns probe is one extra synthesis per variant, not a "
+      "sweep.  At 400 MHz (tt) every variant has margin (tt fmax at 3.3 ns >= 466 MHz), so throughput is equal.")
     open(os.path.join(R, "ablation.md"), "w").write("\n".join(out) + "\n")
     D = os.path.join(R, "ablation")
-    os.makedirs(D, exist_ok=True)
+    shutil.rmtree(D, ignore_errors=True)
+    os.makedirs(D)
     for v in V:
-        for p in glob.glob(os.path.join(L, "out", v, "*.txt")) + glob.glob(os.path.join(L, "out", v, f"qab_{v}_w3.3", "*.txt")):
+        for p in glob.glob(os.path.join(L, "out", v, "*.txt")):
             b = os.path.basename(p)
-            if b.startswith(("power_", "gls_", "sdf_")) or "qab_" in p:
-                shutil.copy(p, os.path.join(D, (f"{v}_" if "qab_" in p else "") + b))
+            if b.endswith("_cells.txt"):                     # drop the per-clock-gate rows (size)
+                open(os.path.join(D, b), "w").writelines(x for x in open(p) if "clk_gate" not in x)
+            elif b.startswith(("power_", "gls_", "sdf_")):
+                shutil.copy(p, os.path.join(D, b))
+    for p in glob.glob(os.path.join(L, "out", "*", "qab_*_w*", "*.txt")):
+        shutil.copy(p, os.path.join(D, os.path.basename(os.path.dirname(p)) + "_" + os.path.basename(p)))
     shutil.copy(os.path.join(L, "vec", "stats.txt"), os.path.join(D, "vec_stats.txt"))
     shutil.copy(os.path.join(L, "rtl.txt"), os.path.join(D, "rtl.txt"))
     print("\n".join(out))

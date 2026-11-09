@@ -1,0 +1,3 @@
+  slack (MET)                                                                              1.17
+  slack (MET)                                                                          0.08
+sdf_idealclk: 0 listed clock cells, 640 cells of type CKLNQD, 0 reset-tree cells (11 reset sink pins); 640 cells found, 3200 IOPATHs zeroed; 614 input-port INTERCONNECTs set to 0.500 ns

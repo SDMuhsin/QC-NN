@@ -191,6 +191,16 @@ qc18acc/ablation/run.sh sync           # git pull on the hosts (qc: usask, tern:
 qc18acc/ablation/run.sh start syn      # DC 3.3 ns + PT ss/tt/ff (status: run.sh status syn); QAB_PERIOD=2.0 remote.sh syn <v>: fmax probe
 qc18acc/ablation/run.sh start sdf      # DC tt SDF + ideal-clock view
 qc18acc/ablation/run.sh start gls      # VCS tt-SDF GLS 2.5 ns, bit-exact check, SAIF of the busy window
-qc18acc/ablation/run.sh start power    # PT PX tt
+                                       # (on the host: remote.sh gls <v> compiles, remote.sh glsrun <v> <point> runs points in parallel)
+qc18acc/ablation/run.sh start power    # PT PX tt; QAB_ZD=1 remote.sh gls|glsrun|power: zero-delay (glitch-free) reference
 qc18acc/ablation/run.sh fetch && qc18acc/ablation/run.sh report    # -> results/ablation.md, results/ablation/
 ```
+
+Results (details, assumptions and caveats in [results/ablation.md](results/ablation.md)): all 8 points bit-exact in
+RTL, tt-SDF GLS (0 timing violations) and zero-delay GLS.  Array kGE QC 393.7 / TERNARY 513.1 / INT8 2281.2 (6.13 /
+7.99 / 35.2 kGE per PE); all close 3.3 ns at ss (2.0-ns probe: ss 495 / 466 / 351 MHz).  Array energy per block-op
+(64 MACs) L2 / L4: QC 7.22 / 3.54 pJ, TERNARY 8.15 / 3.88, INT8 (dense_s0 weights) 53.3 / 50.4, INT8 with the s8kd
+blocks 22.7 / 20.1.  System MODEL per inference: on-chip weight SRAM QC 86 / TERNARY 179 / INT8 861 uJ and 6.2 / 28.6 /
+103.5 mm2; DRAM-streamed weights (dense = lower bound) 121 / 535 / 2283 uJ at 20 pJ/b.  The PE itself (TERNARY -> QC)
+gains only ~1.2x; the QC advantage is weight storage / traffic (80 vs 1024 b per step, 0.22 vs 2.8 MB) plus
+ternary-vs-int8 arithmetic.

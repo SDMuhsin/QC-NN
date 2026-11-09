@@ -1,0 +1,9 @@
+design qab_top_tern corner ss lib tcbn65gpluswc_ccs period_ns 3.3 parasitics wire_load_WireAreaLowkCon/enclosed
+setup_wns_ns 0.002926 setup_tns_ns 0.000 setup_viol_endpoints 0
+setup_worst_path u_wrap/x_reg_145_/CP -> u_wrap/g_d_u_array/g_col_0__g_row_2__u_pe/sh_out_reg_146_/D
+hold_wns_ns 0.148006 hold_tns_ns 0.000 hold_viol_endpoints 0
+hold_worst_path u_wrap/g_d_u_array/g_col_4__g_row_7__u_pe/sh_out_reg_167_/CP -> u_wrap/g_d_u_array/g_col_4__g_row_6__u_pe/sh_out_reg_167_/D
+clock qa_clk period_ns 3.300 wns_ns 0.003 fmax_mhz 303.3 path u_wrap/x_reg_145_/CP -> u_wrap/g_d_u_array/g_col_0__g_row_2__u_pe/sh_out_reg_146_/D
+macros 0 macro_area_um2 0
+pt_wall_s 10
+wall 0:13.33 peak_rss_mb 1695
