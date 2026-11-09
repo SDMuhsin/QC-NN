@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Post-route power table of QC18-ACC from qc18acc/pnr/power.sh results (qc18acc/results/pnr).
 
-    python3 qc18acc/pnr/report.py <period_ns>          (QA_V=3: the v3 design, qc18acc/results/pnr_v3)
+    python3 qc18acc/pnr/report.py <period_ns> [pnr_tag]   (QA_V=3: the v3 design, qc18acc/results/pnr_v3/<pnr_tag>_post_*)
 
 PT (routed netlist, tt SPEF, propagated clock, flat SDF SAIF) and +dat (macro internal power replaced by the
 datatable access model, as qc18acc/power/energy.py), energy per inference (159 982 cycles), clock-tree share.
@@ -15,18 +15,19 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "power"))
 import energy  # noqa: E402
 
 P = sys.argv[1]
+PFX = f"{sys.argv[2]}_post_{P}ns" if len(sys.argv) > 2 else f"post_{P}ns"
 V3 = os.environ.get("QA_V", "2") == "3"
 D = Path(__file__).resolve().parent.parent / "results" / ("pnr_v3" if V3 else "pnr")
 b, dat = {}, {}
-for line in (D / f"post_{P}ns_blocks.txt").read_text().splitlines():
+for line in (D / f"{PFX}_blocks.txt").read_text().splitlines():
     if not line.startswith("#"):
         w = line.split()
         b[w[0]] = [float(x) for x in w[1:5]] + ([int(w[6])] if len(w) > 6 else [])
-for line in (D / f"post_{P}ns_macros.txt").read_text().splitlines():
+for line in (D / f"{PFX}_macros.txt").read_text().splitlines():
     if line.startswith("datmacro:qa_"):
         w = line.split()
         dat[w[0].split(":", 1)[1]] = {w[i]: float(w[i + 1]) for i in range(1, len(w) - 1, 2)}
-t = (D / f"post_{P}ns.txt").read_text()
+t = (D / f"{PFX}.txt").read_text()
 grp = {m[0]: [float(x) for x in m[1:5]] for m in
        re.findall(r"^(clock_network|register|combinational|memory)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)", t, re.M)}
 tot = b["design:qa_top"]

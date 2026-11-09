@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # PrimeTime PX of the ROUTED QC18-ACC with the v2 SDF SAIF of image 0 (pt_power_post.tcl), on the P&R host:
 #   qc18acc/pnr/power.sh [-H host=usask] [-t pnr_tag=qa_pnr] [-s syn_tag=qa2_w3.3] <period_ns>
-# QA_V=3: the v3 design (syn tag default qa3_w3.3, v3 macro set, summaries -> qc18acc/results/pnr_v3).
+# QA_V=3: the v3 design (syn tag default qa3_w3.3, v3 macro set, summaries -> qc18acc/results/pnr_v3/<pnr_tag>_post_<p>ns*).
 # The SAIF ($QC_RDIR/gls/<syn_tag>/qa_top_img0_sdf.saif, TB clock 2.5 ns) is flattened once (saif_flat.py) and
 # rescaled to <period_ns> (saif_scale.py, same toggles per cycle); macro access energy from the datatables
 # (macro_dat.py, tt 1.0 V).  Summaries -> qc18acc/results/pnr/post_<p>ns{,_blocks,_macros}.txt (design names only).
@@ -17,6 +17,7 @@ RDIR=${QC_RDIR:-/tmp/ckp908/qc18acc}
 R=$RDIR/repo; PNR=$RDIR/build/pnr/$T; SYN=$RDIR/build/syn/$S; G=$RDIR/gls/$S
 D=$PNR/power/post_${P}ns
 OUTL=$Q/../results/$OD; mkdir -p "$OUTL"
+PFX=post_${P}ns; if [ "$OD" = pnr_v3 ] || [ "$T" != qa_t1 ]; then PFX=${T}_post_${P}ns; fi   # v2 run qa_t1: the names of results/pnr.md
 DBTT=$(ssh "$H" ". $SYN/run.env; echo \$QC_EXTRA_DB_TT")
 ssh "$H" "set -e; cd $R && git pull -q --ff-only; mkdir -p $D; cd $D
   F=$PNR/power/flat_sdf.saif
@@ -28,7 +29,7 @@ ssh "$H" "set -e; cd $R && git pull -q --ff-only; mkdir -p $D; cd $D
   grep '^Error' pt.log | sort | uniq -c | head; sed -n '/Power Group/,/^ *Total/p' pt.txt; cat pt_blocks.txt
   . $R/flow/tsmc65/site/sram.sh; python3 -I $R/qc18acc/power/macro_dat.py \$QC_MC_OUT pt_macros.txt > pt_macro_dat.txt
   cat pt_macro_dat.txt; rm -f scaled.saif"
-scp -q "$H:$D/pt.txt" "$OUTL/post_${P}ns.txt"
-scp -q "$H:$D/pt_blocks.txt" "$OUTL/post_${P}ns_blocks.txt"
-scp -q "$H:$D/pt_macro_dat.txt" "$OUTL/post_${P}ns_macros.txt"
+scp -q "$H:$D/pt.txt" "$OUTL/$PFX.txt"
+scp -q "$H:$D/pt_blocks.txt" "$OUTL/${PFX}_blocks.txt"
+scp -q "$H:$D/pt_macro_dat.txt" "$OUTL/${PFX}_macros.txt"
 echo "POWER_POST_DONE $T $P"
