@@ -173,3 +173,24 @@ PE array 41 %, activation macros 27 %, weight macros 13 %, PPU 11 %; glitch fact
 violations; `power.sh -o power_v2 -e qa2_w3.3 sdf` + `compare.py sdf 2.5`: **231.0 mW, 92.4 uJ / inference** at
 400 MHz (v1 308.4 mW, 123.3 uJ): macro deselected clocks 60.5 -> 0 mW, act macro reads 6.16 -> 2.83 / cycle;
 PE-internal breakdown in section 5 (`power/pe_power.tcl`).
+
+## Array ablation: QC vs TERNARY vs INT8 PE (`ablation/`, results [results/ablation.md](results/ablation.md))
+
+Three standalone 8x8 arrays with the v2 geometry, input pipeline register, accumulate / shadow / drain structure and
+dataflow (one 8x8 block per PE per cycle); only the PE and the weight width per column differ: QC = `hw/rtl/qa_array`
++ `qa_pe` unchanged (10 b), TERNARY = 64 trits (128 b, 8 trit-selects + adder tree per lane, 21-b accumulator =
+worst case of an arbitrary ternary 3x3x512 conv), INT8 = 64 int8 (512 b, 8 signed 8x8 multipliers + adder tree per
+lane, 32-b accumulator) (`ablation/rtl/`, tops `qab_top_<v>`).  Stream: the real v2 array inputs of s8kd_s0 image 0
+for blocks.3.c1 (K = 144, 16 tiles) and blocks.7.c1 (K = 576, 4 tiles), 2304 steps each; QC / TERNARY with the
+s8kd blocks, INT8 with dense_s0 (BN folded, per-channel int8) and the s8kd blocks as int8 (control).
+
+```bash
+qc18acc/ablation/run.sh vec            # vectors + numpy reference (GPU 0, ~10 s) -> /tmp/root/qc18acc/ablation/vec
+qc18acc/ablation/run.sh rtl            # Verilator RTL check, 8 points
+qc18acc/ablation/run.sh sync           # git pull on the hosts (qc: usask, tern: tau5, int8: tau1), rsync vectors
+qc18acc/ablation/run.sh start syn      # DC 3.3 ns + PT ss/tt/ff (status: run.sh status syn); QAB_PERIOD=2.0 remote.sh syn <v>: fmax probe
+qc18acc/ablation/run.sh start sdf      # DC tt SDF + ideal-clock view
+qc18acc/ablation/run.sh start gls      # VCS tt-SDF GLS 2.5 ns, bit-exact check, SAIF of the busy window
+qc18acc/ablation/run.sh start power    # PT PX tt
+qc18acc/ablation/run.sh fetch && qc18acc/ablation/run.sh report    # -> results/ablation.md, results/ablation/
+```

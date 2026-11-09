@@ -5,10 +5,13 @@
 #   remote.sh syn   <v>              DC 3.3 ns ss (impl/constraints.sdc, WLM WireAreaLowkCon enclosed) + PT ss/tt/ff
 #   remote.sh sdf   <v>              DC tt SDF (synthesis WLM) + ideal clock / reset, 0.5 ns input delay view
 #   remote.sh gls   <v> <point...>   VCS tt-SDF GLS at 2.5 ns (timing checks on), SAIF of the PE busy window
+#   remote.sh glsrun <v> <point>    one point on the compiled simv of 'gls' (own copy: points can run in parallel)
+#   remote.sh glssum <v> <point>    summary of a GLS point (out/gls_<point>.txt)
 #   remote.sh power <v> <point...>   PrimeTime PX tt 1.0 V, 2.5 ns, synthesis WLM, from that SAIF
 # v = qc | tern | int8 (top qab_top_<v>, tag qab_<v>_w3.3); point = <vector name>, e.g. qc_L2, int8c_L4.
 set -u
 REPO=$(cd "$(dirname "$0")/../.." && pwd)
+SELF=$REPO/qc18acc/ablation/remote.sh
 FLOW=$REPO/flow/tsmc65
 AB=${QAB_DIR:-/tmp/$USER/qc18acc/abl}
 export QC_BUILD=$AB/build QC_SDC=$REPO/qc18acc/impl/constraints.sdc QC_PT_HOOK=$REPO/qc18acc/impl/pt_hook.tcl
@@ -40,13 +43,17 @@ gls)
   tcs "vcs -full64 -sverilog -timescale=1ns/1ps $S/$top.v $REPO/qc18acc/ablation/tb_qab.sv -top tb_qab -o simv \
     -v \$QC_CELL_V +define+QC_GLS $(defs "$v")+QAB_SAIF -sdf typ:tb_qab.dut:$AB/sdf/$v/${top}_idealclk.sdf +no_notifier" > vcs.log 2>&1
   [ -x simv ] || { grep -E "Error" -A3 vcs.log | head; exit 1; }
-  for pt in "$@"; do
-    tcs "./simv +VEC=$AB/vec/$pt.txt +PERIOD_PS=$CLKPS +SAIF=$W/$pt.saif" > "$pt.log" 2>&1
-    { grep -E "QAB_(INFO|SAIF|RESULT|MISMATCH)" "$pt.log" | head -6
-      echo "sdf_annotation $(grep -ciE 'sdf.*(annotat|back)' vcs.log) timing_violations $(grep -c 'Timing violation' "$pt.log")"
-      echo "error_lines $(grep -cE '^Error|Fatal' "$pt.log") saif_bytes $(stat -c %s "$pt.saif" 2>/dev/null)"; } > "$O/gls_$pt.txt"
-    echo "QAB_GLS_DONE $pt"; cat "$O/gls_$pt.txt"
-  done ;;
+  for pt in "$@"; do "$SELF" glsrun "$v" "$pt"; done ;;
+glsrun)
+  pt=$1; W=$AB/gls/$v; D=$W/run_$pt; rm -rf "$D"; mkdir -p "$D"; cp -r "$W/simv" "$W/simv.daidir" "$D/"; cd "$D"
+  tcs "./simv +VEC=$AB/vec/$pt.txt +PERIOD_PS=$CLKPS +SAIF=$W/$pt.saif" > "$W/$pt.log" 2>&1
+  "$SELF" glssum "$v" "$pt" ;;
+glssum)
+  pt=$1; W=$AB/gls/$v
+  { grep -E "QAB_(INFO|SAIF|RESULT|MISMATCH)" "$W/$pt.log" | head -6
+    echo "sdf_annotation $(grep -ciE 'sdf.*(annotat|back)' "$W/vcs.log") timing_violations $(grep -c 'Timing violation' "$W/$pt.log")"
+    echo "error_lines $(grep -cE '^Error|Fatal' "$W/$pt.log") saif_bytes $(stat -c %s "$W/$pt.saif" 2>/dev/null)"; } > "$O/gls_$pt.txt"
+  echo "QAB_GLS_DONE $pt"; cat "$O/gls_$pt.txt" ;;
 power)
   W=$AB/gls/$v
   for pt in "$@"; do
