@@ -18,9 +18,9 @@ CKPT=${QC_CKPT:-/tmp/root/qc18/final/s8kd_s0/best.pt}
 RDIR=${QC_RDIR:-/tmp/ckp908/qc18acc}
 LOC=${QC_LOCAL:-/tmp/root/qc18acc}
 TECH=${QC_TECH:-0}
-TAG=${QC_TAG:-qc18acc_rtl$([ "$TECH" = 1 ] && echo _tech)}
-FL="qc18acc/hw/rtl/qc18acc.f"; VOPTS=""; LOG=rtl_sim
+FL="qc18acc/hw/rtl/qc18acc.f"; VOPTS=""; LOG=rtl_sim; TAG=${QC_TAG:-qc18acc_rtl}
 if [ "$TECH" = 1 ]; then
+    TAG=${QC_TAG:-qc18acc_rtl_tech}
     FL="qc18acc/hw/tech/qc18acc_tech.f qc18acc/hw/tech/macros_sim.f"; LOG=rtl_tech_sim
     VOPTS="+define+QA_TECH +nospecify +notimingcheck"
 fi
