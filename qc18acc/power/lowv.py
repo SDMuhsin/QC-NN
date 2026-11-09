@@ -11,7 +11,9 @@ numbers are MODELLED from the 1.0 V views:
   macro leakage         PT (1.0 V .db) x k_leak, k_leak = logic leakage(v_lo) / logic leakage(1.0 V) of the same
                         netlist (cell libraries); bound shown with k = v_lo (no DIBL reduction)
 Logic (all non-macro cells, incl. the macro clock gates) is PT at lib_lo as is.
+QA_V=3 (environment): the v3 design (energy.CYCLES / MACRO of v3), summaries from qc18acc/results/lowv_v3.
 """
+import os
 import sys
 from pathlib import Path
 
@@ -22,7 +24,7 @@ P = sys.argv[1] if len(sys.argv) > 1 else "3.3333"
 LO = sys.argv[2] if len(sys.argv) > 2 else "tcbn65gplustc0d8_ccs"
 V = float(sys.argv[3]) if len(sys.argv) > 3 else 0.8
 REF = sys.argv[4] if len(sys.argv) > 4 else "tcbn65gplustc_ccs"
-D = Path(__file__).resolve().parent.parent / "results" / "lowv"
+D = Path(__file__).resolve().parent.parent / "results" / ("lowv_v3" if os.environ.get("QA_V", "2") == "3" else "lowv")
 energy.R = D
 
 

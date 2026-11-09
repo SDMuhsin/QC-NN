@@ -7,7 +7,7 @@
 # power: pt_power.tcl with QC_PT_LIB = <lib> on the SDF SAIF of the v2 GLS (rescaled to <period_ns>, same toggles
 #        per cycle), then macro_dat.py with the datatable energies x (volt / 1.0)^2 (MODELLED: the ARM compilers of
 #        the kit have no corner below 0.9 V) -> qc18acc/results/lowv/sdf_<p>ns_<lib>{,_blocks,_macros}.txt; lowv.py combines.
-# Environment: QC_RDIR (default /tmp/ckp908/qc18acc).
+# Environment: QC_RDIR (default /tmp/ckp908/qc18acc); QA_V=3: the v3 macro set, summaries -> qc18acc/results/lowv_v3.
 set -euo pipefail
 Q=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 H=usask; LIB=tcbn65gplustc0d8_ccs; V=0.8; SIMP=2.5
@@ -16,11 +16,14 @@ shift $((OPTIND - 1))
 CMD=${1:?sta|power}; T=${2:?syn_tag}
 RDIR=${QC_RDIR:-/tmp/ckp908/qc18acc}
 G=$RDIR/gls/$T; SYN=$RDIR/build/syn/$T; R=$RDIR/repo
-OUTL=$Q/../results/lowv; mkdir -p "$OUTL"
+OUTL=$Q/../results/lowv
+MAC="qa_act_1024x64m8 qa_wgt_4096x80m8 qa_par_4096x72m8 qa_dsc_256x32m2"
+if [ "${QA_V:-2}" = 3 ]; then OUTL=$Q/../results/lowv_v3; MAC="qa_act_512x64m4 qa_wgt_4096x80m8 qa_par_4096x72m8 qa_dsc_256x32m2"; fi
+mkdir -p "$OUTL"
 DBTT=$(ssh "$H" ". $SYN/run.env; echo \$QC_EXTRA_DB_TT")
 ENV="source $R/flow/tsmc65/site/site.csh; setenv QC_FLOW $R/flow/tsmc65; setenv SYN $SYN; \
   setenv QC_SDC $R/qc18acc/impl/constraints.sdc; setenv QC_EXTRA_DB_TT \"$DBTT\"; \
-  setenv QC_PT_CORNER tt08; setenv QC_PT_LIB $LIB"
+  setenv QC_PT_CORNER tt08; setenv QC_PT_LIB $LIB; setenv QA_MACROS \"$MAC\""
 case $CMD in
 sta)
     D=$G/lowv/sta_$LIB

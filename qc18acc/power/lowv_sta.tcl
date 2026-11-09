@@ -6,7 +6,8 @@
 #   logic    worst setup path that neither starts at a macro (CLK -> Q) nor ends at a macro input pin, i.e. the
 #            logic-only fmax (cell and wire delays all at 0.8 V)
 #   to_macro / from_macro  worst path into / out of a macro (with the 1.0 V macro setup / clock-to-Q)
-# Environment: QC_FLOW, SYN (DC run dir), QC_SDC, QC_PERIOD, QC_PT_CORNER, QC_PT_LIB, QC_EXTRA_DB_TT, OUT (prefix).
+# Environment: QC_FLOW, SYN (DC run dir), QC_SDC, QC_PERIOD, QC_PT_CORNER, QC_PT_LIB, QC_EXTRA_DB_TT, OUT (prefix),
+#   QA_MACROS (macro cell names; default the v2 set, lowv.sh sets the v3 set for QA_V=3).
 source $::env(QC_FLOW)/common/lib.tcl
 set top qa_top
 set corner [qc_env QC_PT_CORNER tt08]
@@ -22,11 +23,12 @@ set wlm [qc_wire_load $corner]
 update_timing
 set o $::env(OUT)
 set per [get_attribute [get_clocks qa_clk] period]
-set mcs [get_cells -hierarchical -filter "is_hierarchical==false && (ref_name==qa_act_1024x64m8 || ref_name==qa_wgt_4096x80m8 || ref_name==qa_par_4096x72m8 || ref_name==qa_dsc_256x32m2)"]
+set mf {}; foreach m [qc_env QA_MACROS "qa_act_1024x64m8 qa_wgt_4096x80m8 qa_par_4096x72m8 qa_dsc_256x32m2"] { lappend mf "ref_name==$m" }
+set mcs [get_cells -hierarchical -filter "is_hierarchical==false && ([join $mf { || }])"]
 set mout [get_pins -of $mcs -filter "direction==out"]
 set min  [get_pins -of $mcs -filter "direction==in"]
 set fh [open ${o}.txt w]
-puts $fh "design $top corner $corner lib $::QC_LIB($corner) macros tt_1p0v (not 0.8 V) period_ns $per wire_load $wlm"
+puts $fh "design $top netlist $::env(SYN) corner $corner lib $::QC_LIB($corner) macros tt_1p0v (not 0.8 V) period_ns $per wire_load $wlm"
 proc line {fh k p per} {
     if {![sizeof_collection $p]} { puts $fh "$k none"; return }
     set s [get_attribute $p slack]
