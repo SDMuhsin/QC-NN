@@ -62,4 +62,21 @@ foreach m {qa_act_1024x64m8 qa_wgt_4096x80m8 qa_par_4096x72m8 qa_dsc_256x32m2} {
 puts $fh "glue:top_leaf_cells [pw [get_cells -quiet -filter is_hierarchical==false]]"
 puts $fh "design:$top [pw [get_cells -quiet -hierarchical -filter is_hierarchical==false]]"
 close $fh
+
+# ---- macro activity for the datatable access-energy model (power.sh -> macro_dat.py): the macro .lib carries no
+# CLK access energy (every CLK internal_power table is 0; only pin energies, e.g. WEN), so PT's macro dynamic power
+# misses the read / deselect energy.  Per instance: CLK toggles per ns, P(CEN=1), P(WEN=1) of the SAIF.
+proc pa {pin a} {
+    if {[catch {set x [get_attribute [get_pins $pin] $a]}] || $x eq ""} {
+        if {[catch {set x [get_attribute [get_nets -of_objects [get_pins $pin]] $a]}] || $x eq ""} { set x NA }
+    }
+    return $x
+}
+set fh [open ${o}_macros.txt w]
+puts $fh "# instance ref clk_toggle_rate_per_ns cen_static_prob wen_static_prob   (period_ns $::env(QC_PERIOD))"
+foreach_in_collection c [get_cells -hierarchical -filter "is_hierarchical==false && (ref_name==qa_act_1024x64m8 || ref_name==qa_wgt_4096x80m8 || ref_name==qa_par_4096x72m8 || ref_name==qa_dsc_256x32m2)"] {
+    set n [get_object_name $c]
+    puts $fh "$n [get_attribute $c ref_name] [pa $n/CLK toggle_rate] [pa $n/CEN static_probability] [pa $n/WEN static_probability]"
+}
+close $fh
 exit
