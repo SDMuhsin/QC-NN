@@ -10,16 +10,20 @@ mode (sdf, zd) and period present.  Two totals per run:
           deselected clock edges x datatable energy; macro leakage and the switching of the macro output nets as PT)
 Energy per inference = P x CYCLES x period (START..DONE of image 0, RTL = GLS cycle count); per dense-equivalent MAC
 (convs 555 417 600 + FC 5 120) and per QC addition (127 295 232 per image, qc18/results/s8kd_s0.md).
+QA_V=3 (environment): the v3 design (Kb = 2): 81 438 cycles / image, 48 x qa_act_512x64m4, weight halves u_wmem_e / _o.
 """
+import os
 import re
 import sys
 from pathlib import Path
 
-CYCLES = 159982
+V3 = os.environ.get("QA_V", "2") == "3"
+CYCLES = 81438 if V3 else 159982
 MACS = 555417600 + 5120
 ADDS = 127295232
 R = Path(sys.argv[1] if len(sys.argv) > 1 else Path(__file__).resolve().parent.parent / "results" / "power")
-MACRO = dict(act="qa_act_1024x64m8", wgt="qa_wgt_4096x80m8", par="qa_par_4096x72m8", dsc="qa_dsc_256x32m2")
+MACRO = dict(act="qa_act_512x64m4" if V3 else "qa_act_1024x64m8", wgt="qa_wgt_4096x80m8", par="qa_par_4096x72m8",
+             dsc="qa_dsc_256x32m2")
 
 
 def load(mode, p):
@@ -51,10 +55,12 @@ def blocks(r):
             ("head (u_head)", b["u_head"]),
             ("AGU + xbar + seq + host + top glue", add(b["u_agu"], b["u_xbar"], b["u_seq"], b["u_host"], b["top_leaf_cells"])),
             ("act buffer logic (hold regs, port muxes)", sub(b["u_act"], b[MACRO["act"]])),
-            ("weight / param / desc wrapper logic", add(sub(b["u_wmem"], b[MACRO["wgt"]]), sub(b["u_pmem"], b[MACRO["par"]]),
+            ("weight / param / desc wrapper logic", add(sub(add(b["u_wmem_e"], b["u_wmem_o"]) if V3 else b["u_wmem"],
+                                                             b[MACRO["wgt"]]), sub(b["u_pmem"], b[MACRO["par"]]),
                                                          sub(b["u_desc"], b[MACRO["dsc"]])))]
     out = [(n, v[3], v[3], v[2]) for n, v in rows]
-    for k, n in (("act", "activation macros (24 x 1024x64)"), ("wgt", "weight macros (6 x 4096x80)"),
+    for k, n in (("act", "activation macros (48 x 512x64)" if V3 else "activation macros (24 x 1024x64)"),
+                 ("wgt", "weight macros (6 x 4096x80)"),
                  ("par", "param macros (2 x 4096x72)"), ("dsc", "descriptor macro (256x32)")):
         v = b[MACRO[k]]
         out.append((n, v[3], v[3] - v[0] + d[MACRO[k]]["P_dyn"], v[2]))

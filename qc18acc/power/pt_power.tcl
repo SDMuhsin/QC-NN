@@ -9,8 +9,12 @@
 #   type, top-level glue cells).
 # Optional (lowv.sh): QC_PT_CORNER (corner key, default tt) and QC_PT_LIB (cell library of that key, e.g.
 #   tcbn65gplustc0d8_ccs for tt 0.8 V; the macro .db of QC_EXTRA_DB_TT are linked unchanged).
+# QA_MACROS: macro cell names (default the v2 set; power.sh sets the v3 set for QA_V=3).
 source $::env(QC_FLOW)/common/lib.tcl
 set top qa_top
+set macros [qc_env QA_MACROS "qa_act_1024x64m8 qa_wgt_4096x80m8 qa_par_4096x72m8 qa_dsc_256x32m2"]
+set mf {}; foreach m $macros { lappend mf "ref_name==$m" }
+set mfilt "is_hierarchical==false && ([join $mf { || }])"
 set corner [qc_env QC_PT_CORNER tt]
 if {[qc_env QC_PT_LIB] ne ""} { set ::QC_LIB($corner) $::env(QC_PT_LIB) }
 set_app_var search_path [concat . $::QC_LIBDIR]
@@ -58,7 +62,7 @@ puts $fh "# block internal_W switching_W leakage_W total_W   (period_ns $::env(Q
 foreach_in_collection c [get_cells -filter "is_hierarchical==true"] {
     puts $fh "hier:[get_object_name $c] [pw $c]"
 }
-foreach m {qa_act_1024x64m8 qa_wgt_4096x80m8 qa_par_4096x72m8 qa_dsc_256x32m2} {
+foreach m $macros {
     set mc [get_cells -quiet -hierarchical -filter "ref_name==$m"]
     puts $fh "macro:$m [pw $mc]   n [sizeof_collection $mc]"
 }
@@ -80,7 +84,7 @@ proc pa {pin a} {
 }
 set fh [open ${o}_macros.txt w]
 puts $fh "# instance ref clk_toggle_rate_per_ns cen_static_prob wen_static_prob   (period_ns $::env(QC_PERIOD))"
-foreach_in_collection c [get_cells -hierarchical -filter "is_hierarchical==false && (ref_name==qa_act_1024x64m8 || ref_name==qa_wgt_4096x80m8 || ref_name==qa_par_4096x72m8 || ref_name==qa_dsc_256x32m2)"] {
+foreach_in_collection c [get_cells -hierarchical -filter $mfilt] {
     set n [get_object_name $c]
     puts $fh "$n [get_attribute $c ref_name] [pa $n/CLK toggle_rate] [pa $n/CEN static_probability] [pa $n/WEN static_probability]"
 }

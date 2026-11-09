@@ -19,11 +19,15 @@
 #   -sdf typ:qa_tb.dut:<idealclk sdf>, cell + ARM macro specify blocks and timing checks ON, +no_notifier (a
 #   violation is reported in sim.log, counted by check, but does not X the register / macro word).
 # Environment: QC_RDIR (default /tmp/ckp908/qc18acc), QC_LOCAL (default /tmp/root/qc18acc).
+# QA_V=3: the v3 design (Kb = 2): export of hw3/sim/run_rtl.sh ($QC_LOCAL default /tmp/root/qc18acc3, remote
+#   export_rtl3), gls/gls3.f, hw3 macro models and testbench, gen_snap.py v3.
 set -eu
 CMD=${1:?start|check}; HOST=${2:-usask}; T=${3:-qa_w3.5}; IMG0=${4:-0}; NIMG=${5:-1}
 REPO=$(cd "$(dirname "$0")/../.." && pwd)
 RDIR=${QC_RDIR:-/tmp/ckp908/qc18acc}
 LOC=${QC_LOCAL:-/tmp/root/qc18acc}
+RX=export_rtl; GF=qc18acc/gls/gls.f; HW=hw; SNV=""
+if [ "${QA_V:-2}" = 3 ]; then LOC=${QC_LOCAL:-/tmp/root/qc18acc3}; RX=export_rtl3; GF=qc18acc/gls/gls3.f; HW=hw3; SNV=v3; fi
 EXP=$LOC/export_rtl
 G=$RDIR/gls/$T
 SDFD=$G/sdf; SDFI=$SDFD/qa_top_tt_idealclk.sdf
@@ -36,15 +40,15 @@ case "$CMD" in
 start)
     [ -f "$EXP/names.txt" ] || { echo "no $EXP/names.txt: run qc18acc/hw/sim/run_rtl.sh first"; exit 1; }
     [ -z "$SFX" ] || ssh "$HOST" "test -s $SDFI" || { echo "no $SDFI: run_gls.sh sdf $HOST $T"; exit 1; }
-    ssh "$HOST" "mkdir -p $RDIR/export_rtl $G"
-    rsync -a --delete "$EXP/" "$HOST:$RDIR/export_rtl/"
+    ssh "$HOST" "mkdir -p $RDIR/$RX $G"
+    rsync -a --delete "$EXP/" "$HOST:$RDIR/$RX/"
     ssh "$HOST" "set -e; cd $RDIR/repo && git pull -q --ff-only && git log -1 --format='%h %s'
       N=$RDIR/build/syn/$T/qa_top.v; test -f \$N || { echo no netlist \$N; exit 1; }
-      python3 -I qc18acc/gls/gen_snap.py \$N > $G/qa_gls_snap.svh; head -1 $G/qa_gls_snap.svh
+      python3 -I qc18acc/gls/gen_snap.py \$N $SNV > $G/qa_gls_snap.svh; head -1 $G/qa_gls_snap.svh
       . flow/tsmc65/site/sram.sh; export QC_MC_OUT QA_NETLIST=\$N QC_BUILD=$RDIR/build QC_GLS=$GLSV
       export QC_VCS_OPTS='$VOPT' QC_PASS_RE='RESULT PASS' QC_FAIL_RE='RESULT FAIL|MISMATCH|Error|Fatal'
-      export QC_SIM_OPTS='+DIR=$RDIR/export_rtl +IMG0=$IMG0 +NIMG=$NIMG +SAIF=$G/qa_top_img$IMG0$SFX.saif'
-      nohup flow/tsmc65/sim/run_vcs.sh gls_$T$SFX qa_tb qc18acc/gls/gls.f qc18acc/hw/tech/macros_sim.f qc18acc/hw/tb/tb.f > $G/run$SFX.log 2>&1 < /dev/null &
+      export QC_SIM_OPTS='+DIR=$RDIR/$RX +IMG0=$IMG0 +NIMG=$NIMG +SAIF=$G/qa_top_img$IMG0$SFX.saif'
+      nohup flow/tsmc65/sim/run_vcs.sh gls_$T$SFX qa_tb $GF qc18acc/$HW/tech/macros_sim.f qc18acc/$HW/tb/tb.f > $G/run$SFX.log 2>&1 < /dev/null &
       echo GLS started on \$(hostname -s): $RDIR/build/sim/gls_$T$SFX" ;;
 check)
     S=$RDIR/build/sim/gls_$T$SFX
