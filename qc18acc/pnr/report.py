@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """Post-route power table of QC18-ACC from qc18acc/pnr/power.sh results (qc18acc/results/pnr).
 
-    python3 qc18acc/pnr/report.py <period_ns>
+    python3 qc18acc/pnr/report.py <period_ns>          (QA_V=3: the v3 design, qc18acc/results/pnr_v3)
 
 PT (routed netlist, tt SPEF, propagated clock, flat SDF SAIF) and +dat (macro internal power replaced by the
 datatable access model, as qc18acc/power/energy.py), energy per inference (159 982 cycles), clock-tree share.
 """
+import os
 import re
 import sys
 from pathlib import Path
@@ -14,7 +15,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "power"))
 import energy  # noqa: E402
 
 P = sys.argv[1]
-D = Path(__file__).resolve().parent.parent / "results" / "pnr"
+V3 = os.environ.get("QA_V", "2") == "3"
+D = Path(__file__).resolve().parent.parent / "results" / ("pnr_v3" if V3 else "pnr")
 b, dat = {}, {}
 for line in (D / f"post_{P}ns_blocks.txt").read_text().splitlines():
     if not line.startswith("#"):
@@ -56,6 +58,8 @@ for k, n in (("act", "activation macros"), ("wgt", "weight macros"), ("par", "pa
     m = energy.MACRO[k]
     v = b[f"macro:{m}"]
     print(f"| {n} | {mw(v[3])} | {mw(v[3] - v[0] + dat[m]['P_dyn'])} | {mw(v[2])} |")
+if V3:   # the two weight halves as one wrapper
+    b["hier:u_wmem"] = [x + y for x, y in zip(b["hier:u_wmem_e"][:4], b["hier:u_wmem_o"][:4])]
 for k in ("u_act", "u_wmem", "u_pmem", "u_desc"):
     m = {"u_act": "act", "u_wmem": "wgt", "u_pmem": "par", "u_desc": "dsc"}[k]
     v, w = b[f"hier:{k}"], b[f"macro:{energy.MACRO[m]}"]

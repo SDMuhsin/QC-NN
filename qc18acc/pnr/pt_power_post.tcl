@@ -3,7 +3,9 @@
 # hold buffers, tie / antenna cells), the def2spef parasitics of the tt corner (out/qa_top_tt_pt.spef, no wire-load
 # model), propagated clock, and the image-0 SDF SAIF flattened to the flat names (saif_flat.py).  Nets not in the
 # SAIF (cells inserted by P&R) get their activity by propagation from the annotated nets (power_default_toggle_rate 0).
-# Environment: QC_FLOW, PNR (P&R run dir), QC_SDC, QC_PERIOD, QC_EXTRA_DB_TT, SAIF, OUT (report prefix).
+# Environment: QC_FLOW, PNR (P&R run dir), QC_SDC, QC_PERIOD, QC_EXTRA_DB_TT, SAIF, OUT (report prefix);
+#   QA_MACROS (macro cell names, default the v2 set; power.sh sets the v3 set for QA_V=3, with the v3 blocks
+#   u_wmem_e / u_wmem_o instead of u_wmem).
 # Outputs: ${OUT}.txt (power groups, annotation), ${OUT}_blocks.txt (same keys as pt_power.tcl: first-level blocks
 # by name prefix, macros by type, top-level glue; plus cts: the clock-tree cells inserted by CTS and
 # clock_network group), ${OUT}_macros.txt (macro activity for macro_dat.py).
@@ -59,12 +61,15 @@ set leaf [get_cells -hierarchical -filter "is_hierarchical==false"]
 set fh [open ${o}_blocks.txt w]
 puts $fh "# block internal_W switching_W leakage_W total_W   (period_ns $::env(QC_PERIOD), routed, SPEF tt)"
 set done {}
-foreach b {u_pmem u_seq u_ppu u_host u_drain u_head u_xbar u_array u_wmem u_desc u_act u_agu} {
+set qa_macros [qc_env QA_MACROS "qa_act_1024x64m8 qa_wgt_4096x80m8 qa_par_4096x72m8 qa_dsc_256x32m2"]
+set qa_blocks {u_pmem u_seq u_ppu u_host u_drain u_head u_xbar u_array u_wmem u_desc u_act u_agu}
+if {[lsearch $qa_macros qa_act_512x64m4] >= 0} { set qa_blocks {u_pmem u_seq u_ppu u_host u_drain u_head u_xbar u_array u_wmem_e u_wmem_o u_desc u_act u_agu} }
+foreach b $qa_blocks {
     set c [filter_collection $leaf "full_name=~$b/*"]
     puts $fh "hier:$b [pw $c]   n [sizeof_collection $c]"
     set done [add_to_collection $done $c]
 }
-foreach m {qa_act_1024x64m8 qa_wgt_4096x80m8 qa_par_4096x72m8 qa_dsc_256x32m2} {
+foreach m $qa_macros {
     set mc [filter_collection $leaf "ref_name==$m"]
     puts $fh "macro:$m [pw $mc]   n [sizeof_collection $mc]"
 }
@@ -90,7 +95,8 @@ proc pa {pin a} {
 }
 set fh [open ${o}_macros.txt w]
 puts $fh "# instance ref clk_toggle_rate_per_ns cen_static_prob wen_static_prob   (period_ns $::env(QC_PERIOD))"
-foreach_in_collection c [filter_collection $leaf "ref_name==qa_act_1024x64m8 || ref_name==qa_wgt_4096x80m8 || ref_name==qa_par_4096x72m8 || ref_name==qa_dsc_256x32m2"] {
+set mf {}; foreach m $qa_macros { lappend mf "ref_name==$m" }
+foreach_in_collection c [filter_collection $leaf [join $mf { || }]] {
     set n [get_object_name $c]
     puts $fh "$n [get_attribute $c ref_name] [pa $n/CLK toggle_rate] [pa $n/CEN static_probability] [pa $n/WEN static_probability]"
 }

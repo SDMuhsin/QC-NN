@@ -23,6 +23,10 @@ if {[qc_env QC_PERIOD] ne ""} {
     read_sdc $::env(QC_SDC_FILE); set sdc_src dc_sdc
 }
 set_propagated_clock [all_clocks]
+# QA_IO_REF=1: host-port IO delays relative to the propagated clock at the host interface register (io_ref.tcl, as
+# the P&R run with P(QA_IO_REF) 1); default: the synthesis SDC (ideal clock edge)
+set io_model ideal_edge
+if {[qc_env QA_IO_REF 0]} { source $::env(QC_FLOW)/../../qc18acc/pnr/io_ref.tcl; set io_model host_reg_clock }
 read_parasitics -format spef $dir/out/${top}_${corner}_pt.spef
 update_timing
 file mkdir $dir/rpt
@@ -36,7 +40,7 @@ set nets NA
 if {[regexp {\n\s*\|\s*(\d+)\s*\|\s*\d+\s*\|\s*\d+\s*\|\s*(\d+)\s*\|\s*(\d+)\s*\|} $ann -> tot rc na]} {
     set nets "total $tot rc_network $rc not_annotated $na"
 }
-puts $fh "design $top corner $corner lib $::QC_LIB($corner) constraints $sdc_src spef_nets $nets"
+puts $fh "design $top corner $corner lib $::QC_LIB($corner) constraints $sdc_src io $io_model spef_nets $nets"
 qc_put_timing $fh
 set per [get_attribute [get_clocks qa_clk] period]
 proc fl {fh k p per} {
