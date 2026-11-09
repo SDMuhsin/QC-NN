@@ -167,3 +167,9 @@ SDF run (tt, 400 MHz, full image 0): RESULT PASS, all logits and maps bit-exact,
 counter equal to RTL, 0 timing-check violations.  Power at 400 MHz (SDF SAIF, macros from the datatable model since
 the macro .lib CLK energies are 0): **308 mW, 123 uJ / inference, 0.22 pJ / dense-equivalent MAC**, leakage 7.1 %;
 PE array 41 %, activation macros 27 %, weight macros 13 %, PPU 11 %; glitch factor SDF / zd 1.34.
+
+**v2** ([results/power_v2.md](results/power_v2.md)): netlist `qa2_w3.3` (`impl/run.sh all 3.3 qa2_w3.3`), 6.430 mm2,
+612.4 kGE, fmax ss 303.2 / tt 463.3 MHz; GLS zero delay and tt SDF (image 0) bit-exact, cycles = RTL, 0 timing
+violations; `power.sh -o power_v2 -e qa2_w3.3 sdf` + `compare.py sdf 2.5`: **231.0 mW, 92.4 uJ / inference** at
+400 MHz (v1 308.4 mW, 123.3 uJ): macro deselected clocks 60.5 -> 0 mW, act macro reads 6.16 -> 2.83 / cycle;
+PE-internal breakdown in section 5 (`power/pe_power.tcl`).
