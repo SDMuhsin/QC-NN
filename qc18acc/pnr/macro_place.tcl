@@ -9,9 +9,9 @@
 # M1-M4, OBS M1-M4 over the whole macro), PG rings VDDCE / VDDPE / VSSE on M3 (horizontal) and M4 (vertical):
 # routing crosses the macros on M5-M7.  Gaps 2 x halo between macros, macro rows on the 1.8 um row grid.
 set qa_halo 10.0
-set qa_gap  [expr {[info exists ::env(QA_GAP)] ? $::env(QA_GAP) : 2 * $qa_halo}]   ;# vertical gap between macro rows (> 2 halo: rows for the pin-side logic)
+set qa_gap  [expr {[info exists ::env(QA_GAP)] ? $::env(QA_GAP) : 60.0}]   ;# vertical gap between macro rows (> 2 halo: rows for the pin-side logic)
 set qa_hgap [expr {2 * $qa_halo}]
-set qa_band [expr {[info exists ::env(QA_BAND)] ? $::env(QA_BAND) : 450.0}]
+set qa_band [expr {[info exists ::env(QA_BAND)] ? $::env(QA_BAND) : 400.0}]
 array set qa_wh {A {646.525 177.605} W {780.925 453.365} P {713.725 453.365} D {146.99 139.52}}
 set qa_cx0 10.0; set qa_cy0 10.8
 set qa_tierw [expr {3 * 780.925 + 713.725 + 3 * $qa_hgap}]
