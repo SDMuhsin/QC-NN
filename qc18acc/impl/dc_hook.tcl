@@ -12,3 +12,8 @@ if {[qc_env QC_ELAB_ONLY 0]} {
     puts "QC_ELAB_ONLY done"
     exit
 }
+# v2 macro clock gates (hw/tech/qa_sram_tech.sv u_cg, CKLNQD): keep them (any drive strength); DC sees them as
+# pre-existing integrated clock gates (report_clock_gating, rpt/clock_gating.rpt).
+set mcg [get_cells -quiet -hierarchical -filter "is_hierarchical==false && ref_name=~CKLNQD*"]
+puts "QC_MACRO_CG [sizeof_collection $mcg] macro clock gates"
+if {[sizeof_collection $mcg]} { set_size_only $mcg }
