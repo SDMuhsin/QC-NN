@@ -20,8 +20,10 @@ LOC=${QC_LOCAL:-/tmp/root/qc18acc}
 TECH=${QC_TECH:-0}
 TAG=${QC_TAG:-qc18acc_rtl$([ "$TECH" = 1 ] && echo _tech)}
 FL="qc18acc/hw/rtl/qc18acc.f"; VOPTS=""; LOG=rtl_sim
-[ "$TECH" = 1 ] && { FL="qc18acc/hw/tech/qc18acc_tech.f qc18acc/hw/tech/macros_sim.f"; LOG=rtl_tech_sim
-                     VOPTS="+define+QA_TECH +nospecify +notimingcheck"; }
+if [ "$TECH" = 1 ]; then
+    FL="qc18acc/hw/tech/qc18acc_tech.f qc18acc/hw/tech/macros_sim.f"; LOG=rtl_tech_sim
+    VOPTS="+define+QA_TECH +nospecify +notimingcheck"
+fi
 EXP=$LOC/export_rtl
 cd "$REPO"
 if [ "${QC_SKIP_EXPORT:-0}" != 1 ]; then
