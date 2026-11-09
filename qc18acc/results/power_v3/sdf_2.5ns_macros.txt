@@ -1,0 +1,6 @@
+# macro datatable model, corner tt_1p0v_25c, escale 1.0, period_ns 2.5: per type n, reads / writes / deselected clocks per cycle (sum over instances), E_read / E_write / E_desel pJ, P_read / P_write / P_desel / P_dyn W, datatable standby leakage W
+datmacro:qa_par_4096x72m8 n 2 clk_per_cycle 0.0295 reads_pc 0.0590 writes_pc 0.0000 desel_pc 0.0000 E_read 31.27 E_write 34.74 E_desel 9.53 P_read 7.383361e-04 P_write 4.168440e-07 P_desel 1.935513e-08 P_dyn 7.387723e-04 leak_dat 2.140000e-03
+datmacro:qa_wgt_4096x80m8 n 6 clk_per_cycle 0.2826 reads_pc 1.6955 writes_pc 0.0001 desel_pc 0.0002 E_read 34.11 E_write 37.91 E_desel 9.95 P_read 2.313297e-02 P_write 1.364580e-06 P_desel 9.777375e-07 P_dyn 2.313531e-02 leak_dat 6.888000e-03
+datmacro:qa_act_512x64m4 n 48 clk_per_cycle 0.1371 reads_pc 5.5683 writes_pc 1.0174 desel_pc 0.0253 E_read 17.47 E_write 23.71 E_desel 1.17 P_read 3.890840e-02 P_write 9.649396e-03 P_desel 1.177937e-05 P_dyn 4.856957e-02 leak_dat 6.069600e-03
+datmacro:qa_dsc_256x32m2 n 1 clk_per_cycle 0.0021 reads_pc 0.0020 writes_pc 0.0000 desel_pc 0.0000 E_read 7.29 E_write 10.38 E_desel 0.86 P_read 5.912107e-06 P_write 6.225780e-08 P_desel 6.844081e-09 P_dyn 5.981209e-06 leak_dat 5.000000e-05
+datmacro:total P_dyn 7.244964e-02
