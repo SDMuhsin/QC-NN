@@ -44,7 +44,8 @@ proc qa_w {banks par} {
     return $l
 }
 set hA [lindex $qa_wh(A) 1]; set hW [lindex $qa_wh(W) 1]
-set yBw $qa_cy0
+set qa_edge [expr {[info exists ::env(QA_EDGE)] ? $::env(QA_EDGE) : 0.0}]   ;# rows between the outer tiers and the core edge
+set yBw [qa_snap [expr {$qa_cy0 + $qa_edge}] 1.8 $qa_cy0 up]
 set yB3 [qa_snap [expr {$yBw + $hW + $qa_gap}] 1.8 $qa_cy0 up]
 set yB2 [qa_snap [expr {$yB3 + $hA + $qa_gap}] 1.8 $qa_cy0 up]
 set yB1 [qa_snap [expr {$yB2 + $hA + $qa_gap}] 1.8 $qa_cy0 up]
@@ -52,7 +53,7 @@ set yT1 [qa_snap [expr {$yB1 + $hA + $qa_band}] 1.8 $qa_cy0 up]
 set yT2 [qa_snap [expr {$yT1 + $hA + $qa_gap}] 1.8 $qa_cy0 up]
 set yT3 [qa_snap [expr {$yT2 + $hA + $qa_gap}] 1.8 $qa_cy0 up]
 set yTw [qa_snap [expr {$yT3 + $hA + $qa_gap}] 1.8 $qa_cy0 up]
-set qa_cy1 [qa_snap [expr {$yTw + $hW}] 1.8 $qa_cy0 up]
+set qa_cy1 [qa_snap [expr {$yTw + $hW + $qa_edge}] 1.8 $qa_cy0 up]
 set ::QA_DIE_W [expr {$qa_cx1 + 10.0}]
 set ::QA_DIE_H [expr {$qa_cy1 + 10.8}]
 set P(DIE_AREA)  [list 0 0 $::QA_DIE_W $::QA_DIE_H]
