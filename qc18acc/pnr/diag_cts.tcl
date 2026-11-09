@@ -1,7 +1,7 @@
 # Diagnostic (not part of the flow): clock tree, hold and setup statistics of a P&R checkpoint, OpenROAD.
 #   QC_FLOW=<repo>/flow/tsmc65 QC_PNR_OUT=<P&R run dir> QA_STEP=cts openroad -exit diag_cts.tcl > diag_<step>.txt
-# Clock tree: cells named clkbuf* / clkload* (TritonCTS) by master, area, report_power of the tree (OpenROAD
-# default activity: clock nets toggle every edge, so the tree's power is meaningful; data activity is not used).
+# Clock tree: cells named clkbuf* / clkload* (TritonCTS) by master, area; report_power (OpenROAD default activity:
+# the clock nets toggle every edge, so the Clock group is meaningful; the data activity is the 0.1 default).
 # Hold / setup: violating endpoints at ss and tt (placement / global-route parasitics as the step left them),
 # grouped by start (input port / register / macro) and end kind (register, macro pin, ICG, output port).
 set ::T0 [clock seconds]
@@ -27,9 +27,7 @@ foreach i [$blk getInsts] {
 }
 puts "DIAG step $step clock_tree_cells $ncts area_um2 [format %.0f $acts]"
 foreach m [lsort [array names nm]] { puts "DIAG   $m n $nm($m) area_um2 [format %.0f $ar($m)]" }
-puts "DIAG power_tt clock_tree_cells (default activity):"
-report_power -corner tt -instances [get_cells {clkbuf* clkload*}]
-puts "DIAG power_tt whole design (default activity):"
+puts "DIAG power_tt whole design (default activity; group Clock = clock-tree buffers + ICGs):"
 report_power -corner tt
 report_clock_skew
 proc kind {pin} {
@@ -41,7 +39,7 @@ proc kind {pin} {
 }
 foreach c {ss tt} {
     foreach dt {min max} {
-        set pes [find_timing_paths -path_delay $dt -corner $c -group_path_count 200000 -endpoint_path_count 1 -slack_max 0.0]
+        set pes [find_timing_paths -path_delay $dt -corner $c -group_count 200000 -endpoint_count 1 -slack_max 0.0]
         array unset k; set worst 0.0
         foreach pe $pes {
             set pr [$pe path]
