@@ -3,13 +3,14 @@
 # Clock tree: cells named clkbuf* / clkload* (TritonCTS) by master, area; report_power (OpenROAD default activity:
 # the clock nets toggle every edge, so the Clock group is meaningful; the data activity is the 0.1 default).
 # Hold / setup: violating endpoints at ss and tt (placement / global-route parasitics as the step left them),
-# grouped by start (input port / register / macro) and end kind (register, macro pin, ICG, output port).
+# grouped by start (input port / register / macro) and end kind (register, macro pin, ICG, output port), with the
+# worst slack (ns) and endpoint of each group.  QA_STEP=grt: db/grt.odb of grt_only.tcl (global-route parasitics).
 set ::T0 [clock seconds]
 source $::env(QC_FLOW)/pnr/or/lib.tcl
 set ::OUT $::env(QC_PNR_OUT)
 source $::OUT/config.tcl
 qc_config
-set ::STEPS {init floorplan pdn place cts route finish}
+set ::STEPS {init floorplan pdn place cts grt route finish}
 set step [qc_env QA_STEP cts]
 qc_load $step
 if {$step in {route grt}} { estimate_parasitics -global_routing } else { estimate_parasitics -placement }
@@ -50,8 +51,11 @@ foreach c {ss tt} {
             set s [kind $sp]
             set e [kind $ep]
             incr k($s->$e)
+            set sl [$pe slack]
+            if {![info exists w($s->$e)] || $sl < $w($s->$e)} { set w($s->$e) $sl; set wp($s->$e) [get_full_name $ep] }
         }
-        set str {}; foreach x [lsort [array names k]] { lappend str "$x $k($x)" }
+        set str {}; foreach x [lsort [array names k]] { lappend str "$x $k($x) wns [format %.3f [expr {$w($x) * 1e9}]] ($wp($x))" }
+        array unset w; array unset wp
         puts "DIAG $c [expr {$dt eq "min" ? "hold" : "setup"}] violating_endpoints [llength $pes] [join $str {, }]"
     }
 }
