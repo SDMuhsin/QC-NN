@@ -1,9 +1,10 @@
 # Timing repair after CTS (PRE_ROUTE_TCL; the cts step runs with REPAIR_TIMING 0): setup, then hold without extra
 # margin, legalisation with a larger window (hold buffers near the macro pins sit next to macro + halo).
+# P(QA_RT_ARGS): extra repair_timing -setup options (also in post_grt.tcl; default none = v2 recipe).
 # P(QA_IO_REF) 1 (default 0 = v2 recipe): host-port IO delays relative to the propagated clock (io_ref.tcl)
 if {[p QA_IO_REF 0]} { source [file dirname [p PIN_TCL]]/io_ref.tcl }
 estimate_parasitics -placement
-repair_timing -setup -setup_margin [p SETUP_MARGIN] -max_utilization [p MAX_UTIL]
+repair_timing -setup -setup_margin [p SETUP_MARGIN] -max_utilization [p MAX_UTIL] {*}[p QA_RT_ARGS {}]
 repair_timing -hold -hold_margin [p QA_HOLD_MARGIN 0.0] -max_utilization [p MAX_UTIL]
 detailed_placement -max_displacement {300 300}
 check_placement
