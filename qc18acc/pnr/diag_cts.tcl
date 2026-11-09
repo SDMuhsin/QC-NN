@@ -33,7 +33,7 @@ report_power -corner tt
 report_clock_skew
 proc kind {pin} {
     if {[$pin is_top_level_port]} { return port }
-    set cn [[[$pin instance] cell] name]
+    set cn [get_name [[$pin instance] cell]]
     if {[string match qa_* $cn]} { return macro }
     if {[string match CKLNQD* $cn]} { return icg }
     return reg
