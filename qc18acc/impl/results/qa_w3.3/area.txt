@@ -1,0 +1,140 @@
+run qa_w3.3 host engr-tau-02L
+nand2_um2 1.440 (DC summary: total cell area / kGE)
+total_um2 6433145 total_mm2 6.433
+macro_um2 5547754 macro_mm2 5.548 (86.2 %)
+logic_um2 885391 logic_mm2 0.885 logic_kGE 614.9
+
+block                                       total_um2  macro_um2  logic_um2 logic_kGE %logic
+pe_array (8x8 qa_pe + shadow chains)           578095          0     578095     401.5   65.3
+drain (param RF, loader, addresses)             45222          0      45222      31.4    5.1
+ppu (8 lanes, 6 stages)                        152414          0     152414     105.8   17.2
+head (pool + FC)                                28296          0      28296      19.7    3.2
+agu                                              5523          0       5523       3.8    0.6
+xbar (S2 -> S3 rotation, code reg)              11548          0      11548       8.0    1.3
+seq (descriptors, perf counters)                11330          0      11330       7.9    1.3
+host port + CSRs                                 5724          0       5724       4.0    0.6
+act buffers (24 x 1024x64 + ports)            2788545    2755826      32719      22.7    3.7
+weight SRAM (6 x 4096x80)                     2132620    2124264       8355       5.8    0.9
+param SRAM (2 x 4096x72)                       649058     647156       1902       1.3    0.2
+descriptor RAM (256x32)                         20857      20508        348       0.2    0.0
+top glue (qa_top memory port muxing)             3914          0       3914       2.7    0.4
+
+one PE (mean of 64 qa_pe): 9017 um2 = 6.26 kGE; 64 PEs 577060 um2, rest of u_array 1035 um2
+
+hierarchy (depth <= 2, total um2):
+  u_act                                                           2788545  qa_actmem
+  u_act/g_buf_0__g_bank_0__u_ram                                   115507  qa_sram_WORDS1024_BITS64_23
+  u_act/g_buf_0__g_bank_1__u_ram                                   115508  qa_sram_WORDS1024_BITS64_22
+  u_act/g_buf_0__g_bank_2__u_ram                                   115510  qa_sram_WORDS1024_BITS64_21
+  u_act/g_buf_0__g_bank_3__u_ram                                   115510  qa_sram_WORDS1024_BITS64_20
+  u_act/g_buf_0__g_bank_4__u_ram                                   115510  qa_sram_WORDS1024_BITS64_19
+  u_act/g_buf_0__g_bank_5__u_ram                                   115509  qa_sram_WORDS1024_BITS64_18
+  u_act/g_buf_0__g_bank_6__u_ram                                   115511  qa_sram_WORDS1024_BITS64_17
+  u_act/g_buf_0__g_bank_7__u_ram                                   115510  qa_sram_WORDS1024_BITS64_16
+  u_act/g_buf_1__g_bank_0__u_ram                                   115508  qa_sram_WORDS1024_BITS64_15
+  u_act/g_buf_1__g_bank_1__u_ram                                   115507  qa_sram_WORDS1024_BITS64_14
+  u_act/g_buf_1__g_bank_2__u_ram                                   115510  qa_sram_WORDS1024_BITS64_13
+  u_act/g_buf_1__g_bank_3__u_ram                                   115507  qa_sram_WORDS1024_BITS64_12
+  u_act/g_buf_1__g_bank_4__u_ram                                   115508  qa_sram_WORDS1024_BITS64_11
+  u_act/g_buf_1__g_bank_5__u_ram                                   115509  qa_sram_WORDS1024_BITS64_10
+  u_act/g_buf_1__g_bank_6__u_ram                                   115510  qa_sram_WORDS1024_BITS64_9
+  u_act/g_buf_1__g_bank_7__u_ram                                   115510  qa_sram_WORDS1024_BITS64_8
+  u_act/g_buf_2__g_bank_0__u_ram                                   115507  qa_sram_WORDS1024_BITS64_7
+  u_act/g_buf_2__g_bank_1__u_ram                                   115507  qa_sram_WORDS1024_BITS64_6
+  u_act/g_buf_2__g_bank_2__u_ram                                   115510  qa_sram_WORDS1024_BITS64_5
+  u_act/g_buf_2__g_bank_3__u_ram                                   115507  qa_sram_WORDS1024_BITS64_4
+  u_act/g_buf_2__g_bank_4__u_ram                                   115508  qa_sram_WORDS1024_BITS64_3
+  u_act/g_buf_2__g_bank_5__u_ram                                   115509  qa_sram_WORDS1024_BITS64_2
+  u_act/g_buf_2__g_bank_6__u_ram                                   115510  qa_sram_WORDS1024_BITS64_1
+  u_act/g_buf_2__g_bank_7__u_ram                                   115510  qa_sram_WORDS1024_BITS64_0
+  u_agu                                                              5523  qa_agu
+  u_array                                                          578095  qa_array
+  u_array/g_col_0__g_row_0__u_pe                                     9065  qa_pe_63
+  u_array/g_col_0__g_row_1__u_pe                                     9027  qa_pe_62
+  u_array/g_col_0__g_row_2__u_pe                                     9012  qa_pe_61
+  u_array/g_col_0__g_row_3__u_pe                                     9021  qa_pe_60
+  u_array/g_col_0__g_row_4__u_pe                                     9021  qa_pe_59
+  u_array/g_col_0__g_row_5__u_pe                                     9025  qa_pe_58
+  u_array/g_col_0__g_row_6__u_pe                                     9013  qa_pe_57
+  u_array/g_col_0__g_row_7__u_pe                                     8906  qa_pe_56
+  u_array/g_col_1__g_row_0__u_pe                                     9034  qa_pe_55
+  u_array/g_col_1__g_row_1__u_pe                                     9057  qa_pe_54
+  u_array/g_col_1__g_row_2__u_pe                                     9012  qa_pe_53
+  u_array/g_col_1__g_row_3__u_pe                                     9044  qa_pe_52
+  u_array/g_col_1__g_row_4__u_pe                                     9048  qa_pe_51
+  u_array/g_col_1__g_row_5__u_pe                                     9038  qa_pe_50
+  u_array/g_col_1__g_row_6__u_pe                                     9014  qa_pe_49
+  u_array/g_col_1__g_row_7__u_pe                                     8925  qa_pe_48
+  u_array/g_col_2__g_row_0__u_pe                                     9043  qa_pe_47
+  u_array/g_col_2__g_row_1__u_pe                                     9044  qa_pe_46
+  u_array/g_col_2__g_row_2__u_pe                                     9054  qa_pe_45
+  u_array/g_col_2__g_row_3__u_pe                                     9045  qa_pe_44
+  u_array/g_col_2__g_row_4__u_pe                                     9047  qa_pe_43
+  u_array/g_col_2__g_row_5__u_pe                                     9062  qa_pe_42
+  u_array/g_col_2__g_row_6__u_pe                                     9030  qa_pe_41
+  u_array/g_col_2__g_row_7__u_pe                                     8965  qa_pe_40
+  u_array/g_col_3__g_row_0__u_pe                                     9057  qa_pe_39
+  u_array/g_col_3__g_row_1__u_pe                                     9059  qa_pe_38
+  u_array/g_col_3__g_row_2__u_pe                                     9079  qa_pe_37
+  u_array/g_col_3__g_row_3__u_pe                                     9040  qa_pe_36
+  u_array/g_col_3__g_row_4__u_pe                                     9035  qa_pe_35
+  u_array/g_col_3__g_row_5__u_pe                                     9114  qa_pe_34
+  u_array/g_col_3__g_row_6__u_pe                                     9066  qa_pe_33
+  u_array/g_col_3__g_row_7__u_pe                                     8890  qa_pe_32
+  u_array/g_col_4__g_row_0__u_pe                                     9051  qa_pe_31
+  u_array/g_col_4__g_row_1__u_pe                                     9021  qa_pe_30
+  u_array/g_col_4__g_row_2__u_pe                                     9026  qa_pe_29
+  u_array/g_col_4__g_row_3__u_pe                                     9031  qa_pe_28
+  u_array/g_col_4__g_row_4__u_pe                                     9029  qa_pe_27
+  u_array/g_col_4__g_row_5__u_pe                                     9032  qa_pe_26
+  u_array/g_col_4__g_row_6__u_pe                                     9008  qa_pe_25
+  u_array/g_col_4__g_row_7__u_pe                                     8862  qa_pe_24
+  u_array/g_col_5__g_row_0__u_pe                                     9035  qa_pe_23
+  u_array/g_col_5__g_row_1__u_pe                                     9027  qa_pe_22
+  u_array/g_col_5__g_row_2__u_pe                                     9026  qa_pe_21
+  u_array/g_col_5__g_row_3__u_pe                                     9015  qa_pe_20
+  u_array/g_col_5__g_row_4__u_pe                                     9026  qa_pe_19
+  u_array/g_col_5__g_row_5__u_pe                                     9010  qa_pe_18
+  u_array/g_col_5__g_row_6__u_pe                                     9049  qa_pe_17
+  u_array/g_col_5__g_row_7__u_pe                                     8865  qa_pe_16
+  u_array/g_col_6__g_row_0__u_pe                                     9018  qa_pe_15
+  u_array/g_col_6__g_row_1__u_pe                                     9056  qa_pe_14
+  u_array/g_col_6__g_row_2__u_pe                                     9016  qa_pe_13
+  u_array/g_col_6__g_row_3__u_pe                                     9030  qa_pe_12
+  u_array/g_col_6__g_row_4__u_pe                                     9015  qa_pe_11
+  u_array/g_col_6__g_row_5__u_pe                                     9019  qa_pe_10
+  u_array/g_col_6__g_row_6__u_pe                                     9022  qa_pe_9
+  u_array/g_col_6__g_row_7__u_pe                                     8868  qa_pe_8
+  u_array/g_col_7__g_row_0__u_pe                                     9034  qa_pe_7
+  u_array/g_col_7__g_row_1__u_pe                                     9005  qa_pe_6
+  u_array/g_col_7__g_row_2__u_pe                                     8995  qa_pe_5
+  u_array/g_col_7__g_row_3__u_pe                                     9021  qa_pe_4
+  u_array/g_col_7__g_row_4__u_pe                                     9028  qa_pe_3
+  u_array/g_col_7__g_row_5__u_pe                                     9019  qa_pe_2
+  u_array/g_col_7__g_row_6__u_pe                                     9024  qa_pe_1
+  u_array/g_col_7__g_row_7__u_pe                                     8886  qa_pe_0
+  u_desc                                                            20857  qa_sram_WORDS256_BITS32
+  u_drain                                                           45222  qa_drain
+  u_head                                                            28296  qa_head
+  u_host                                                             5724  qa_host
+  u_pmem                                                           649058  qa_bankmem_BANKS2_BANK_WORDS4096_BITS72_AW13
+  u_pmem/g_bank_0__u_ram                                           324354  qa_sram_WORDS4096_BITS72_1
+  u_pmem/g_bank_1__u_ram                                           324353  qa_sram_WORDS4096_BITS72_0
+  u_ppu                                                            152414  qa_ppu
+  u_ppu/g_lane_0__u_lane                                            18782  qa_ppu_lane_7
+  u_ppu/g_lane_1__u_lane                                            18740  qa_ppu_lane_6
+  u_ppu/g_lane_2__u_lane                                            18716  qa_ppu_lane_5
+  u_ppu/g_lane_3__u_lane                                            18754  qa_ppu_lane_4
+  u_ppu/g_lane_4__u_lane                                            18731  qa_ppu_lane_3
+  u_ppu/g_lane_5__u_lane                                            18754  qa_ppu_lane_2
+  u_ppu/g_lane_6__u_lane                                            18733  qa_ppu_lane_1
+  u_ppu/g_lane_7__u_lane                                            18707  qa_ppu_lane_0
+  u_seq                                                             11330  qa_seq
+  u_wmem                                                          2132620  qa_bankmem_BANKS6_BANK_WORDS4096_BITS80_AW15
+  u_wmem/g_bank_0__u_ram                                           355007  qa_sram_WORDS4096_BITS80_5
+  u_wmem/g_bank_1__u_ram                                           355047  qa_sram_WORDS4096_BITS80_4
+  u_wmem/g_bank_2__u_ram                                           355040  qa_sram_WORDS4096_BITS80_3
+  u_wmem/g_bank_3__u_ram                                           354990  qa_sram_WORDS4096_BITS80_2
+  u_wmem/g_bank_4__u_ram                                           355045  qa_sram_WORDS4096_BITS80_1
+  u_wmem/g_bank_5__u_ram                                           355060  qa_sram_WORDS4096_BITS80_0
+  u_xbar                                                            11548  qa_xbar

@@ -34,7 +34,7 @@ start)
       echo GLS started on \$(hostname -s): $RDIR/build/sim/gls_$T" ;;
 check)
     S=$RDIR/build/sim/gls_$T
-    if ssh "$HOST" "pgrep -f 'run_vcs.sh gls_$T' > /dev/null"; then
+    if ssh "$HOST" "pgrep -f '[r]un_vcs.sh gls_$T' > /dev/null"; then
         ssh "$HOST" "echo running; tail -c 300 $S/sim.log 2>/dev/null || tail -3 $S/vcs.log"; exit 0
     fi
     ssh "$HOST" "cat $G/run.log; ls -la $G/*.saif 2>/dev/null" || true
@@ -43,8 +43,9 @@ check)
     python3 - "$LOC/gls_$T.log" "$LOC/rtl_sim.log" <<'PY'
 import re, sys
 def cyc(p):
-    return {(m[1], m[2]): m[3] for m in re.findall(r"^PASSCYC img (\d+) pass (\d+) \S+ (\d+)", open(p).read(), re.M)} | \
-           {(m[1], "total"): m[2] for m in re.findall(r"^PERF img (\d+) total (\d+)", open(p).read(), re.M)}
+    t = open(p).read()
+    return {(m[0], m[1]): m[2] for m in re.findall(r"^PASSCYC img (\d+) pass (\d+) \S+\s+(\d+)", t, re.M)} | \
+           {(m[0], "total"): m[1] for m in re.findall(r"^PERF img (\d+) total (\d+)", t, re.M)}
 g, r = cyc(sys.argv[1]), cyc(sys.argv[2])
 diff = [k for k in g if k in r and g[k] != r[k]]
 imgs = sorted({k[0] for k in g})
