@@ -1,0 +1,9 @@
+# ARM memory-compiler macros of QC18-ACC v3 (flow/tsmc65/sram/mc_gen.sh gen qc18acc/impl/v3/macros.txt).
+# Act bank half: choice from v3/sweep_result.txt (ss 0.9 V 125 C, macro area incl. ring): rf_sp_adv 512 x 64 mux 4
+# (53 045 um2) is the densest legal shape (2 x 512x64 per bank = 106 090 um2 vs v2 1024x64 sram mux 8 114 826 um2;
+# 512x128 only as sram_sp_adv mux 8, 167 678 um2).  Weight / param / descriptor macros as v2.
+# <instance>  <compiler>  <words> <bits> <mux>
+qa_act_512x64m4   rf_sp_adv   512  64 4
+qa_wgt_4096x80m8  sram_sp_adv 4096 80 8
+qa_par_4096x72m8  sram_sp_adv 4096 72 8
+qa_dsc_256x32m2   rf_sp_adv   256  32 2

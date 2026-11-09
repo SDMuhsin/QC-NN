@@ -1,0 +1,9 @@
+# v3 (Kb = 2) activation bank candidates (flow/tsmc65/sram/mc_gen.sh sweep): per bank 2 x 512 x 64 (lo / hi
+# halves, separate enables) or 1 x 512 x 128; 3 buffers x 8 banks
+a3_rf_512x64m2    rf_sp_adv   512 64 2
+a3_rf_512x64m4    rf_sp_adv   512 64 4
+a3_sp_512x64m8    sram_sp_adv 512 64 8
+a3_sp_512x64m16   sram_sp_adv 512 64 16
+a3_rf_512x128m2   rf_sp_adv   512 128 2
+a3_rf_512x128m4   rf_sp_adv   512 128 4
+a3_sp_512x128m8   sram_sp_adv 512 128 8
