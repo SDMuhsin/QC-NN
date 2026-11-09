@@ -5,7 +5,7 @@
 // Loading: EVERYTHING through the host port (descriptors, weight / param SRAM words with the WSTAGE registers,
 // then per image the 1024-word input plane into the stem's input buffer).  Per image: START, poll STATUS, read
 // the 10 logits and the perf counters through the host port.
-// Map check: at the end of every conv pass (pulse u_seq.pass_done) the pass's output buffer is copied by
+// Map check: at the end of every conv pass (u_seq.npass incremented) the pass's output buffer is copied by
 // hierarchical reference (backdoor, read-only, at the next clock edge, before any write of the next pass) and compared word by word with
 // DIR/img<n>/pass<ii>_<name>.hex (words marked x are not written by the pass and are skipped).
 `timescale 1ns/1ps
@@ -46,15 +46,37 @@ module qa_tb;
   endtask
 
   // ---- backdoor snapshot of the act buffers at a pass end ------------------------------------------------------
-  logic snap_go = 1'b0;
+  // Memory view: RTL qa_sram (mem[a]); +define+QA_TECH: hw/tech/qa_sram_tech.sv on the ARM macro model
+  // qa_act_1024x64m8 (column mux 8: word a in row a >> 3, bit b at 8 b + a % 8); +define+QA_GLS: the netlist, whose
+  // escaped instance names come from the generated include qa_gls_snap.svh (qc18acc/gls/gen_snap.py).
+  logic snap_go = 1'b0, pass_end_q = 1'b0;
+  function automatic logic [63:0] unmux8(input logic [511:0] row, input int m);
+    for (int b = 0; b < 64; b++) unmux8[b] = row[8*b + m];
+  endfunction
+`ifdef QA_GLS
+  `include "qa_gls_snap.svh"
+`else
   genvar gb, gk;
   for (gb = 0; gb < NBUF; gb++) begin : g_sb
     for (gk = 0; gk < NBANK; gk++) begin : g_sk
       always @(posedge clk) if (snap_go) for (int a = 0; a < ADEPTH; a++)
+`ifdef QA_TECH
+        snap[gb*8192 + gk*1024 + a] = unmux8(dut.u_act.g_buf[gb].g_bank[gk].u_ram.g_mac.g_act.u_mac.mem[a >> 3], a % 8);
+`else
         snap[gb*8192 + gk*1024 + a] = dut.u_act.g_buf[gb].g_bank[gk].u_ram.mem[a];
+`endif
     end
   end
-  always @(negedge clk) snap_go <= rst_n && dut.u_seq.pass_done === 1'b1 && chk_k < npass_conv && nomaps == 0;
+`endif
+  // pass end: the cycle u_seq.pass_done is high = the cycle after u_seq.npass was incremented (the netlist has no
+  // pass_done: it has no load in qa_top and synthesis removes it; npass feeds the host CSRs)
+  logic [5:0] npass_q = '0;
+  wire pass_end = dut.u_seq.npass !== npass_q && dut.u_seq.npass != 6'd0;
+  always @(negedge clk) begin
+    snap_go <= rst_n && pass_end && chk_k < npass_conv && nomaps == 0;
+    pass_end_q <= rst_n && pass_end;
+    npass_q <= dut.u_seq.npass;
+  end
   always @(posedge clk) if (snap_go) begin
     reg [8*600-1:0] fn;
     integer bad, cnt, ob;
@@ -77,7 +99,7 @@ module qa_tb;
     if (bad) $display("MAP img %0d pass %02d %-14s %0d words: %0d mismatches", cur_img, chk_k, pname[chk_k], cnt, bad);
     chk_k = chk_k + 1;
     $fflush();
-  end else if (rst_n && dut.u_seq.pass_done === 1'b1) chk_k = chk_k + 1;
+  end else if (pass_end_q) chk_k = chk_k + 1;
 
   // ---- main ----------------------------------------------------------------------------------------------------
   initial begin
