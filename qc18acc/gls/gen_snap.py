@@ -60,6 +60,21 @@ def main():
         h = "dut." + ".".join(ref(n) for n in p)
         print(f"  always @(posedge clk) if (snap_go) for (int a = 0; a < ADEPTH; a++)\n"
               f"    snap[{b}*8192 + {k}*1024 + a] = unmux8({h}.mem[a >> 3], a % 8);")
+    # flat netlist (OpenROAD write_verilog): no u_seq module instance, the TB's dut.u_seq.npass becomes the Q nets
+    # of the escaped register instances \u_seq/npass_reg_<i>_
+    q = {}
+    pat = re.compile(r"^\s*\w+\s+\\u_seq/npass_reg_(\d+)_\s+\(\.\w+\(([^)]*)\)")
+    with open(sys.argv[1]) as f:
+        for line in f:
+            if "npass_reg_" in line:
+                m = pat.match(line)
+                if m and ".Q(" in line:
+                    q[int(m.group(1))] = re.search(r"\.Q\(([^)]*)\)", line).group(1).strip()
+    if q:
+        if sorted(q) != list(range(6)):
+            sys.exit(f"gen_snap: flat netlist, npass registers {sorted(q)}")
+        net = lambda n: ref(n.strip()) if n.startswith("\\") else n
+        print("`define QA_NPASS {" + ", ".join(f"dut.{net(q[i])}" for i in range(5, -1, -1)) + "}")
     if len(seen) != 24 or len(paths) != 24:
         sys.exit(f"gen_snap: expected 24 activation banks, found {len(paths)} ({len(seen)} distinct)")
 

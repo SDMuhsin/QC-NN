@@ -70,12 +70,16 @@ module qa_tb;
 `endif
   // pass end: the cycle u_seq.pass_done is high = the cycle after u_seq.npass was incremented (the netlist has no
   // pass_done: it has no load in qa_top and synthesis removes it; npass feeds the host CSRs)
+  // (flat P&R netlists: the generated include defines QA_NPASS as the Q nets of the u_seq/npass registers)
+`ifndef QA_NPASS
+  `define QA_NPASS dut.u_seq.npass
+`endif
   logic [5:0] npass_q = '0;
-  wire pass_end = dut.u_seq.npass !== npass_q && dut.u_seq.npass != 6'd0;
+  wire pass_end = `QA_NPASS !== npass_q && `QA_NPASS != 6'd0;
   always @(negedge clk) begin
     snap_go <= rst_n && pass_end && chk_k < npass_conv && nomaps == 0;
     pass_end_q <= rst_n && pass_end;
-    npass_q <= dut.u_seq.npass;
+    npass_q <= `QA_NPASS;
   end
   always @(posedge clk) if (snap_go) begin
     reg [8*600-1:0] fn;
