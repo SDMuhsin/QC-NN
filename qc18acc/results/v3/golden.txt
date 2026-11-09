@@ -1,0 +1,6 @@
+memory: weight_words_even 11545, weight_words_odd 10905, weight_bytes 224500, param_words 4810, desc_words 168, act_bytes 196608
+cycle MODEL v3: 84560 cycles / image (v2 model 162640, v2 measured 159982); v3 / v2 model 0.520; head estimate 1680
+array act-bank reads MODEL (128-b words): 206572 / image (one per valid lane 477740)
+literal 4-term PE path through the v3 kw window on 4 images: PASS
+BIT-EXACT PASS: 1000 test images, int32 logits + pooled features + all 20 stored maps == IntNet (81 s)
+ACC: golden v3 91.33 %, IntNet 91.33 % on 10000 test images; logits bit-exact on all: True (790 s)
