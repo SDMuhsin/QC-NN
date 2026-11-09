@@ -2,12 +2,17 @@
 # ARM sram_sp_adv / rf_sp_adv PG rings: VDDPE (periphery) and VDDCE (core) -> VDD, VSSE -> VSS, ring on M3 (horizontal) /
 # M4 (vertical) for the SRAMs (M2 / M3 for the RF).  The core M7 straps run over the macros (the macros obstruct M1-M4
 # only); via stacks M4 -> M7 where a strap crosses a vertical M4 ring / strap segment of its net.  The RF (descriptor)
-# has its ring on M3 (horizontal) / M2: macro M4 straps (the RF obstructs M1-M3 only), M3 -> M4 -> M7.
+# has its ring on M3 (horizontal) / M2: macro M4 straps (the RF obstructs M1-M3 only), M3 -> M4 -> M7.  v3: the 48
+# act halves (rf_sp_adv 512x64) are RFs too.
 add_global_connection -net $::QC_PNR_PWR -pin_pattern {^VDD[CP]E$} -power
 add_global_connection -net $::QC_PNR_GND -pin_pattern {^VSSE$} -ground
 global_connect
 set qa_sram {}; set qa_rf {}
-foreach i [qc_macros] { if {[string match qa_dsc* [[$i getMaster] getName]]} { lappend qa_rf [$i getName] } else { lappend qa_sram [$i getName] } }
+# rf_sp_adv macros (rings M2 / M3): the descriptor RF, and the v3 act halves qa_act_512x64m4
+foreach i [qc_macros] {
+    set mn [[$i getMaster] getName]
+    if {[string match qa_dsc* $mn] || [string match qa_act_512x64m4* $mn]} { lappend qa_rf [$i getName] } else { lappend qa_sram [$i getName] }
+}
 define_pdn_grid -macro -instances $qa_sram -name macro_sram -halo [p MACRO_HALO] -grid_over_boundary
 add_pdn_connect -grid macro_sram -layers [list M4 [p PDN_H_LAYER]]
 define_pdn_grid -macro -instances $qa_rf -name macro_rf -halo [p MACRO_HALO] -grid_over_boundary
