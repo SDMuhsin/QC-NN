@@ -10,7 +10,8 @@
 #   QC_LOCAL (default /tmp/root/qc18acc), QC_SKIP_EXPORT=1 (reuse $QC_LOCAL/export_rtl), QC_TAG (default qc18acc_rtl),
 #   QC_MINI=1 (random mini program of qc18acc/hw/tb/mini.py instead of the s8kd network),
 #   QC_TECH=1 (RTL with the TSMC 65 nm macros: hw/tech/qc18acc_tech.f + the host's macro Verilog models
-#   (QC_MC_OUT of flow/tsmc65/site/sram.sh), +define+QA_TECH, zero delay; default tag qc18acc_rtl_tech).
+#   (QC_MC_OUT of flow/tsmc65/site/sram.sh) + the tcbn65gplus cell models (macro clock gates), +define+QA_TECH,
+#   zero delay; default tag qc18acc_rtl_tech).
 set -eu
 HOST=${1:-usask}; IMG0=${2:-0}; NIMG=${3:-4}
 REPO=$(cd "$(dirname "$0")/../../.." && pwd)
@@ -22,7 +23,7 @@ FL="qc18acc/hw/rtl/qc18acc.f"; VOPTS=""; LOG=rtl_sim; TAG=${QC_TAG:-qc18acc_rtl}
 if [ "$TECH" = 1 ]; then
     TAG=${QC_TAG:-qc18acc_rtl_tech}
     FL="qc18acc/hw/tech/qc18acc_tech.f qc18acc/hw/tech/macros_sim.f"; LOG=rtl_tech_sim
-    VOPTS="+define+QA_TECH +nospecify +notimingcheck"
+    VOPTS="+define+QA_TECH -v \$QC_CELL_V +nospecify +notimingcheck"   # cell models: macro clock gates (CKLNQD)
 fi
 EXP=$LOC/export_rtl
 cd "$REPO"

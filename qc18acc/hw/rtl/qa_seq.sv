@@ -1,7 +1,7 @@
 // Descriptor sequencer: START -> for each descriptor (8 x 32-b words, Appendix) fetch, decode, run the conv pass
 // (AGU + drain / PPU) or the head, until the descriptor with `last`.  Holds the perf counters.
 // Descriptor fetch: 8 reads + 1 cycle (pipelined, registered RAM output), then a 1-cycle launch that registers
-// the derived fields (log2 of the power-of-two map sizes).
+// the derived fields (log2 of the power-of-two map sizes).  cnt_ard: array act-bank reads (v2 kw window measure).
 module qa_seq import qa_pkg::*; (
   input  logic                 clk,
   input  logic                 rst_n,
@@ -34,7 +34,8 @@ module qa_seq import qa_pkg::*; (
   output logic [4:0]           pass_idx,
   // perf
   input  logic                 ev_busy, ev_stall, ev_pload,
-  output logic [31:0]          cyc_total, cyc_busy, cyc_stall, cyc_pload,
+  input  logic [3:0]           ev_ard,       // array act-bank reads this cycle
+  output logic [31:0]          cyc_total, cyc_busy, cyc_stall, cyc_pload, cnt_ard,
   output logic [5:0]           npass,
   output logic [MAXPASS*32-1:0] cyc_pass
 );
@@ -82,7 +83,7 @@ module qa_seq import qa_pkg::*; (
     if (!rst_n) begin
       st <= S_IDLE; done <= 1'b0; fcnt <= '0; pass_idx <= '0; conv_start <= 1'b0; head_start <= 1'b0;
       pass_done <= 1'b0; pcyc <= '0; npass <= '0;
-      cyc_total <= '0; cyc_busy <= '0; cyc_stall <= '0; cyc_pload <= '0; cyc_pass <= '0;
+      cyc_total <= '0; cyc_busy <= '0; cyc_stall <= '0; cyc_pload <= '0; cyc_pass <= '0; cnt_ard <= '0;
       f_lhi <= '0; f_lwi <= '0; f_lho <= '0; f_lwo <= '0;
       for (int i = 0; i < 8; i++) dw[i] <= '0;
     end else begin
@@ -93,11 +94,12 @@ module qa_seq import qa_pkg::*; (
         cyc_busy  <= cyc_busy + 32'(ev_busy);
         cyc_stall <= cyc_stall + 32'(ev_stall);
         cyc_pload <= cyc_pload + 32'(ev_pload);
+        cnt_ard   <= cnt_ard + 32'(ev_ard);
       end
       case (st)
         S_IDLE: if (start) begin
           st <= S_FETCH; done <= 1'b0; fcnt <= '0; pass_idx <= '0; pcyc <= '0; npass <= '0;
-          cyc_total <= '0; cyc_busy <= '0; cyc_stall <= '0; cyc_pload <= '0; cyc_pass <= '0;
+          cyc_total <= '0; cyc_busy <= '0; cyc_stall <= '0; cyc_pload <= '0; cyc_pass <= '0; cnt_ard <= '0;
         end
         S_FETCH: begin
           if (fcnt != 0) dw[fcnt - 1] <= d_rdata;

@@ -131,7 +131,7 @@ module qa_tb;
     reg [8*256-1:0] line;
     reg [8*64-1:0] nm;
     reg [8*600-1:0] fn;
-    logic [31:0] v, st, tot, bsy, stl, pld, npa;
+    logic [31:0] v, st, tot, bsy, stl, pld, npa, ard;
     logic [31:0] pc [0:MAXPASS-1];
     integer lerr, ncv_cyc;
     if (!$value$plusargs("DIR=%s", dir)) begin $display("FAIL: need +DIR=<export dir>"); $finish; end
@@ -210,13 +210,13 @@ module qa_tb;
         end
       end
       // perf counters
-      hrd(CSR_CYC_TOTAL, tot); hrd(CSR_CYC_BUSY, bsy); hrd(CSR_CYC_STALL, stl); hrd(CSR_CYC_PLOAD, pld);
+      hrd(CSR_CYC_TOTAL, tot); hrd(CSR_CYC_BUSY, bsy); hrd(CSR_CYC_STALL, stl); hrd(CSR_CYC_PLOAD, pld); hrd(CSR_ACT_RD, ard);
       hrd(CSR_NPASS, npa);
       for (int i = 0; i < npa; i++) hrd(CSR_PASS0 + i, pc[i]);
       for (int i = 0; i < npa; i++)
         $display("PASSCYC img %0d pass %02d %-14s %0d", im, i, i < npass_conv ? pname[i] : "head", pc[i]);
-      $display("PERF img %0d total %0d array_busy %0d (%.1f %%) stall %0d param_load %0d passes %0d", im, tot, bsy,
-               100.0 * bsy / tot, stl, pld, npa);
+      $display("PERF img %0d total %0d array_busy %0d (%.1f %%) stall %0d param_load %0d passes %0d act_reads %0d", im,
+               tot, bsy, 100.0 * bsy / tot, stl, pld, npa, ard);
       if (chk_k != npass_conv + 1) begin $display("  saw %0d pass ends, expected %0d", chk_k, npass_conv + 1); lerr = lerr + 1; end
       $display("IMAGE %0d: logits %0s, maps %0s (%0d passes checked)", im, lerr ? "MISMATCH" : "exact",
                nomaps ? "not checked" : (map_err ? "MISMATCH" : "exact"), nomaps ? 0 : npass_conv);

@@ -1,11 +1,17 @@
 // Array step generator (AGU) for one conv pass.  Step order = weight word order: og (outer), tile (8 raster
-// output pixels o0..o0+7), kh, kw, cb (inner); one step per cycle, K = k*k*cin8 steps per tile.
+// output pixels o0..o0+7), kh, cb, kw (inner; v2), one step per cycle, K = k*k*cin8 steps per tile.  kw runs
+// 0, 1, 2 (stride 1) or 0, 2, 1 (stride-2 3x3: kw 0 and 2 read the same odd-x phase plane, offset +1).
 // Stage S0 (this module, combinational from the counters): tap offset c(kh, kw, cb) (ARCH "Map layout"), lane
-// input index o0 + p + c, bank k serves lane p = (k - c) mod 8 at address in_base + o0/8 + (c >> 3) + (k < c mod 8),
-// lane padding mask; weight word address wbase + og*K + kb.  S1 = registered outputs, which drive the act-buffer
-// banks and the weight SRAM directly.  The data arrive in S2 (registered macro outputs), are rotated / masked into
-// the S3 row registers (qa_xbar) and accumulated by the PEs in S3; a tile's last step captures the accumulators into
-// the shadow chains at the end of S3, i.e. 3 cycles after its issue.
+// input index o0 + p + c, slot j of the 8-word kw window = index B + j with B = o0 + c, bank (clo + j) mod 8 at
+// address in_base + o0/8 + (c >> 3) + (bank < clo), lane padding mask; weight word address wbase + og*K + kb.
+// kw window (v2, ARCH "kw window"): a step is a SHIFT step if it continues a kw run with base B = previous B + 1
+// (structural: kw index > 0 for stride 1, kw index 1 (kw = 2 after kw = 0) for stride 2; checked against the index
+// in simulation).  have[j] = slot j of the window (qa_xbar) holds the raw word of index B + j:
+//   held = shift ? have >> 1 : 0;   rd = lane & ~held (slots read now, one bank each);   have <= held | lane.
+// Only rd banks are enabled (normally 1 bank per shift step, the valid lanes on a run's first step).
+// S1 = registered outputs, which drive the act-buffer banks and the weight SRAM directly.  The data arrive in S2
+// (registered macro outputs), go into the S3 window registers (qa_xbar) and are accumulated by the PEs in S3; a
+// tile's last step captures the accumulators into the shadow chains at the end of S3, i.e. 3 cycles after its issue.
 // Stall: the last step of a tile is issued only if the shadow chain will be free at its capture (cap_ok from the
 // drain controller, which counts down its fixed-rate drain) and no other capture is in flight.
 module qa_agu import qa_pkg::*; (
@@ -26,19 +32,26 @@ module qa_agu import qa_pkg::*; (
   output logic [NBANK*AAW-1:0] s1_addr,
   output logic [2:0]           s1_rot,
   output logic [7:0]           s1_lane,
+  output logic [7:0]           s1_rd,          // window slots loaded from the banks (slot j <- bank (rot + j) mod 8)
+  output logic                 s1_shift,       // window shifts by one slot before the load
   output logic [WAW-1:0]       s1_waddr
 );
   logic       run;
   logic [7:0] og, cb;
   logic [6:0] tile;
-  logic [1:0] kh, kw;
+  logic [1:0] kh, kw, ki;                           // ki = kw step index, kw = kw_order(ki)
+  logic [7:0] have;                                 // window slots holding their word (state after the last issued step)
   logic [WAW-1:0] waddr, ogbase;
   logic l2, l3;                                     // last steps in S2 / S3 (S1: s1_vld & s1_last)
 
   wire [1:0] km1 = k - 2'd1;
   wire [6:0] ntm1 = 7'((32'd1 << (lho + lwo - 4'd3)) - 1);
-  wire is_first = kh == 0 && kw == 0 && cb == 0;
-  wire is_last  = kh == km1 && kw == km1 && cb == cin8 - 8'd1;
+  wire s2k3 = stride == 2'd2 && k == 2'd3;
+  assign kw = s2k3 ? ((ki == 2'd1) ? 2'd2 : (ki == 2'd2) ? 2'd1 : 2'd0) : ki;
+  wire shift = ki != 2'd0 && (!s2k3 || ki == 2'd1);
+  wire [7:0] held = shift ? {1'b0, have[7:1]} : 8'd0;
+  wire is_first = kh == 0 && ki == 0 && cb == 0;
+  wire is_last  = kh == km1 && ki == km1 && cb == cin8 - 8'd1;
   wire inflight = (s1_vld && s1_last) || l2 || l3;
   wire go = run && !(is_last && (!cap_ok || inflight));
 
@@ -46,7 +59,7 @@ module qa_agu import qa_pkg::*; (
   logic signed [21:0] ey, ex, eyh, exh, c, chi, abase;   // all signed arithmetic in explicitly signed 22-b vars
   logic [2:0] clo;
   logic [9:0] o0;
-  logic [7:0] lane, ce;
+  logic [7:0] lane, ce, rd;
   logic [NBANK*AAW-1:0] addr;
   always_comb begin
     ey  = $signed({20'd0, kh}) - $signed({21'd0, k[1]});         // kh - pad, pad = k >> 1
@@ -71,8 +84,9 @@ module qa_agu import qa_pkg::*; (
       xi = $signed({12'd0, xo} << (stride == 2'd2)) + ex;
       lane[p] = yi >= 0 && yi < $signed({14'd0, hin}) && xi >= 0 && xi < $signed({14'd0, win});
     end
+    rd = lane & ~held;
     for (int b = 0; b < 8; b++) begin
-      ce[b] = lane[3'(b - clo)];
+      ce[b] = rd[3'(b - clo)];
       addr[b*AAW +: AAW] = AAW'(abase + ((3'(b) < clo) ? 22'sd1 : 22'sd0));
     end
   end
@@ -80,7 +94,8 @@ module qa_agu import qa_pkg::*; (
   always_ff @(posedge clk) begin
     if (!rst_n) begin
       run <= 1'b0; done <= 1'b0; s1_vld <= 1'b0; s1_first <= 1'b0; s1_last <= 1'b0; s1_ce <= '0;
-      l2 <= 1'b0; l3 <= 1'b0; og <= '0; cb <= '0; tile <= '0; kh <= '0; kw <= '0; waddr <= '0; ogbase <= '0;
+      l2 <= 1'b0; l3 <= 1'b0; og <= '0; cb <= '0; tile <= '0; kh <= '0; ki <= '0; waddr <= '0; ogbase <= '0;
+      have <= '0;
     end else begin
       l2 <= s1_vld && s1_last;
       l3 <= l2;
@@ -88,19 +103,20 @@ module qa_agu import qa_pkg::*; (
       s1_ce  <= go ? ce : '0;
       if (go) begin
         s1_first <= is_first; s1_last <= is_last; s1_addr <= addr; s1_rot <= clo; s1_lane <= lane;
-        s1_waddr <= waddr;
+        s1_waddr <= waddr; s1_rd <= rd; s1_shift <= shift;
+        have <= held | lane;
       end
       if (start) begin
-        run <= 1'b1; done <= 1'b0; og <= '0; cb <= '0; tile <= '0; kh <= '0; kw <= '0;
+        run <= 1'b1; done <= 1'b0; og <= '0; cb <= '0; tile <= '0; kh <= '0; ki <= '0;
         waddr <= wbase; ogbase <= wbase;
       end else if (go) begin
         waddr <= waddr + 1'b1;
-        if (cb != cin8 - 8'd1) cb <= cb + 1'b1;
+        if (ki != km1) ki <= ki + 1'b1;
         else begin
-          cb <= '0;
-          if (kw != km1) kw <= kw + 1'b1;
+          ki <= '0;
+          if (cb != cin8 - 8'd1) cb <= cb + 1'b1;
           else begin
-            kw <= '0;
+            cb <= '0;
             if (kh != km1) kh <= kh + 1'b1;
             else begin
               kh <= '0;
@@ -119,6 +135,18 @@ module qa_agu import qa_pkg::*; (
   assign stall = run && !go;
 
 `ifndef SYNTHESIS
+  // the structural shift rule must be the index rule: shift <=> B == previous B + 1 (B = o0 + c, signed)
+  logic signed [21:0] bprev;
+  logic bprev_ok;
+  wire signed [21:0] bcur = $signed({12'd0, o0}) + c;
+  always @(posedge clk) begin
+    if (!rst_n || start) bprev_ok <= 1'b0;
+    else if (go) begin
+      if (shift != (bprev_ok && bcur == bprev + 22'sd1))
+        $error("qa_agu: shift %0d but base %0d after %0d", shift, bcur, bprev);
+      bprev <= bcur; bprev_ok <= 1'b1;
+    end
+  end
   always @(posedge clk) if (rst_n && go) begin
     for (int p = 0; p < 8; p++) begin
       logic signed [21:0] idx;

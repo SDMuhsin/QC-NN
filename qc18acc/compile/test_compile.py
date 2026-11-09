@@ -9,8 +9,9 @@ from qc.structure import expand
 from qc18.int8 import fixmul, requant
 
 from . import codes as K
-from .golden import Golden, pe_literal, rq
-from .layout import BANKS, DEPTH, agu, flat, gather_plan, index, join16, split16, words_to_lanes, write_tensor
+from .golden import Golden, gather_window, pe_literal, rq
+from .layout import (BANKS, DEPTH, act_reads, agu, flat, gather_plan, index, join16, kw_order, mcol, split16,
+                     tap_consec, tap_order, window_plan, words_to_lanes, write_tensor)
 from .program import Desc, Head, encode_desc, plan
 
 RNG = np.random.default_rng(0)
@@ -117,14 +118,40 @@ def test_agu_padding():
         xp = np.pad(m, ((0, 0), (p.pad, p.pad), (p.pad, p.pad)))
         o = np.arange(p.Hout * p.Wout)
         yo, xo = o // p.Wout, o % p.Wout
-        kb = 0
-        for kh in range(p.k):
-            for kw in range(p.k):
-                for cb in range(p.cin8):
-                    ref = xp[8 * cb:8 * cb + 8, p.stride * yo + kh, p.stride * xo + kw].T
-                    assert np.array_equal(x[:, kb], ref), (name, kh, kw, cb)
-                    kb += 1
+        for kb, (kh, kw, cb) in enumerate(tap_order(p.k, p.stride, p.cin8)):
+            ref = xp[8 * cb:8 * cb + 8, p.stride * yo + kh, p.stride * xo + kw].T
+            assert np.array_equal(x[:, kb], ref), (name, kh, kw, cb)
+        # v2 kw window (golden literal path) == direct gather, on garbage outside the tensor
+        xw = gather_window(buf[None], p)[0]
+        assert np.array_equal(xw, x), name
         assert flat(np.array([9]), 3)[0] == 1 * DEPTH + 3 + 1
+
+
+def test_window():
+    """v2 tap order and kw window on every pass of ResNet-18 (and H = 8 mini geometry): the tap order is a
+    permutation of (kh, kw, cb); the structural shift rule == the index rule (asserted in window_plan); a slot is read
+    at most once per run, every valid lane is held or read, reads never exceed v1; stride-1 3x3 runs read 1 word
+    per shift step except at row wraps (W = 4); stride 2: kw 0 -> 2 is a shift (same odd phase plane)."""
+    from .program import RESNET18
+    assert kw_order(3, 2) == [0, 2, 1] and kw_order(3, 1) == [0, 1, 2] and kw_order(1, 2) == [0]
+    assert tap_consec(3, 2, 2) == [False, True, False] * 6 and tap_consec(1, 2, 3) == [False] * 3
+    tot = [0, 0]
+    for blocks, H in ((RESNET18, 32), ([(64, 64, 1), (64, 128, 2), (128, 128, 1)], 8)):
+        P, _, _ = plan(blocks, H=H)
+        for p in P:
+            taps = tap_order(p.k, p.stride, p.cin8)
+            assert sorted(mcol(p.k, p.cin8, *t) for t in taps) == list(range(p.K))
+            w = window_plan(p)
+            rd, ln = w["read"], w["lane"]
+            assert not (rd & ~ln).any(), "read of a padding slot"
+            v2, v1 = act_reads(p)
+            assert v2 <= v1
+            if p.k == 3 and p.stride == 1 and p.Wout >= 8:
+                assert (rd[:, w["shift"]].sum(-1) <= 1).all(), p.name
+            if H == 32:
+                tot[0] += v2
+                tot[1] += v1
+    print(f"  ResNet-18 array act reads / image: v2 {tot[0]} vs v1 {tot[1]} ({tot[0] / tot[1]:.3f})")
 
 
 def test_pe():
@@ -141,13 +168,15 @@ def test_pe():
     from .program import Pass, encode_desc
     p = Pass("t", 3, 1, 8, 8, 8, 8, 1, 1, 0)
     big = K.valid_blocks()[RNG.integers(0, 129, (8, 9))]
-    words = [K.weight_word(K.encode(big)[og * 8:og * 8 + 8, kb]) for og in range(1) for kb in range(9)]
+    words = [K.weight_word(K.encode(big)[og * 8:og * 8 + 8, mcol(3, 1, *tp)]) for og in range(1)
+             for tp in tap_order(3, 1, 1)]
     h = Head(0, 0, 0, 8, 8, 1, 1)
     g = Golden(dict(weights=K.to_wide(words), params=K.to_wide([K.param_word(0, 2 ** 30, 30, 0)] * 64),
                     desc=np.array(encode_desc(p) + encode_desc(h), np.uint32)))
     (_, Wd, *_) = g._pass_data(0, g.convs[0])
     Mb = expand(torch.tensor(big, dtype=torch.float64), 8).numpy()
-    assert np.array_equal(Wd.T, Mb)
+    perm = np.array([mcol(3, 1, *tp) for tp in tap_order(3, 1, 1)])
+    assert np.array_equal(Wd.T, Mb.reshape(64, 9, 8)[:, perm].reshape(64, 72))
 
 
 def test_requant():
@@ -165,7 +194,7 @@ def test_r16():
 
 
 if __name__ == "__main__":
-    for t in (test_codes, test_wide, test_desc, test_layout_agu, test_agu_padding, test_pe, test_requant, test_r16):
+    for t in (test_codes, test_wide, test_desc, test_layout_agu, test_agu_padding, test_window, test_pe, test_requant, test_r16):
         t()
         print("PASS", t.__name__, flush=True)
     print("ALL PASS")

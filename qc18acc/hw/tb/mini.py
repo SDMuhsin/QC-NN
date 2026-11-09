@@ -11,7 +11,7 @@ from qc18acc.compile import codes as K
 from qc18acc.compile.export import export
 from qc18acc.compile.golden import Golden
 from qc18acc.compile.layout import BANKS, DEPTH, write_tensor
-from qc18acc.compile.program import RAW16, RES_ID, Program, encode_desc, plan
+from qc18acc.compile.program import RAW16, RES_ID, Program, encode_desc, plan, weight_words
 
 
 def build(rng, blocks, H):
@@ -21,9 +21,7 @@ def build(rng, blocks, H):
     for p in P:
         cds = K.encode(vb[rng.integers(0, len(vb), (64 * p.cout64, p.K))])
         p.wbase = len(ww)
-        for og in range(p.cout64):
-            for kb in range(p.K):
-                ww.append(K.weight_word(cds[og * 8:(og + 1) * 8, kb]))
+        ww += weight_words(p, cds)
         p.pbase = len(pw)
         n = 64 * p.cout64
         bias = rng.integers(-3000, 3000, n)

@@ -14,7 +14,7 @@ from qc.structure import decompose, expand, to_matrix
 from qc18.verify import fold
 
 from . import codes as K
-from .layout import BANKS, DEPTH, PHASE, RASTER
+from .layout import BANKS, DEPTH, PHASE, RASTER, mcol, tap_order
 
 RELU, RAW16, RES_ID, RES_R = range(4)
 MODES = ("RELU", "RAW16", "RES_ID", "RES_R")
@@ -255,6 +255,13 @@ def prove(p, C, prm):
     return pr
 
 
+def weight_words(p, cds):
+    """Codes [64 cout64, K] (column blocks of M in (kh, kw, cb) order) -> 80-b words of the pass in array order:
+    og outer, then the tap order of layout.tap_order (kh, cb, kw; stride-2 3x3: kw 0, 2, 1)."""
+    cols = [mcol(p.k, p.cin8, kh, kw, cb) for kh, kw, cb in tap_order(p.k, p.stride, p.cin8)]
+    return [K.weight_word(cds[og * 8:(og + 1) * 8, kb]) for og in range(p.cout64) for kb in cols]
+
+
 class Program:
     def __init__(self, passes, head, tensors, weights, params, desc):
         self.passes, self.head, self.tensors = passes, head, tensors
@@ -282,9 +289,7 @@ def build(net, model):
         kk, tt = K.decode(cds)
         C = K.coefs(kk, tt)
         p.wbase = len(ww)
-        for og in range(p.cout64):
-            for kb in range(p.K):                                                    # (kh, kw, cb) order
-                ww.append(K.weight_word(cds[og * 8:(og + 1) * 8, kb]))
+        ww += weight_words(p, cds)
         m0, sh = (t.cpu().numpy().astype(np.int64) for t in mults(net, p.name))
         bias = L.bq.cpu().numpy().astype(np.int64)
         dd = (d.numpy() < 0).astype(np.int64)

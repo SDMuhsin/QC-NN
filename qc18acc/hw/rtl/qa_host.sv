@@ -40,7 +40,7 @@ module qa_host import qa_pkg::*; (
   output logic [63:0]             a_wdata,
   input  logic [63:0]             a_rdata,
   // perf / results
-  input  logic [31:0]             cyc_total, cyc_busy, cyc_stall, cyc_pload,
+  input  logic [31:0]             cyc_total, cyc_busy, cyc_stall, cyc_pload, cnt_ard,
   input  logic [5:0]              npass,
   input  logic [MAXPASS*32-1:0]   cyc_pass,
   input  logic [MAXCLS*32-1:0]    logits
@@ -80,6 +80,7 @@ module qa_host import qa_pkg::*; (
     else if (a == CSR_CYC_BUSY) csr_rd = cyc_busy;
     else if (a == CSR_CYC_STALL) csr_rd = cyc_stall;
     else if (a == CSR_CYC_PLOAD) csr_rd = cyc_pload;
+    else if (a == CSR_ACT_RD) csr_rd = cnt_ard;
     else if (a == CSR_NPASS) csr_rd = {26'd0, npass};
     else if (a >= CSR_PASS0 && a < CSR_PASS0 + MAXPASS) csr_rd = cyc_pass[(a - CSR_PASS0)*32 +: 32];
     else if (a >= CSR_LOGIT0 && a < CSR_LOGIT0 + MAXCLS) csr_rd = logits[(a - CSR_LOGIT0)*32 +: 32];

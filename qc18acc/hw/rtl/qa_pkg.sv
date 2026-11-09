@@ -17,7 +17,7 @@ package qa_pkg;
   // CSR word addresses (region 0; 0x1000..0x10ff = descriptor RAM)
   localparam int CSR_CTRL = 'h00, CSR_STATUS = 'h01, CSR_WSTAGE1 = 'h02, CSR_WSTAGE2 = 'h03,
                  CSR_RSTAGE1 = 'h04, CSR_RSTAGE2 = 'h05, CSR_CYC_TOTAL = 'h08, CSR_CYC_BUSY = 'h09,
-                 CSR_CYC_STALL = 'h0a, CSR_NPASS = 'h0b, CSR_CYC_PLOAD = 'h0c, CSR_PASS0 = 'h20,
+                 CSR_CYC_STALL = 'h0a, CSR_NPASS = 'h0b, CSR_CYC_PLOAD = 'h0c, CSR_ACT_RD = 'h0d, CSR_PASS0 = 'h20,
                  CSR_LOGIT0 = 'h40, CSR_DESC0 = 'h1000;
   localparam int MAXPASS = 32, MAXCLS = 16;
 endpackage

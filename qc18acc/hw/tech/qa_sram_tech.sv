@@ -30,15 +30,16 @@ module qa_sram #(
 
   if (IsAct || IsWgt || IsPar || IsDsc) begin : g_mac
     logic [BITS-1:0] q, hold_q;
-    logic rd_last_q;
+    logic rd_last_q, gclk;
+    CKLNQD2 u_cg (.TE(1'b0), .E(ce), .CP(clk), .Q(gclk));
     if (IsAct) begin : g_act
-      qa_act_1024x64m8 u_mac (.Q(q), .CLK(clk), .CEN(~ce), .WEN(~we), .A(addr), .D(wdata), .EMA(3'b000), .RETN(1'b1));
+      qa_act_1024x64m8 u_mac (.Q(q), .CLK(gclk), .CEN(~ce), .WEN(~we), .A(addr), .D(wdata), .EMA(3'b000), .RETN(1'b1));
     end else if (IsWgt) begin : g_wgt
-      qa_wgt_4096x80m8 u_mac (.Q(q), .CLK(clk), .CEN(~ce), .WEN(~we), .A(addr), .D(wdata), .EMA(3'b000), .RETN(1'b1));
+      qa_wgt_4096x80m8 u_mac (.Q(q), .CLK(gclk), .CEN(~ce), .WEN(~we), .A(addr), .D(wdata), .EMA(3'b000), .RETN(1'b1));
     end else if (IsPar) begin : g_par
-      qa_par_4096x72m8 u_mac (.Q(q), .CLK(clk), .CEN(~ce), .WEN(~we), .A(addr), .D(wdata), .EMA(3'b000), .RETN(1'b1));
+      qa_par_4096x72m8 u_mac (.Q(q), .CLK(gclk), .CEN(~ce), .WEN(~we), .A(addr), .D(wdata), .EMA(3'b000), .RETN(1'b1));
     end else begin : g_dsc
-      qa_dsc_256x32m2  u_mac (.Q(q), .CLK(clk), .CEN(~ce), .WEN(~we), .A(addr), .D(wdata), .EMA(3'b000), .RETN(1'b1));
+      qa_dsc_256x32m2  u_mac (.Q(q), .CLK(gclk), .CEN(~ce), .WEN(~we), .A(addr), .D(wdata), .EMA(3'b000), .RETN(1'b1));
     end
     always_ff @(posedge clk) begin
       if (ce) rd_last_q <= ~we;

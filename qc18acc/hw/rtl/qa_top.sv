@@ -29,7 +29,7 @@ module qa_top import qa_pkg::*; (
   logic [5:0] f_sh;
   logic conv_start, conv_done, head_start, head_done, head_active, pass_done;
   logic [4:0] pass_idx;
-  logic [31:0] cyc_total, cyc_busy, cyc_stall, cyc_pload;
+  logic [31:0] cyc_total, cyc_busy, cyc_stall, cyc_pload, cnt_ard;
   logic [5:0] npass;
   logic [MAXPASS*32-1:0] cyc_pass;
   logic [MAXCLS*32-1:0] logits;
@@ -56,19 +56,21 @@ module qa_top import qa_pkg::*; (
     .w_ce(hw_ce), .w_we(hw_we), .w_addr(hw_addr), .w_wdata(hw_wdata), .w_rdata(w_rdata),
     .a_ce(ha_ce), .a_we(ha_we), .a_buf(ha_buf), .a_bank(ha_bank), .a_addr(ha_addr), .a_wdata(ha_wdata),
     .a_rdata(ha_rdata),
-    .cyc_total, .cyc_busy, .cyc_stall, .cyc_pload, .npass, .cyc_pass, .logits);
+    .cyc_total, .cyc_busy, .cyc_stall, .cyc_pload, .cnt_ard, .npass, .cyc_pass, .logits);
 
   // ---- sequencer + descriptor RAM ------------------------------------------------------------------------------
   logic sd_ce;
   logic [DAW-1:0] sd_addr;
   logic ev_busy, ev_stall, ev_pload;
+  logic [3:0] ev_ard;
   qa_seq u_seq (
     .clk, .rst_n, .start, .busy, .done, .d_ce(sd_ce), .d_addr(sd_addr), .d_rdata(d_rdata),
     .f_k, .f_stride, .f_mode, .f_in_lay, .f_out_lay, .f_res_lay, .f_in_buf, .f_out_buf, .f_res_buf,
     .f_hin, .f_win, .f_hout, .f_wout, .f_lhi, .f_lwi, .f_lho, .f_lwo, .f_cin8, .f_cout64,
     .f_in_base, .f_out_base, .f_res_base, .f_wbase, .f_pbase, .f_m0, .f_sh,
     .conv_start, .conv_done, .head_start, .head_done, .head_active, .pass_done, .pass_idx,
-    .ev_busy, .ev_stall, .ev_pload, .cyc_total, .cyc_busy, .cyc_stall, .cyc_pload, .npass, .cyc_pass);
+    .ev_busy, .ev_stall, .ev_pload, .ev_ard, .cyc_total, .cyc_busy, .cyc_stall, .cyc_pload, .cnt_ard, .npass,
+    .cyc_pass);
   qa_sram #(.WORDS(DWORDS), .BITS(32)) u_desc (
     .clk, .ce(busy ? sd_ce : hd_ce), .we(!busy && hd_we), .addr(busy ? sd_addr : hd_addr), .wdata(hd_wdata),
     .rdata(d_rdata));
@@ -78,20 +80,25 @@ module qa_top import qa_pkg::*; (
   logic [NBANK-1:0] s1_ce;
   logic [NBANK*AAW-1:0] s1_addr;
   logic [2:0] s1_rot;
-  logic [7:0] s1_lane;
+  logic [7:0] s1_lane, s1_rd;
+  logic s1_shift;
   logic [WAW-1:0] s1_waddr;
   qa_agu u_agu (
     .clk, .rst_n, .start(conv_start), .k(f_k), .stride(f_stride), .lhi(f_lhi), .lwi(f_lwi), .lho(f_lho),
     .lwo(f_lwo), .hin(f_hin), .win(f_win), .cin8(f_cin8), .cout64(f_cout64), .in_base(f_in_base),
     .wbase(f_wbase), .cap_ok, .done(agu_done), .stall(ev_stall), .s1_vld, .s1_first, .s1_last, .s1_ce,
-    .s1_addr, .s1_rot, .s1_lane, .s1_waddr);
+    .s1_addr, .s1_rot, .s1_lane, .s1_rd, .s1_shift, .s1_waddr);
+  always_comb begin                                  // array act-bank reads this cycle (perf counter CSR_ACT_RD)
+    ev_ard = '0;
+    for (int b = 0; b < NBANK; b++) ev_ard = ev_ard + 4'(s1_ce[b]);
+  end
 
   logic [NBANK*64-1:0] ar_rdata;
   logic s3_vld, s3_first, s3_last;
   logic [8*64-1:0] s3_x;
   logic [8*10-1:0] s3_code;
   qa_xbar u_xbar (
-    .clk, .rst_n, .s1_vld, .s1_first, .s1_last, .s1_rot, .s1_lane, .ar_rdata, .w_rdata, .s3_vld, .s3_first,
+    .clk, .rst_n, .s1_vld, .s1_first, .s1_last, .s1_rot, .s1_lane, .s1_rd, .s1_shift, .ar_rdata, .w_rdata, .s3_vld, .s3_first,
     .s3_last, .s3_x, .s3_code);
   assign ev_busy = s3_vld;
 

@@ -6,12 +6,14 @@ Activation buffers: uint64 [N, 3, 8192], flat position = bank * 1024 + address (
 PE math: y[i] = t1 x[(i + k1) mod 8] + t2 x[(i + k2) mod 8] per block, accumulated over K blocks.  Default path:
 the decoded codes are expanded to their 8x8 blocks and the K-sum runs as one fp32 GEMM (exact: every partial sum
 is an integer < 2^19 < 2^24, proved by the compiler and asserted here).  literal=True evaluates the per-block
-two-term formula directly (gathers, no GEMM) as a cross-check.
+two-term formula directly (gathers, no GEMM) as a cross-check, with the activations taken through the v2 kw window
+(gather_window: raw 8-word window, shifted by one lane on a consecutive tap, only the read slots loaded from the
+buffer, padding mask at the array input), i.e. the RTL's data path, instead of the direct per-tap gather.
 """
 import numpy as np
 
 from . import codes as K
-from .layout import gather_plan, join16, read_tensor, split16, words_to_lanes, write_tensor
+from .layout import DEPTH, flat, gather_plan, join16, read_tensor, split16, window_plan, words_to_lanes, write_tensor
 from .program import RAW16, RELU, RES_ID, RES_R, read_program
 
 ACC_LIM = 2 ** 19
@@ -49,10 +51,11 @@ class Golden:
     def conv(self, act, i, d, literal=False):
         (pos, val), Wd, kk, tt, (bias, m0, sh, dd) = self._pass_data(i, d)
         N, P, Kb, Co = act.shape[0], d.Hout * d.Wout, pos.shape[1], 64 * d.cout64
-        x = words_to_lanes(act[:, d.in_buf][:, pos]) * val[None, :, :, None]       # AGU + padding [N,P,Kb,8]
         if literal:
+            x = gather_window(act[:, d.in_buf], d)
             acc = pe_literal(x, kk, tt).reshape(N, P, Co)
         else:
+            x = words_to_lanes(act[:, d.in_buf][:, pos]) * val[None, :, :, None]   # AGU + padding [N,P,Kb,8]
             acc = (x.reshape(N * P, Kb * 8).astype(np.float32) @ Wd).astype(np.int64).reshape(N, P, Co)
         assert np.abs(acc).max() < ACC_LIM, "20-b accumulator overflow"
         v = np.where(dd == 1, -acc, acc) + bias
@@ -95,6 +98,30 @@ class Golden:
         return logits, snaps, p
 
 
+def gather_window(buf, d):
+    """Array inputs [N, P, Kb, 8] of a pass through the kw window (layout.window_plan): per tile and step the
+    window W[8] (raw words, slot j = index B + j) is shifted by one slot on a shift step, the read slots are loaded
+    from the buffer (flat position of index B + j; never-read slots stay 0 here, X in hardware), and row p gets
+    W[p] if lane p is valid, else 0."""
+    w = window_plan(d)
+    N, T, S = buf.shape[0], w["base"].shape[0], w["base"].shape[1]
+    W = np.zeros((N, T, 8), np.uint64)
+    out = np.zeros((N, T, S, 8, 8), np.int8)
+    j = np.arange(8)
+    for s in range(S):
+        if w["shift"][s]:
+            W = np.concatenate([W[:, :, 1:], np.zeros((N, T, 1), np.uint64)], 2)
+        else:
+            W = np.zeros_like(W)
+        idx = w["base"][:, s, None] + j                                            # [T, 8]
+        rd = w["read"][:, s]
+        assert (idx[rd] >= 0).all() and (d.in_base + (idx[rd] >> 3) < DEPTH).all(), "window read outside the buffer"
+        pos = flat(np.where(rd, idx, 0), d.in_base)
+        W = np.where(rd[None], buf[:, pos], W)
+        out[:, :, s] = words_to_lanes(W) * w["lane"][None, :, s, :, None]
+    return out.transpose(0, 1, 3, 2, 4).reshape(N, T * 8, S, 8)
+
+
 def pe_literal(x, kk, tt, chunk=8):
     """Block-PE formula: acc[n, p, r, i] = sum_kb t1 x[n, p, kb, (i+k1) % 8] + t2 x[n, p, kb, (i+k2) % 8]."""
     N, P, Kb, _ = x.shape
@@ -122,3 +149,9 @@ def cycles(images):
     h = prog[-1]
     out.append(h.cin8 * (h.Hin * h.Win + h.ncls) + 16)
     return out
+
+
+def act_reads(images):
+    """Array act-bank reads per conv pass (MODEL of the RTL counter CSR_ACT_RD): [(v2 window, v1 per lane)]."""
+    from .layout import act_reads as ar
+    return [ar(d) for d in read_program(images["desc"])[:-1]]
