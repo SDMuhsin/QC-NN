@@ -14,8 +14,14 @@ if {[info commands get_attribute] ne ""} {
     set qa_ref [get_pins u_host/h1_addr_reg_0_/CP]
     set qa_io  [expr {[get_property [get_clocks qa_clk] period] * 0.2}]
 }
-set qa_in  {}
-foreach p [all_inputs] { if {[get_full_name $p] ni {clk rst_n}} { lappend qa_in $p } }
+if {[info commands get_attribute] ne ""} {
+    set qa_in [remove_from_collection [all_inputs] [get_ports {clk rst_n}]]
+    set qa_n [sizeof_collection $qa_in]
+} else {
+    set qa_in {}
+    foreach p [all_inputs] { if {[get_full_name $p] ni {clk rst_n}} { lappend qa_in $p } }
+    set qa_n [llength $qa_in]
+}
 set_input_delay  $qa_io -clock qa_clk -reference_pin $qa_ref $qa_in
 set_output_delay $qa_io -clock qa_clk -reference_pin $qa_ref [all_outputs]
-puts "QA_IO_REF: [llength $qa_in] inputs, delay $qa_io ns relative to u_host/h1_addr_reg_0_/CP"
+puts "QA_IO_REF: $qa_n inputs, delay $qa_io ns relative to u_host/h1_addr_reg_0_/CP"
