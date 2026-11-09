@@ -9,11 +9,12 @@
 # M1-M4, OBS M1-M4 over the whole macro), PG rings VDDCE / VDDPE / VSSE on M3 (horizontal) and M4 (vertical):
 # routing crosses the macros on M5-M7.  Gaps 2 x halo between macros, macro rows on the 1.8 um row grid.
 set qa_halo 10.0
-set qa_gap  [expr {2 * $qa_halo}]
+set qa_gap  [expr {[info exists ::env(QA_GAP)] ? $::env(QA_GAP) : 2 * $qa_halo}]   ;# vertical gap between macro rows (> 2 halo: rows for the pin-side logic)
+set qa_hgap [expr {2 * $qa_halo}]
 set qa_band [expr {[info exists ::env(QA_BAND)] ? $::env(QA_BAND) : 450.0}]
 array set qa_wh {A {646.525 177.605} W {780.925 453.365} P {713.725 453.365} D {146.99 139.52}}
 set qa_cx0 10.0; set qa_cy0 10.8
-set qa_tierw [expr {3 * 780.925 + 713.725 + 3 * $qa_gap}]
+set qa_tierw [expr {3 * 780.925 + 713.725 + 3 * $qa_hgap}]
 set qa_cx1 [expr {ceil(($qa_cx0 + $qa_tierw + 20.0) / 0.2) * 0.2}]
 proc qa_snap {v g o dir} {
     set k [expr {($v - $o) / $g}]
@@ -21,14 +22,14 @@ proc qa_snap {v g o dir} {
     return [format %.3f [expr {$o + $k * $g}]]
 }
 proc qa_row {items y orient} {   ;# one row of {kind inst}, centred in the core, lower edge y
-    global qa_wh qa_gap qa_cx0 qa_cx1
-    set w [expr {-$qa_gap}]
-    foreach it $items { set w [expr {$w + [lindex $qa_wh([lindex $it 0]) 0] + $qa_gap}] }
+    global qa_wh qa_hgap qa_cx0 qa_cx1
+    set w [expr {-$qa_hgap}]
+    foreach it $items { set w [expr {$w + [lindex $qa_wh([lindex $it 0]) 0] + $qa_hgap}] }
     set x [qa_snap [expr {($qa_cx0 + $qa_cx1 - $w) / 2.0}] 0.2 0.0 down]
     set out {}
     foreach it $items {
         lappend out [list [lindex $it 1] $x $y $orient]
-        set x [qa_snap [expr {$x + [lindex $qa_wh([lindex $it 0]) 0] + $qa_gap}] 0.2 0.0 up]
+        set x [qa_snap [expr {$x + [lindex $qa_wh([lindex $it 0]) 0] + $qa_hgap}] 0.2 0.0 up]
     }
     return $out
 }
@@ -71,7 +72,7 @@ lappend P(MACRO_PLACE) {*}[qa_row [qa_act 2 {4 5 6 7}] $yB3 MX]
 lappend P(MACRO_PLACE) {*}[qa_row [qa_w {3 4 5} 1] $yBw MX]
 # descriptor RF: right of row T1, pins down into the band
 set xl [lindex [lindex $t1 end] 1]
-lappend P(MACRO_PLACE) [list u_desc/g_mac_g_dsc_u_mac [qa_snap [expr {$xl + [lindex $qa_wh(A) 0] + $qa_gap}] 0.2 0.0 up] $yT1 R0]
+lappend P(MACRO_PLACE) [list u_desc/g_mac_g_dsc_u_mac [qa_snap [expr {$xl + [lindex $qa_wh(A) 0] + $qa_hgap}] 0.2 0.0 up] $yT1 R0]
 set P(MACRO_AUTO) 0
 set ::QA_IO_Y0 [expr {$yB1 + $hA + $qa_halo}]
 set ::QA_IO_Y1 [expr {$yT1 - $qa_halo}]
