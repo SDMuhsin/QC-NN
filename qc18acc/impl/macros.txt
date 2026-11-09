@@ -1,0 +1,8 @@
+# ARM memory-compiler macros of QC18-ACC (flow/tsmc65/sram/mc_gen.sh gen qc18acc/impl/macros.txt).
+# Choice from sweep_result.txt (ss 0.9 V 125 C, macro area incl. ring): rf_sp_adv allows <= 512 words, sram_sp_adv
+# mux 8 is the densest legal shape at 1024 / 4096 words (80 b needs mux 8).
+# <instance>  <compiler>  <words> <bits> <mux>
+qa_act_1024x64m8  sram_sp_adv 1024 64 8
+qa_wgt_4096x80m8  sram_sp_adv 4096 80 8
+qa_par_4096x72m8  sram_sp_adv 4096 72 8
+qa_dsc_256x32m2   rf_sp_adv   256  32 2

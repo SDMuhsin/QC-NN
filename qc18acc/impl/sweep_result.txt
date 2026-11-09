@@ -1,0 +1,12 @@
+SWEEP a_rf_1024x64m4 rf_sp_adv 1024x64 mux 4 : FAIL *** Error *** ascii: -words option out of range, 1024, must be within 32 and 512 
+SWEEP a_rf_1024x64m8 rf_sp_adv 1024x64 mux 8 : FAIL *** Error *** -mux should be one of: 1, 2, 4 
+SWEEP a_sp_1024x64m16 sram_sp_adv 1024x64 mux 16 : w_um 1184.1 h_um 141.6 macro_um2 167678 core_um2 94634 ta_ss_ns 1.356 tcyc_ss_ns 1.797
+SWEEP a_sp_1024x64m4 sram_sp_adv 1024x64 mux 4 : FAIL *** Error *** -mux should be one of: 8, 16, 32 
+SWEEP a_sp_1024x64m8 sram_sp_adv 1024x64 mux 8 : w_um 646.5 h_um 177.6 macro_um2 114826 core_um2 70674 ta_ss_ns 1.116 tcyc_ss_ns 1.548
+SWEEP p_sp_1024x72m4 sram_sp_adv 1024x72 mux 4 : FAIL *** Error *** -mux should be one of: 8, 16, 32 
+SWEEP p_sp_2048x72m8 sram_sp_adv 2048x72 mux 8 : w_um 713.7 h_um 269.5 macro_um2 192367 core_um2 139049 ta_ss_ns 1.164 tcyc_ss_ns 1.601
+SWEEP p_sp_4096x72m8 sram_sp_adv 4096x72 mux 8 : w_um 713.7 h_um 453.4 macro_um2 323578 core_um2 259671 ta_ss_ns 1.214 tcyc_ss_ns 1.665
+SWEEP w_sp_2048x80m8 sram_sp_adv 2048x80 mux 8 : w_um 780.9 h_um 269.5 macro_um2 210479 core_um2 153291 ta_ss_ns 1.175 tcyc_ss_ns 1.614
+SWEEP w_sp_4096x80m16 sram_sp_adv 4096x80 mux 16 : FAIL *** Error *** ascii: -bits option out of range, 80, must be within 2 and 72 
+SWEEP w_sp_4096x80m8 sram_sp_adv 4096x80 mux 8 : w_um 780.9 h_um 453.4 macro_um2 354044 core_um2 286267 ta_ss_ns 1.223 tcyc_ss_ns 1.682
+SWEEP w_sp_8192x80m16 sram_sp_adv 8192x80 mux 16 : FAIL *** Error *** ascii: -bits option out of range, 80, must be within 2 and 72 
