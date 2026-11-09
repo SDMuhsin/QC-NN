@@ -3,7 +3,7 @@
 global_route -start_incremental
 repair_timing -setup -setup_margin [p SETUP_MARGIN] -max_utilization [p MAX_UTIL]
 repair_timing -hold -hold_margin [p HOLD_MARGIN] -max_utilization [p MAX_UTIL]
-detailed_placement
+detailed_placement -max_displacement {300 300}
 check_placement
 global_route -end_incremental -congestion_report_file $::OUT/rpt/gr_congestion_incr.rpt
 estimate_parasitics -global_routing

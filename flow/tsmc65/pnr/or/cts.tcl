@@ -4,12 +4,12 @@ clock_tree_synthesis -buf_list $::QC_PNR_CTS_BUF -root_buf $::QC_PNR_CTS_ROOT -s
     -sink_clustering_size [p CTS_CLUSTER_SIZE] -sink_clustering_max_diameter [p CTS_CLUSTER_DIAMETER] {*}[p CTS_ARGS]
 set_propagated_clock [all_clocks]
 repair_clock_nets
-detailed_placement
+detailed_placement {*}[p DPL_ARGS]
 estimate_parasitics -placement
 if {[p REPAIR_TIMING]} {
     repair_timing -setup -setup_margin [p SETUP_MARGIN] -max_utilization [p MAX_UTIL]
     repair_timing -hold  -hold_margin [p HOLD_MARGIN] -max_utilization [p MAX_UTIL]
-    detailed_placement
+    detailed_placement {*}[p DPL_ARGS]
 }
 check_placement
 estimate_parasitics -placement

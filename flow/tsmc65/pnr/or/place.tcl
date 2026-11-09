@@ -18,7 +18,7 @@ if {[p REPAIR_DESIGN] eq "1"} {
 } elseif {[p REPAIR_DESIGN] eq "auto" && $ndrv > 0} {
     qc_repair_drv
 }
-detailed_placement
+detailed_placement {*}[p DPL_ARGS]
 check_placement
 estimate_parasitics -placement
 qc_report place

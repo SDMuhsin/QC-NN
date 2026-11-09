@@ -19,7 +19,7 @@ proc qc_log {msg} { puts "QC_PNR $msg"; flush stdout }
 # ---- defaults of every design setting (a design config overrides any of them)
 array set ::P_DEFAULT {
     CORE_UTIL 0.55   ASPECT 1.0   CORE_MARGIN 5.0   DIE_AREA {}   CORE_AREA {}
-    PLACE_DENSITY {}  PLACE_PAD 1   TIMING_DRIVEN 1   ROUTABILITY_DRIVEN 1   GPL_ARGS {}
+    PLACE_DENSITY {}  PLACE_PAD 1   TIMING_DRIVEN 1   ROUTABILITY_DRIVEN 1   GPL_ARGS {}   DPL_ARGS {}
     PIN_TCL {}  FLOORPLAN_TCL {}  PRE_PLACE_TCL {}  PRE_CTS_TCL {}  PRE_ROUTE_TCL {}  POST_GRT_TCL {}  POST_ROUTE_TCL {}
     MACRO_LEFS {}  MACRO_LIBS_ss {}  MACRO_LIBS_tt {}  MACRO_LIBS_ff {}  MACRO_GDS {}
     MACRO_PLACE {}  MACRO_HALO {5 5}  MACRO_AUTO 1  MACRO_PDN_TCL {}  MACRO_PIN_LAYER M4
