@@ -1,6 +1,8 @@
 # Post-global-route optimisation (POST_GRT_TCL of route.tcl; as impl/kulcluster/pnr): setup then hold repair with global-route parasitics,
 # legalisation, incremental global route of the changed nets.
 global_route -start_incremental
+# P(QA_RT_FOCUS) 1 (default 0 = v2 recipe): one setup repair pass without the macro / IO paths first (rt_focus.tcl)
+if {[p QA_RT_FOCUS 0]} { source [file dirname [p PIN_TCL]]/rt_focus.tcl }
 repair_timing -setup -setup_margin [p SETUP_MARGIN] -max_utilization [p MAX_UTIL] {*}[p QA_RT_ARGS {}]
 # P(QA_MACRO_HOLD) ns > 0 (default 0 = v2 recipe): extra hold margin at the macro CLK pins (macro_hold.tcl)
 if {[p QA_MACRO_HOLD 0] > 0} { source [file dirname [p PIN_TCL]]/macro_hold.tcl }
