@@ -1,0 +1,11 @@
+design qa_top corner tt lib tcbn65gplustc_ccs constraints QC_SDC io ideal_edge spef_nets total 426318 rc_network 415373 not_annotated 10945
+setup_wns_ns -2.278938 setup_tns_ns -59.088 setup_viol_endpoints 47
+setup_worst_path u_seq/dw_reg_7__1_/CP -> u_ppu/g_lane_10__u_lane/res5_reg_14_/D
+hold_wns_ns -0.380625 hold_tns_ns -6.966 hold_viol_endpoints 69
+hold_worst_path u_host/h1_wdata_reg_31_/CP -> u_wmem_o/g_bank_0__u_ram/g_mac_g_wgt_u_mac/D[31]
+all wns_ns -2.279 fmax_mhz 179.2 path u_seq/dw_reg_7__1_/CP -> u_ppu/g_lane_10__u_lane/res5_reg_14_/D
+reg2reg wns_ns -2.279 fmax_mhz 179.2 path u_seq/dw_reg_7__1_/CP -> u_ppu/g_lane_10__u_lane/res5_reg_14_/D
+hold_reg2reg wns_ns -0.381 fmax_mhz 271.7 path u_host/h1_wdata_reg_31_/CP -> u_wmem_o/g_bank_0__u_ram/g_mac_g_wgt_u_mac/D[31]
+clock_latency_worst ----------------------------------------------------------------------- u_pmem/g_bank_1__u_ram/g_mac_g_par_u_mac/CLK 0.79 0.00 1.66 1.66 rp-+ ---------------------------------------------------------------------------- 1 
+clock_skew_worst ----------------------------------------------------------------------- u_pmem/g_bank_1__u_ram/g_mac_g_par_u_mac/CLK 1.66 rp-+ u_drain/rf_bias_reg_14__14_/CP 1.10 -0.00 0.56 rp-+ ---------------------------------------------------------------------------- 1 
+pt_wall_s 63
