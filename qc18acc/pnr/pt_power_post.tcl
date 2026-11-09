@@ -24,7 +24,7 @@ set ::env(QC_CORNER) $corner
 qc_apply_constraints $corner
 set_propagated_clock [all_clocks]
 set spef $pnr/out/${top}_${corner}_pt.spef
-if {[file exists $spef]} { read_parasitics -format spef $spef } else { set spef "none (no SPEF: no wire load)" }
+if {[file exists $spef]} { read_parasitics -format spef $spef } else { set spef "none: synthesis WLM [qc_wire_load $corner]" }
 read_saif -strip_path qa_tb/dut $::env(SAIF)
 update_timing
 update_power
