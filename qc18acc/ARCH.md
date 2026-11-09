@@ -218,3 +218,33 @@ count (one per valid lane); equal to the RTL counter `CSR_ACT_RD` (0x0d) per ima
 **Cycle model** (`golden.cycles`, a MODEL, unchanged in v2): per pass `tiles * max(K, drain) + 64 * Cout/64` with
 `tiles = H_out W_out / 8 * Cout / 64`, drain 64 cycles (128 for RAW16 / RES_R), and a head estimate
 `64 * (16 + 10) + 16`.
+
+## v3 (planned): two blocks per PE per cycle (Kb = 2)
+
+**Why (measured, `results/power_v2.md`, PE-internal breakdown).** 68 % of a PE's power is paid once per
+accumulator update, whatever the work per update: clock gates and register clock pins 35 %, the 20-b accumulate
+adders 27 %, accumulator data 6 %. The QC work per block (rotators 7 %, trits + 2-term adds 21 %) is the small part.
+Summing two blocks before each accumulate amortises the fixed part. Prediction (to check against the measurement):
+PE energy per block about x0.7; cycles per image about x0.53 (so leakage and control energy per image about x0.55);
+image energy about 92 -> ~70 uJ at 400 MHz; throughput about x1.9. With Kb = 2, the per-block reduction is a larger
+share of PE energy than at Kb = 1, so the QC-vs-ternary gap should widen (ablation rerun at Kb = 2).
+
+* **Pairs of input-channel groups.** A PE consumes, per cycle, the blocks of input-channel groups `cb = 2j` and
+  `2j + 1` of the same tap (kh, kw). `y_i += B_even x_even + B_odd x_odd`, written as ONE combinational sum
+  `acc + 4 trit terms` (no hierarchy split between the term adds and the accumulate: the v2 split cost +4.8 mW of
+  glitching). Tap order per tile: kh, cb pair, kw. K per tile = kh * kw * ceil(Cin / 16). Stem: Cin / 8 = 1, so the
+  odd block code is 0 and contributes nothing. Every other conv has an even Cin / 8.
+* **Activation word = 128 b** = channel groups 2j (low half) and 2j + 1 (high half) of one pixel.
+  `index = cbp * H * W + pix`, bank = index mod 8, as in v2. Each bank has two macros of 64 b x 512 (lo / hi) with
+  separate enables, so the PPU / head can read or write 64-b halves. Capacity is unchanged: 3 x 64 KiB. The macro
+  shape comes from a sweep: rf_sp_adv 512 x 64, or one 512 x 128 if legal and denser. The kw window holds 128-b words.
+* **Weights.** 160 b per array cycle = 8 columns x (even code, odd code). The weight memory is split into an even
+  half and an odd half, each 3 x 4096 x 80 b, read in parallel. FC words are in the even half.
+* **PPU: 16 lanes, two output words per cycle** = channel groups 2m and 2m + 1 of one pixel = the lo and hi halves
+  of one bank word. The drain takes columns 2m and 2m + 1 per cycle, so a tile drains in 32 cycles (layer 1 has
+  K = 36 >= 32). Width: `v = acc + bias` is held in 20 b. The compiler proves |v| < 2^19 per layer (v2 measured
+  max 105 140 < 2^17) and refuses networks that exceed it, so the multipliers are 20 x 31 (v2: 32 x 31).
+  RES_R / RAW16 need 4 int8 planes per pair, i.e. two bank words of the same bank, so they take 2 cycles per pair.
+* **Unchanged:** the AGU index rule and layouts, the kw window logic (on 128-b words), the head, host, descriptors
+  (fields for pairs where needed), the 8 x 8 geometry, accumulator width, clock gating of macros, and the bit-exact
+  chain.
