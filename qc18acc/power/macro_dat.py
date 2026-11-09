@@ -7,9 +7,13 @@ The macro .lib files (sram_sp_adv / rf_sp_adv, flow/tsmc65/sram/mc_gen.sh) have 
 so PrimeTime only sees the pin energies (A, D, CEN, WEN, Q) and misses the access energy.  The datatable gives the
 supply current per MHz for a read (icc_c_r<ema> + icc_p_r<ema>), a write (..._w<ema>) and a deselected clock
 (CEN = 1: icc_c_desel + icc_p_desel), core + periphery, in mA/MHz: E [pJ] = icc x V x 1000.  With the SAIF
-activity of each instance (pt_power.tcl: CLK toggle rate, P(CEN = 1), P(WEN = 1); WEN = 0 only together with
-CEN = 0 in this design, and only during writes) the clock edges split into reads, writes and deselected cycles:
-  P = f_clk x (p_read E_read + p_write E_write + p_desel E_desel),   EMA = 000 (index 0, qa_sram_tech.sv).
+activity of each instance (pt_power.tcl: CLK toggle rate, P(CEN = 1), P(WEN = 1); CEN / WEN change only at clock
+edges, WEN = 0 only together with CEN = 0 and only during writes) per analysed cycle:
+  accesses = 1 - P(CEN = 1),  writes = 1 - P(WEN = 1),  reads = accesses - writes,
+  deselected clocks = CLK rising edges - accesses   (v1: ungated CLK, 1 edge per cycle; v2: CLK gated by a CKLNQD
+                                                     enabled by ~CEN, edges = accesses, so ~0)
+  P = f_clk x (reads E_read + writes E_write + desel E_desel),   EMA = 000 (index 0, qa_sram_tech.sv).
+(Same numbers as the v1 formula, which counted per CLK edge, when the clock is ungated.)
 Output: one line per macro type (design names and derived numbers only) and the totals.
 """
 import collections
@@ -45,14 +49,14 @@ with open(act) as f:
             continue
         inst, ref, tr, cen1, wen1 = line.split()
         a = acc.setdefault(ref, dict(n=0, cyc=0.0, r=0.0, w=0.0, d=0.0))
-        f = float(tr) / 2.0                                   # clock edges per ns
-        pon = 1.0 - float(cen1)
-        pw = min(pon, 1.0 - float(wen1))
+        e = float(tr) / 2.0 * period                          # CLK rising edges per analysed cycle (1 = ungated)
+        pon = 1.0 - float(cen1)                               # accesses per cycle
+        pw = min(pon, 1.0 - float(wen1))                      # writes per cycle
         a["n"] += 1
-        a["cyc"] += f * period                                # clock edges per analysed cycle (1 = every cycle)
-        a["r"] += f * (pon - pw)                              # per ns
-        a["w"] += f * pw
-        a["d"] += f * (1.0 - pon)
+        a["cyc"] += e
+        a["r"] += (pon - pw) / period                         # per ns
+        a["w"] += pw / period
+        a["d"] += max(0.0, e - pon) / period
 print(f"# macro datatable model, corner {corner}, period_ns {period}: per type n, reads / writes / deselected clocks "
       f"per cycle (sum over instances), E_read / E_write / E_desel pJ, P_read / P_write / P_desel / P_dyn W, datatable standby leakage W")
 tot = 0.0
