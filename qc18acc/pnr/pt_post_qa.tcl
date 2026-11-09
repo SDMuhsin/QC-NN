@@ -3,6 +3,7 @@
 #   all       worst setup path of qa_clk (incl. the host-port IO paths: their input / output delays are relative to
 #             the ideal clock edge, so the 1.5-3.5 ns propagated clock latency makes them pessimistic / hold-fixed)
 #   reg2reg   worst setup path between clocked cells (registers, macros, ICG enables), IO excluded
+#   reg2reg_logic  as reg2reg without the paths from / to a macro pin
 # fmax = 1 / (period - WNS).  Environment as pt_post.tcl (QC_PNR_OUT, QC_TOP, QC_CORNER, QC_PERIOD, QC_SDC, ...).
 set t0 [clock seconds]
 source $::env(QC_FLOW)/common/lib.tcl
@@ -53,6 +54,12 @@ fl $fh all [get_timing_paths -delay_type max -max_paths 1] $per
 set io [add_to_collection [all_inputs] [all_outputs]]
 fl $fh reg2reg [get_timing_paths -delay_type max -max_paths 1 -exclude $io] $per
 fl $fh hold_reg2reg [get_timing_paths -delay_type min -max_paths 1 -exclude $io] $per
+# logic only: neither launched by a macro (CLK -> Q) nor ending at a macro input (as power/lowv_sta.tcl)
+set mcs [get_cells -quiet -hierarchical -filter "is_hierarchical==false && ref_name=~qa_*m*"]
+if {[sizeof_collection $mcs]} {
+    set mpins [add_to_collection [get_pins -of $mcs -filter "direction==out"] [get_pins -of $mcs -filter "direction==in"]]
+    fl $fh reg2reg_logic [get_timing_paths -delay_type max -max_paths 1 -exclude [add_to_collection $io $mpins]] $per
+}
 redirect $dir/rpt/pt_post_${corner}_reg2reg.rpt { report_timing -max_paths 5 -nosplit -exclude $io -path_type full_clock_expanded }
 redirect $dir/rpt/pt_post_${corner}_skew.rpt { report_clock_timing -type skew -nworst 5 -nosplit }
 redirect -variable lat { report_clock_timing -type latency -nworst 1 -nosplit }
