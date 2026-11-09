@@ -23,7 +23,8 @@ link_design
 set ::env(QC_CORNER) $corner
 qc_apply_constraints $corner
 set_propagated_clock [all_clocks]
-read_parasitics -format spef $pnr/out/${top}_${corner}_pt.spef
+set spef $pnr/out/${top}_${corner}_pt.spef
+if {[file exists $spef]} { read_parasitics -format spef $spef } else { set spef "none (no SPEF: no wire load)" }
 read_saif -strip_path qa_tb/dut $::env(SAIF)
 update_timing
 update_power
@@ -31,7 +32,7 @@ set o $::env(OUT)
 redirect ${o}_annot.rpt { report_switching_activity -list_not_annotated -show_pin }
 redirect ${o}_par.rpt { report_annotated_parasitics }
 set fh [open ${o}.txt w]
-puts $fh "period_ns $::env(QC_PERIOD) corner $corner routed netlist + def2spef tt SPEF, propagated clock, saif $::env(SAIF)"
+puts $fh "period_ns $::env(QC_PERIOD) corner $corner netlist $pnr/out/$top.v spef $spef, propagated clock, saif $::env(SAIF)"
 redirect -variable pr { report_power -nosplit }
 puts $fh [regsub {^.*?(Power Group)} $pr {\1}]
 redirect -variable sa { report_switching_activity }
