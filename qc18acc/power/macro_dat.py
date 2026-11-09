@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """Macro dynamic power from the ARM ASCII datatables (run on the build host; the .dat stays there).
 
-    macro_dat.py <QC_MC_OUT> <pt_macros.txt> [corner=tt_1p0v_25c] > pt_macro_dat.txt
+    macro_dat.py <QC_MC_OUT> <pt_macros.txt> [corner=tt_1p0v_25c] [escale=1] > pt_macro_dat.txt
+
+escale (lowv.sh): factor on the access energies, e.g. (0.8 / 1.0)^2 = 0.64 for a MODELLED 0.8 V point (the
+compilers have no 0.8 V characterisation; CV^2 scaling of the 1.0 V datatable energies).
 
 The macro .lib files (sram_sp_adv / rf_sp_adv, flow/tsmc65/sram/mc_gen.sh) have every CLK internal_power table at 0,
 so PrimeTime only sees the pin energies (A, D, CEN, WEN, Q) and misses the access energy.  The datatable gives the
@@ -21,6 +24,7 @@ import sys
 
 mc, act = sys.argv[1], sys.argv[2]
 corner = sys.argv[3] if len(sys.argv) > 3 else "tt_1p0v_25c"
+escale = float(sys.argv[4]) if len(sys.argv) > 4 else 1.0
 
 
 def dat(ref):
@@ -36,7 +40,7 @@ def dat(ref):
                 rows[w[0]] = w
     g = lambda k: float(rows[k][col])
     v = g("volt")
-    e = lambda k: (g(f"icc_c_{k}") + g(f"icc_p_{k}")) * v * 1000.0          # pJ per clock edge
+    e = lambda k: (g(f"icc_c_{k}") + g(f"icc_p_{k}")) * v * 1000.0 * escale  # pJ per clock edge
     return dict(read=e("r0"), write=e("w0"), desel=e("desel"), leak_mw=(g("icc_c_standby") + g("icc_p_standby")) * v)
 
 
@@ -57,7 +61,7 @@ with open(act) as f:
         a["r"] += (pon - pw) / period                         # per ns
         a["w"] += pw / period
         a["d"] += max(0.0, e - pon) / period
-print(f"# macro datatable model, corner {corner}, period_ns {period}: per type n, reads / writes / deselected clocks "
+print(f"# macro datatable model, corner {corner}, escale {escale}, period_ns {period}: per type n, reads / writes / deselected clocks "
       f"per cycle (sum over instances), E_read / E_write / E_desel pJ, P_read / P_write / P_desel / P_dyn W, datatable standby leakage W")
 tot = 0.0
 for ref, a in acc.items():

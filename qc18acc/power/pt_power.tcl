@@ -7,11 +7,14 @@
 # Outputs: ${OUT}.txt (power groups, hierarchy depth 1, annotation; design names only) and ${OUT}_blocks.txt
 #   (internal / switching / leakage / total W per first-level block, wrapper logic without its macros, the macros by
 #   type, top-level glue cells).
+# Optional (lowv.sh): QC_PT_CORNER (corner key, default tt) and QC_PT_LIB (cell library of that key, e.g.
+#   tcbn65gplustc0d8_ccs for tt 0.8 V; the macro .db of QC_EXTRA_DB_TT are linked unchanged).
 source $::env(QC_FLOW)/common/lib.tcl
 set top qa_top
-set corner tt
+set corner [qc_env QC_PT_CORNER tt]
+if {[qc_env QC_PT_LIB] ne ""} { set ::QC_LIB($corner) $::env(QC_PT_LIB) }
 set_app_var search_path [concat . $::QC_LIBDIR]
-set_app_var link_path [concat * [qc_db $corner] [qc_extra_dbs $corner]]
+set_app_var link_path [concat * [qc_db $corner] [qc_extra_dbs tt]]
 set_app_var power_enable_analysis true
 set_app_var power_analysis_mode averaged
 # a net missing from the SAIF with no annotated fan-in is static (toggle 0), not the 0.1 / cycle default
@@ -28,7 +31,7 @@ set o $::env(OUT)
 redirect ${o}_annot.rpt { report_switching_activity -list_not_annotated -show_pin }
 redirect ${o}_hier.rpt  { report_power -nosplit -hierarchy -levels 3 }
 set fh [open ${o}.txt w]
-puts $fh "period_ns $::env(QC_PERIOD) corner $corner wire_load $wlm saif $::env(SAIF)"
+puts $fh "period_ns $::env(QC_PERIOD) corner $corner lib $::QC_LIB($corner) wire_load $wlm saif $::env(SAIF)"
 redirect -variable pr { report_power -nosplit }
 puts $fh [regsub {^.*?(Power Group)} $pr {\1}]
 redirect -variable ph { report_power -nosplit -hierarchy -levels 1 }
