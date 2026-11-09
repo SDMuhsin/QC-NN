@@ -44,7 +44,7 @@ proc qa_w {banks par} {
     return $l
 }
 set hA [lindex $qa_wh(A) 1]; set hW [lindex $qa_wh(W) 1]
-set qa_edge [expr {[info exists ::env(QA_EDGE)] ? $::env(QA_EDGE) : 0.0}]   ;# rows between the outer tiers and the core edge
+set qa_edge [expr {[info exists ::env(QA_EDGE)] ? $::env(QA_EDGE) : 20.0}]  ;# rows between the outer tiers and the core edge (0: pdngen fails, PDN-0232)
 set yBw [qa_snap [expr {$qa_cy0 + $qa_edge}] 1.8 $qa_cy0 up]
 set yB3 [qa_snap [expr {$yBw + $hW + $qa_gap}] 1.8 $qa_cy0 up]
 set yB2 [qa_snap [expr {$yB3 + $hA + $qa_gap}] 1.8 $qa_cy0 up]
