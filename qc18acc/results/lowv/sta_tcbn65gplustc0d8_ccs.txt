@@ -1,0 +1,6 @@
+design qa_top corner tt08 lib tcbn65gplustc0d8_ccs macros tt_1p0v (not 0.8 V) period_ns 3.300000 wire_load WireAreaLowkCon/enclosed
+all wns_ns 0.072 fmax_mhz 309.8 path u_drain/loading_reg/CP -> u_seq/cyc_pload_reg_31_/D
+logic wns_ns 0.072 fmax_mhz 309.8 path u_drain/loading_reg/CP -> u_seq/cyc_pload_reg_31_/D
+to_macro wns_ns 0.214 fmax_mhz 324.0 path u_seq/f_lwi_reg_0_/CP -> u_act/g_buf_2__g_bank_4__u_ram/g_mac_g_act_u_mac/A[9]
+from_macro wns_ns 0.480 fmax_mhz 354.6 path u_wmem/g_bank_3__u_ram/g_mac_g_wgt_u_mac/CLK -> u_head/dot2_reg_17_/D
+hold_all wns_ns 0.007 fmax_mhz 303.7 path u_host/ws2_reg_8_/CP -> u_wmem/g_bank_0__u_ram/g_mac_g_wgt_u_mac/D[72]

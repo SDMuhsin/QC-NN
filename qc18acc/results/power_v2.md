@@ -182,3 +182,9 @@ kw-inner order also changes the PE input statistics, which this comparison canno
 PE array 132.6 mW (57 %), of which clock 45.3 mW and adders 62.7 mW; PPU 33.9 mW; act macros 31.1 mW (reads 18.3,
 writes 4.7, leakage 8.1); weight macros 18.6 mW (reads 11.7 = one 80-b word per busy cycle, leakage 6.9);
 leakage total 22.0 mW (9.5 %).
+
+## 7. Low-voltage point (tt 0.8 V)
+
+See [lowv.md](lowv.md): logic-only fmax 309.8 MHz at tt 0.8 V (the kit memory compilers have no 0.8 V corner, macro
+paths not part of the claim); at 300 MHz with the same SAIF: 107.1 mW, **57.1 uJ / inference** (macro energies
+modelled: datatable x 0.64, leakage x 0.44), leakage share 9.0 %; 1.0 V at the same 300 MHz: 178.7 mW, 95.3 uJ.
