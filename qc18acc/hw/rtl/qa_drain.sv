@@ -55,7 +55,7 @@ module qa_drain import qa_pkg::*; (
   wire [2:0] g = w[2:0];
   wire [9:0] o = {d_tile, w[5:3]};
   wire drain_go = run && sh_full && !draining && rf_valid && rf_og == d_og && !loading && !ld_v;
-  wire load_go = run && !fin && !(rf_valid && rf_og == d_og) && !loading && !draining;
+  wire load_go = run && !fin && !(rf_valid && rf_og == d_og) && !loading && !ld_v && !draining;
 
   // cap_ok: shadow empty, or the running drain's final read is at most 3 cycles away (AGU issue -> capture = 3)
   always_comb begin
