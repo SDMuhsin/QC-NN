@@ -10,7 +10,7 @@ if {[sizeof_collection $p]} {
         [get_object_name [get_attribute $p endpoint]]]
 }
 redirect $out/rpt/pt_${corner}_qa_clk_max.rpt { report_timing -group qa_clk -max_paths 20 -nworst 1 -slack_lesser_than 100 -nosplit -input_pins -nets }
-set mcs [get_cells -quiet -hierarchical -filter "is_hierarchical==false && (ref_name==qa_act_1024x64m8 || ref_name==qa_wgt_4096x80m8 || ref_name==qa_par_4096x72m8 || ref_name==qa_dsc_256x32m2)"]
+set mcs [get_cells -quiet -hierarchical -filter "is_hierarchical==false && (ref_name=~qa_act_* || ref_name=~qa_wgt_* || ref_name=~qa_par_* || ref_name=~qa_dsc_*)"]
 foreach {k a} [list to_macro [list -to [get_pins -of $mcs -filter "direction==in"]] from_macro [list -from $mcs]] {
     if {![catch {set q [get_timing_paths -delay_type max -max_paths 1 {*}$a]}] && [sizeof_collection $q]} {
         puts $fh [format "path_%s slack_ns %.3f %s -> %s" $k [get_attribute $q slack] \

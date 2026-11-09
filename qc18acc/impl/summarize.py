@@ -29,6 +29,22 @@ BLOCKS = [  # (block, first-level instance(s) of qa_top)
 ]
 
 
+BLOCKS3 = [  # v3 (Kb = 2): two weight halves, 48 act macros, 16-lane PPU
+    ("pe_array (8x8 qa_pe 2-block + shadow chains)", ["u_array"]),
+    ("drain (param RF, loader, addresses)", ["u_drain"]),
+    ("ppu (16 lanes, 6 stages)", ["u_ppu"]),
+    ("head (pool + FC)", ["u_head"]),
+    ("agu", ["u_agu"]),
+    ("xbar (128-b kw window, code reg)", ["u_xbar"]),
+    ("seq (descriptors, perf counters)", ["u_seq"]),
+    ("host port + CSRs", ["u_host"]),
+    ("act buffers (48 x 512x64 + ports)", ["u_act"]),
+    ("weight SRAM (2 halves x 3 x 4096x80)", ["u_wmem_e", "u_wmem_o"]),
+    ("param SRAM (2 x 4096x72)", ["u_pmem"]),
+    ("descriptor RAM (256x32)", ["u_desc"]),
+]
+
+
 def main(run, out):
     os.makedirs(out, exist_ok=True)
     summ = open(os.path.join(run, "summary.txt")).read()
@@ -69,7 +85,7 @@ def main(run, out):
         m = sum(r[3] for k, r in rows.items() if k == prefix or k.startswith(prefix + "/"))
         return t, m
 
-    for name, insts in BLOCKS:
+    for name, insts in (BLOCKS3 if "u_wmem_e" in rows else BLOCKS):
         t = m = 0.0
         for i in insts:
             a, b = sub(i)

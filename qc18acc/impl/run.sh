@@ -10,6 +10,7 @@
 #   qc18acc/impl/run.sh all  <period> [tag]      syn + pt + summary
 # RTL: hw/tech/qc18acc_tech.f (qa_sram on the macros of macros.txt, linked as .db black boxes, dont_touch).
 # QC_BUILD: build root (default /tmp/$USER/qc18acc/build); QC_CORES (default 8).
+# QA_V=3: the v3 design (Kb = 2): hw3/tech/qc18acc_tech.f and the macros of impl/v3/macros.txt (default QA_V=2: v2).
 set -u
 HERE=$(cd "$(dirname "$0")" && pwd)
 ROOT=$(cd "$HERE/../.." && pwd)
@@ -20,10 +21,11 @@ export QC_BUILD=${QC_BUILD:-/tmp/$USER/qc18acc/build}
 export QC_SDC=$HERE/constraints.sdc QC_HOOK=$HERE/dc_hook.tcl QC_PT_HOOK=$HERE/pt_hook.tcl QC_CLK=clk
 export QC_CORES=${QC_CORES:-8}
 TOP=qa_top
-FL=$ROOT/qc18acc/hw/tech/qc18acc_tech.f
+FL=$ROOT/qc18acc/hw/tech/qc18acc_tech.f; MACROS=$HERE/macros.txt
+if [ "${QA_V:-2}" = 3 ]; then FL=$ROOT/qc18acc/hw3/tech/qc18acc_tech.f; MACROS=$HERE/v3/macros.txt; fi
 
 IFS=, read -r C_SS C_TT C_FF _ <<< "$QC_MC_CORNERS"
-dbs() { sed 's/#.*//' "$HERE/macros.txt" | awk 'NF >= 5 { print $1 }' |
+dbs() { sed 's/#.*//' "$MACROS" | awk 'NF >= 5 { print $1 }' |
         while read -r i; do printf '%s ' "$MC/$i/${i}_$1_syn.db"; done; }
 export QC_EXTRA_DB_SS="$(dbs "$C_SS")" QC_EXTRA_DB_TT="$(dbs "$C_TT")" QC_EXTRA_DB_FF="$(dbs "$C_FF")"
 check_dbs() {
@@ -36,7 +38,7 @@ summ() { python3 -I "$HERE/summarize.py" "$QC_BUILD/syn/$1" "$QC_BUILD/syn/$1/re
 
 cmd=${1:-}; shift || true
 case "$cmd" in
-macros)  "$FLOW/sram/mc_gen.sh" gen "$HERE/macros.txt" ;;
+macros)  "$FLOW/sram/mc_gen.sh" gen "$MACROS" ;;
 elab)    QC_ELAB_ONLY=1 syn "${1:-3.5}" qa_elab ;;
 syn)     p=$1; syn "$p" "${2:-qa_w$p}" ;;
 pt)      check_dbs; t=$1; shift; "$FLOW/sta/run_pt.sh" "$t" "$@" ;;
