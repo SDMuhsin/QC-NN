@@ -1,7 +1,7 @@
 // QC18-ACC full-network testbench.
 //   +DIR=<export dir>  (python3 -m qc18acc.compile.main --export DIR --images ...)   +IMG0=<first image id>
 //   +NIMG=<number of images> (DIR/names.txt = pass names of DIR/program.txt, one per line, written by run_rtl.sh)
-//     +MAXCYC=<per-image cycle limit>   +NOMAPS (logits only)
+//     +MAXCYC=<per-image cycle limit>   +NOMAPS (logits only)   +SAIF=<file> (with +define+QA_SAIF)
 // Loading: EVERYTHING through the host port (descriptors, weight / param SRAM words with the WSTAGE registers,
 // then per image the 1024-word input plane into the stem's input buffer).  Per image: START, poll STATUS, read
 // the 10 logits and the perf counters through the host port.
@@ -101,6 +101,30 @@ module qa_tb;
     $fflush();
   end else if (pass_end_q) chk_k = chk_k + 1;
 
+`ifdef QA_SAIF
+  // +define+QA_SAIF (VCS): toggle counts of the whole DUT over START..DONE of the first image -> SAIF +SAIF=<file>
+  // (default qa_top.saif).  saif_st: 1 = started, waiting for done low (still high from a previous image), 2 = running.
+  integer saif_st = 0;
+  longint saif_c0;
+  string saif_fn;
+  task automatic saif_start;
+    if (!$value$plusargs("SAIF=%s", saif_fn)) saif_fn = "qa_top.saif";
+    $set_gate_level_monitoring("on");
+    $set_toggle_region(qa_tb.dut);
+    $toggle_start;
+    saif_st = 1; saif_c0 = cyc;
+  endtask
+  always @(posedge clk) begin
+    if (saif_st == 1 && done === 1'b0) saif_st = 2;
+    else if (saif_st == 2 && done === 1'b1) begin
+      $toggle_stop;
+      $toggle_report(saif_fn, 1.0e-9, "qa_tb.dut");
+      $display("SAIF %0s: cycles %0d..%0d (%0d)", saif_fn, saif_c0, cyc, cyc - saif_c0);
+      saif_st = 3;
+    end
+  end
+`endif
+
   // ---- main ----------------------------------------------------------------------------------------------------
   initial begin
     integer fd, r, n, img_buf, img_base;
@@ -165,6 +189,9 @@ module qa_tb;
         hwr({R_ACT, 5'd0, 2'(img_buf), 3'(i % 8), 10'(img_base + i / 8)}, inimg[i][31:0]);
       end
       hwr(CSR_CTRL, 32'd1);
+`ifdef QA_SAIF
+      if (im == img0) saif_start();
+`endif
       st = 0; n = 0;
       while (!st[1]) begin
         repeat (256) @(posedge clk);
