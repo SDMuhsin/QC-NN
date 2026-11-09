@@ -64,7 +64,7 @@ are in `rpt/` (`drt.drc.rpt` is the detailed-route violation list).
 `designs/smoke_mac8.cfg` is the minimal example.  Keys and defaults are in `or/lib.tcl` (`P_DEFAULT`):
 `TOP`, `SYN` or `NETLIST` + `SDC`, floorplan (`CORE_UTIL`, `ASPECT`, `CORE_MARGIN`, `DIE_AREA`, `CORE_AREA`),
 `PLACE_DENSITY` (default util + 0.2), PDN strap layer / width / pitch / offset, CTS clustering (+ `CTS_ARGS`, extra clock_tree_synthesis options), repair margins,
-`GR_ADJUST`, `DR_END_ITER`, `DR_ARGS`, `FILL`, `DCAP`, `GDS`, and Tcl hooks `FLOORPLAN_TCL`, `PIN_TCL`, `PDN_TCL`,
+`GPL_ARGS` (extra global_placement options), `DPL_ARGS` (detailed_placement options), `GR_ADJUST`, `DR_END_ITER`, `DR_ARGS`, `ANTENNA_ITER`, `ANTENNA_CHECK` (0: no check_antennas after detailed route; `db/route_dr.odb` is saved before it), `FILL`, `DCAP`, `GDS`, and Tcl hooks `FLOORPLAN_TCL`, `PIN_TCL`, `PDN_TCL`,
 `PRE_PLACE_TCL`, `PRE_CTS_TCL`, `PRE_ROUTE_TCL`, `POST_ROUTE_TCL`.
 
 Macros (SRAMs with LEF + lib, no GDS): `MACRO_LEFS`, `MACRO_LIBS_ss` / `_tt` / `_ff`, `MACRO_PLACE`
@@ -111,3 +111,9 @@ files in `QC_EXTRA_DB_SS` / `_TT` / `_FF`.  `designs/macro_test.cfg` checks the 
   50 % utilisation.  `REPAIR_DESIGN auto` therefore runs it with all non-violating signal nets dont_touch
   (`qc_repair_drv` in `or/lib.tcl`): +7 % area after placement, +11 % after CTS / hold repair, ss WNS -1.80 ns
   (placement), -0.94 ns (CTS + `repair_timing`), -1.44 ns at global-route RC, with `TIMING_DRIVEN 0`.
+* **OpenROAD post-route STA vs PrimeTime.**  `def2spef.py` writes empty `*D_NET` entries for unconnected nets
+  (`SYNOPSYS_UNCONNECTED_*`); OpenROAD's `read_spef` (2.0-12381) stops there (STA-1657), so the `post_route_*` lines of
+  `summary.txt` are then without parasitics.  PrimeTime (`run_pt_post.sh`) reads the same SPEF fully; use it.
+* **Large designs (QC18-ACC, qc18acc/pnr):** global placement needs `GPL_ARGS {-bin_grid_count 512}` on a 3 x 3 mm die
+  (the automatic 1024 x 1024 grid diverges, GPL-0307); `repair_antennas` segfaults (use `ANTENNA_ITER 0`); detailed
+  route of 300k nets peaks at 17.8 GB.

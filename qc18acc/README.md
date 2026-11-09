@@ -204,3 +204,12 @@ blocks 22.7 / 20.1.  System MODEL per inference: on-chip weight SRAM QC 86 / TER
 103.5 mm2; DRAM-streamed weights (dense = lower bound) 121 / 535 / 2283 uJ at 20 pJ/b.  The PE itself (TERNARY -> QC)
 gains only ~1.2x; the QC advantage is weight storage / traffic (80 vs 1024 b per step, 0.22 vs 2.8 MB) plus
 ternary-vs-int8 arithmetic.
+
+## Place & route, OpenROAD (`pnr/`, results [results/pnr.md](results/pnr.md))
+
+`qc18acc/pnr/run.sh pnr <tag>` (flow/tsmc65/pnr with `qa.cfg`: tiered macro floorplan, macro PDN, IO, post-CTS /
+post-GRT repair), `run.sh pt <tag>` (PrimeTime ss / tt with the def2spef SPEF, reg2reg fmax), `power.sh -t <tag>
+<period>` (PTPX tt with the v2 SDF SAIF flattened onto the routed netlist, `saif_flat.py`; macro datatable model),
+`report.py <period>`.  Result (run qa_t1): die 8.858 mm2, 255 DRC markers, 192 antenna nets, post-route fmax
+ss 172.5 / tt 288.3 MHz (reg2reg; pre-route 303 / 463), 272.2 mW = 152.4 uJ / inference at 286 MHz tt (clock tree
+17.7 %, SAIF annotation 89 %), post-CTS GLS bit-exact.  Low-voltage point: [results/lowv.md](results/lowv.md).
