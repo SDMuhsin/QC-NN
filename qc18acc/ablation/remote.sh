@@ -17,6 +17,9 @@ AB=${QAB_DIR:-/tmp/$USER/qc18acc/abl}
 export QC_BUILD=$AB/build QC_SDC=$REPO/qc18acc/impl/constraints.sdc QC_PT_HOOK=$REPO/qc18acc/impl/pt_hook.tcl
 export QC_CLK=clk QC_CORES=${QC_CORES:-8}
 P=${QAB_PERIOD:-3.3}; CLKPS=2500
+# QAB_ZD=1: zero-delay GLS (no SDF, +nospecify +notimingcheck) for gls / glsrun / glssum / power: work dir gls_zd/,
+# summaries gls_zd_<point>.txt, power_zd_<point>*.txt (glitch-free reference)
+ZD=${QAB_ZD:-0}; X=""; [ "$ZD" = 1 ] && X=_zd
 mkdir -p "$AB/out"
 defs() { case $1 in qc) echo "+define+TOP=qab_top_qc+WB=10+ACC=20";; tern) echo "+define+TOP=qab_top_tern+WB=128+ACC=21";;
          int8) echo "+define+TOP=qab_top_int8+WB=512+ACC=32";; esac; }
@@ -39,28 +42,29 @@ sdf)
   python3 "$FLOW/sim/sdf_idealclk.py" --clock-celltype CKLNQD "${top}_tt.sdf" 0.5 clk rst_n > "${top}_idealclk.sdf" 2> idealclk.log
   { grep -m2 slack tt_timing.rpt; cat idealclk.log; } > "$O/sdf_$v.txt"; echo "QAB_SDF_DONE $v"; cat "$O/sdf_$v.txt" ;;
 gls)
-  W=$AB/gls/$v; mkdir -p "$W"; cd "$W"; rm -rf simv simv.daidir csrc
+  W=$AB/gls$X/$v; mkdir -p "$W"; cd "$W"; rm -rf simv simv.daidir csrc
+  SDFO="-sdf typ:tb_qab.dut:$AB/sdf/$v/${top}_idealclk.sdf +no_notifier"; [ "$ZD" = 1 ] && SDFO="+nospecify +notimingcheck"
   tcs "vcs -full64 -sverilog -timescale=1ns/1ps $S/$top.v $REPO/qc18acc/ablation/tb_qab.sv -top tb_qab -o simv \
-    -v \$QC_CELL_V +define+QC_GLS $(defs "$v")+QAB_SAIF -sdf typ:tb_qab.dut:$AB/sdf/$v/${top}_idealclk.sdf +no_notifier" > vcs.log 2>&1
+    -v \$QC_CELL_V +define+QC_GLS $(defs "$v")+QAB_SAIF $SDFO" > vcs.log 2>&1
   [ -x simv ] || { grep -E "Error" -A3 vcs.log | head; exit 1; }
   for pt in "$@"; do "$SELF" glsrun "$v" "$pt"; done ;;
 glsrun)
-  pt=$1; W=$AB/gls/$v; D=$W/run_$pt; rm -rf "$D"; mkdir -p "$D"; cp -r "$W/simv" "$W/simv.daidir" "$D/"; cd "$D"
+  pt=$1; W=$AB/gls$X/$v; D=$W/run_$pt; rm -rf "$D"; mkdir -p "$D"; cp -r "$W/simv" "$W/simv.daidir" "$D/"; cd "$D"
   tcs "./simv +VEC=$AB/vec/$pt.txt +PERIOD_PS=$CLKPS +SAIF=$W/$pt.saif" > "$W/$pt.log" 2>&1
   "$SELF" glssum "$v" "$pt" ;;
 glssum)
-  pt=$1; W=$AB/gls/$v
+  pt=$1; W=$AB/gls$X/$v
   { grep -E "QAB_(INFO|SAIF|RESULT|MISMATCH)" "$W/$pt.log" | head -6
     echo "sdf_annotation $(grep -ciE 'sdf.*(annotat|back)' "$W/vcs.log") timing_violations $(grep -c 'Timing violation' "$W/$pt.log")"
-    echo "error_lines $(grep -cE '^Error|Fatal' "$W/$pt.log") saif_bytes $(stat -c %s "$W/$pt.saif" 2>/dev/null)"; } > "$O/gls_$pt.txt"
-  echo "QAB_GLS_DONE $pt"; cat "$O/gls_$pt.txt" ;;
+    echo "error_lines $(grep -cE '^Error|Fatal' "$W/$pt.log") saif_bytes $(stat -c %s "$W/$pt.saif" 2>/dev/null)"; } > "$O/gls${X}_$pt.txt"
+  echo "QAB_GLS_DONE $pt"; cat "$O/gls${X}_$pt.txt" ;;
 power)
-  W=$AB/gls/$v
+  W=$AB/gls$X/$v
   for pt in "$@"; do
     D=$W/power_$pt; mkdir -p "$D"; cd "$D"
     tcs "setenv QC_FLOW $FLOW; setenv SYN $S; setenv TOP $top; setenv QC_SDC $QC_SDC; setenv QC_PERIOD $(awk "BEGIN{print $CLKPS/1000}"); \
       setenv SAIF $W/$pt.saif; setenv OUT $D/pt; pt_shell -f $REPO/qc18acc/ablation/pt_power.tcl" > pt.log 2>&1
-    cp pt.txt "$O/power_$pt.txt"; cp pt_cells.txt "$O/power_${pt}_cells.txt"
+    cp pt.txt "$O/power${X}_$pt.txt"; cp pt_cells.txt "$O/power${X}_${pt}_cells.txt"
     echo "QAB_POWER_DONE $pt errors $(grep -c '^Error' pt.log)"; grep "Total Power" pt.txt
   done ;;
 *) sed -n 2,12p "$0"; exit 1 ;;
