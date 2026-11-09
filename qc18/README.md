@@ -1,5 +1,7 @@
 # qc18/ — ResNet-18 (CIFAR-10) with quasi-cyclic conv weights
 
+Results, ablations, diagnosis and hardware assessment: [RESULTS.md](RESULTS.md). Checkpoints: `qc18/fetch.sh`.
+
 Every conv (stem, block convs, 1x1 shortcuts) has a GEMM matrix `[cout, kh*kw*cin_pad]` (columns `(kh,kw,cin)`,
 cin zero-padded to a multiple of b, stem 3 -> b) whose b x b blocks are zero or a sum of <= 2 distinct cyclic
 shifts with entries 0/1 (`unsigned`) or -1/0/1 (`signed`); BN (per-channel scale + bias) after each conv; FC dense.
