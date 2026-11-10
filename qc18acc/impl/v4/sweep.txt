@@ -1,0 +1,15 @@
+# v4 (16 pixel rows) activation bank candidates (flow/tsmc65/sram/mc_gen.sh sweep): capacity unchanged (3 x 64 KiB =
+# 3 buffers x 16 banks x 256 x 128 b); per bank 2 x 256 x 64 (lo / hi halves, separate enables) or 1 x 256 x 128.
+# v3 reference: rf_sp_adv 512 x 64 mux 4, 53 045 um2 (2 per bank, 16 per buffer).
+a4_rf_256x64m2    rf_sp_adv   256 64 2
+a4_rf_256x64m4    rf_sp_adv   256 64 4
+a4_sp_256x64m4    sram_sp_adv 256 64 4
+a4_sp_256x64m8    sram_sp_adv 256 64 8
+a4_sp_256x64m16   sram_sp_adv 256 64 16
+a4_rf_256x128m2   rf_sp_adv   256 128 2
+a4_sp_256x128m4   sram_sp_adv 256 128 4
+a4_sp_256x128m8   sram_sp_adv 256 128 8
+# write-masked 128-b shapes (host 64-b half writes), names <= 16 characters
+a4_rf128m2w64 rf_sp_adv 256 128 2 write_mask=on wp_size=64
+a4_rf128m2w8  rf_sp_adv 256 128 2 write_mask=on wp_size=8
+a4_rf128m2w32 rf_sp_adv 256 128 2 write_mask=on wp_size=32

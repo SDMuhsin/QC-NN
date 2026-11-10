@@ -1,0 +1,11 @@
+# ARM memory-compiler macros of QC18-ACC v4 (flow/tsmc65/sram/mc_gen.sh gen qc18acc/impl/v4/macros.txt).
+# Act bank: choice from v4/sweep_result.txt (ss 0.9 V 125 C, macro area incl. ring): one rf_sp_adv 256 x 128 mux 2
+# per bank (55 525 um2) is denser than two 256 x 64 halves (2 x 32 180 = 64 360 um2); the write mask (wp_size 32,
+# 4 mask bits, no area cost) gives the host its 64-b half writes.  48 instances (3 buffers x 16 banks) = 2.665 mm2
+# (v3: 48 x 512x64 rf mux 4 = 2.546 mm2, +4.7 %; 96 x 256x64 rf mux 2 would be 3.089 mm2).
+# Weight / param / descriptor macros as v2 / v3.
+# <instance>  <compiler>  <words> <bits> <mux> [options]
+qa_act_256x128m2  rf_sp_adv   256  128 2 write_mask=on wp_size=32
+qa_wgt_4096x80m8  sram_sp_adv 4096 80 8
+qa_par_4096x72m8  sram_sp_adv 4096 72 8
+qa_dsc_256x32m2   rf_sp_adv   256  32 2

@@ -1,0 +1,11 @@
+SWEEP a4_rf_256x64m2 rf_sp_adv 256x64 mux 2 : w_um 230.7 h_um 139.5 macro_um2 32180 core_um2 23359 ta_ss_ns 1.086 tcyc_ss_ns 0.976
+SWEEP a4_rf_256x64m4 rf_sp_adv 256x64 mux 4 : w_um 396.4 h_um 101.3 macro_um2 40148 core_um2 28064 ta_ss_ns 1.154 tcyc_ss_ns 1.009
+SWEEP a4_sp_256x64m4 sram_sp_adv 256x64 mux 4 : FAIL *** Error *** -mux should be one of: 8, 16, 32 
+SWEEP a4_sp_256x64m8 sram_sp_adv 256x64 mux 8 : w_um 646.5 h_um 124.0 macro_um2 80172 core_um2 39108 ta_ss_ns 1.097 tcyc_ss_ns 1.524
+SWEEP a4_sp_256x64m16 sram_sp_adv 256x64 mux 16 : FAIL *** Error *** ascii: -words option out of range, 256, must be within 512 and 16384 
+SWEEP a4_rf_256x128m2 rf_sp_adv 256x128 mux 2 : w_um 398.0 h_um 139.5 macro_um2 55525 core_um2 42420 ta_ss_ns 1.256 tcyc_ss_ns 1.089
+SWEEP a4_sp_256x128m4 sram_sp_adv 256x128 mux 4 : FAIL *** Error *** -mux should be one of: 8, 16, 32 
+SWEEP a4_sp_256x128m8 sram_sp_adv 256x128 mux 8 : w_um 1184.1 h_um 124.0 macro_um2 146837 core_um2 74807 ta_ss_ns 1.322 tcyc_ss_ns 1.762
+SWEEP a4_rf128m2w64 rf_sp_adv 256x128 mux 2 write_mask=on wp_size=64: FAIL *** Error *** ascii: -wp_size option out of range, 64, must be within 1 and 36
+SWEEP a4_rf128m2w8 rf_sp_adv 256x128 mux 2 write_mask=on wp_size=8: w_um 398.0 h_um 139.5 macro_um2 55525 core_um2 42420 ta_ss_ns 1.256 tcyc_ss_ns 1.089
+SWEEP a4_rf128m2w32 rf_sp_adv 256x128 mux 2 write_mask=on wp_size=32: w_um 398.0 h_um 139.5 macro_um2 55525 core_um2 42420 ta_ss_ns 1.256 tcyc_ss_ns 1.089
