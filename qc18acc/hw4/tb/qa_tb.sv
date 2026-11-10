@@ -71,7 +71,7 @@ module qa_tb;
     for (gk = 0; gk < NBANK; gk++) begin : g_sk
       always @(posedge clk) if (snap_go) for (int a = 0; a < ADEPTH; a++)
 `ifdef QA_TECH
-        snap[gb*4096 + gk*256 + a] = unmux2(dut.u_act.g_bank[gk].g_buf[gb].u_ram.g_mac.u_mac.mem[a >> 1], a % 2);
+        snap[gb*4096 + gk*256 + a] = unmux2(dut.u_act.g_bank[gk].g_buf[gb].u_ram.g_mac.g_act.u_mac.mem[a >> 1], a % 2);
 `else
         snap[gb*4096 + gk*256 + a] = dut.u_act.g_bank[gk].g_buf[gb].u_ram.mem[a];
 `endif
