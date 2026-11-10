@@ -8,10 +8,10 @@ add_global_connection -net $::QC_PNR_PWR -pin_pattern {^VDD[CP]E$} -power
 add_global_connection -net $::QC_PNR_GND -pin_pattern {^VSSE$} -ground
 global_connect
 set qa_sram {}; set qa_rf {}
-# rf_sp_adv macros (rings M2 / M3): the descriptor RF, and the v3 act halves qa_act_512x64m4
+# rf_sp_adv macros (rings M2 / M3): the descriptor RF, the v3 act halves qa_act_512x64m4 and the v4 act banks qa_act_256x128m2
 foreach i [qc_macros] {
     set mn [[$i getMaster] getName]
-    if {[string match qa_dsc* $mn] || [string match qa_act_512x64m4* $mn]} { lappend qa_rf [$i getName] } else { lappend qa_sram [$i getName] }
+    if {[string match qa_dsc* $mn] || [string match qa_act_512x64m4* $mn] || [string match qa_act_256x128m2* $mn]} { lappend qa_rf [$i getName] } else { lappend qa_sram [$i getName] }
 }
 define_pdn_grid -macro -instances $qa_sram -name macro_sram -halo [p MACRO_HALO] -grid_over_boundary
 add_pdn_connect -grid macro_sram -layers [list M4 [p PDN_H_LAYER]]

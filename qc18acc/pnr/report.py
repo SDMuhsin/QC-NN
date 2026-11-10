@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Post-route power table of QC18-ACC from qc18acc/pnr/power.sh results (qc18acc/results/pnr).
 
-    python3 qc18acc/pnr/report.py <period_ns> [pnr_tag]   (QA_V=3: the v3 design, qc18acc/results/pnr_v3/<pnr_tag>_post_*)
+    python3 qc18acc/pnr/report.py <period_ns> [pnr_tag]   (QA_V=3: the v3 design, qc18acc/results/pnr_v3/<pnr_tag>_post_*;
+                                                           QA_V=4: v4, qc18acc/results/pnr_v4/)
 
 PT (routed netlist, tt SPEF, propagated clock, flat SDF SAIF) and +dat (macro internal power replaced by the
 datatable access model, as qc18acc/power/energy.py), energy per inference (159 982 cycles), clock-tree share.
@@ -16,8 +17,9 @@ import energy  # noqa: E402
 
 P = sys.argv[1]
 PFX = f"{sys.argv[2]}_post_{P}ns" if len(sys.argv) > 2 else f"post_{P}ns"
-V3 = os.environ.get("QA_V", "2") == "3"
-D = Path(__file__).resolve().parent.parent / "results" / ("pnr_v3" if V3 else "pnr")
+V4 = os.environ.get("QA_V", "2") == "4"
+V3 = os.environ.get("QA_V", "2") == "3" or V4                  # v4 keeps the v3 weight halves
+D = Path(__file__).resolve().parent.parent / "results" / ("pnr_v4" if V4 else "pnr_v3" if V3 else "pnr")
 b, dat = {}, {}
 for line in (D / f"{PFX}_blocks.txt").read_text().splitlines():
     if not line.startswith("#"):
@@ -52,6 +54,8 @@ print(f"| all ICGs (CKLNQD, n = {b['cg:all_icg'][4]}) mW | {mw(b['cg:all_icg'][3
 print(f"| top-level glue (repair / hold buffers outside the RTL hierarchy, ties) mW | {mw(b['glue:top_leaf_cells'][3])} |")
 print("\n| block | PT mW | +dat mW | leakage mW |")
 print("|---|---|---|---|")
+if V4:   # the two PPU units as one row
+    b["hier:u_ppu"] = [x + y for x, y in zip(b["hier:g_ppu_0__u_ppu"][:4], b["hier:g_ppu_1__u_ppu"][:4])]
 for k in ("u_array", "u_ppu", "u_drain", "u_head", "u_xbar", "u_agu", "u_seq", "u_host"):
     v = b[f"hier:{k}"]
     print(f"| {k} | {mw(v[3])} | {mw(v[3])} | {mw(v[2])} |")

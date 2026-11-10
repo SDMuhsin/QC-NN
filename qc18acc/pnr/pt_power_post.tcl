@@ -5,7 +5,7 @@
 # SAIF (cells inserted by P&R) get their activity by propagation from the annotated nets (power_default_toggle_rate 0).
 # Environment: QC_FLOW, PNR (P&R run dir), QC_SDC, QC_PERIOD, QC_EXTRA_DB_TT, SAIF, OUT (report prefix);
 #   QA_MACROS (macro cell names, default the v2 set; power.sh sets the v3 set for QA_V=3, with the v3 blocks
-#   u_wmem_e / u_wmem_o instead of u_wmem).
+#   u_wmem_e / u_wmem_o instead of u_wmem; QA_V=4: the v4 set, PPU units g_ppu_0 / g_ppu_1).
 # Outputs: ${OUT}.txt (power groups, annotation), ${OUT}_blocks.txt (same keys as pt_power.tcl: first-level blocks
 # by name prefix, macros by type, top-level glue; plus cts: the clock-tree cells inserted by CTS and
 # clock_network group), ${OUT}_macros.txt (macro activity for macro_dat.py).
@@ -64,6 +64,8 @@ set done {}
 set qa_macros [qc_env QA_MACROS "qa_act_1024x64m8 qa_wgt_4096x80m8 qa_par_4096x72m8 qa_dsc_256x32m2"]
 set qa_blocks {u_pmem u_seq u_ppu u_host u_drain u_head u_xbar u_array u_wmem u_desc u_act u_agu}
 if {[lsearch $qa_macros qa_act_512x64m4] >= 0} { set qa_blocks {u_pmem u_seq u_ppu u_host u_drain u_head u_xbar u_array u_wmem_e u_wmem_o u_desc u_act u_agu} }
+# v4 (power.sh QA_V=4): two PPU units g_ppu_0 / g_ppu_1, weight halves u_wmem_e / u_wmem_o
+if {[lsearch $qa_macros qa_act_256x128m2] >= 0} { set qa_blocks {u_pmem u_seq g_ppu_0__u_ppu g_ppu_1__u_ppu u_host u_drain u_head u_xbar u_array u_wmem_e u_wmem_o u_desc u_act u_agu} }
 foreach b $qa_blocks {
     set c [filter_collection $leaf "full_name=~$b/*"]
     puts $fh "hier:$b [pw $c]   n [sizeof_collection $c]"
