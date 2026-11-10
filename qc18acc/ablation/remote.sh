@@ -9,11 +9,15 @@
 #   remote.sh glssum <v> <point>    summary of a GLS point (out/gls_<point>.txt)
 #   remote.sh power <v> <point...>   PrimeTime PX tt 1.0 V, 2.5 ns, synthesis WLM, from that SAIF
 # v = qc | tern | int8 (top qab_top_<v>, tag qab_<v>_w3.3); point = <vector name>, e.g. qc_L2, int8c_L4.
+# QAB_KB=2: the Kb = 2 variants (v3 geometry, rtl/qab3.f, top qab3_top_<v>, tag qab3_<v>_w3.3, vectors3.py streams),
+# work dir /tmp/$USER/qc18acc/abl3.
 set -u
 REPO=$(cd "$(dirname "$0")/../.." && pwd)
 SELF=$REPO/qc18acc/ablation/remote.sh
 FLOW=$REPO/flow/tsmc65
-AB=${QAB_DIR:-/tmp/$USER/qc18acc/abl}
+KB=${QAB_KB:-1}
+if [ "$KB" = 2 ]; then AB=${QAB_DIR:-/tmp/$USER/qc18acc/abl3}; FL=$REPO/qc18acc/ablation/rtl/qab3.f; TP=qab3
+else AB=${QAB_DIR:-/tmp/$USER/qc18acc/abl}; FL=$REPO/qc18acc/ablation/rtl/qab.f; TP=qab; fi
 export QC_BUILD=$AB/build QC_SDC=$REPO/qc18acc/impl/constraints.sdc QC_PT_HOOK=$REPO/qc18acc/impl/pt_hook.tcl
 export QC_CLK=clk QC_CORES=${QC_CORES:-8}
 P=${QAB_PERIOD:-3.3}; CLKPS=2500
@@ -21,14 +25,16 @@ P=${QAB_PERIOD:-3.3}; CLKPS=2500
 # summaries gls_zd_<point>.txt, power_zd_<point>*.txt (glitch-free reference)
 ZD=${QAB_ZD:-0}; X=""; [ "$ZD" = 1 ] && X=_zd
 mkdir -p "$AB/out"
-defs() { case $1 in qc) echo "+define+TOP=qab_top_qc+WB=10+ACC=20";; tern) echo "+define+TOP=qab_top_tern+WB=128+ACC=21";;
-         int8) echo "+define+TOP=qab_top_int8+WB=512+ACC=32";; esac; }
+defs() { if [ "$KB" = 2 ]; then case $1 in qc) echo "+define+TOP=qab3_top_qc+WB=20+ACC=20+XB=1024";;
+         tern) echo "+define+TOP=qab3_top_tern+WB=256+ACC=21+XB=1024";; int8) echo "+define+TOP=qab3_top_int8+WB=1024+ACC=32+XB=1024";; esac
+         else case $1 in qc) echo "+define+TOP=qab_top_qc+WB=10+ACC=20";; tern) echo "+define+TOP=qab_top_tern+WB=128+ACC=21";;
+         int8) echo "+define+TOP=qab_top_int8+WB=512+ACC=32";; esac; fi; }
 tcs() { tcsh -f -c "source $FLOW/site/site.csh; $*"; }
 cmd=$1; v=$2; shift 2
-top=qab_top_$v; t=qab_${v}_w$P; S=$QC_BUILD/syn/$t; O=$AB/out
+top=${TP}_top_$v; t=${TP}_${v}_w$P; S=$QC_BUILD/syn/$t; O=$AB/out
 case $cmd in
 syn)
-  "$FLOW/syn/run_dc.sh" "$REPO/qc18acc/ablation/rtl/qab.f" "$top" "$P" "$t" > "$O/syn_$v.log" 2>&1
+  "$FLOW/syn/run_dc.sh" "$FL" "$top" "$P" "$t" > "$O/syn_$v.log" 2>&1
   "$FLOW/sta/run_pt.sh" "$t" ss tt ff >> "$O/syn_$v.log" 2>&1
   mkdir -p "$O/$t"; cp "$S/summary.txt" "$S"/pt_ss.txt "$S"/pt_tt.txt "$S"/pt_ff.txt "$O/$t/"
   # hierarchy area rows (instance, totals, design name), no library cells

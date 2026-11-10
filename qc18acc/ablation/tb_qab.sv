@@ -3,6 +3,7 @@
 // tile's shadow registers through the column heads (7 shifts right after the capture) and checks all 64 heads x 8
 // rows of every tile against the numpy reference.
 //   +define+TOP=qab_top_<v> +define+WB=<weight bits per column> +define+ACC=<acc bits> [+define+QAB_SAIF (VCS)]
+//   [+define+XB=1024: the Kb = 2 tops qab3_top_<v> (vectors3.py, 8 x 128-b rows); default 512]
 //   plusargs: +VEC=<file> +PERIOD_PS=<n> (2500) +SAIF=<file>
 // Inputs are driven at the rising edge (the SDF view adds the SDC input delay, flow/tsmc65/sim/sdf_idealclk.py),
 // heads are sampled at the falling edge.  Pipeline: step n driven in cycle n -> input register -> the PE computes
@@ -10,16 +11,19 @@
 // cycle n + 2 + r (shift driven in cycles n + 1 .. n + 7).  SAIF window: cycles 1 .. NS (the PE busy cycles).
 // Prints QAB_RESULT <PASS|FAIL> tiles <n> rows_checked <n> bad <n> steps <n>.
 `timescale 1ns / 1ps
+`ifndef XB
+`define XB 512
+`endif
 module tb_qab;
   localparam int MAXS = 2304, MAXT = 64;
   int period_ps = 2500;
   logic clk = 0, rst_n = 0;
   logic in_vld = 0, in_first = 0, in_last = 0;
   logic [7:0] in_shift = 0;
-  logic [511:0] in_x = '0;
+  logic [`XB-1:0] in_x = '0;
   logic [8*`WB-1:0] in_w = '0;
   logic [64*`ACC-1:0] heads;
-  logic [511:0] x_mem[MAXS];
+  logic [`XB-1:0] x_mem[MAXS];
   logic [8*`WB-1:0] w_mem[MAXS];
   logic [64*`ACC-1:0] e_mem[MAXT*8];
   int K, T, WBf, ACCf, NS;
