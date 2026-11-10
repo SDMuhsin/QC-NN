@@ -21,6 +21,10 @@ Runs:
 | `qa3_t1` | tau1 | v3 | v2 recipe (`qa3.cfg`) | 3363.8 x 2836.8 um, band 700 um | routed (detailed route stopped after iteration 4) |
 | `qa3_t5b` | tau5 | v3 | improved (`qa3b.cfg`) | 3363.8 x 3087.0 um, band 950 um | routed (detailed route stopped after iteration 4) |
 | `qa_t1b` | usask | v2 | improved (`qab.cfg`) | 3156.6 x 3106.8 um, band 700 um | routed, 17 iterations |
+| **`qa3_t5c`** | tau5 | v3 | improved + hub padding 1 site (`qa3c.cfg`) | as `qa3_t5b` | **routed, detailed route stopped after iteration 8 (gdb); route of record** |
+| `qa3_u5d` | usask | v3 | improved + hub padding 2 sites | as `qa3_t5b` | global route failed (GRT-0119, overflow in the hub) |
+| `qa3_u5g` | usask | v3 | improved, GR_ADJUST 0.40 | as `qa3_t5b` | stopped in global route after 2.5 h (overflow not resolved) |
+| `qa3_p1` / `qa3_p2` / `qa3_d5` / `qa3_o5` / `qa3_o3` | tau5 | v3 | placement experiments (section 11.3) | as `qa3_t5b` | place step only |
 
 **Detailed route was not completed for either v3 run.**  v3 detailed-route iterations 3 / 4 take 70-80 min each (v2:
 17-34 min), so 16-24 iterations did not fit the time box.  The v3 baseline `qa3_t1` was stopped after iteration 4
@@ -33,30 +37,45 @@ power and GLS below are therefore of the iteration-4 routing (complete connectiv
 clean); the wire RC of an unfinished route differs little from the final one (the remaining work is local
 rip-up / re-route of markers), but this is an open item.
 
+**This revision (section 11):** before restarting, the iteration-4 markers and a fresh global-route congestion report
+of `qa3_t5b` were analysed: 61 % of the markers sit in one 200-um column at the centre of the band (the act-buffer /
+xbar / head hub), placed at 93-100 % cell utilisation, while global route reports no overflow.  Placement padding of
+the hub cells was the change chosen (lower density and a tighter global-placement overflow did not move the hub);
+the route was re-run from placement (`qa3_t5c`, pad 1, tau5) and stopped after iteration 8 at **70 675 markers** -
+equal to `qa3_t5b` at iteration 4, all in the hub; pad 2 overflows in global route.  The detailed route of v3 does
+not converge with these flow-level changes; post-route timing / power / antenna / GLS were redone on `qa3_t5c`.
+
 ## 0. Summary: v2 vs v3 after place & route
 
-| quantity | v2 `qa_t1` (v2 recipe) | v2 `qa_t1b` (improved) | v3 `qa3_t1` (v2 recipe) | **v3 `qa3_t5b` (improved)** | label |
-|---|---|---|---|---|---|
-| die | 8.858 mm2 | 9.807 mm2 | 9.542 mm2 | **10.384 mm2** | [S] |
-| pre-route total area (DC) | 6.430 mm2 | 6.430 mm2 | 6.514 mm2 | 6.514 mm2 | [S] |
-| standard cells after P&R (DC) | 1.252 mm2 (0.882) | 1.225 mm2 (0.882) | 1.807 mm2 (1.176) | 1.788 mm2 (1.176) | [S] |
-| core utilisation (macros + cells) | 0.779 | 0.700 | 0.759 | 0.695 | [S] |
-| detailed route / DRC markers | 23 it. / 255 | 17 it. / 251 | stopped after it. 4 / 83 318 | stopped after it. 4 / **70 584** | [S] |
-| antenna violations (nets) | 192 | 147 | not run | 129 | [S] |
-| hold after route, tt / ss (PT) | -0.132 / -0.309 ns | -0.043 / -0.152 ns | -0.381 / -0.692 ns | -0.394 / -0.686 ns | [S] |
-| **fmax reg2reg ss / tt** | 172.5 / 288.3 MHz | 167.5 / 257.1 MHz | 101.1 / 179.2 MHz | **185.0 / 295.2 MHz** | [S] |
-| fmax logic-only (no macro paths) ss / tt | 172.5 / 288.3 | 178.0 / 313.0 | 101.1 / 179.2 | 192.5 / 314.1 | [S] |
-| fmax incl. host IO ss / tt | 142.8 / 242.7 (ideal-edge IO) | 167.5 / 257.1 (IO ref) | 101.1 / 179.2 (ideal-edge) | 185.0 / 295.2 (IO ref) | [S] |
-| pre-route fmax ss / tt | 303.2 / 463.3 | 303.2 / 463.3 | 303.2 / 463.4 | 303.2 / 463.4 | [S] synthesis |
-| power clock (tt fmax rounded down) | 285.7 MHz | 256.4 MHz | 178.6 MHz | **294.1 MHz** | |
-| **power (+dat) / energy per inference** | 272.2 mW / 152.4 uJ | 229.0 mW / 142.9 uJ (3.5 ns: 252.2 / 141.2) | 260.9 mW / 119.0 uJ | **388.6 mW / 107.6 uJ** | [P] + [Mo] |
-| post-route / pre-route energy | x1.65 | x1.55 (x1.53 at 3.5 ns) | x1.74 | x1.57 | |
-| clock-tree cells / whole clock network share | 17.7 % / 31.2 % | 14.8 % / 29.3 % | 15.5 % / 24.5 % | 13.7 % / 23.5 % | [P] |
-| SAIF annotation | 89.1 % | 90.2 % | 87.1 % | 87.3 % | [P] |
-| inferences / s at the power clock | 1 786 | 1 603 | 2 193 | **3 611** | [M] cycles |
-| zero-delay GLS of the routed netlist, image 0 | PASS | PASS | PASS | **PASS** (81 438 cycles = RTL) | [M] |
+| quantity | v2 `qa_t1` (v2 recipe) | v2 `qa_t1b` (improved) | v3 `qa3_t1` (v2 recipe) | v3 `qa3_t5b` (improved; iteration 4, superseded as the route of record) | **v3 `qa3_t5c` (improved + hub padding, 9 iterations)** | label |
+|---|---|---|---|---|---|---|
+| die | 8.858 mm2 | 9.807 mm2 | 9.542 mm2 | 10.384 mm2 | **10.384 mm2** | [S] |
+| pre-route total area (DC) | 6.430 mm2 | 6.430 mm2 | 6.514 mm2 | 6.514 mm2 | 6.514 mm2 | [S] |
+| standard cells after P&R (DC) | 1.252 mm2 (0.882) | 1.225 mm2 (0.882) | 1.807 mm2 (1.176) | 1.788 mm2 (1.176) | 1.788 mm2 (1.176) | [S] |
+| core utilisation (macros + cells) | 0.779 | 0.700 | 0.759 | 0.695 | 0.695 | [S] |
+| detailed route / DRC markers | 23 it. / 255 | 17 it. / 251 | stopped after it. 4 / 83 318 | stopped after it. 4 / 70 584 | stopped after it. 8 (gdb) / **70 675** | [S] |
+| antenna violations (nets) | 192 | 147 | not run | 129 | **137** | [S] |
+| hold after route, tt / ss (PT) | -0.132 / -0.309 ns | -0.043 / -0.152 ns | -0.381 / -0.692 ns | -0.394 / -0.686 ns | **-0.459 / -0.775 ns** (153 / 181 endpoints) | [S] |
+| **fmax reg2reg ss / tt** | 172.5 / 288.3 MHz | 167.5 / 257.1 MHz | 101.1 / 179.2 MHz | 185.0 / 295.2 MHz | **148.9 / 272.4 MHz** | [S] |
+| fmax logic-only (no macro paths) ss / tt | 172.5 / 288.3 | 178.0 / 313.0 | 101.1 / 179.2 | 192.5 / 314.1 | 148.9 / 272.4 | [S] |
+| fmax incl. host IO ss / tt | 142.8 / 242.7 (ideal-edge IO) | 167.5 / 257.1 (IO ref) | 101.1 / 179.2 (ideal-edge) | 185.0 / 295.2 (IO ref) | 148.9 / 272.4 (IO ref) | [S] |
+| pre-route fmax ss / tt | 303.2 / 463.3 | 303.2 / 463.3 | 303.2 / 463.4 | 303.2 / 463.4 | 303.2 / 463.4 | [S] synthesis |
+| power clock (tt fmax rounded down) | 285.7 MHz | 256.4 MHz | 178.6 MHz | 294.1 MHz | **270.3 MHz** (3.7 ns) | |
+| **power (+dat) / energy per inference** | 272.2 mW / 152.4 uJ | 229.0 mW / 142.9 uJ (3.5 ns: 252.2 / 141.2) | 260.9 mW / 119.0 uJ | 388.6 mW / 107.6 uJ | **361.0 mW / 108.8 uJ** | [P] + [Mo] |
+| post-route / pre-route energy | x1.65 | x1.55 (x1.53 at 3.5 ns) | x1.74 | x1.57 | x1.59 | |
+| clock-tree cells / whole clock network share | 17.7 % / 31.2 % | 14.8 % / 29.3 % | 15.5 % / 24.5 % | 13.7 % / 23.5 % | 13.6 % / 23.3 % | [P] |
+| SAIF annotation | 89.1 % | 90.2 % | 87.1 % | 87.3 % | **87.3 %** | [P] |
+| inferences / s at the power clock | 1 786 | 1 603 | 2 193 | 3 611 | **3 319** | [M] cycles |
+| zero-delay GLS of the routed netlist, image 0 | PASS | PASS | PASS | PASS (81 438 cycles = RTL) | **PASS** (81 438 cycles = RTL) | [M] |
 
-v3 improved vs v2 routed: x0.706 energy per inference (pre-route x0.741), x2.02 throughput, x1.17 die area,
+**Route of record = `qa3_t5c`** (this revision, section 11): the improved recipe plus 1 site of placement padding on
+the act-buffer / xbar / head hub, detailed route run for 9 iterations (0-8; end iteration lowered 24 -> 8 with gdb
+when it had stalled at ~4-7 % per 70-80-min iteration): 70 675 markers, the same as `qa3_t5b` after 5 iterations,
+all of them now inside the hub strip (x 1400-2000 um); neither run converges, and the padding costs timing (PPU lane
+2 and act-macro -> xbar paths, tt 272.4 vs 295.2 MHz).  The `qa3_t5b` iteration-4 numbers are kept above and in
+sections 5-8 (superseded as the route of record; they remain the faster, equally unclean point).
+
+v3 improved (`qa3_t5b`) vs v2 routed: x0.706 energy per inference (pre-route x0.741), x2.02 throughput, x1.17 die area,
 fmax +2.4 % tt / +7.2 % ss.  The improvement study's main lever is the floorplan (logic band large enough for the
 logic at the placement density); the flow settings (IO model, CKBD4 sinks, post-GRT macro hold margin) each give a
 few percent of power or hold, and one side effect (late weight-macro clock) caps the v2b / v3 reg2reg fmax at the
@@ -260,6 +279,7 @@ Full tables: `results/pnr/post_3.5ns*` (v2), `results/pnr/qa_t1b_report_{3.9,3.5
 | v3 `qa3_t1` routed | **RESULT PASS**: all 10 logits + 20 stored maps bit-exact, 22 cycle counters = RTL (0 differ) | 81 438 |
 | **v3 `qa3_t5b` routed** | **RESULT PASS**: all logits + 20 maps bit-exact, 22 counters = RTL (0 differ) | 81 438 |
 | v2 `qa_t1b` routed | **RESULT PASS**, 22 counters = RTL | 159 982 |
+| **v3 `qa3_t5c` routed** (iteration 8) | **RESULT PASS**: all logits + 20 maps bit-exact, 22 counters = RTL (0 differ); simv then hit a bus error in its exit handler (rc 135, after the result and the SAIF were written) | 81 438 |
 
 ## 8. DRC, antennas, hold
 
@@ -268,7 +288,8 @@ Full tables: `results/pnr/post_3.5ns*` (v2), `results/pnr/qa_t1b_report_{3.9,3.5
 | v2 `qa_t1` | 23 iterations | 255 | 192 nets / 192 pins | tt -0.132 (139), ss -0.309 (126) |
 | v2 `qa_t1b` | 17 iterations | 251 (129 short, 64 metal spacing, 32 cut short, 26 cut spacing) | 147 nets / 147 pins | tt -0.043 (11), ss -0.152 (51) |
 | v3 `qa3_t1` | stopped after iteration 4 | 83 318 | not run (not meaningful at this DRC count) | tt -0.381 (69), ss -0.692 (91) |
-| **v3 `qa3_t5b`** | stopped after iteration 4 | **70 584** (56 387 short, 9 878 metal spacing, 4 222 cut spacing, 97 other) | 129 nets / 129 pins | tt -0.394 (120), ss -0.686 (153): host write data -> weight macro D |
+| v3 `qa3_t5b` (superseded) | stopped after iteration 4 | 70 584 (56 387 short, 9 878 metal spacing, 4 222 cut spacing, 97 other) | 129 nets / 129 pins | tt -0.394 (120), ss -0.686 (153): host write data -> weight macro D |
+| **v3 `qa3_t5c`** | stopped after iteration 8 | **70 675** (60 038 short, 8 233 metal spacing, 2 347 cut spacing, 57 other; 99.4 % in x 1400-2000 um) | **137 nets / 137 pins** | **tt -0.459 (153), ss -0.775 (181)**: host write data -> weight macro D; no post-route repair (11.6) |
 
 Not covered by the router's DRC (flow README): M1 MINIMUMCUT rules dropped for pin access, LEF57 rules, metal fill;
 no antenna repair (repair_antennas segfaults in this build).
@@ -281,28 +302,188 @@ Pre-route only, [lowv.md](lowv.md) section "v3": tt 0.8 V logic-only fmax 306.8 
 
 ## 10. Open issues
 
-* **v3 detailed route unfinished** (both runs stopped after iteration 4, 70 584 / 83 318 markers); a full 16-24
-  iteration run needs ~10-15 h on these hosts (iterations 3-4: 70-80 min each, 24-26 GB).  Timing / power / GLS of
-  the v3 routed netlists are of that routing.
+* **v3 detailed route does not converge** (`qa3_t5c`: 70 675 markers after 9 iterations, -4 % per 70-min
+  iteration at the end; `qa3_t5b` 70 584 after 5, `qa3_t1` 83 318 after 5): the act-buffer / xbar / PE hub at the
+  centre of the band (section 11).  Needs a floorplan / architecture change (distributed xbar, wider band or M8
+  over the hub), not a flow setting.  Timing / power / GLS of the v3 routed netlists are of unclean routings.
 * **Weight-macro clock latency** (v2b, v3 improved): with CKBD4 sink buffers the four macro clock gates of a weight
   tier hang on one CKBD4 balance-level buffer (0.24 pF): macro CLK +0.48 ns vs the head registers, and the weight
   macro -> head FC path limits fmax (v2b tt 257 vs logic-only 313 MHz).  Next step: CKBD8 / CKBD16 for the macro
   clock-gate cluster (or a useful-skew / `set_clock_latency` budget on the macro CLK) while keeping CKBD4 for the
   register leaves.
-* **Hold at the macro inputs** after route: v3 tt -0.39 ns (120 endpoints, host write data -> weight macro D); the
-  0.2-ns post-GRT margin covers v2 (-0.04 ns) but not the v3 mismatch between the GRT estimate and the unfinished
-  route; no post-route repair is run (repair_timing after detailed route needs an incremental re-route, not
-  attempted).
+* **Hold at the macro inputs** after route: v3 tt -0.46 ns (`qa3_t5c`, 153 endpoints; `qa3_t5b` -0.39 / 120), all
+  host write data -> weight macro D, caused by the late weight-macro clock; the 0.2-ns post-GRT margin covers v2
+  (-0.04 ns) but not v3; post-route ECO not attempted because the route is not stable (11.6, `hold_eco.tcl`).
 * No antenna repair (segfault in this OpenROAD build); M1 MINIMUMCUT / LEF57 rules not checked; geometric SPEF
   (captable RC, no coupling).
 * The v3 improved run used a tau5 re-synthesis of `qa3_w3.3` (identical logic, 237 netlist lines with different
   net numbering) with the tau1 SAIF (section 6).
 * Host repos of tau5 / usask: their NFS home was not mounted after the reboot, so `git pull` from GitHub failed;
-  the clones were updated from a git bundle (origin temporarily pointed at /tmp/ckp908/repo.bundle).
+  the clones were updated from a git bundle (origin pointed at /tmp/ckp908/repo.bundle; still so on all three hosts).
 
-## 11. Commands
+## 11. Detailed-route convergence of v3: diagnosis and the hub-padding recipe (`qa3c.cfg`)
+
+### 11.1 Where the 70 584 iteration-4 markers of `qa3_t5b` are [S]
+
+`rpt/drt.drc.rpt` of `qa3_t5b` (iteration 4), binned by position (`gr_diag.tcl` / marker scan):
+
+| | count | share |
+|---|---|---|
+| all markers | 70 584 | |
+| by type: short / metal spacing / cut spacing / other | 56 387 / 9 878 / 4 222 / 97 | |
+| shorts by layer: M2 / M3 / M4 / M5 / M6 / M7 | 34 239 / 11 961 / 4 140 / 4 203 / 1 224 / 604 | |
+| x 1600-1800 um (all y) | 43 183 | 61.2 % |
+| x 1400-2000 um | 60 264 | 85.4 % |
+| y 1000-2000 um (the 950-um logic band) | 70 514 | 99.9 % |
+| window x 1400-1800, y 1000-2000 | 55 392 | 78.5 % |
+| markers of that window naming a net of: PE row 2 / u_xbar / top-level (repair, hold buffer) nets / u_act / act read data `ar_rdata` / u_head | 17 266 / 16 947 / 16 101 / 13 128 / 6 702 / 1 314 | |
+
+The markers sit in one ~400 x 1000 um window at the centre of the band, on the act-buffer port logic (`u_act`, the
+48 hold registers and port muxes of the act macros' read data), the xbar (128-b kw window) and the head: the hub
+between the 48 act-macro read ports (macro rows above and below the band) and the 64 PEs.  v2 improved (`qa_t1b`) at
+the same iteration had 10 361 markers; the v3 iteration count went 608 751 -> 248 765 -> 234 187 -> 111 494 -> 70 584
+(iterations 0-4; iterations 3 / 4: 84 / 63 min).
+
+### 11.2 Global-route congestion report [S, OR est.]
+
+`gr_diag.tcl` on `qa3_t5b/db/route_dr.odb` (same netlist / placement; detailed wires removed, `global_route -verbose`
+with the flow's 0.25 layer adjustment, M2-M7):
+
+| layer | derated resource | demand | usage | overflow |
+|---|---|---|---|---|
+| M2 | 6 795 730 | 1 535 311 | 22.6 % | 0 |
+| M3 | 6 494 874 | 2 378 910 | 36.6 % | 0 |
+| M4 | 8 761 649 | 1 746 970 | 19.9 % | 0 |
+| M5 | 12 677 280 | 1 740 731 | 13.7 % | 0 |
+| M6 | 12 679 352 | 490 769 | 3.9 % | 0 |
+| M7 | 10 846 646 | 596 536 | 5.5 % | 0 |
+| total | 58 255 531 | 8 489 227 | 14.6 % | **0** |
+
+The first GRT pass did overflow ("extra iterations to remove overflow"), the final solution has none, and the flow's
+congestion report file is empty (`rpt/gr_congestion.rpt`, 0 bytes).  So, by GRT's edge-capacity model, the design is
+not congested; M6 / M7 are almost unused.  Per 50-um tile, the guides' wire length relative to the tile's track
+capacity is 130-160 % on M2 and 100-127 % on M3 in the hub window vs 50-110 % / 40-90 % in the rest of the band (a
+relative indicator: guides are gcell-wide).  GRT does not see the problem because it lives inside the 3-um gcells:
+the hub's cells are packed at 93-100 % cell utilisation (fillers excluded) over ~200 x 500 um (`gr_diag.tcl` tiles,
+x 1600-1800, y 1350-1900; the band elsewhere 60-90 %), and the M2 / M3 tracks above them are consumed by pin access
+of densely packed, pin-rich cells (muxes, flops) - the shorts are M2 (61 %) / M3 (21 %), i.e. at the pin-access
+layers.  Global congestion margin or layer settings do not change that (the hub demand is local; M6 / M7 have free
+capacity everywhere); cell density in the hub does.
+
+### 11.3 Where the hub density comes from (placement experiments, `place` step only, ~10 min each) [S]
+
+Global placement (target density 0.6, 512 x 512 bins) stops at 10 % overflow; with the hub's net count (3 072 act
+read-data bits in, 64 x 128-b broadcasts out) the wire-length gradient wins over the density penalty there, and the
+remaining overflow concentrates in the hub (a 0.15 mm2 region at 100 % instead of 60 % is ~4 % overflow by itself).
+Tile statistics over the hub window (55 tiles of 50 x 50 um), worst setup at placement (OR est.):
+
+| run | change vs `qa3b.cfg` | hub mean util | tiles > 95 % | place ss / tt WNS ns |
+|---|---|---|---|---|
+| `qa3_t5b` (placement of the routed run) | none | 0.906 | 29 / 55 | -1.668 / +0.306 |
+| `qa3_d5` | PLACE_DENSITY 0.6 -> 0.5 | 0.839 | 21 / 55 | -1.839 / +0.072 |
+| `qa3_o5` | gpl -overflow 0.10 -> 0.05 | 0.915 | 29 / 55 | -1.815 / +0.133 |
+| `qa3_o3` | gpl -overflow 0.03 | | | stopped: Nesterov stalled at overflow 0.038 |
+| `qa3_p1` | hub cells padded 1 site left / right | 0.884 | 6 / 55 | -2.261 / +0.091 |
+| `qa3_p2` | hub cells padded 2 sites | 0.850 | 1 / 55 | -3.998 / -0.657 |
+
+* A lower global density only empties the surroundings (band 50-65 %); the hub stays at 95-100 %.  A tighter
+  overflow target does not move it either (and at 0.03 global placement stalls).
+* `set_placement_padding -instances` is ignored by global placement in this build (gpl reports the same
+  PlaceInstsArea) but enforced by detailed placement: every hub cell gets a free site on each side (M1 / M2 pin
+  access) and the legaliser spreads the hub.  The price is wire length on the act-macro -> xbar paths (p2: worst
+  ss path act macro -> u_xbar/win_reg, -4.0 ns at placement).
+* Chosen: pad 1 for the routed run (`qa3c.cfg`, run `qa3_t5c`, tau5), pad 2 as a parallel hedge (`qa3_u5d`, usask,
+  own synthesis of `qa3_w3.3`).  Padding is not stored in the odb and filler placement ignores it while
+  check_placement checks it: `hub_post_cts.tcl` sets it again for the route step, `hub_post_grt.tcl` clears it
+  before the fillers (the first attempt failed there: DPL-0033, 52 841 overlaps).
+
+### 11.4 Routed run `qa3_t5c` (improved recipe + hub pad 1, tau5) [S] [P] [M]
+
+Placement as `qa3_p1`; post-CTS repair ss / tt -1.923 / -0.230 ns, post-GRT -3.645 / -0.449 ns (OR est.; `qa3_t5b`
+-2.223 / -0.196); global route without overflow.  Detailed route (end iteration 24, lowered to 8 with gdb after
+iteration 5, `drt::END_ITERATION` at its symbol address, as for v2):
+
+| iteration | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+|---|---|---|---|---|---|---|---|---|---|
+| `qa3_t5c` markers | 648 053 | 273 247 | 259 410 | 141 244 | 99 837 | 84 828 | 77 062 | 73 622 | **70 675** |
+| `qa3_t5c` wall min | 28 | 25 | 23 | 104 | 82 | 79 | 71 | 70 | 67 |
+| `qa3_t5b` markers | 608 751 | 248 765 | 234 187 | 111 494 | 70 584 | | | | |
+
+Final 70 675 markers: 60 038 shorts (M2 34 148, M3 12 965), 8 233 metal spacing, 2 347 cut spacing; **99.4 % in x
+1400-2000 um** (`qa3_t5b`: 85 %, with ~10 000 markers spread over the rest of the band).  The padding cleared the
+periphery of the hub but not its core, and iterations 0-4 ended higher than in `qa3_t5b`.
+
+Post-route (same steps as `qa3_t5b`; files `results/pnr_v3/qa3_t5c_*`):
+
+| quantity | `qa3_t5c` | `qa3_t5b` (it. 4) | label |
+|---|---|---|---|
+| PT reg2reg fmax ss / tt (SPEF) | 148.9 / 272.4 MHz | 185.0 / 295.2 MHz | [S] |
+| worst path | u_ppu lane 2 y5_reg -> out6_reg (ss and tt; 3.33 ns of data, ~33 cells) | weight macro -> u_head/dot2 | [S] |
+| logic-only / incl. host IO, tt | 272.4 / 272.4 | 314.1 / 295.2 | [S] |
+| hold WNS tt / ss (endpoints) | -0.459 (153) / -0.775 (181), host write data -> weight macro D | -0.394 (120) / -0.686 (153) | [S] |
+| SPEF annotation | 412 838 of 423 785 nets (97.4 %) | 97.4 % | [S] |
+| antenna (check_antennas on route_dr) | 137 nets / 137 pins | 129 / 129 | [S] |
+| PTPX clock (tt fmax rounded down) | 3.7 ns (270.3 MHz) | 3.4 ns (294.1 MHz) | |
+| PT total (int / switch / leak) | 320.66 mW (172.35 / 118.99 / 29.32) | 344.72 | [P] |
+| **+dat total / energy per inference** | **361.0 mW / 108.8 uJ** | 388.6 mW / 107.6 uJ | [P] + [Mo] |
+| clock-tree cells / clock_network group | 48.9 mW (13.6 %) / 84.1 mW (23.3 %) | 53.1 (13.7 %) / 91.5 (23.5 %) | [P] |
+| PE array / PPU / top-level glue mW | 150.6 / 41.8 / 34.4 | 162.9 / 45.3 / 36.8 | [P] |
+| SAIF annotation | 87.30 % (12.04 % P&R nets propagated, 0.67 % default) | 87.31 % | [P] |
+| inferences / s at the power clock | 3 319 | 3 611 | [M] cycles |
+| zero-delay GLS of the routed netlist, image 0 | PASS (81 438 cycles = RTL) | PASS | [M] |
+
+The energy per inference is the same within 1 % (lower power at a lower clock); the slower clock comes from PPU lane 2
+(its ~33-cell y5 -> out6 path is 3.33 ns of data from a clock arriving at 1.20 ns; the lane is re-placed by the
+padding run, `qa3_t5b` had it off the critical list) and from the act-macro -> xbar paths that the padding stretched
+(`qa3_p2` placement: -4.0 ns ss on act macro -> u_xbar/win_reg).
+
+### 11.5 Higher global-route margin (`qa3_u5g`, usask) and pad 2 (`qa3_u5d`) [S, OR est.]
+
+* `qa3_u5d` (pad 2, usask, own synthesis of `qa3_w3.3`): post-CTS ss / tt -2.211 / -0.127 ns, then **global route
+  failed** (GRT-0119, "routing congestion too high"): 51 gcells with overflow 1, all horizontal, all at x 1479-1512
+  um / y 1605-1698 um, on `ar_rdata`, `u_xbar` window / select nets and PE row 2 sums.  Spreading the hub by 2 sites
+  turns its local wiring into a global-route overflow: direct evidence that the hub's wiring demand, not only its
+  cell density, is the limit.
+* `qa3_u5g` (`qa3b.cfg` with GR_ADJUST 0.25 -> 0.40 on M2-M7, no padding; its post-CTS numbers reproduce
+  `qa3_t5b` exactly, -1.707 / -0.224 ns): global route had not finished after **2.5 h** (FastRoute still in its
+  maze-routing rounds removing overflow; at 0.25 it takes ~20 min) and was stopped - with 40 % of every layer
+  reserved global route cannot resolve the overflow in reasonable time, consistent with the hub demand of pad 2 (not
+  proven: the overflow locations were not reported).  No detailed-route data for this variant.
+* M8 for signals was not tried: GRT leaves M6 / M7 at 4-6 % usage, so upper-layer capacity is not what is missing.
+
+### 11.6 Hold repair at the weight-macro data inputs
+
+Not attempted on a routed database: detailed route is not stable (70 675 markers, still -4 % per 70-min iteration),
+and in this OpenROAD build a post-route ECO means a complete TritonRoute pass again (it re-routes the whole design,
+~9 iterations / ~10 h here) - the precondition "only if detailed route is stable" is not met.  `pnr/hold_eco.tcl`
+implements it (finish.odb + SPEF of every corner, hold uncertainty on the weight-macro CLK pins, `repair_timing
+-hold`, legalise, fillers, incremental GRT, optional detailed route + finish) for a converged route.  Cause of the
+violations (PT, `qa3_t5c`): all are host write data (`u_host/h1_wdata_reg`) -> weight macro D; the weight macro
+clock arrives late (tt clock latency 1.68 ns at `u_wmem_o` bank 2 CLK vs 1.15 ns at the host registers: the CKBD4
+balance-level buffer of section 3), so the fix belongs in CTS (a CKBD8 / CKBD16 macro clock-gate cluster) rather
+than in 150 delay cells.  The path is used only when the host loads the weights.
+
+### 11.7 Conclusion
+
+The v3 detailed route does not converge with density / padding / margin changes because its markers come from one
+place, the centralised act-buffer -> xbar -> PE hub at the centre of the band, whose wiring (3 072 act read-data bits
+in, a 128-b window broadcast to 64 PEs out, through ~200 x 500 um) exceeds what M2-M7 can carry there once pin access
+is accounted for: unpadded, GRT sees no overflow but detailed route leaves ~70 k M2 / M3 shorts there; padded by 2
+sites, GRT itself overflows there.  What would help is architectural / floorplan: splitting the xbar per PE column
+group (or per act-buffer row) so the read data does not converge on one spot, or a wider band only around the hub
+with M8 signal tracks over it - not attempted in this time box.
+
+## 12. Commands
 
 ```bash
+# this revision (section 11): diagnosis, placement experiments, route of record qa3_t5c
+QC_FLOW=$PWD/flow/tsmc65 QC_PNR_OUT=$QC_BUILD/pnr/qa3_t5b QC_BUILD=$QC_BUILD openroad -exit qc18acc/pnr/gr_diag.tcl     # GRT -verbose + tile utilisation
+QA_STEP=place QA_NO_GRT=1 QC_FLOW=... QC_PNR_OUT=<run> openroad -exit qc18acc/pnr/gr_diag.tcl                        # tiles only
+QA_V=3 QA_CFG=qc18acc/pnr/qa3c.cfg qc18acc/pnr/run.sh pnr qa3_t5c                      # hub pad 1 (QC_PNR_SET="QA_HUB_PAD 2": qa3_u5d)
+gdb -p <openroad pid> -batch -ex "set var *(int*)0x4644e98 = 8"                         # drt::END_ITERATION (symbol address, this binary)
+QA_V=3 QA_IO_REF=1 qc18acc/pnr/run.sh pt qa3_t5c
+QA_V=3 qc18acc/pnr/power.sh -H tau5 -t qa3_t5c 3.7 && QA_V=3 python3 qc18acc/pnr/report.py 3.7 qa3_t5c
+QA_V=3 qc18acc/gls/run_gls.sh start tau5 qa3_t5c_pnr 0 1
 # v3 baseline (v2 recipe) and v3 improved, on the P&R host in /tmp/$USER/qc18acc/repo:
 QA_V=3 qc18acc/pnr/run.sh pnr qa3_t1
 QA_V=3 QA_CFG=qc18acc/pnr/qa3b.cfg qc18acc/pnr/run.sh pnr qa3_t5b             # (run used QA_BAND=950 + QC_PNR_SET, = qa3b.cfg)

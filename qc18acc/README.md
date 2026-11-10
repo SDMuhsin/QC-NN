@@ -318,3 +318,12 @@ D), post-route fmax reg2reg ss 185.0 / tt 295.2 MHz (logic-only 192.5 / 314.1; p
 ss 101.1 / tt 179.2 MHz, 119.0 uJ at 179 MHz (PPU lanes placed in the macro-row channels).  v2 improved `qa_t1b`
 (700-um band): 251 DRC, ss 167.5 / tt 257.1 MHz (logic-only 313.0), 141.2 uJ at 3.5 ns (v2: 152.4).  Routed-netlist
 zero-delay GLS (image 0) bit-exact for all three.
+
+Route convergence (results/pnr_v3.md section 11): the iteration-4 markers of `qa3_t5b` sit in the act-buffer / xbar /
+head hub at the band centre (cells at 93-100 % utilisation; global route reports no overflow).  `qa3c.cfg` pads the
+hub cells (`hub_pad.tcl`, `hub_post_cts.tcl`, `hub_post_grt.tcl`; `QA_HUB_PAD`, default 1); diagnostics `gr_diag.tcl`,
+post-route hold ECO `hold_eco.tcl` (for a converged route).  Route of record `qa3_t5c` (pad 1, 9 iterations, stopped
+with gdb): 70 675 DRC markers [S] (= `qa3_t5b` at iteration 4, now all in the hub), 137 antenna nets, hold tt / ss
+-0.46 / -0.78 ns, fmax ss 148.9 / tt 272.4 MHz [S], 361.0 mW = 108.8 uJ / inference at 3.7 ns [P] + [Mo] (SAIF
+87.3 %), routed-netlist zero-delay GLS bit-exact (81 438 cycles = RTL) [M]; pad 2 overflows in global route.  The v3 route needs a floorplan / xbar change, not a
+flow setting.

@@ -1,0 +1,23 @@
+place die_um 3363.80 x 3087.00 core_um2 10250084.5 cell_um2 1695120.1 macro_um2 5338108.5 utilisation 0.686
+place place_ss setup_wns_ns -2.261 setup_tns_ns -6001.692 hold_wns_ns -0.038 hold_tns_ns -0.506 | place_tt setup_wns_ns 0.091 setup_tns_ns 0.000 hold_wns_ns -0.003 hold_tns_ns -0.009 | place_ff setup_wns_ns 0.923 setup_tns_ns 0.000 hold_wns_ns -0.005 hold_tns_ns -0.140
+cts die_um 3363.80 x 3087.00 core_um2 10250084.5 cell_um2 1762881.8 macro_um2 5338108.5 utilisation 0.693
+cts cts_ss setup_wns_ns -2.543 setup_tns_ns -10616.734 hold_wns_ns -2.921 hold_tns_ns -263.584 | cts_tt setup_wns_ns -0.252 setup_tns_ns -1.463 hold_wns_ns -1.636 hold_tns_ns -141.638 | cts_ff setup_wns_ns 0.447 setup_tns_ns 0.000 hold_wns_ns -0.983 hold_tns_ns -113.381
+cts_opt die_um 3363.80 x 3087.00 core_um2 10250084.5 cell_um2 1777039.6 macro_um2 5338108.5 utilisation 0.694
+cts_opt cts_opt_ss setup_wns_ns -1.923 setup_tns_ns -10471.851 hold_wns_ns -0.001 hold_tns_ns -0.001 | cts_opt_tt setup_wns_ns -0.230 setup_tns_ns -1.256 hold_wns_ns 0.007 hold_tns_ns -0.000 | cts_opt_ff setup_wns_ns 0.461 setup_tns_ns 0.000 hold_wns_ns -0.024 hold_tns_ns -0.206
+groute groute_ss setup_wns_ns -2.752 setup_tns_ns -18445.066 hold_wns_ns -0.321 hold_tns_ns -10.136 | groute_tt setup_wns_ns -0.508 setup_tns_ns -48.353 hold_wns_ns -0.172 hold_tns_ns -4.602 | groute_ff setup_wns_ns 0.289 setup_tns_ns 0.000 hold_wns_ns -0.108 hold_tns_ns -2.892
+grt_opt die_um 3363.80 x 3087.00 core_um2 10250084.5 cell_um2 1787995.8 macro_um2 5338108.5 utilisation 0.695
+grt_opt grt_opt_ss setup_wns_ns -3.606 setup_tns_ns -17576.016 hold_wns_ns 0.019 hold_tns_ns 0.000 | grt_opt_tt setup_wns_ns -0.431 setup_tns_ns -8.939 hold_wns_ns 0.029 hold_tns_ns 0.000 | grt_opt_ff setup_wns_ns 0.548 setup_tns_ns 0.000 hold_wns_ns -0.048 hold_tns_ns -0.048
+drc_violations NA antenna_net_violations NA antenna_pin_violations NA
+pnr_wall_s 2758 wall 45:57.97 peak_rss_mb 9787
+cts_opt die_um 3363.80 x 3087.00 core_um2 10250084.5 cell_um2 1777039.6 macro_um2 5338108.5 utilisation 0.694
+cts_opt cts_opt_ss setup_wns_ns -1.923 setup_tns_ns -10478.147 hold_wns_ns -0.001 hold_tns_ns -0.001 | cts_opt_tt setup_wns_ns -0.230 setup_tns_ns -1.256 hold_wns_ns 0.007 hold_tns_ns 0.000 | cts_opt_ff setup_wns_ns 0.461 setup_tns_ns 0.000 hold_wns_ns -0.024 hold_tns_ns -0.206
+groute groute_ss setup_wns_ns -2.944 setup_tns_ns -18315.386 hold_wns_ns -0.299 hold_tns_ns -8.985 | groute_tt setup_wns_ns -0.513 setup_tns_ns -43.830 hold_wns_ns -0.162 hold_tns_ns -3.438 | groute_ff setup_wns_ns 0.285 setup_tns_ns 0.000 hold_wns_ns -0.101 hold_tns_ns -2.064
+grt_opt die_um 3363.80 x 3087.00 core_um2 10250084.5 cell_um2 1787991.8 macro_um2 5338108.5 utilisation 0.695
+grt_opt grt_opt_ss setup_wns_ns -3.645 setup_tns_ns -17803.644 hold_wns_ns 0.016 hold_tns_ns 0.000 | grt_opt_tt setup_wns_ns -0.449 setup_tns_ns -8.432 hold_wns_ns 0.030 hold_tns_ns 0.000 | grt_opt_ff setup_wns_ns 0.543 setup_tns_ns 0.000 hold_wns_ns -0.050 hold_tns_ns -0.050
+final die_um 3363.80 x 3087.00 core_um2 10250084.5 cell_um2 1787991.8 macro_um2 5338108.5 utilisation 0.695
+post_route_ss setup_wns_ns -0.025 setup_tns_ns -0.082 hold_wns_ns -0.511 hold_tns_ns -84.540
+post_route_tt setup_wns_ns 1.132 setup_tns_ns 0.000 hold_wns_ns -0.383 hold_tns_ns -164.812
+post_route_ff setup_wns_ns 1.848 setup_tns_ns 0.000 hold_wns_ns -0.338 hold_tns_ns -384.160
+gds_merge: top qa_top cells 329 no GDS: qa_act_512x64m4 qa_dsc_256x32m2 qa_par_4096x72m8 qa_wgt_4096x80m8
+drc_violations 70675 antenna_net_violations NA antenna_pin_violations NA
+pnr_wall_s 36042 wall 9:51:58 peak_rss_mb 25215
