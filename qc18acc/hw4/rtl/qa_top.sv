@@ -157,6 +157,8 @@ module qa_top import qa_pkg::*; (
   logic [2*LNB-1:0] u_pw_bank, u_pr_bank;
   logic [2*AAW-1:0] u_pw_addr, u_pr_addr;
   logic [2*128-1:0] u_pw_wdata;
+  logic [NPPU-1:0] u_hvld;
+  logic [NPPU*64-1:0] u_hp;
   genvar u;
   for (u = 0; u < NPPU; u++) begin : g_ppu
     logic h;
@@ -176,10 +178,10 @@ module qa_top import qa_pkg::*; (
       .pw_we(u_pw_we[u]), .pw_bank(u_pw_bank[u*LNB +: LNB]), .pw_addr(u_pw_addr[u*AAW +: AAW]),
       .pw_wdata(u_pw_wdata[u*128 +: 128]), .pr_re(u_pr_re[u]), .pr_bank(u_pr_bank[u*LNB +: LNB]),
       .pr_addr(u_pr_addr[u*AAW +: AAW]), .pr_rdata(pr_rdata[u*128 +: 128]),
-      .h_vld(), .h_p(), .busy(u_busy[u]));
+      .h_vld(u_hvld[u]), .h_p(u_hp[u*64 +: 64]), .busy(u_busy[u]));
   end
-  assign hres_vld = g_ppu[0].u_ppu.h_vld;
-  assign hres     = g_ppu[0].u_ppu.h_p;
+  assign hres_vld = u_hvld[0];                       // head pool result (unit 0); unit 1 never runs in head mode
+  assign hres     = u_hp[63:0];
 
   // ---- memories ------------------------------------------------------------------------------------------------
   // act buffers: port 0 of the residual reader / writer is shared with the host (idle only)
