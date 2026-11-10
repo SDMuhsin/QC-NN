@@ -2,7 +2,7 @@
 # density behind it.  Reads db/<QA_STEP>.odb (default route_dr), re-runs global_route -verbose with the flow's layer
 # adjustment (QA_GR_ADJ, default the config's GR_ADJUST) writing $OUT/rpt/diag_grt.guide and the congestion report
 # rpt/diag_gr_congestion.rpt, and prints per 50-um tile (QA_TILE) the standard-cell utilisation (fillers excluded)
-# and the dominant block, for the tiles of the window QA_WIN {x0 y0 x1 y1} (um).
+# and the dominant block, for the tiles of the window QA_WIN {x0 y0 x1 y1} (um).  QA_NO_GRT=1: tiles only.
 #   QC_FLOW=... QC_PNR_OUT=<run dir> [QA_STEP=..] [QA_GR_ADJ=..] openroad -exit gr_diag.tcl
 set ::T0 [clock seconds]
 source $::env(QC_FLOW)/pnr/or/lib.tcl
@@ -42,6 +42,7 @@ foreach k [lsort -dictionary [array names area]] {
     puts [format "TILE x %5d y %5d util %.3f top %-36s %.3f" [expr {$ix*$t}] [expr {$iy*$t}] [expr {$area($k)/($t*$t)}] $best [expr {$bv/($t*$t)}]]
 }
 qc_log "tiles done"
+if {[qc_env QA_NO_GRT 0]} { exit }
 # global_route skips nets that already carry a dbWire: drop the detailed-route wires of the signal nets
 set nw 0
 foreach net [$blk getNets] {

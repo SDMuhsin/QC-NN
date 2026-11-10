@@ -40,7 +40,7 @@ sync)
 start)
   s=${1:?step}
   for hv in $HOSTS; do v=${hv%%:*}; h=${hv#*:}; a=""; [ "$s" = gls ] || [ "$s" = power ] && a=$(pts "$v")
-    ssh "$h" "cd $RR/repo && mkdir -p $AB/logs && (QAB_KB=$KB nohup qc18acc/ablation/remote.sh $s $v $a > $AB/logs/${s}_$v.log 2>&1 < /dev/null &); echo started $s $v on \$(hostname -s)"
+    ssh "$h" "cd $RR/repo && mkdir -p $AB/logs && (QAB_KB=$KB QAB_ZD=${QAB_ZD:-0} nohup qc18acc/ablation/remote.sh $s $v $a > $AB/logs/${s}${QAB_ZD:+_zd$QAB_ZD}_$v.log 2>&1 < /dev/null &); echo started $s $v on \$(hostname -s)"
   done ;;
 status)
   s=${1:?step}
