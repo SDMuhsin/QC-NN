@@ -1,6 +1,7 @@
 """Executed-op count of the QC18-ACC v4 program (ARCH.md v4 addendum "Metric of record: executed ops").
 
     python3 -m qc18acc.compile4.ops EXPORT_DIR [cycles_per_image] [f_MHz ...]
+    python3 -m qc18acc.compile4.ops --writes EXPORT_DIR      (act-buffer words written per image)
 
 ops = 2 x executed MACs.  An 8x8 QC block code has <= 2 nonzero terms; each nonzero term (a signed shifted identity)
 is 8 MACs (one per block output row), so a block executes 8 x (nonzero terms) <= 16 MACs, never 64.  A ternary x
@@ -49,7 +50,18 @@ def executed(d):
                 peak_block_macs=16 * tot_blocks_px)
 
 
+def act_writes(d):
+    """128-b activation words written per image (every output word of every pass exactly once; RAW16: 2 byte planes
+    per pair).  v4 act macros: one macro write per word."""
+    from qc18acc.compile.program import RAW16
+    desc = np.array(hexwords(f"{d}/desc.hex"), dtype=np.uint32)
+    return sum((8 if p.mode == RAW16 else 4) * p.cout64 * p.Hout * p.Wout for p in read_program(desc)[:-1])
+
+
 def main():
+    if sys.argv[1] == "--writes":
+        print(act_writes(sys.argv[2]))
+        return
     d = sys.argv[1]
     cyc = int(sys.argv[2]) if len(sys.argv) > 2 else None
     fs = [float(v) for v in sys.argv[3:]] or [400.0]

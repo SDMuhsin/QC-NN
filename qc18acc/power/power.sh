@@ -24,6 +24,13 @@ SAIF=$G/qa_top_img0$SFX.saif
 D=$G/power/${MODE}_${P}ns
 OUTL=$Q/../results/$OD; mkdir -p "$OUTL"
 DBTT=$(ssh "$H" ". $SYN/run.env; echo \$QC_EXTRA_DB_TT")
+DATW=""
+if [ "${QA_V:-2}" = 4 ]; then   # v4 act writes per SAIF cycle: output words / image (compile4.ops) / SAIF window (GLS log)
+    LOC=${QC_LOCAL:-/tmp/root/qc18acc4}
+    NW=$(cd "$Q/../.." && python3 -m qc18acc.compile4.ops --writes "$LOC/export_rtl")
+    NC=$(sed -n 's/^SAIF .*(\([0-9]*\))$/\1/p' "$LOC/gls_$T$SFX.log" | head -1)
+    DATW="qa_act_256x128m2:$(python3 -c "print($NW / $NC)")"; echo "act writes $NW / $NC SAIF cycles -> $DATW"
+fi
 ssh "$H" "set -e; cd $R && git pull -q --ff-only; mkdir -p $D; test -s $SAIF
   S=$SAIF
   if [ $P != $SIMP ]; then S=$D/scaled.saif; python3 -I qc18acc/power/saif_scale.py \$(python3 -c 'print($P / $SIMP)') $SAIF > \$S; fi
@@ -35,7 +42,7 @@ ssh "$H" "set -e; cd $R && git pull -q --ff-only; mkdir -p $D; test -s $SAIF
     setenv QC_SDC $R/qc18acc/impl/constraints.sdc; setenv QC_PERIOD $P; setenv QC_EXTRA_DB_TT \"$DBTT\"; setenv QA_MACROS \"$MAC\"; \
     setenv SAIF '\$S'; setenv OUT $D/pt; pt_shell -f $R/qc18acc/power/pe_power.tcl >& pt_pe.log'
     grep '^Error' pt_pe.log | sort | uniq -c | head; cat pt_pe.txt; fi
-  . $R/flow/tsmc65/site/sram.sh; python3 -I $R/qc18acc/power/macro_dat.py \$QC_MC_OUT pt_macros.txt > pt_macro_dat.txt; cat pt_macro_dat.txt"
+  . $R/flow/tsmc65/site/sram.sh; QA_DAT_WRITES=$DATW python3 -I $R/qc18acc/power/macro_dat.py \$QC_MC_OUT pt_macros.txt > pt_macro_dat.txt; cat pt_macro_dat.txt"
 scp -q "$H:$D/pt.txt" "$OUTL/${MODE}_${P}ns.txt"
 scp -q "$H:$D/pt_blocks.txt" "$OUTL/${MODE}_${P}ns_blocks.txt"
 scp -q "$H:$D/pt_macro_dat.txt" "$OUTL/${MODE}_${P}ns_macros.txt"

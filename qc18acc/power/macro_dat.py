@@ -18,6 +18,9 @@ edges, WEN = 0 only together with CEN = 0 and only during writes) per analysed c
   P = f_clk x (reads E_read + writes E_write + desel E_desel),   EMA = 000 (index 0, qa_sram_tech.sv).
 (Same numbers as the v1 formula, which counted per CLK edge, when the clock is ungated.)
 Output: one line per macro type (design names and derived numbers only) and the totals.
+QA_DAT_WRITES="<ref>:<writes per analysed cycle, all instances>[,...]" (v4, power.sh): the v4 WEN pins are driven by
+flops that hold their value between accesses, so P(WEN = 0) is not the write rate there; for these types the writes
+are the given count and reads = accesses (from CEN, reloaded every cycle) - writes.
 """
 import collections
 import sys
@@ -61,6 +64,15 @@ with open(act) as f:
         a["r"] += (pon - pw) / period                         # per ns
         a["w"] += pw / period
         a["d"] += max(0.0, e - pon) / period
+import os
+for kv in filter(None, os.environ.get("QA_DAT_WRITES", "").split(",")):
+    ref, w = kv.split(":")
+    if ref in acc:
+        a = acc[ref]
+        tot = a["r"] + a["w"]
+        a["w"] = float(w) / period
+        a["r"] = tot - a["w"]
+        print(f"# {ref}: writes per cycle from QA_DAT_WRITES = {float(w):.4f} (WEN-based estimate overridden)")
 print(f"# macro datatable model, corner {corner}, escale {escale}, period_ns {period}: per type n, reads / writes / deselected clocks "
       f"per cycle (sum over instances), E_read / E_write / E_desel pJ, P_read / P_write / P_desel / P_dyn W, datatable standby leakage W")
 tot = 0.0
