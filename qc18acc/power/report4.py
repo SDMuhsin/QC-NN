@@ -154,9 +154,8 @@ def main():
     for v in V:
         f, p, c = T[v]
         for k in ("ss", "tt", "ff"):
-            cl = c.get(k)
-            print(f"| {v} | {k} | {f[k]:.1f} | `{p[k][0]}` -> `{p[k][1]}` | "
-                  f"{'%d / %d' % cl if cl else 'n/a (v3 hook)'} |")
+            cl = c.get(k) or (int("g_mac" in p[k][0]), int("g_mac" in p[k][1]))     # v3: from the pin names
+            print(f"| {v} | {k} | {f[k]:.1f} | `{p[k][0]}` -> `{p[k][1]}` | {cl[0]} / {cl[1]} |")
 
     # ---- energy
     if not all((Q / "results" / d["power"] / f"{mode}_{per}ns.txt").exists() for d in V.values()):
@@ -187,6 +186,36 @@ def main():
         a = res["v3"]["blocks"].get(n.replace("48 x 256x128", "48 x 512x64"), float("nan"))
         b = res["v4"]["blocks"][n]
         print(f"| &nbsp;&nbsp;{n}: uJ / inference | {a:.3f} | {b:.3f} | {b / a:.3f} |")
+    blk = 8724480                                          # QC blocks per image (stem odd zero blocks not counted)
+    pe = {v: res[v]["blocks"]["PE array (u_array)"] / blk * 1e6 for v in V}
+    print(f"| PE array pJ / QC block | {pe['v3']:.3f} | {pe['v4']:.3f} | {pe['v4'] / pe['v3']:.3f} |")
+    ctl = "AGU + xbar + seq + host + top glue"
+    xb = {v: res[v]["blocks"][ctl] + res[v]["blocks"]["act buffer logic (hold regs, port muxes)"] for v in V}
+    print(f"| control + act-buffer logic (AGU, xbar, seq, host, glue, act-port / boundary / xbar stages) uJ | "
+          f"{xb['v3']:.3f} | {xb['v4']:.3f} | {xb['v4'] / xb['v3']:.3f} |")
+    print(f"| executed ops / J (TOPS / W) | {2 * macs / res['v3']['uj'] / 1e6:.2f} | {2 * macs / res['v4']['uj'] / 1e6:.2f} | "
+          f"{res['v3']['uj'] / res['v4']['uj']:.3f} |")
+    # PE-internal groups per QC block (pe_power.tcl: per-PE average W)
+    print("\nPE-internal power (pe_power.tcl, per-PE average) and energy per QC block (P_PE x T_image x PEs / 8 724 480) [S]:\n")
+    print("| group | v3 uW / PE | v4 uW / PE | v3 fJ / block | v4 fJ / block | v4 / v3 |")
+    print("|---|---|---|---|---|---|")
+    G = {}
+    for v, d in V.items():
+        f = Q / "results" / d["power"] / f"{mode}_{per}ns_pe.txt"
+        G[v] = {l.split()[0]: float(l.split()[4]) for l in f.read_text().splitlines() if l.startswith("pe:") and len(l.split()) == 5}
+    names = dict(rot="rotators (4 x 8-lane)", accadd="fused trits + 4 terms + accumulate (u_acc)",
+                 accreg="accumulator registers (data part)", shreg="shadow registers (data part)",
+                 top="capture / shift-in muxes", clock="clock: DC clock gates + register clock pins")
+    tot = {v: 0.0 for v in V}
+    for g, n in names.items():
+        e = {}
+        for v, d in V.items():
+            t = d["cyc"] * float(per) * 1e-9
+            e[v] = G[v][f"pe:{g}"] * t * d["pes"] / blk * 1e15
+            tot[v] += e[v]
+        print(f"| {n} | {G['v3'][f'pe:{g}'] * 1e6:.1f} | {G['v4'][f'pe:{g}'] * 1e6:.1f} | {e['v3']:.1f} | {e['v4']:.1f} | "
+              f"{e['v4'] / e['v3']:.3f} |")
+    print(f"| **PE total** | | | {tot['v3']:.1f} | {tot['v4']:.1f} | {tot['v4'] / tot['v3']:.3f} |")
 
 
 if __name__ == "__main__":

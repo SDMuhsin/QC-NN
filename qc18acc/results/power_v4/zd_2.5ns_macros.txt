@@ -1,0 +1,10 @@
+# qa_act_256x128m2: writes per cycle from QA_DAT_WRITES = 0.9911 (WEN-based estimate overridden)
+# qa_wgt_4096x80m8: writes per cycle from QA_DAT_WRITES = 0.0000 (WEN-based estimate overridden)
+# qa_par_4096x72m8: writes per cycle from QA_DAT_WRITES = 0.0000 (WEN-based estimate overridden)
+# qa_dsc_256x32m2: writes per cycle from QA_DAT_WRITES = 0.0000 (WEN-based estimate overridden)
+# macro datatable model, corner tt_1p0v_25c, escale 1.0, period_ns 2.5: per type n, reads / writes / deselected clocks per cycle (sum over instances), E_read / E_write / E_desel pJ, P_read / P_write / P_desel / P_dyn W, datatable standby leakage W
+datmacro:qa_dsc_256x32m2 n 1 clk_per_cycle 0.0040 reads_pc 0.0040 writes_pc 0.0000 desel_pc 0.0000 E_read 7.29 E_write 10.38 E_desel 0.86 P_read 1.156184e-05 P_write 0.000000e+00 P_desel 0.000000e+00 P_dyn 1.156184e-05 leak_dat 5.000000e-05
+datmacro:qa_act_256x128m2 n 48 clk_per_cycle 0.1266 reads_pc 5.0836 writes_pc 0.9911 desel_pc 0.0000 E_read 23.53 E_write 35.45 E_desel 1.56 P_read 4.785102e-02 P_write 1.405500e-02 P_desel 2.001985e-08 P_dyn 6.190605e-02 leak_dat 6.473280e-03
+datmacro:qa_par_4096x72m8 n 2 clk_per_cycle 0.0568 reads_pc 0.1135 writes_pc 0.0000 desel_pc 0.0000 E_read 31.27 E_write 34.74 E_desel 9.53 P_read 1.420138e-03 P_write 0.000000e+00 P_desel 1.831071e-09 P_dyn 1.420140e-03 leak_dat 2.140000e-03
+datmacro:qa_wgt_4096x80m8 n 6 clk_per_cycle 0.2729 reads_pc 1.6377 writes_pc 0.0000 desel_pc 0.0000 E_read 34.11 E_write 37.91 E_desel 9.95 P_read 2.234369e-02 P_write 0.000000e+00 P_desel 1.190474e-09 P_dyn 2.234369e-02 leak_dat 6.888000e-03
+datmacro:total P_dyn 8.568144e-02

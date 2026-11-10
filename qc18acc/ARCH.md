@@ -1,4 +1,4 @@
-# QC18-ACC: architecture spec (v2; v3 = last section)
+# QC18-ACC: architecture spec (v2; v3 and v4 = last sections)
 
 v2 = v1 (git tag `qc18acc-v1`, results in `results/power.md`) + the kw sliding window (tap order kh, cb, kw; section
 "kw window") + gated macro clocks (implementation, `hw/tech/qa_sram_tech.sv`) + PE function sub-instances.
@@ -282,7 +282,13 @@ cycle-proportional (results/v3.md 5.3).  The ablation rerun at Kb = 2 is not don
 * Head: unchanged schedule / arithmetic; group cb is the half cb[0] of pair plane cb >> 1 (one half enabled).
 * Weight memory: 2 x `qa_bankmem` (3 x 4096 x 80, `u_wmem_e` / `u_wmem_o`), same 6 macros as v2.
 
-## v4 (planned): 16 pixel rows (128 PEs) and registered macro boundaries
+## v4 (implemented): 16 pixel rows (128 PEs) and registered macro boundaries
+
+Implemented in `compile4/` (layout, golden, cycle model, executed-op count `ops.py`), `hw4/` (RTL, tech mapping, TB),
+`impl/v4/` (macro sweep, SDC, PT hook); `QA_V=4` selects v4 in `impl/run.sh`, `gls/run_gls.sh`, `power/power.sh`,
+`power/energy.py` (v2 / v3 unchanged).  Results with every number labelled: `results/v4.md`.  The text below is
+the plan; the implementation notes and deviations follow the addendum (**[impl]**).
+
 
 **Why (v3 measurements).**
 1. *Clock.* v3 meets tt 463 MHz pre-route, but the routed (provisional) design reaches only tt 295 / ss 185 MHz.
@@ -336,6 +342,10 @@ cycle-proportional (results/v3.md 5.3).  The ablation rerun at Kb = 2 is not don
 | Energy / inference at 400 MHz tt | 68.5 uJ | ~55-60 uJ: PE energy per block unchanged; leakage, control and weight reads per image about halve |
 | Pre-route tt fmax | 463 MHz | >= v3, set by the PE / PPU, not by macros |
 
+**[impl] Measured** (`results/v4.md`): 42 360 cycles / image [M] (model 44 512); 7.764 mm2, 1 601.9 kGE [S]; 62.68 uJ /
+inference at 400 MHz tt [S + Mod]; pre-route fmax tt 465.5 MHz, no critical path at a macro [S]; 9 443 inferences / s,
+10.49 dense-equivalent TOPS, 1.35 dense-equivalent TOPS / mm2; executed ops: 0.422 peak / 0.313 average TOPS / mm2.
+
 * Target after OpenROAD P&R (improved recipe): tt >= 400 MHz.
 * Throughput at 400 MHz: ~9k inferences/s, ~10 dense-equivalent TOPS, ~1.3 TOPS/mm2 pre-route.
 
@@ -363,3 +373,34 @@ cycle-proportional (results/v3.md 5.3).  The ablation rerun at Kb = 2 is not don
   Target, after the v4 bottleneck analysis: > 1.5 executed TOPS/mm2 routed, which is Valavi JSSC'19.
 * **Area per executed op.** Report the area per peak executed MAC/cycle, split into macros, PE (acc regs,
   adders, operand regs, clock), PPU, xbar and control. This is the input to v5.
+
+**[impl] notes and deviations (v4).**
+
+* Compiler: the v3 program unchanged (weights word for word, descriptors, params, proofs); `compile4.layout` adds the
+  16-bank layout (bank = index mod 16, address = index >> 4, flat position bank * 256 + address), the 16-row AGU and
+  16-slot kw window, and the drain pixel pairing (below), with checks that every tensor fits 16 x 256 x 128 b and
+  every output map holds >= one 16-pixel tile.
+* Act macros (sweep `impl/v4/sweep_result.txt`): one rf_sp_adv **256 x 128 mux 2** per bank (55 525 um2) instead of
+  two 256 x 64 halves (2 x 32 180 um2); the 64-b host half writes use a write mask (wp_size 32, no area cost).
+  48 macros = 2.665 mm2 (v3 2.546 mm2).  The head reads a whole bank word and selects the half.
+* Registered boundaries: every macro sits in `qa_sram4` (input pins driven only by flops of `qa_bankmem4` /
+  `qa_actmem4`: one shared address / data register and one CEN flop per macro; output register loaded one cycle
+  after a read, which replaces v3's hold register and hold mux).  Read latency: request (combinational) in cycle t,
+  pins t+1, Q t+2, output register t+3 (`MLAT`).  The AGU's S0 act-bank requests go straight to the input flops
+  (they are the v3 S1 registers moved to the macro); the descriptor fetch, param loader, head and host port absorb
+  the extra latency.  Hold: `impl/v4/constraints.sdc` puts a 0.4-ns minimum delay (`QA_MACRO_MIN`) on all
+  736 A / D / CEN / WEN pins of the weight and param macros.
+* Distributed xbar: per-macro output register (t+3) -> bank-select register at each bank (t+4, 3:1 over the
+  buffers, loaded only for the banks read) -> stage A (t+5, rotate by rot[1:0], 4:1) -> window (t+6, rotate by
+  4 rot[3:2], 4:1, or shift / hold).  Residual / host read path: output register -> per-port group register (4 banks
+  x 3 buffers) -> port register (t+5, `RLAT`).  Write path: group register per 4 banks (t+1) -> per-bank write-data
+  register + per-(buffer, bank) address / CEN / WEN flops (t+2).  Issue -> capture is 6 cycles (v3 3).
+* Drain / PPU: 32 lanes chosen by the cycle model (16 lanes lose 34.8 %).  Each column has two shadow chains split by
+  row bit 1 (A: rows 0, 1, 4, 5, ..., B: rows + 2); a drain read takes pixel a (chain A head) to PPU unit 0 and pixel
+  a + 2 (chain B head) to unit 1 (two v3-style 16-lane units, each with its own write and residual port).  Rows a and
+  a + 2 are in different banks for raster and phase layouts at every map size of the network (rows a, a + 8 are not:
+  phase layout at 8 x 8).  The PPU lane has 8 stages (v3 6) because the residual word arrives RLAT = 5 cycles after
+  its request at the drain read.
+* Head: one row of 16 pixel words per channel group, FC dot split into a product and a sum stage from the weight
+  macro's output register, 2-entry FIFO of pooled results so the pool runs ahead of the FC.
+

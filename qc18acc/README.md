@@ -11,7 +11,8 @@ unchanged); (2) per-tile tap order kh, cb, kw with an 8-word kw sliding window i
 split into function sub-instances (rotators, trit + 2-term add, accumulate add) for the power breakdown.
 **v3** (Kb = 2, two QC blocks per PE per cycle; section "v3" below, results [results/v3.md](results/v3.md), netlist
 tag `qa3_w3.3`): separate small trees `compile3/`, `hw3/`, `impl/v3/`, selected by `QA_V=3` in the shared impl / GLS /
-power scripts; v2 stays the default build.  Numbers below this line are v1 unless marked v2 / v3.
+power scripts; v2 stays the default build.  **v4** (16 pixel rows, registered macro boundaries, distributed crossbar;
+section "v4" below, [results/v4.md](results/v4.md), netlist tag `qa4_w3.3`): `compile4/`, `hw4/`, `impl/v4/`, `QA_V=4`.  Numbers below this line are v1 unless marked v2 / v3.
 
 ## Compiler + golden model (`compile/`)
 
@@ -228,6 +229,52 @@ QA_V=3 python3 qc18acc/power/lowv.py                                            
 
 Result (pre-route): logic-only fmax 306.8 MHz at 0.8 V; 300 MHz: 156.5 mW, 42.5 uJ / inference (1.0 V same clock
 69.9 uJ; v2 at 0.8 V 57.1 uJ).
+
+## v4: 16 pixel rows, registered macro boundaries (`compile4/`, `hw4/`, `impl/v4/`; [results/v4.md](results/v4.md))
+
+ARCH.md section "v4" (+ addendum, **[impl]** notes).  128 v3 PEs (16 rows x 8 columns, Kb = 2), 16-bank activation
+buffers (48 x rf 256 x 128 macros with a 32-b write mask), every macro behind input flops and its own output register,
+a staged bank -> row crossbar (bank-select / stage-A / window registers) and staged write path, two 16-lane PPU units
+(32 lanes chosen by the cycle model), pipelined head FC.  Same weight / param / descriptor images as v3.
+
+| file | contents |
+|---|---|
+| `compile4/layout.py` | 16-bank layout (bank = index mod 16, 256-deep), 16-row AGU, 16-slot kw window, drain pixel pairing (rows a, a + 2) + bank-conflict check |
+| `compile4/program.py`, `golden.py` | v3 program + v4 layout checks; golden (GEMM + literal window path), cycle MODEL for 16 / 32 PPU lanes |
+| `compile4/export.py`, `main.py`, `test_compile.py` | `$readmemh` images (16 x 256 buffers), CLI (lane decision), unit tests |
+| `compile4/ops.py` | executed-op count from the weight image (ARCH v4 addendum), peak / workload-average TOPS |
+| `hw4/rtl/*` | `qa_sram4` (registered macro boundary), `qa_bankmem4`, `qa_actmem4` (48 macros, staged read / write paths), `qa_agu`, `qa_xbar` (stage A + window), `qa_array` (16 x 8 v3 `qa_pe`, two shadow chains per column), `qa_drain`, `qa_ppu(_lane)` (16 lanes, 8 stages; 2 units), `qa_head`, `qa_seq`, `qa_host`, `qa_top`; file list `qc18acc.f` |
+| `hw4/tech/*`, `hw4/tb/*`, `hw4/sim/*` | `qa_sram4_tech.sv` (ARM macros), TB, mini program, `run_rtl.sh`, `run_unit.sh`, `cycles.py` |
+| `impl/v4/` | act macro sweep (`sweep.txt`, `sweep_result.txt`), `macros.txt`, `constraints.sdc` (min delay into the weight / param macros), `pt_hook.tcl` (path class, macro-boundary paths, hold), `area_groups.tcl` / `area_run.sh` (area groups, xbar fan-in) |
+| `power/report4.py` | v3 vs v4 tables of results/v4.md (TOPS, area per executed MAC, xbar, timing, energy) |
+
+```bash
+python3 -m qc18acc.compile4.test_compile
+CUDA_VISIBLE_DEVICES=0 python3 -m qc18acc.compile4.main --n 1000 --literal 4 --acc   # proofs, cycle model + lanes, bit-exact
+qc18acc/hw4/sim/run_unit.sh mini                                                # iverilog: full TB on the mini program
+qc18acc/hw4/sim/run_rtl.sh usask 0 4                                            # VCS RTL images 0..3 (QC_TECH=1: macro models)
+ssh <host> 'cd /tmp/ckp908/qc18acc/repo && QA_V=4 qc18acc/impl/run.sh macros'   # 256x128 act macro views
+ssh <host> 'cd /tmp/ckp908/qc18acc/repo && QA_V=4 qc18acc/impl/run.sh all 3.3 qa4_w3.3'   # DC + PT ss/tt/ff (~40 min)
+QA_V=4 qc18acc/gls/run_gls.sh start <host> qa4_w3.3 0 1                         # GLS zero delay + SAIF; then check
+QA_V=4 qc18acc/gls/run_gls.sh sdf <host> qa4_w3.3                               # tt SDF + ideal-clock view
+QA_V=4 QA_SDF=1 qc18acc/gls/run_gls.sh start <host> qa4_w3.3 0 1                # tt-SDF GLS; then check
+QA_V=4 qc18acc/power/power.sh -H <host> -o power_v4 -e qa4_w3.3 sdf             # PTPX + PE groups + macro model (also zd)
+QA_V=4 python3 qc18acc/power/energy.py qc18acc/results/power_v4
+python3 qc18acc/power/report4.py /tmp/root/qc18acc4/export_rtl sdf 2.5            # tables of results/v4.md
+```
+
+Results ([results/v4.md](results/v4.md); labels M measured / S synthesis estimate / Mod model): golden bit-exact 1000
+images, 10k test 91.33 % (= v3); VCS RTL images 0..3 (also with the macro models) and GLS zero delay + tt SDF (image 0)
+bit-exact, **42 360 cycles / image** [M] (v3 81 438, x0.520; model 44 512); 32 PPU lanes (16 lanes lose 34.8 % [Mod]);
+`qa4_w3.3` **7.764 mm2** [S] (macros 5.457, logic **1 601.9 kGE**, PE 7.94 kGE), fmax ss 303.5 / tt 465.5 / ff 661.9
+MHz [S], no critical path at a macro (ss: PPU partial product; tt / ff: seq perf counters), macro-boundary paths
+>= +1.8 ns at ss; xbar: no stage sees a macro Q pin, widest fan-in 16 start points (v3 window bit 80, 24 of them macro
+Q pins), 49 064 vs 23 197 leaf cells; at 400 MHz tt **591.9 mW, 62.68 uJ / inference** [S] + [Mod] (v3 68.45; predicted
+55-60), PE energy per QC block x0.994; executed ops (2 x MACs actually executed, 128.5 M MACs / image [Mod]): **3.28 peak /
+2.43 workload-average executed TOPS** at 400 MHz = **0.422 / 0.313 executed TOPS / mm2** pre-route (0.491 / 0.364 at the
+tt fmax; dense-equivalent 1.35, secondary); 1 896 um2 per peak executed MAC / cycle, 71 % of it macros (target 1.5
+executed TOPS / mm2 at 400 MHz needs 533).  Pre-route hold at the weight / param macro pins (0.4-ns min-delay rule in
+the netlist SDC) is left to P&R as in v2 / v3; the tt-SDF GLS reports those hold checks, bit-exact with `+no_notifier`.
 
 ## Array ablation: QC vs TERNARY vs INT8 PE (`ablation/`, results [results/ablation.md](results/ablation.md))
 

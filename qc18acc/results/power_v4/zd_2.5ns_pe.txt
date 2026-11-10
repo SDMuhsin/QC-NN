@@ -1,0 +1,10 @@
+# per-PE average over 128 PEs, W (period_ns 2.5, wire_load WireAreaLowkCon/enclosed); register clock pins: 40960 cells
+# group internal_W switching_W leakage_W total_W
+pe:rot 6.613592e-05 1.601675e-04 1.202792e-05 2.383313e-04
+pe:tadd 0.000000e+00 0.000000e+00 0.000000e+00 0.000000e+00
+pe:accadd 4.850045e-04 2.778159e-04 3.323140e-05 7.960518e-04
+pe:accreg 3.899445e-05 6.531827e-06 5.724912e-06 5.125119e-05
+pe:shreg 2.023695e-05 2.251643e-06 6.093191e-06 2.858179e-05
+pe:top 2.477887e-05 8.017471e-05 3.453830e-06 1.084074e-04
+pe:clock 6.016814e-04 1.155072e-04 2.842634e-07 7.174729e-04
+pe:sum_groups 1.940096e-03 pe:hier_total 1.940096e-03 array_total 2.526635e-01
