@@ -260,6 +260,26 @@ blocks 22.7 / 20.1.  System MODEL per inference: on-chip weight SRAM QC 86 / TER
 gains only ~1.2x; the QC advantage is weight storage / traffic (80 vs 1024 b per step, 0.22 vs 2.8 MB) plus
 ternary-vs-int8 arithmetic.
 
+**Kb = 2 (v3 array geometry)**, results section 7 of [results/ablation.md](results/ablation.md): the same three
+variants with two 8x8 blocks per PE per cycle (QC = `hw3/rtl/qa_array` + `qa_pe` unchanged, 20 b / column; TERNARY
+2 x 64 trits = 256 b, INT8 2 x 64 int8 = 1024 b, both with the v3-style fused 16-term + accumulate sum,
+`ablation/rtl/qab3_*.sv`), streams = the real v3 array inputs of the same layers / tiles (`vectors3.py`, v3 golden
+model), system model on the measured v3 chip (`report3.py`); every step is `QAB_KB=2 qc18acc/ablation/run.sh <step>`
+(host dirs `/tmp/$USER/qc18acc/abl3`, local `/tmp/root/qc18acc/ablation3`).  All 8 points bit-exact (RTL, tt-SDF GLS
+with 0 timing violations, zero-delay GLS).  Array kGE QC 514 / TERNARY 819 / INT8 3831 [S]; pJ / block-op (mean L2 /
+L4, incl. weight register) 3.80 / 4.57 / 44.6 [P]; on-chip system MODEL 65.5 / 142.4 / 723.7 uJ / inference, 6.27 /
+28.97 / 105.7 mm2, 783 / 170 / 46.5 inferences / s / mm2; DRAM 34.9 / 447 / 1786 uJ at 20 pJ / b (2:8-sparse
+ternary storage row: 223 uJ, 1.40 MB).  TERNARY / QC PE energy 1.20x (Kb = 1: 1.19x): registers amortise over two
+blocks and the fused sum helps QC more (L2 gap 1.13 -> 1.31x), but the v3 QC negate form (XOR + carry) toggles with
+the weight sign even for zero activations (L4 gap 1.09 -> 0.80x); `ablation/operand_toggles.py` counts it.
+
+```bash
+QAB_KB=2 qc18acc/ablation/run.sh vec && QAB_KB=2 qc18acc/ablation/run.sh rtl
+QAB_KB=2 QAB_HOSTS="qc:usask tern:usask int8:tau1" qc18acc/ablation/run.sh start syn    # then sdf, gls, power (QAB_ZD=1: zero delay)
+QAB_KB=2 qc18acc/ablation/run.sh fetch && QAB_KB=2 qc18acc/ablation/run.sh report      # -> results/ablation.md section 7, results/ablation_kb2/
+python3 -m qc18acc.ablation.operand_toggles /tmp/root/qc18acc/ablation3/vec              # adder-operand toggles (mechanism)
+```
+
 ## Place & route, OpenROAD (`pnr/`, results [results/pnr.md](results/pnr.md))
 
 `qc18acc/pnr/run.sh pnr <tag>` (flow/tsmc65/pnr with `qa.cfg`: tiered macro floorplan, macro PDN, IO, post-CTS /

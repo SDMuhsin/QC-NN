@@ -57,6 +57,7 @@ gls)
 glsrun)
   pt=$1; W=$AB/gls$X/$v; D=$W/run_$pt; rm -rf "$D"; mkdir -p "$D"; cp -r "$W/simv" "$W/simv.daidir" "$D/"; cd "$D"
   tcs "./simv +VEC=$AB/vec/$pt.txt +PERIOD_PS=$CLKPS +SAIF=$W/$pt.saif" > "$W/$pt.log" 2>&1
+  cd "$W" && rm -rf "$D"                  # the per-point simv copy (~1 GB for the Kb = 2 INT8 netlist)
   "$SELF" glssum "$v" "$pt" ;;
 glssum)
   pt=$1; W=$AB/gls$X/$v

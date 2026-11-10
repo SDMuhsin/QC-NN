@@ -1,0 +1,8 @@
+design qab3_top_tern top qab3_top_tern corner ss period_ns 3.3 topo 0 wire_load WireAreaLowkCon/enclosed
+cell_area_um2 1203639.832088 gate_eq_kGE 835.86 cells 274373 regs 24587
+setup_wns_ns 5.24521e-06 setup_tns_ns 0.000 setup_viol_endpoints 0
+setup_worst_path u_wrap/x_reg_242_/CP -> u_wrap/g_d_u_array/g_col_3__g_row_1__u_pe/sh_out_reg_62_/D
+hold_wns_ns 0.0295805 hold_tns_ns 0.000 hold_viol_endpoints 0
+hold_worst_path u_wrap/g_d_u_array/g_col_3__g_row_1__u_pe/sh_out_reg_104_/CP -> u_wrap/g_d_u_array/g_col_3__g_row_0__u_pe/sh_out_reg_104_/D
+dc_wall_s 1237
+wall 20:47.64 peak_rss_mb 3679

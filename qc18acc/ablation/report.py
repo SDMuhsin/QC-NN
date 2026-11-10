@@ -332,7 +332,14 @@ def main():
       "TERNARY / INT8 (no on-chip weight buffer, area and energy) and charges QC its measured on-chip SRAM.")
     o("- fmax: all variants close 3.3 ns (synthesis target); the 2.0 ns probe is one extra synthesis per variant, not a "
       "sweep.  At 400 MHz (tt) every variant has margin (tt fmax at 3.3 ns >= 466 MHz), so throughput is equal.")
-    open(os.path.join(R, "ablation.md"), "w").write("\n".join(out) + "\n")
+    fn = os.path.join(R, "ablation.md")
+    keep = ""                                         # the Kb = 2 section of report3.py, if present
+    if os.path.exists(fn) and "## 7. Kb = 2" in open(fn).read():
+        t = open(fn).read()
+        keep = "\n" + t[t.index("## 7. Kb = 2"):]
+        out.insert(2, "Sections 1-6: Kb = 1 (v2 array, one block per PE per cycle).  Section 7: Kb = 2 (v3 array, two "
+                   "blocks per PE per cycle; `report3.py`).\n")
+    open(fn, "w").write("\n".join(out) + "\n" + keep)
     D = os.path.join(R, "ablation")
     shutil.rmtree(D, ignore_errors=True)
     os.makedirs(D)
