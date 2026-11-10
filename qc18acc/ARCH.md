@@ -338,3 +338,28 @@ cycle-proportional (results/v3.md 5.3).  The ablation rerun at Kb = 2 is not don
 
 * Target after OpenROAD P&R (improved recipe): tt >= 400 MHz.
 * Throughput at 400 MHz: ~9k inferences/s, ~10 dense-equivalent TOPS, ~1.3 TOPS/mm2 pre-route.
+
+**Addendum (2026-11-10, after the v3 route study `pnr_v3.md` section 11).**
+* **Distributed activation crossbar (route fix).** v3 detailed route does not converge. 99 % of the DRC markers
+  sit in one hub: the activation-buffer / xbar cells at the band centre, at 93-100 % utilisation. Global route
+  shows no overflow, so the problem is local to the hub. v4 must not centralise the bank -> pixel-row xbar.
+  - Each bank's read data is registered at the bank (fix 1).
+  - The rotation from banks to pixel rows is built as a staged or log-shifter network. Each stage has its own
+    registers, so a placer can spread the stages along the macro rows.
+  - The same applies to the write path.
+  - Report the number of xbar cells and the fan-in at its widest point against v3.
+* **Hold.** The host write data into the weight / param macros is launched from flops on the macro side. Set
+  min-delay constraints so the hold ECO has slack to work with.
+* **Metric of record: executed ops.** Our TOPS figures count only the MACs the hardware actually executes:
+  - ops = 2 x executed MACs;
+  - each 8x8 block = 8 outputs x <= 2 terms = 16 MACs, never 64;
+  - each ternary x int8 MAC = 1 op, the same as Valavi's 1b x 1b MAC.
+
+  Report all of the following. Dense-equivalent figures are secondary and must be labelled.
+  - peak executed TOPS = PEs x Kb x 16 x 2 x f;
+  - the workload average (the real count of nonzero terms per image, from the weight image / 1e12 x img/s);
+  - TOPS/mm2 on the full area.
+
+  Target, after the v4 bottleneck analysis: > 1.5 executed TOPS/mm2 routed, which is Valavi JSSC'19.
+* **Area per executed op.** Report the area per peak executed MAC/cycle, split into macros, PE (acc regs,
+  adders, operand regs, clock), PPU, xbar and control. This is the input to v5.
