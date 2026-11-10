@@ -281,3 +281,60 @@ cycle-proportional (results/v3.md 5.3).  The ablation rerun at Kb = 2 is not don
   RF, `v` 20 b, multiplier 20 x 31 (two 20 x 16 / 20 x 15 partial products as v2); the 64-b rounding sum kept.
 * Head: unchanged schedule / arithmetic; group cb is the half cb[0] of pair plane cb >> 1 (one half enabled).
 * Weight memory: 2 x `qa_bankmem` (3 x 4096 x 80, `u_wmem_e` / `u_wmem_o`), same 6 macros as v2.
+
+## v4 (planned): 16 pixel rows (128 PEs) and registered macro boundaries
+
+**Why (v3 measurements).**
+1. *Clock.* v3 meets tt 463 MHz pre-route, but the routed (provisional) design reaches only tt 295 / ss 185 MHz.
+   The limiting paths start or end at SRAM macros:
+   - weight macro -> head FC dot (pre-route critical path);
+   - the weight-macro clock arriving 0.48 ns late through the CTS sink buffers;
+   - hold failures at the weight-macro data inputs (host write path).
+2. *Array size.* Macros are about 5.3 of 6.5 mm2 pre-route; the 64 PEs are about 0.5 mm2. Peak throughput per mm2
+   is therefore set by the memory, not by compute. Doubling the PEs costs little area.
+
+**Changes.**
+* **Registered macro boundaries (fix 1).**
+  - Every macro (weight, act, param, descriptor) gets an output register in the same clock domain. The read
+    latency becomes 2 cycles; the AGU / sequencer / PPU / head pipelines absorb the extra stage, and pass
+    start-up costs +1 cycle.
+  - Address, data and enable inputs of every macro are driven directly by flops with no logic between them and
+    the macro pin. The host write path into the weight / param macros is registered too.
+  - The head FC dot is pipelined so that no path runs from a macro Q to the dot output in one cycle.
+  - Target: the pre-route critical path is inside logic (PE or PPU), not at a macro.
+* **16 pixel rows (fix 3).**
+  - The array becomes 16 rows (output pixels) x 8 columns (output-channel groups) = 128 PEs, each unchanged from
+    v3 (Kb = 2, fused `acc + 4 trit terms`).
+  - The weight word (160 b per cycle) is broadcast to all 16 rows, so the weight memory and its bandwidth are
+    unchanged. Weight read energy per block op halves.
+  - The output tile is 16 consecutive output pixels x 64 channels. The last stage (4 x 4 maps) is exactly one tile.
+  - Columns are not widened: stage-1 layers have only 64 output channels.
+* **Activation buffers.**
+  - 16 pixels x 128 b are read per cycle, so bank = index mod 16 (conflict-free for 16 consecutive indices, in
+    both raster and phase layout).
+  - Capacity is unchanged: 3 x 64 KiB = 16 banks x (lo, hi) x 256 x 64 b.
+  - Choose the macro shape by sweep: rf_sp_adv 256 x 64 versus alternatives with the same capacity. Report the
+    area cost against v3's 512 x 64.
+  - The kw window covers 16 pixels plus the halo.
+* **Drain / PPU.**
+  - A 16 x 64 tile holds 1024 accumulators. At 16 lanes it drains in 64 cycles, against K = 36 for the 64-channel
+    layers, which would stall.
+  - Provide 32 PPU lanes, so a tile drains in 32 cycles, writing 2 bank words of different pixels per cycle.
+  - Use the cycle model to decide: if 16 lanes lose < 3 % of cycles per image, keep 16 and report both.
+  - RES_R / RAW16 stay at 2 cycles per pair.
+* **Unchanged:** the QC codes and weight image (word for word), the pass schedule, buffers A/B/C, the layouts, the
+  bounds and proofs, the head arithmetic, the host and descriptors (add fields only where needed), and the
+  bit-exact chain.
+
+**Prediction (to check).**
+
+| Quantity | v3 measured | v4 predicted |
+|---|---|---|
+| Cycles / image | 81,438 | ~44k (ideal at 128 PEs x 2 blocks: 33.9k; stem padding, drains and pass overheads add ~30 %) |
+| Logic area | 816 kGE | about +0.6M GE: +64 PEs at 7.9 kGE, +16 PPU lanes |
+| Total area, pre-route | 6.5 mm2 | ~7.5 mm2 |
+| Energy / inference at 400 MHz tt | 68.5 uJ | ~55-60 uJ: PE energy per block unchanged; leakage, control and weight reads per image about halve |
+| Pre-route tt fmax | 463 MHz | >= v3, set by the PE / PPU, not by macros |
+
+* Target after OpenROAD P&R (improved recipe): tt >= 400 MHz.
+* Throughput at 400 MHz: ~9k inferences/s, ~10 dense-equivalent TOPS, ~1.3 TOPS/mm2 pre-route.
