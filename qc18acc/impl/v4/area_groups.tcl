@@ -41,12 +41,12 @@ qa_take xbar:stage_a    "u_xbar/sa_reg*"
 qa_take xbar:code       "u_xbar/s3_code_reg*"
 qa_take xbar:ctrl       "u_xbar/*"
 qa_take act:out_regs    "u_act/*u_ram/*"
+qa_take act:write_wd    "u_act/*wd_q_reg*"
 qa_take act:in_flops    "u_act/*_q_reg*"
 qa_take act:bank_select "u_act/ar_rdata_reg*"
 qa_take act:res_path    "u_act/g*r_reg*"
 qa_take act:res_path2   "u_act/pr_rdata_reg*"
 qa_take act:write_path  "u_act/gw_*"
-qa_take act:write_wd    "u_act/*wd_q_reg*"
 qa_take act:other       "u_act/*"
 qa_take ppu             "g_ppu*"
 qa_take ppu_v3          "u_ppu/*"
@@ -63,7 +63,8 @@ set fa [open $out/rpt/area_groups.txt w]
 puts $fa "# group area_um2 leaf_cells   (library cell areas; total [format %.0f [qa_area $qa_all]] um2, [sizeof_collection $qa_all] leaf cells)"
 foreach r $qa_rows { puts $fa [format "%s %.0f %d" {*}$r] }
 # xbar fan-in: start points of the cone of one window-register / stage-A D pin (v3 has no stage A)
-foreach {k pat} {window "u_xbar/win_reg*" stage_a "u_xbar/sa_reg*"} {
+foreach {k pat} {window "u_xbar/win_reg*" stage_a "u_xbar/sa_reg*" bank_select "u_act/ar_rdata_reg*" res_group "u_act/gr_reg*"
+                 res_port "u_act/pr_rdata_reg*" write_data "u_act/*wd_q_reg*" v3_res_word "u_act/pr_rdata*"} {
     set c [index_collection [qa_leaf $pat] 0]
     if {![sizeof_collection $c]} { continue }
     set d [get_pins -quiet -of_objects $c -filter "direction==in && (lib_pin_name==D || lib_pin_name==DA || lib_pin_name==DB)"]
