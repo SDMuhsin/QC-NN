@@ -6,6 +6,7 @@ hold_worst_path u_host/h1_wdata_reg_31_/CP -> u_wmem_o/g_bank_0__u_ram/g_mac_g_w
 all wns_ns -2.279 fmax_mhz 179.2 path u_seq/dw_reg_7__1_/CP -> u_ppu/g_lane_10__u_lane/res5_reg_14_/D
 reg2reg wns_ns -2.279 fmax_mhz 179.2 path u_seq/dw_reg_7__1_/CP -> u_ppu/g_lane_10__u_lane/res5_reg_14_/D
 hold_reg2reg wns_ns -0.381 fmax_mhz 271.7 path u_host/h1_wdata_reg_31_/CP -> u_wmem_o/g_bank_0__u_ram/g_mac_g_wgt_u_mac/D[31]
+reg2reg_logic wns_ns -2.279 fmax_mhz 179.2 path u_seq/dw_reg_7__1_/CP -> u_ppu/g_lane_10__u_lane/res5_reg_14_/D
 clock_latency_worst ----------------------------------------------------------------------- u_pmem/g_bank_1__u_ram/g_mac_g_par_u_mac/CLK 0.79 0.00 1.66 1.66 rp-+ ---------------------------------------------------------------------------- 1 
 clock_skew_worst ----------------------------------------------------------------------- u_pmem/g_bank_1__u_ram/g_mac_g_par_u_mac/CLK 1.66 rp-+ u_drain/rf_bias_reg_14__14_/CP 1.10 -0.00 0.56 rp-+ ---------------------------------------------------------------------------- 1 
-pt_wall_s 63
+pt_wall_s 62
