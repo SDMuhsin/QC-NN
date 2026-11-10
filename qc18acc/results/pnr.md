@@ -8,6 +8,10 @@ for this account), flow `flow/tsmc65/pnr` + design config `qc18acc/pnr/` (`qa.cf
 views stay there).  Post-route analysis: `run.sh pt` (`pt_post_qa.tcl`), `power.sh` (`saif_flat.py`,
 `pt_power_post.tcl`, `macro_dat.py`), `report.py`.  Raw summaries: `results/pnr/`.
 
+Follow-up: diagnosis of the post-route loss (logic spilled into the macro-row channels, WNS-only repair_timing,
+IO-model hold buffers, CKBD16 clock tree), the improvement study and an improved v2 run (`qa_t1b`) are in
+[pnr_v3.md](pnr_v3.md) sections 2-3, 5-6.
+
 **Stage reached: complete** — floorplan, PDN, placement, CTS, global + detailed route (255 residual DRC markers),
 SPEF (captable RC, def2spef), PrimeTime ss / tt, PTPX tt with the v2 SAIF, zero-delay GLS of the post-CTS and routed netlists (both bit-exact).
 
