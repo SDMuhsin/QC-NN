@@ -45,6 +45,22 @@ BLOCKS3 = [  # v3 (Kb = 2): two weight halves, 48 act macros, 16-lane PPU
 ]
 
 
+BLOCKS4 = [  # v4 (16 pixel rows): 128 PEs, 2 PPU units, 48 x 256x128 act macros with registered boundaries
+    ("pe_array (16x8 qa_pe 2-block + 2 shadow chains / col)", ["u_array"]),
+    ("drain (param RF, loader, 2 address sets)", ["u_drain"]),
+    ("ppu (2 units x 16 lanes, 8 stages)", ["g_ppu_0__u_ppu", "g_ppu_1__u_ppu"]),
+    ("head (pool + pipelined FC)", ["u_head"]),
+    ("agu", ["u_agu"]),
+    ("xbar (stage A, 16-slot window, code reg)", ["u_xbar"]),
+    ("seq (descriptors, perf counters)", ["u_seq"]),
+    ("host port + CSRs", ["u_host"]),
+    ("act buffers (48 x 256x128, boundary regs, xbar stages)", ["u_act"]),
+    ("weight SRAM (2 halves x 3 x 4096x80)", ["u_wmem_e", "u_wmem_o"]),
+    ("param SRAM (2 x 4096x72)", ["u_pmem"]),
+    ("descriptor RAM (256x32)", ["u_desc"]),
+]
+
+
 def main(run, out):
     os.makedirs(out, exist_ok=True)
     summ = open(os.path.join(run, "summary.txt")).read()
@@ -85,7 +101,8 @@ def main(run, out):
         m = sum(r[3] for k, r in rows.items() if k == prefix or k.startswith(prefix + "/"))
         return t, m
 
-    for name, insts in (BLOCKS3 if "u_wmem_e" in rows else BLOCKS):
+    blocks = BLOCKS4 if "g_ppu_0__u_ppu" in rows else BLOCKS3 if "u_wmem_e" in rows else BLOCKS
+    for name, insts in blocks:
         t = m = 0.0
         for i in insts:
             a, b = sub(i)
@@ -101,7 +118,7 @@ def main(run, out):
     if pes:
         a = sum(r[0] for r in pes) / len(pes)
         L += ["", f"one PE (mean of {len(pes)} qa_pe): {a:.0f} um2 = {a / nand / 1e3:.2f} kGE; "
-                  f"64 PEs {64 * a:.0f} um2, rest of u_array {rows['u_array'][0] - sum(r[0] for r in pes):.0f} um2"]
+                  f"{len(pes)} PEs {len(pes) * a:.0f} um2, rest of u_array {rows['u_array'][0] - sum(r[0] for r in pes):.0f} um2"]
     L += ["", "hierarchy (depth <= 2, total um2):"]
     for k, r in rows.items():
         if k != top and k.count("/") <= 1 and "clk_gate" not in k and r[0] > 2000:

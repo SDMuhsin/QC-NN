@@ -11,6 +11,9 @@
 # RTL: hw/tech/qc18acc_tech.f (qa_sram on the macros of macros.txt, linked as .db black boxes, dont_touch).
 # QC_BUILD: build root (default /tmp/$USER/qc18acc/build); QC_CORES (default 8).
 # QA_V=3: the v3 design (Kb = 2): hw3/tech/qc18acc_tech.f and the macros of impl/v3/macros.txt (default QA_V=2: v2).
+# QA_V=4: the v4 design (16 pixel rows): hw4/tech/qc18acc_tech.f, impl/v4/macros.txt, SDC impl/v4/constraints.sdc
+#   (= constraints.sdc + min delay QA_MACRO_MIN (default 0.4 ns) into the weight / param macro inputs), PT hook
+#   impl/v4/pt_hook.tcl (= pt_hook.tcl + macro-boundary / logic-only paths, hold into the macros, area groups).
 set -u
 HERE=$(cd "$(dirname "$0")" && pwd)
 ROOT=$(cd "$HERE/../.." && pwd)
@@ -23,6 +26,11 @@ export QC_CORES=${QC_CORES:-8}
 TOP=qa_top
 FL=$ROOT/qc18acc/hw/tech/qc18acc_tech.f; MACROS=$HERE/macros.txt
 if [ "${QA_V:-2}" = 3 ]; then FL=$ROOT/qc18acc/hw3/tech/qc18acc_tech.f; MACROS=$HERE/v3/macros.txt; fi
+if [ "${QA_V:-2}" = 4 ]; then
+    FL=$ROOT/qc18acc/hw4/tech/qc18acc_tech.f; MACROS=$HERE/v4/macros.txt
+    export QC_SDC=$HERE/v4/constraints.sdc QA_SDC_BASE=$HERE/constraints.sdc QC_PT_HOOK=$HERE/v4/pt_hook.tcl
+    export QA_PT_HOOK_BASE=$HERE/pt_hook.tcl QA_MACRO_MIN=${QA_MACRO_MIN:-0.4}
+fi
 
 IFS=, read -r C_SS C_TT C_FF _ <<< "$QC_MC_CORNERS"
 dbs() { sed 's/#.*//' "$MACROS" | awk 'NF >= 5 { print $1 }' |
