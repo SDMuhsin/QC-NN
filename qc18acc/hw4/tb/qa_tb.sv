@@ -55,17 +55,14 @@ module qa_tb;
   // qa_act_1024x64m8 (column mux 8: word a in row a >> 3, bit b at 8 b + a % 8); +define+QA_GLS: the netlist, whose
   // escaped instance names come from the generated include qa_gls_snap.svh (qc18acc/gls/gen_snap.py).
   logic snap_go = 1'b0, pass_end_q = 1'b0;
-  function automatic logic [63:0] unmux4(input logic [255:0] row, input int m);
-    for (int b = 0; b < 64; b++) unmux4[b] = row[4*b + m];
+  function automatic logic [127:0] unmux2(input logic [255:0] row, input int m);   // v4 act macro, column mux 2
+    for (int b = 0; b < 128; b++) unmux2[b] = row[2*b + m];
   endfunction
 `ifdef QA_GLS
   `include "qa_gls_snap.svh"
 `else
   // v4 memory view: RTL qa_sram4 (mem[a], 128 b); QA_TECH: hw4/tech/qa_sram4_tech.sv on the ARM model
   // qa_act_256x128m2 (rf_sp_adv column mux 2: word a in row a >> 1, bit b at 2 b + a % 2); QA_GLS: generated include
-  function automatic logic [127:0] unmux2(input logic [255:0] row, input int m);
-    for (int b = 0; b < 128; b++) unmux2[b] = row[2*b + m];
-  endfunction
   genvar gb, gk;
   for (gb = 0; gb < NBUF; gb++) begin : g_sb
     for (gk = 0; gk < NBANK; gk++) begin : g_sk
