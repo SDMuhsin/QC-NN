@@ -1,0 +1,36 @@
+# group area_um2 leaf_cells   (library cell areas; total 6513716 um2, 332783 leaf cells)
+macro:qa_act 2546180 48
+macro:qa_wgt 2124264 6
+macro:qa_par 647156 2
+macro:qa_dsc 20508 1
+pe:acc_regs 70412 10240
+pe:shadow_regs 70371 10240
+pe:adders 315038 59682
+pe:rotators 226019 94326
+pe:clock 4147 640
+pe:muxes 44058 20143
+array:rest 2880 997
+xbar:window 7004 1024
+xbar:stage_a 0 0
+xbar:code 1295 160
+xbar:ctrl 20966 9691
+act:out_regs 32963 6864
+act:in_flops 102 15
+act:bank_select 0 0
+act:res_path 0 0
+act:res_path2 0 0
+act:write_path 0 0
+act:write_wd 0 0
+act:other 30729 12322
+ppu 0 0
+ppu_v3 244875 80895
+drain 38259 9153
+head 29414 6245
+agu 5593 1736
+seq 11872 2318
+host 5912 2033
+wmem 7198 1760
+pmem 1846 408
+desc 355 76
+glue 4298 1758
+fanin:window pin u_xbar/win_reg_860_/D startpoints 80 macro_pins 24 other 56

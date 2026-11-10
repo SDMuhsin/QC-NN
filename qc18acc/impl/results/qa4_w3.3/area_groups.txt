@@ -1,0 +1,42 @@
+# group area_um2 leaf_cells   (library cell areas; total 7763856 um2, 641672 leaf cells)
+macro:qa_act 2665189 48
+macro:qa_wgt 2124264 6
+macro:qa_par 647156 2
+macro:qa_dsc 20508 1
+pe:acc_regs 140085 20480
+pe:shadow_regs 140112 20480
+pe:adders 627628 118209
+pe:rotators 457318 188792
+pe:clock 8294 1280
+pe:muxes 90151 40307
+array:rest 6093 1668
+xbar:window 14008 2048
+xbar:stage_a 14008 2048
+xbar:code 1249 160
+xbar:ctrl 41654 18966
+act:out_regs 44202 6624
+act:write_wd 14423 2112
+act:in_flops 3923 576
+act:bank_select 14008 2048
+act:res_path 7457 1088
+act:res_path2 1974 256
+act:write_path 7335 1072
+act:other 50272 19266
+ppu 499355 164458
+ppu_v3 0 0
+drain 42496 10673
+head 41050 8444
+agu 7183 2455
+seq 12036 2505
+host 6889 2232
+wmem 5894 992
+pmem 2036 346
+desc 550 87
+glue 5055 1943
+fanin:window pin u_xbar/win_reg_1379_/D startpoints 9 macro_pins 0 other 9
+fanin:stage_a pin u_xbar/sa_reg_1353_/D startpoints 6 macro_pins 0 other 6
+fanin:bank_select pin u_act/ar_rdata_reg_740_/D startpoints 5 macro_pins 0 other 5
+fanin:res_group pin u_act/gr_reg_0__2__0_/D startpoints 16 macro_pins 0 other 16
+fanin:res_port pin u_act/pr_rdata_reg_103_/D startpoints 6 macro_pins 0 other 6
+fanin:write_data pin u_act/g_bank_2__wd_q_reg_114_/D startpoints 5 macro_pins 0 other 5
+fanin:v3_res_word pin u_act/pr_rdata_reg_12_/D startpoints 6 macro_pins 0 other 6
