@@ -216,6 +216,19 @@ kGE), fmax ss 303.2 / tt 463.4 / ff 662.0 MHz (same head-FC critical path as v2)
 68.5 uJ / inference** (v2 231.0 mW, 92.4 uJ; predicted ~70 uJ), PE array energy per QC block x0.684 (predicted
 x0.7), 4 912 inferences / s.
 
+v3 at tt 0.8 V ([results/lowv.md](results/lowv.md) section "v3", same method as v2: cells on the 0.8 V liberty, macros
+MODELLED by V^2 / leakage ratio 0.44, same SDF SAIF):
+
+```bash
+QA_V=3 qc18acc/power/lowv.sh -H tau1 sta qa3_w3.3                                        # 0.8 V STA: logic-only fmax
+QA_V=3 qc18acc/power/lowv.sh -H tau1 power qa3_w3.3 3.3333                               # PTPX 0.8 V + macro model
+QA_V=3 qc18acc/power/lowv.sh -H tau1 -l tcbn65gplustc_ccs -v 1.0 power qa3_w3.3 3.3333   # 1.0 V reference, same clock
+QA_V=3 python3 qc18acc/power/lowv.py                                                     # table (results/lowv_v3)
+```
+
+Result (pre-route): logic-only fmax 306.8 MHz at 0.8 V; 300 MHz: 156.5 mW, 42.5 uJ / inference (1.0 V same clock
+69.9 uJ; v2 at 0.8 V 57.1 uJ).
+
 ## Array ablation: QC vs TERNARY vs INT8 PE (`ablation/`, results [results/ablation.md](results/ablation.md))
 
 Three standalone 8x8 arrays with the v2 geometry, input pipeline register, accumulate / shadow / drain structure and
@@ -255,3 +268,33 @@ post-GRT repair), `run.sh pt <tag>` (PrimeTime ss / tt with the def2spef SPEF, r
 `report.py <period>`.  Result (run qa_t1): die 8.858 mm2, 255 DRC markers, 192 antenna nets, post-route fmax
 ss 172.5 / tt 288.3 MHz (reg2reg; pre-route 303 / 463), 272.2 mW = 152.4 uJ / inference at 286 MHz tt (clock tree
 17.7 %, SAIF annotation 89 %), post-CTS and routed-netlist GLS bit-exact.  Low-voltage point: [results/lowv.md](results/lowv.md).
+
+### v3 P&R and the improved recipe ([results/pnr_v3.md](results/pnr_v3.md))
+
+`QA_V=3` selects `qa3.cfg` (netlist `qa3_w3.3`, `macro_place3.tcl`: 48 rf act halves in 3 rows of 8 per side, v2 flow
+settings, 700-um band); `QA_CFG=qc18acc/pnr/qa3b.cfg` is the improved recipe (950-um band, CTS sink buffer CKBD4,
+host-IO delays relative to the propagated host-register clock, +0.2 ns macro hold margin at GRT), `qab.cfg` the same
+for v2 (700-um band).  Optional flow settings (all default off): `P(QA_IO_REF)`, `P(QA_MACRO_HOLD)`,
+`P(QA_MACRO_HOLD_CTS)`, `P(QA_RT_FOCUS)`, `P(QA_RT_ARGS)`, `P(QA_DRV_POST)` in `post_cts.tcl` / `post_grt.tcl`;
+diagnostics `diag_cts.tcl`, `inband.tcl`, `bbox.tcl`, `grt_only.tcl`, `ant_check.tcl`.
+
+```bash
+# on the P&R host, in /tmp/$USER/qc18acc/repo (synthesis qa3_w3.3 under $QC_BUILD/syn, macros in QC_MC_OUT):
+QA_V=3 qc18acc/pnr/run.sh pnr qa3_t1                                     # v3, v2 recipe (~7 h, detailed route ~26 GB)
+QA_V=3 QA_CFG=qc18acc/pnr/qa3b.cfg qc18acc/pnr/run.sh pnr qa3_t5b         # v3, improved recipe
+QA_V=3 QA_IO_REF=1 qc18acc/pnr/run.sh pt qa3_t5b                         # PrimeTime ss / tt, SPEF (QA_IO_REF as the run)
+QC_FLOW=$PWD/flow/tsmc65 QC_PNR_OUT=$QC_BUILD/pnr/qa3_t5b openroad -exit qc18acc/pnr/ant_check.tcl > ant.out
+# locally:
+QA_V=3 qc18acc/pnr/power.sh -H tau5 -t qa3_t5b <period_ns>                 # PTPX tt, v3 SDF SAIF flattened, +dat
+QA_V=3 python3 qc18acc/pnr/report.py <period_ns>                           # -> results/pnr_v3 tables
+ssh <host> 'mkdir -p $B/syn/qa3_t5b_pnr && cp $B/pnr/qa3_t5b/out/qa_top.v $B/syn/qa3_t5b_pnr/'   # B=/tmp/$USER/qc18acc/build
+QA_V=3 qc18acc/gls/run_gls.sh start <host> qa3_t5b_pnr 0 1                 # zero-delay GLS of the routed netlist; then check
+```
+
+Results ([results/pnr_v3.md](results/pnr_v3.md); detailed route of both v3 runs stopped after iteration 4):
+v3 improved `qa3_t5b`: die 10.384 mm2 (950-um band), 70 584 DRC markers, 129 antenna nets, hold tt -0.39 ns (macro
+D), post-route fmax reg2reg ss 185.0 / tt 295.2 MHz (logic-only 192.5 / 314.1; pre-route 303 / 463), 388.6 mW =
+107.6 uJ / inference at 294 MHz tt (x0.706 the v2 routed 152.4 uJ; SAIF 87.3 %); v3 with the v2 recipe `qa3_t1`:
+ss 101.1 / tt 179.2 MHz, 119.0 uJ at 179 MHz (PPU lanes placed in the macro-row channels).  v2 improved `qa_t1b`
+(700-um band): 251 DRC, ss 167.5 / tt 257.1 MHz (logic-only 313.0), 141.2 uJ at 3.5 ns (v2: 152.4).  Routed-netlist
+zero-delay GLS (image 0) bit-exact for all three.
