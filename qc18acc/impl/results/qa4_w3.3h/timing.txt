@@ -1,0 +1,40 @@
+dc design qa_top top qa_top corner ss period_ns 3.3 topo 0 wire_load WireAreaLowkCon/enclosed setup_wns_ns 5.36442e-05 setup_tns_ns 0.000 setup_viol_endpoints 0 hold_wns_ns -0.480131 hold_tns_ns -34.569 hold_viol_endpoints 72
+ff setup_wns_ns 1.789191 setup_tns_ns 0.000 setup_viol_endpoints 0
+ff setup_worst_path u_seq/dw_reg_2__0_/CP -> u_seq/cyc_stall_reg_31_/D
+ff hold_wns_ns -0.480536 hold_tns_ns -34.599 hold_viol_endpoints 72
+ff hold_worst_path u_wmem_e/addr_q_reg_0_/CP -> u_wmem_e/g_bank_1__u_ram/g_mac_g_wgt_u_mac/A[0]
+ff clock qa_clk period_ns 3.300 wns_ns 1.789 fmax_mhz 661.9 path u_seq/dw_reg_2__0_/CP -> u_seq/cyc_stall_reg_31_/D
+ff path_to_macro slack_ns 2.074 u_wmem_e/wen_q_reg/CP -> u_wmem_e/g_bank_1__u_ram/g_mac_g_wgt_u_mac/WEN
+ff path_from_macro slack_ns 2.583 u_act/g_bank_11__g_buf_2__u_ram/g_mac_g_act_u_mac/CLK -> u_act/g_bank_11__g_buf_2__u_ram/rdata_reg_40_/D
+ff macros 57 macro_area_um2 5457117
+ff path_class start_at_macro 0 end_at_macro 0 slack_ns 1.789 u_seq/dw_reg_2__0_/CP -> u_seq/cyc_stall_reg_31_/D
+ff path_logic slack_ns 1.789 fmax_mhz 661.9 u_seq/dw_reg_2__0_/CP -> u_seq/cyc_stall_reg_31_/D
+ff path_macro_q slack_ns 2.583 u_act/g_bank_11__g_buf_2__u_ram/g_mac_g_act_u_mac/CLK -> u_act/g_bank_11__g_buf_2__u_ram/rdata_reg_40_/D
+ff path_macro_in slack_ns 2.074 u_wmem_e/wen_q_reg/CP -> u_wmem_e/g_bank_1__u_ram/g_mac_g_wgt_u_mac/WEN
+ff hold_wp slack_ns -0.481 u_wmem_e/addr_q_reg_0_/CP -> u_wmem_e/g_bank_1__u_ram/g_mac_g_wgt_u_mac/A[0] (min delay 0.4 ns)
+ss setup_wns_ns 0.004676 setup_tns_ns 0.000 setup_viol_endpoints 0
+ss setup_worst_path g_ppu_0__u_ppu/g_lane_9__u_lane/m02_reg_25_/CP -> g_ppu_0__u_ppu/g_lane_9__u_lane/pphi3_reg_34_/D
+ss hold_wns_ns -0.547710 hold_tns_ns -39.435 hold_viol_endpoints 72
+ss hold_worst_path u_wmem_e/addr_q_reg_0_/CP -> u_wmem_e/g_bank_1__u_ram/g_mac_g_wgt_u_mac/A[0]
+ss clock qa_clk period_ns 3.300 wns_ns 0.005 fmax_mhz 303.5 path g_ppu_0__u_ppu/g_lane_9__u_lane/m02_reg_25_/CP -> g_ppu_0__u_ppu/g_lane_9__u_lane/pphi3_reg_34_/D
+ss path_to_macro slack_ns 0.674 u_wmem_e/wen_q_reg/CP -> u_wmem_e/g_bank_1__u_ram/g_mac_g_wgt_u_mac/WEN
+ss path_from_macro slack_ns 1.813 u_act/g_bank_11__g_buf_2__u_ram/g_mac_g_act_u_mac/CLK -> u_act/g_bank_11__g_buf_2__u_ram/rdata_reg_40_/D
+ss macros 57 macro_area_um2 5457117
+ss path_class start_at_macro 0 end_at_macro 0 slack_ns 0.005 g_ppu_0__u_ppu/g_lane_9__u_lane/m02_reg_25_/CP -> g_ppu_0__u_ppu/g_lane_9__u_lane/pphi3_reg_34_/D
+ss path_logic slack_ns 0.005 fmax_mhz 303.5 g_ppu_0__u_ppu/g_lane_9__u_lane/m02_reg_25_/CP -> g_ppu_0__u_ppu/g_lane_9__u_lane/pphi3_reg_34_/D
+ss path_macro_q slack_ns 1.813 u_act/g_bank_11__g_buf_2__u_ram/g_mac_g_act_u_mac/CLK -> u_act/g_bank_11__g_buf_2__u_ram/rdata_reg_40_/D
+ss path_macro_in slack_ns 0.674 u_wmem_e/wen_q_reg/CP -> u_wmem_e/g_bank_1__u_ram/g_mac_g_wgt_u_mac/WEN
+ss hold_wp slack_ns -0.548 u_wmem_e/addr_q_reg_0_/CP -> u_wmem_e/g_bank_1__u_ram/g_mac_g_wgt_u_mac/A[0] (min delay 0.4 ns)
+tt setup_wns_ns 1.151753 setup_tns_ns 0.000 setup_viol_endpoints 0
+tt setup_worst_path u_seq/f_lwo_reg_0_/CP -> u_seq/cnt_ard_reg_19_/D
+tt hold_wns_ns -0.496832 hold_tns_ns -35.772 hold_viol_endpoints 72
+tt hold_worst_path u_wmem_e/addr_q_reg_0_/CP -> u_wmem_e/g_bank_1__u_ram/g_mac_g_wgt_u_mac/A[0]
+tt clock qa_clk period_ns 3.300 wns_ns 1.152 fmax_mhz 465.5 path u_seq/f_lwo_reg_0_/CP -> u_seq/cnt_ard_reg_19_/D
+tt path_to_macro slack_ns 1.571 u_wmem_e/wen_q_reg/CP -> u_wmem_e/g_bank_1__u_ram/g_mac_g_wgt_u_mac/WEN
+tt path_from_macro slack_ns 2.265 u_wmem_e/g_bank_1__u_ram/g_mac_g_wgt_u_mac/CLK -> u_wmem_e/g_bank_1__u_ram/rdata_reg_12_/D
+tt macros 57 macro_area_um2 5457117
+tt path_class start_at_macro 0 end_at_macro 0 slack_ns 1.152 u_seq/f_lwo_reg_0_/CP -> u_seq/cnt_ard_reg_19_/D
+tt path_logic slack_ns 1.152 fmax_mhz 465.5 u_seq/f_lwo_reg_0_/CP -> u_seq/cnt_ard_reg_27_/D
+tt path_macro_q slack_ns 2.265 u_wmem_e/g_bank_1__u_ram/g_mac_g_wgt_u_mac/CLK -> u_wmem_e/g_bank_1__u_ram/rdata_reg_12_/D
+tt path_macro_in slack_ns 1.571 u_wmem_e/wen_q_reg/CP -> u_wmem_e/g_bank_1__u_ram/g_mac_g_wgt_u_mac/WEN
+tt hold_wp slack_ns -0.497 u_wmem_e/addr_q_reg_0_/CP -> u_wmem_e/g_bank_1__u_ram/g_mac_g_wgt_u_mac/A[0] (min delay 0.4 ns)

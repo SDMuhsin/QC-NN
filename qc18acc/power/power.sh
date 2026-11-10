@@ -29,7 +29,8 @@ if [ "${QA_V:-2}" = 4 ]; then   # v4 act writes per SAIF cycle: output words / i
     LOC=${QC_LOCAL:-/tmp/root/qc18acc4}
     NW=$(cd "$Q/../.." && python3 -m qc18acc.compile4.ops --writes "$LOC/export_rtl")
     NC=$(sed -n 's/^SAIF .*(\([0-9]*\))$/\1/p' "$LOC/gls_$T$SFX.log" | head -1)
-    DATW="qa_act_256x128m2:$(python3 -c "print($NW / $NC)")"; echo "act writes $NW / $NC SAIF cycles -> $DATW"
+    DATW="qa_act_256x128m2:$(python3 -c "print($NW / $NC)"),qa_wgt_4096x80m8:0,qa_par_4096x72m8:0,qa_dsc_256x32m2:0"
+    echo "act writes $NW / $NC SAIF cycles; no weight / param / desc writes between START and DONE -> $DATW"
 fi
 ssh "$H" "set -e; cd $R && git pull -q --ff-only; mkdir -p $D; test -s $SAIF
   S=$SAIF
