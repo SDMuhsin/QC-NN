@@ -1,0 +1,12 @@
+design qa_top corner ss lib tcbn65gpluswc_ccs constraints QC_SDC io host_reg_clock spef_nets total 423732 rc_network 412785 not_annotated 10947
+setup_wns_ns -2.105185 setup_tns_ns -8765.884 setup_viol_endpoints 19171
+setup_worst_path u_wmem_e/g_bank_0__u_ram/g_mac_g_wgt_u_mac/CLK -> u_head/dot2_reg_14_/D
+hold_wns_ns -0.686289 hold_tns_ns -44.584 hold_viol_endpoints 153
+hold_worst_path u_host/h1_wdata_reg_0_/CP -> u_wmem_o/g_bank_0__u_ram/g_mac_g_wgt_u_mac/D[0]
+all wns_ns -2.105 fmax_mhz 185.0 path u_wmem_e/g_bank_0__u_ram/g_mac_g_wgt_u_mac/CLK -> u_head/dot2_reg_14_/D
+reg2reg wns_ns -2.105 fmax_mhz 185.0 path u_wmem_e/g_bank_0__u_ram/g_mac_g_wgt_u_mac/CLK -> u_head/dot2_reg_14_/D
+hold_reg2reg wns_ns -0.686 fmax_mhz 250.9 path u_host/h1_wdata_reg_0_/CP -> u_wmem_o/g_bank_0__u_ram/g_mac_g_wgt_u_mac/D[0]
+reg2reg_logic wns_ns -1.896 fmax_mhz 192.5 path u_ppu/g_lane_2__u_lane/y5_reg_1_/CP -> u_ppu/g_lane_2__u_lane/out6_reg_6_/D
+clock_latency_worst ----------------------------------------------------------------------- u_wmem_o/g_bank_2__u_ram/g_mac_g_wgt_u_mac/CLK 0.78 0.00 2.62 2.62 rp-+ ---------------------------------------------------------------------------- 1 
+clock_skew_worst ----------------------------------------------------------------------- u_wmem_o/g_bank_2__u_ram/g_mac_g_wgt_u_mac/CLK 2.62 rp-+ u_host/host_rdata_reg_0_/CP 1.74 -0.00 0.88 rp-+ ---------------------------------------------------------------------------- 1 
+pt_wall_s 77
