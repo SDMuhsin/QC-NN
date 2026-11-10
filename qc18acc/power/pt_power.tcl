@@ -86,7 +86,8 @@ set fh [open ${o}_macros.txt w]
 puts $fh "# instance ref clk_toggle_rate_per_ns cen_static_prob wen_static_prob   (period_ns $::env(QC_PERIOD))"
 foreach_in_collection c [get_cells -hierarchical -filter $mfilt] {
     set n [get_object_name $c]
-    puts $fh "$n [get_attribute $c ref_name] [pa $n/CLK toggle_rate] [pa $n/CEN static_probability] [pa $n/WEN static_probability]"
+    set wen $n/WEN; if {![sizeof_collection [get_pins -quiet $wen]]} { set wen "$n/WEN\[0\]" }   ;# v4 act: write-mask bus, all bits equal for array writes
+    puts $fh "$n [get_attribute $c ref_name] [pa $n/CLK toggle_rate] [pa $n/CEN static_probability] [pa $wen static_probability]"
 }
 close $fh
 exit

@@ -11,18 +11,20 @@ mode (sdf, zd) and period present.  Two totals per run:
 Energy per inference = P x CYCLES x period (START..DONE of image 0, RTL = GLS cycle count); per dense-equivalent MAC
 (convs 555 417 600 + FC 5 120) and per QC addition (127 295 232 per image, qc18/results/s8kd_s0.md).
 QA_V=3 (environment): the v3 design (Kb = 2): 81 438 cycles / image, 48 x qa_act_512x64m4, weight halves u_wmem_e / _o.
+QA_V=4: the v4 design (16 pixel rows): 42 360 cycles / image, 48 x qa_act_256x128m2, PPU = units g_ppu_0 + g_ppu_1.
 """
 import os
 import re
 import sys
 from pathlib import Path
 
-V3 = os.environ.get("QA_V", "2") == "3"
-CYCLES = 81438 if V3 else 159982
+V4 = os.environ.get("QA_V", "2") == "4"
+V3 = os.environ.get("QA_V", "2") == "3" or V4                  # v4 keeps the v3 weight halves
+CYCLES = 42360 if V4 else 81438 if V3 else 159982
 MACS = 555417600 + 5120
 ADDS = 127295232
 R = Path(sys.argv[1] if len(sys.argv) > 1 else Path(__file__).resolve().parent.parent / "results" / "power")
-MACRO = dict(act="qa_act_512x64m4" if V3 else "qa_act_1024x64m8", wgt="qa_wgt_4096x80m8", par="qa_par_4096x72m8",
+MACRO = dict(act="qa_act_256x128m2" if V4 else "qa_act_512x64m4" if V3 else "qa_act_1024x64m8", wgt="qa_wgt_4096x80m8", par="qa_par_4096x72m8",
              dsc="qa_dsc_256x32m2")
 
 
@@ -51,7 +53,8 @@ def blocks(r):
     b, d = r["b"], r["dat"]
     sub = lambda x, y: [u - v for u, v in zip(x, y)]
     add = lambda *xs: [sum(v) for v in zip(*xs)]
-    rows = [("PE array (u_array)", b["u_array"]), ("PPU (u_ppu)", b["u_ppu"]), ("drain (u_drain)", b["u_drain"]),
+    ppu = add(b["g_ppu_0__u_ppu"], b["g_ppu_1__u_ppu"]) if V4 else b["u_ppu"]
+    rows = [("PE array (u_array)", b["u_array"]), ("PPU (u_ppu)", ppu), ("drain (u_drain)", b["u_drain"]),
             ("head (u_head)", b["u_head"]),
             ("AGU + xbar + seq + host + top glue", add(b["u_agu"], b["u_xbar"], b["u_seq"], b["u_host"], b["top_leaf_cells"])),
             ("act buffer logic (hold regs, port muxes)", sub(b["u_act"], b[MACRO["act"]])),
@@ -59,7 +62,8 @@ def blocks(r):
                                                              b[MACRO["wgt"]]), sub(b["u_pmem"], b[MACRO["par"]]),
                                                          sub(b["u_desc"], b[MACRO["dsc"]])))]
     out = [(n, v[3], v[3], v[2]) for n, v in rows]
-    for k, n in (("act", "activation macros (48 x 512x64)" if V3 else "activation macros (24 x 1024x64)"),
+    for k, n in (("act", "activation macros (48 x 256x128)" if V4 else "activation macros (48 x 512x64)" if V3 else
+                  "activation macros (24 x 1024x64)"),
                  ("wgt", "weight macros (6 x 4096x80)"),
                  ("par", "param macros (2 x 4096x72)"), ("dsc", "descriptor macro (256x32)")):
         v = b[MACRO[k]]

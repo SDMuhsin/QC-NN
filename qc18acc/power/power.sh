@@ -7,7 +7,7 @@
 # pt_power.tcl (tt, synthesis WLM, synthesis SDC at -p) runs in $QC_RDIR/gls/<tag>/power/<mode>_<p>ns/; the
 # reports stay on the host, the summaries (design names only) are copied to qc18acc/results/power/<mode>_<p>ns{,_blocks,_macros}.txt
 #   (_macros: datatable access-energy model of the macros, macro_dat.py).
-# Environment: QC_RDIR (default /tmp/ckp908/qc18acc); QA_V=3: the v3 macro set (QA_MACROS of pt_power.tcl).
+# Environment: QC_RDIR (default /tmp/ckp908/qc18acc); QA_V=3 / 4: the v3 / v4 macro set (QA_MACROS of pt_power.tcl).
 set -euo pipefail
 Q=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 H=usask; P=2.5; SIMP=2.5; OD=power; PE=0
@@ -17,6 +17,7 @@ T=${1:?syn_tag}; MODE=${2:?zd|sdf}
 RDIR=${QC_RDIR:-/tmp/ckp908/qc18acc}
 MAC="qa_act_1024x64m8 qa_wgt_4096x80m8 qa_par_4096x72m8 qa_dsc_256x32m2"
 [ "${QA_V:-2}" = 3 ] && MAC="qa_act_512x64m4 qa_wgt_4096x80m8 qa_par_4096x72m8 qa_dsc_256x32m2"
+[ "${QA_V:-2}" = 4 ] && MAC="qa_act_256x128m2 qa_wgt_4096x80m8 qa_par_4096x72m8 qa_dsc_256x32m2"
 G=$RDIR/gls/$T; SYN=$RDIR/build/syn/$T; R=$RDIR/repo
 SFX=""; [ "$MODE" = sdf ] && SFX=_sdf
 SAIF=$G/qa_top_img0$SFX.saif

@@ -21,6 +21,8 @@
 # Environment: QC_RDIR (default /tmp/ckp908/qc18acc), QC_LOCAL (default /tmp/root/qc18acc).
 # QA_V=3: the v3 design (Kb = 2): export of hw3/sim/run_rtl.sh ($QC_LOCAL default /tmp/root/qc18acc3, remote
 #   export_rtl3), gls/gls3.f, hw3 macro models and testbench, gen_snap.py v3.
+# QA_V=4: the v4 design (16 pixel rows): export of hw4/sim/run_rtl.sh ($QC_LOCAL default /tmp/root/qc18acc4, remote
+#   export_rtl4), gls/gls4.f, hw4 macro models and testbench, gen_snap.py v4.
 set -eu
 CMD=${1:?start|check}; HOST=${2:-usask}; T=${3:-qa_w3.5}; IMG0=${4:-0}; NIMG=${5:-1}
 REPO=$(cd "$(dirname "$0")/../.." && pwd)
@@ -28,6 +30,7 @@ RDIR=${QC_RDIR:-/tmp/ckp908/qc18acc}
 LOC=${QC_LOCAL:-/tmp/root/qc18acc}
 RX=export_rtl; GF=qc18acc/gls/gls.f; HW=hw; SNV=""
 if [ "${QA_V:-2}" = 3 ]; then LOC=${QC_LOCAL:-/tmp/root/qc18acc3}; RX=export_rtl3; GF=qc18acc/gls/gls3.f; HW=hw3; SNV=v3; fi
+if [ "${QA_V:-2}" = 4 ]; then LOC=${QC_LOCAL:-/tmp/root/qc18acc4}; RX=export_rtl4; GF=qc18acc/gls/gls4.f; HW=hw4; SNV=v4; fi
 EXP=$LOC/export_rtl
 G=$RDIR/gls/$T
 SDFD=$G/sdf; SDFI=$SDFD/qa_top_tt_idealclk.sdf
