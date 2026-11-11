@@ -1,5 +1,6 @@
 """Tables for the binary-activation pilot (qc18b.train_bin runs) -> qc18b/diag/results/gradflow_pilot.md.
     python3 -m qc18b.diag.gradflow_table [--root /tmp/$USER/qc18b/pilot] [--runs fp60,bin_scratch,...]
+    python3 -m qc18b.diag.gradflow_table --gain 1 --root /tmp/$USER/qc18b/gain --runs clip,clip_tfrozen,...
 Per run: best val / epoch, median s/epoch, train acc + loss at epochs 1/10/30/60 (1-based).  Per BinAct layer and
 per QCConv2d at those epochs: means over that epoch's gradflow.jsonl records."""
 import argparse
@@ -35,11 +36,62 @@ def ratio(rs):
     return s + (f" ({len(rs) - len(nz)}/{len(rs)} gout=0)" if nz and len(nz) < len(rs) else "")
 
 
+def gain(root, runs):
+    """-> gradflow_gain.md: snapshots at step 50 and at the last record of epochs 1/10/30 (single records, no means)."""
+    eps = (1, 10, 30)
+    L = ["# Binary-activation STE gain runs (measured)", "",
+         f"Source: {root}/<run>/metrics.json, gradflow.jsonl (records every 50 steps, 351 steps/epoch). Snapshot "
+         "'s50' = the step-50 record; 'epE' = the last record of epoch E (1-based). g_out = ||dL/db|| per BinAct in "
+         "network order (blocks.0.b1, blocks.0.b2, ..., blocks.7.b2). pass / const / t_std / eff = mean over the 16 "
+         "BinAct layers; eff = mean over channels of the effective db/du scale (clip: K x frac(|x-t|<w); "
+         "bussgang / stein: a_c). b1/b2 = mean over blocks k of g_out(blocks.k.b1) / g_out(blocks.k.b2). "
+         "BN: max |beta|, max gamma over all BatchNorm2d at that record. Val = 5k held-out split.", "",
+         "| run | best val | best ep | " + " | ".join(f"train ep{e}" for e in eps) + " | b1/b2 s50 |",
+         "|---|---|---|" + "---|" * len(eps) + "---|"]
+    snaps = {}
+    for r in runs:
+        m = json.load(open(os.path.join(root, r, "metrics.json")))
+        recs = [json.loads(x) for x in open(os.path.join(root, r, "gradflow.jsonl"))]
+        steps = sorted({x["step"] for x in recs})
+        last = {e: max([s for s in steps if (s - 1) // 351 == e - 1], default=None) for e in eps}
+        pick = [("s50", 50)] + [(f"ep{e}", last[e]) for e in eps]
+        by = defaultdict(dict)
+        for x in recs:
+            by[x["step"]][x["layer"]] = x
+        order = sorted((k for k in by[50] if k != "bn" and by[50][k]["kind"] == "binact"),
+                       key=lambda s: (int(s.split(".")[1]), s))
+        rt = [by[50][f"blocks.{k}.b1"]["g_out"] / by[50][f"blocks.{k}.b2"]["g_out"] for k in range(8)]
+        snaps[r] = (pick, by, order)
+        h = m["history"]
+        L.append(f"| {r} | {100 * m['best_val']:.2f} | {m['best_epoch'] + 1} | "
+                 + " | ".join(f"{100 * h[e - 1]['train_acc']:.2f}" if e <= len(h) else "-" for e in eps)
+                 + f" | {sum(rt) / len(rt):.3f} |")
+    for r, (pick, by, order) in snaps.items():
+        L += ["", f"## {r}", "", "| snap | step | g_out (16 BinActs) | pass | const | t_std | eff | BN max abs beta | BN max gamma |",
+              "|---|---|---|---|---|---|---|---|---|"]
+        for nm, st in pick:
+            if st is None:
+                L.append(f"| {nm} | - |" + " - |" * 7)
+                continue
+            d = by[st]
+            av = lambda f: sum(d[k][f] for k in order) / len(order)
+            bn = d.get("bn", {})
+            L.append(f"| {nm} | {st} | " + " ".join(f"{d[k]['g_out']:.3g}" for k in order) +
+                     f" | {av('pass'):.3f} | {av('const'):.3f} | {av('t_std'):.3f} | {av('eff'):.4g} | "
+                     f"{bn.get('max_abs_beta', float('nan')):.3f} | {bn.get('max_gamma', float('nan')):.3f} |")
+    out = os.path.join(os.path.dirname(OUT), "gradflow_gain.md")
+    open(out, "w").write("\n".join(L) + "\n")
+    print(f"-> {out}")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--root", default=f"/tmp/{getpass.getuser()}/qc18b/pilot")
     ap.add_argument("--runs", default="fp60,bin_scratch,bin_init,bin_scratch_approx")
+    ap.add_argument("--gain", type=int, default=0, help="1: gradflow_gain.md (snapshot tables) instead")
     a = ap.parse_args()
+    if a.gain:
+        return gain(a.root, [r for r in a.runs.split(",") if os.path.exists(os.path.join(a.root, r, "metrics.json"))])
     runs = [r for r in a.runs.split(",") if os.path.exists(os.path.join(a.root, r, "metrics.json"))]
     data = {r: load(os.path.join(a.root, r)) for r in runs}
     L = ["# Binary-activation pilot: grad flow (measured)", "",
