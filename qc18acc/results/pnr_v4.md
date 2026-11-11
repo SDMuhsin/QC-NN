@@ -11,7 +11,7 @@ antenna counts, PrimeTime with the def2spef SPEF, or OpenROAD's own estimate whe
 power of the routed netlist with the gate-level SAIF; **[Mod]** model (macro access energy from the ARM datatables,
 "+dat"; op counts from the weight image; derived ratios).
 
-## 0. Summary (route of record `qa4_u9`; hold-fix reruns `qa4_t6` / `qa4_u10` in section 4)
+## 0. Summary (route of record `qa4_u9`; hold-fix reruns: `qa4_t6` routed, `qa4_u10` stopped unfinished, section 4)
 
 | quantity | v4 routed `qa4_u9` | v4 pre-route ([v4.md](v4.md)) | v3 routed `qa3_t5c` ([pnr_v3.md](pnr_v3.md)) | label |
 |---|---|---|---|---|
@@ -153,7 +153,9 @@ pins (tt 3 233), the rest weight / param / descriptor macro D pins and a few PPU
    1.52 ns, no hold buffer, slack -0.22 ns; OpenROAD on the same placement (estimated parasitics) launch clock
    1.757 ns, macro CLK 1.470 ns, slack +0.243 ns.  The repair therefore saw no violation.  A margin that covers
    the estimate error on all macro CLK pins (`QA_MACRO_HOLD 0.3`, `QA_MACRO_HOLD_RE .`) plus the gate fix is run
-   `qa4_u10` (in CTS at the time of writing).
+   `qa4_u10`: post-GRT hold repair took 3 h 42 min (10 929 endpoints, 40 100 hold buffers, cells 4.05 mm2, hold met at
+   the GRT estimate); its detailed route reached 47 655 markers after iteration 4 and was then **stopped and left
+   unfinished** (no routed signoff of `qa4_u10`; whether the margin closes hold post-route is open).
 A post-route ECO in this OpenROAD build would re-route the whole design (`hold_eco.tcl`, ~7.5 h) and could not be
 timed with the SPEF (OpenROAD's SPEF reader stops at the netlist's empty `SYNOPSYS_UNCONNECTED` nets, results/pnr.md).
 
@@ -232,7 +234,9 @@ mm2 is 0.188 vs 0.491 pre-route at the pre-route tt fmax (x0.38); the 1.5 execut
 ## 9. Open issues
 
 * **Hold after route** (section 4): `qa4_u9` fails hold at the macro inputs by up to -0.47 ns tt / -0.71 ns ss;
-  the reruns `qa4_t6` (gates at the macros) and `qa4_u10` (+ 0.3 ns margin on all macros) were still routing.
+  `qa4_t6` (gates at the macros) improves ss to -0.40 ns but the act-macro D violations (OpenROAD clock-latency
+  estimate error) remain at tt -0.40 ns; `qa4_u10` (+ 0.3 ns margin on all macros) was stopped after detailed-route
+  iteration 4 and left unfinished.  A post-route hold ECO remains needed.
 * The routed design misses the ARCH target tt >= 400 MHz (290.7 MHz): the AGU / sequencer -> far act-macro request
   wires (single-cycle ~1.2 mm hops) and the weight -> head FC path limit it; a register stage on the request path (or
   replicated AGU slices per bank group) would be the RTL fix.
