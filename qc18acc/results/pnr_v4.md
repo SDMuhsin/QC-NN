@@ -11,7 +11,24 @@ antenna counts, PrimeTime with the def2spef SPEF, or OpenROAD's own estimate whe
 power of the routed netlist with the gate-level SAIF; **[Mod]** model (macro access energy from the ARM datatables,
 "+dat"; op counts from the weight image; derived ratios).
 
-@@SUMMARY@@
+## 0. Summary (route of record `qa4_u9`; hold-fix reruns `qa4_t6` / `qa4_u10` in section 4)
+
+| quantity | v4 routed `qa4_u9` | v4 pre-route ([v4.md](v4.md)) | v3 routed `qa3_t5c` ([pnr_v3.md](pnr_v3.md)) | label |
+|---|---|---|---|---|
+| die / total area | **12.685 mm2** (3363.8 x 3771.0 um) | 7.764 mm2 | 10.384 mm2 | [S] |
+| standard cells after P&R (DC) / core utilisation | 3.951 mm2 (2.307) / 0.76 | | 1.788 mm2 (1.176) / 0.695 | [S] |
+| crossbar hub | none (structured placement; band max tile util < 0.95 except 2 tiles) | | 93-100 % hub, 99 % of the markers | [S] |
+| detailed route / DRC markers | 25 iterations / **73** | | 9 iterations (stopped) / 70 675 | [S] |
+| antenna violations (nets) | **155** | | 137 | [S] |
+| **fmax reg2reg ss / tt** (PT + SPEF) | **200.3 / 290.7 MHz** | 303.5 / 465.5 MHz | 148.9 / 272.4 MHz | [S] |
+| critical path | `u_seq/f_lwo_reg` -> far act-macro address flop (ss and tt) | PPU partial product (ss) / seq counter (tt) | PPU lane 2 | [S] |
+| hold after route tt / ss | **-0.47 / -0.71 ns** (3 500 / 2 827 endpoints, macro D pins; section 4) | | -0.46 / -0.78 ns | [S] |
+| power (+dat) / energy per inference | **751.8 mW / 111.46 uJ** at 3.5 ns (285.7 MHz) | 591.8 mW / 62.68 uJ at 400 MHz | 361.0 mW / 108.8 uJ at 3.7 ns | [R] + [Mod] |
+| routed-netlist GLS, image 0 | **PASS**, bit-exact, 42 360 cycles = RTL | | PASS | [M] |
+| peak / average executed TOPS / mm2 at the routed tt fmax | **0.188 / 0.139** | 0.491 / 0.364 (at 465.5 MHz) | 0.107 / 0.083 (at 272.4 MHz, 10.384 mm2) | [S] + [M] + [Mod] |
+| dense-equivalent TOPS / mm2 (secondary) | 0.601 | 1.57 | 0.36 | [S] + [M] + [Mod] |
+| area per peak executed MAC / cycle | **3 097 um2** (x1.63 pre-route) | 1 896 um2 | 5 070 um2 | [S] |
+
 
 ## 1. Floorplan (`macro_place4.tcl`, `qa4.cfg`)
 
@@ -45,8 +62,9 @@ relative indicator of [pnr_v3.md](pnr_v3.md) 11.2), calibrated on v2 `qa_t1b` (c
 | `qa4_u6` | t4 + density 0.78 | -5.48 / -1.51 | 329 | | denser |
 | `qa4_u7` | t4 + incremental gpl after the DRV repair | -9.14 / -3.56 | 0 (max < 0.85) | | repair buffers left off their wires |
 | `qa4_u8` | u7 + DRV repair again | -2.00 / -0.32 | 1 (61 > 0.85) | | 349 cells in the blocked edge-row strips: TritonCTS looped (> 40 min on one clock net) |
-| **`qa4_u9`** | **`qa4c.cfg`**: u8 + rows inside hard blockages removed after the incremental pass | -2.03 / -0.33 | @@U9TILES@@ | @@U9GUIDE@@ | **route of record** |
-| `qa4_t5` | `qa4c.cfg` settings, band 1 800 um (die 13.357 mm2) | -1.68 / -0.06 | | 1.10 / 2.2 % | hedge (@@T5STATUS@@) |
+| **`qa4_u9`** | u8 + rows inside hard blockages removed after the incremental pass | -2.03 / -0.33 | 2 (58 > 0.85; mean 0.67; cells outside the band 4.8 %) | 1.12 / 2.1 % (M3 p90 0.80) | routed, 24 iterations (section 3) |
+| **`qa4_t6`** | **`qa4c.cfg`**: u9 + macro clock gates next to their macros (section 4) | -2.11 / -0.43 | | | detailed route running at the time of writing |
+| `qa4_t5` | u9 settings, band 1 800 um (die 13.357 mm2) | -1.68 / -0.06 | | 1.10 / 2.2 % | detailed route stopped after iteration 3 (diagnosis, section 3) |
 
 Mechanisms, in order of discovery:
 
@@ -84,4 +102,152 @@ Mechanisms, in order of discovery:
    looped on that net's H-tree (no progress for > 40 min).  The rows inside hard blockages are now removed after
    the incremental pass (the PDN is already built), so the legaliser moves those cells out (`qa4_u9`).
 
-@@ROUTE@@
+## 3. Detailed route: converges (`qa4_u9`) [S]
+
+`route_split.tcl` (global route + post-GRT repair in one process: 52 min, 13.8 GB peak; detailed route in a fresh
+process without liberty / STA, fillers after it).  Detailed-route memory: 8.0 GB after pin access, 21.9 GB after
+track assignment, 25.5 GB peak RSS (of 30 GB, a few GB of swap), 861 821 nets, 786 513 instances without fillers;
+25 iterations in 7 h 36 min.
+
+| iteration | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 12 | 14 | 16 | 18 | 20 | 22 | 24 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| `qa4_u9` markers | 1 102 127 | 417 968 | 393 236 | 130 734 | 46 807 | 18 135 | 8 180 | 4 298 | 2 783 | 1 617 | 658 | 319 | 231 | 188 | 137 | 94 | 82 | **73** |
+| `qa4_t5` (band 1 800) | 1 130 558 | 439 274 | 412 512 | 141 953 | stopped | | | | | | | | | | | | | |
+| v3 `qa3_t5c` (hub) | 648 053 | 273 247 | 259 410 | 141 244 | 99 837 | 84 828 | 77 062 | 73 622 | 70 675 (stopped) | | | | | | | | | |
+
+* **Result: 73 DRC markers** (M2 short 20, M2 spacing 17, M1 short 15, VIA1 cut spacing 10, VIA1 cut short 8, M1
+  spacing 3); 62 of them at the pin edges of the four top-tier weight / param macros (shorts of hold / repair-buffer
+  nets with the macro obstruction at y 3 315.6 um, ~14-20 per macro), 11 inside PEs.  Wire 48.8 m.  v2 ended at 251-255,
+  v3 did not converge (70 675, 99 % in the hub).
+* **Mechanism of the convergence (vs v3):** after iteration 3 the markers of `qa4_t5` (stopped there for the
+  diagnosis, `drc_map.py`) were spread over the whole band (top 50 of 561 occupied 100-um tiles hold 31 %; v3: one
+  hub with 99 %), 80 % of them on PE nets (M2 shorts: pin access in the dense PE logic, 77 k markers per mm2 of PE cells vs
+  34 k for the PPU), i.e. ordinary unfinished search-and-repair, not a structural hotspot.  From iteration 3 on the
+  count fell by 55-65 % per iteration down to ~1 600 (v3: -4 % per iteration from 85 k), then by 15-40 % per
+  iteration.  The band width barely matters: `qa4_t5` (band 1 800, 0.60 utilisation) had 3-8 % *more* markers than
+  `qa4_u9` (1 600, 0.67) at iterations 0-3.
+* **Antennas** (check_antennas on the routed DB, separate session; repair_antennas segfaults in this build):
+  **155 nets / 155 pins** (v3 137, v2 147-192).
+
+## 4. Hold at the macro pins: the pre-route repair is not enough [S]
+
+The netlist SDC's 0.4-ns min delay on the weight / param pins and the post-GRT hold repair (+0.2 ns on the weight /
+param macro CLK pins) gave **hold met at the GRT estimate** (`grt_opt` ss / tt +0.017 / +0.021 ns), but PrimeTime with
+the routed SPEF finds (`qa4_u9`): **tt -0.47 ns (3 500 endpoints), ss -0.71 ns (2 827)**; 92 % of them act-macro D
+pins (tt 3 233), the rest weight / param / descriptor macro D pins and a few PPU registers.  Two mechanisms
+(full-clock path reports `rpt/pt_post_<c>_min_clk.rpt`, OpenROAD vs PT on the same path):
+
+1. **Macro clock gates far from their macros.**  Each macro CLK is driven by its own CKLNQD2 (`g_mac_u_cg`) through a
+   1-sink net that CTS does not buffer.  In `qa4_t5` the gate of `u_wmem_o` bank 2 sat far from the macro (in the
+   blocked row strip under the tier, ~0.97 mm Manhattan): 0.25 pF on the gated net, 0.78-0.93 ns slew, macro CLK at 2.24 ns vs 1.25 ns at
+   its input flops (tt; ss 2.88 vs 1.84) - the v3 "late weight-macro clock" again, larger.  Fix (`macro_icg.tcl`,
+   `qa4c.cfg` `QA_MACRO_ICG CKLNQD16`): all 57 macro gates resized to CKLNQD16 and placed at their macro's CLK pin
+   before CTS (that weight gate: ~0.97 mm -> 46 um from its pin).  Run `qa4_t6` (routing at the time of writing).
+2. **OpenROAD's pre-route clock latency estimate is off by ~0.4 ns at the leaves.**  Worst act-macro D path
+   (`u_act/g_bank_7__wd_q_reg_64_` -> bank 7 buffer 0 macro D[64], tt): PT + SPEF launch clock 1.36 ns, macro CLK
+   1.52 ns, no hold buffer, slack -0.22 ns; OpenROAD on the same placement (estimated parasitics) launch clock
+   1.757 ns, macro CLK 1.470 ns, slack +0.243 ns.  The repair therefore saw no violation.  A margin that covers
+   the estimate error on all macro CLK pins (`QA_MACRO_HOLD 0.3`, `QA_MACRO_HOLD_RE .`) plus the gate fix is run
+   `qa4_u10` (in CTS at the time of writing).
+A post-route ECO in this OpenROAD build would re-route the whole design (`hold_eco.tcl`, ~7.5 h) and could not be
+timed with the SPEF (OpenROAD's SPEF reader stops at the netlist's empty `SYNOPSYS_UNCONNECTED` nets, results/pnr.md).
+
+## 5. Post-route timing (PrimeTime, def2spef SPEF, propagated clock, `QA_IO_REF=1`) [S]
+
+fmax = 1 / (3.3 ns - WNS); reg2reg excludes the host-port IO.
+
+| run | corner | reg2reg WNS | **fmax** | logic-only fmax | worst path | hold WNS (endpoints) |
+|---|---|---|---|---|---|---|
+| **`qa4_u9`** (73 DRC) | ss 0.9 V 125 C | -1.694 | **200.3 MHz** | 200.3 | `u_seq/f_lwo_reg_2_` -> `u_act/g_bank_13__g_buf_1__addr_q_reg_0_` (AGU / seq request -> act-macro address flop, ~1.2 mm) | -0.710 (2 827) |
+| **`qa4_u9`** | tt 1.0 V 25 C | -0.140 | **290.7 MHz** | 290.7 | same | -0.471 (3 500) |
+| `qa4_t5` (iteration 3) | ss | -1.692 | 200.3 | 200.3 | `u_wmem_e/sel3_reg_1_` -> `u_head/prod_reg_4__15_` | -0.415 (1 912) |
+| `qa4_t5` (iteration 3) | tt | -0.042 | 299.2 | 299.2 | `u_seq/f_lwo_reg_2_` -> act bank 15 address flop | -0.327 (2 400) |
+Pre-route (DC netlist, WLM, ideal clock): ss 303.5 / tt 465.5 MHz; routed tt / pre-route tt = x0.62 (v3 improved
+x0.64, v2 x0.62).  SPEF annotation: 843 674 of 863 049 nets with RC networks (97.8 %).  Clock: worst latency tt 1.89 ns
+(weight macro CLK), worst skew 0.53 ns tt (param macro CLK vs its output register).  Neither path is a crossbar path:
+the routed critical paths are the long request wires from the central sequencer / AGU to the act-macro input flops
+of the far banks (ss and tt) and, in `qa4_t5`, the weight -> head FC multiply (both cross ~1-1.5 mm in one cycle;
+the registered boundary moved the flops to the macros, so the AGU -> flop wire became the single-cycle hop).
+
+## 6. Post-route power (PTPX tt 1.0 V, SDF SAIF of image 0 flattened onto the routed netlist, +dat) [R] + [Mod]
+
+`power.sh -t qa4_u9 3.5` (clock = routed tt fmax rounded down to 0.1 ns of period: 3.5 ns = 285.7 MHz; the SAIF
+rescaled to the same toggles per cycle; act-macro writes from the program, 41 984 per image, as v4.md 9).
+
+| quantity | `qa4_u9` 3.5 ns | pre-route 2.5 ns (v4.md) |
+|---|---|---|
+| PT total mW (int / switch / leak) | 701.64 (388.76 / 263.47 / 49.41) | 520.22 (336.85 / 155.85 / 27.52) |
+| **+dat total mW** | **751.82** | 591.85 |
+| **uJ / inference (+dat)** | **111.46** (PT only 104.03) | 62.68 |
+| routed / pre-route energy | **x1.78** | |
+| leakage share | 6.6 % | 4.6 % |
+| CTS clock-tree cells (n = 35 458) | 115.38 mW = 15.3 % | (ideal clock) |
+| PT clock_network group | 189.50 mW = 25.2 % | 154.70 |
+| top-level glue (repair / hold buffers, ties; n = 111 k) | 106.17 mW = 14.1 % | |
+| PE array / PPU / xbar | 303.41 / 89.30 / 27.16 mW | 340.29 / 103.63 / (in 23.14) |
+| act / weight / param macros (+dat) | 51.35 / 23.26 / 3.17 mW | 68.43 / 29.26 / 3.56 |
+| SAIF annotation | 83.2 % of 863 049 nets (16.8 % P&R-inserted nets, activity propagated) | |
+| inferences / s at 285.7 MHz | 6 745 [M] cycles | 9 443 at 400 MHz |
+| executed ops / J | 2.31 TOPS / W [Mod] | 4.10 |
+
+Full tables `results/pnr_v4/qa4_u9_post_3.5ns*` (`report.py 3.5 qa4_u9`).  Where the x1.78 comes from (per
+inference, 3.5 vs 2.5 ns): the clock tree (+17.1 uJ, absent pre-route), the P&R glue (+15.7 uJ: ~101 k DRV-repair
+buffers of the two place-step repairs and 24.1 k hold buffers of the post-CTS / post-GRT repairs), the leakage of the longer cycle (+4.4 uJ), the routed wires in
+the PE array / PPU (switching 263 vs 156 mW in total), partly offset by the lower macro read power per cycle.
+v3 routed: 107.6 uJ (x1.57); v4 routed 111.5 uJ is x1.04 of v3 routed at x1.92 its throughput per cycle (42 360 vs 81 438 cycles).
+
+## 7. Gate-level simulation of the routed netlist (zero delay, VCS, image 0) [M]
+
+`QA_V=4 qc18acc/gls/run_gls.sh start usask qa4_u9_pnr 0 1` with `build/syn/qa4_u9_pnr/qa_top.v` = the routed `out/qa_top.v`
+(flat; clock tree, repair / hold buffers, decaps): **RESULT PASS**, all 10 logits + 20 stored maps bit-exact, 22 cycle
+counters = RTL, **42 360 cycles**.  `qa4_t5` (iteration-3 routing): PASS, 42 360 cycles.
+
+## 8. Executed TOPS / mm2 on the routed die, area per executed MAC [S] + [M] + [Mod]
+
+Die **12.685 mm2** (3363.8 x 3771.0 um, [S]); peak = 128 PEs x 2 blocks x 16 MACs x 2 ops x f = 8 192 ops x f; workload
+average = 128 546 560 executed MACs / image x 2 x images / s (images / s = f / 42 360 cycles [M]; MAC count [Mod],
+v4.md 7); dense-equivalent (secondary) = 555.4 M MACs / image x 2 x images / s.
+
+| clock | f | images / s | **peak executed TOPS** | **per mm2** | **average executed TOPS** | **per mm2** | dense-eq. TOPS (secondary) | per mm2 |
+|---|---|---|---|---|---|---|---|---|
+| routed tt fmax (`qa4_u9`) | 290.7 MHz [S] | 6 863 | 2.381 | **0.188** | 1.764 | **0.139** | 7.62 | 0.601 |
+| power clock | 285.7 MHz | 6 745 | 2.341 | 0.185 | 1.734 | 0.137 | 7.49 | 0.591 |
+| routed ss fmax | 200.3 MHz [S] | 4 729 | 1.641 | 0.129 | 1.216 | 0.096 | 5.25 | 0.414 |
+| 400 MHz (pre-route energy clock; not met routed) | 400 MHz | 9 443 | 3.277 | 0.258 | 2.428 | 0.191 | 10.49 | 0.827 |
+| pre-route reference (v4.md, 7.764 mm2, 400 MHz) | | | 3.277 | 0.422 | 2.428 | 0.313 | 10.49 | 1.35 |
+
+**Area per peak executed MAC / cycle: 12.685 mm2 / 4 096 = 3 097 um2, x1.63 the pre-route 1 896 um2** [S]
+(macros 1 346 um2 of it unchanged; the rest is the band, channels and edges: cells after P&R 3.95 mm2 = 1.71x the
+DC logic area, placed at ~0.67 utilisation).  With the tt clock at x0.62 of pre-route, routed peak executed TOPS /
+mm2 is 0.188 vs 0.491 pre-route at the pre-route tt fmax (x0.38); the 1.5 executed TOPS / mm2 target is 8x away.
+
+## 9. Open issues
+
+* **Hold after route** (section 4): `qa4_u9` fails hold at the macro inputs by up to -0.47 ns tt / -0.71 ns ss;
+  the reruns `qa4_t6` (gates at the macros) and `qa4_u10` (+ 0.3 ns margin on all macros) were still routing.
+* The routed design misses the ARCH target tt >= 400 MHz (290.7 MHz): the AGU / sequencer -> far act-macro request
+  wires (single-cycle ~1.2 mm hops) and the weight -> head FC path limit it; a register stage on the request path (or
+  replicated AGU slices per bank group) would be the RTL fix.
+* 73 residual DRC markers (62 at the pin edges of the top weight / param macros), 155 antenna nets (no antenna repair
+  in this build); M1 MINIMUMCUT / LEF57 rules not checked, no metal fill; geometric SPEF (captable RC, no coupling).
+* Power: 16.8 % of the routed nets (P&R-inserted) carry propagated, not simulated, activity.
+
+## 10. Commands
+
+```bash
+# on the P&R host, in /tmp/$USER/qc18acc/repo (synthesis qa4_w3.3 under $QC_BUILD/syn, macros in QC_MC_OUT):
+QA_CFG=qc18acc/pnr/qa4c.cfg QC_PNR_TO=cts qc18acc/pnr/run.sh pnr qa4_t6          # floorplan .. CTS (route-of-record recipe)
+QA_CFG=qc18acc/pnr/qa4c.cfg qc18acc/pnr/run.sh route qa4_t6                     # GRT + repair, detailed route (no STA), finish, SPEF
+QA_V=4 QA_IO_REF=1 qc18acc/pnr/run.sh pt qa4_t6                                 # PrimeTime ss / tt with SPEF
+QC_FLOW=$PWD/flow/tsmc65 QC_PNR_OUT=$QC_BUILD/pnr/qa4_t6 QC_BUILD=$QC_BUILD openroad -exit qc18acc/pnr/ant_check.tcl > ant.out
+python3 qc18acc/pnr/drc_map.py $QC_BUILD/pnr/qa4_t6/rpt/drt.drc.rpt 100          # marker map / net classes
+# diagnostics of section 2 (any checkpoint):
+QA_STEP=place QA_NO_GRT=1 QA_WIN="0 400 3400 3400" QC_FLOW=... QC_PNR_OUT=<run> openroad -exit qc18acc/pnr/gr_diag.tcl > g.out; python3 qc18acc/pnr/tilemap.py g.out
+QA_STEP=place QA_OUTF=locs.txt QA_RE='^(u_act/|u_xbar/(sa|win)_reg)' QC_PNR_OUT=<run> openroad -exit qc18acc/pnr/locs.tcl; python3 qc18acc/pnr/locs.py locs.txt
+python3 qc18acc/pnr/guide_density.py <run>/route.guide 2000 50 0 1090 3400 2680
+# locally:
+QA_V=4 qc18acc/pnr/power.sh -H usask -t qa4_t6 <period_ns> && QA_V=4 python3 qc18acc/pnr/report.py <period_ns> qa4_t6
+ssh <host> 'B=/tmp/$USER/qc18acc/build; mkdir -p $B/syn/qa4_t6_pnr && cp $B/pnr/qa4_t6/out/qa_top.v $B/syn/qa4_t6_pnr/'
+QA_V=4 qc18acc/gls/run_gls.sh start <host> qa4_t6_pnr 0 1; QA_V=4 qc18acc/gls/run_gls.sh check <host> qa4_t6_pnr
+```
+

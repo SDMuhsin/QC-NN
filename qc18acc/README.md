@@ -374,3 +374,29 @@ with gdb): 70 675 DRC markers [S] (= `qa3_t5b` at iteration 4, now all in the hu
 -0.46 / -0.78 ns, fmax ss 148.9 / tt 272.4 MHz [S], 361.0 mW = 108.8 uJ / inference at 3.7 ns [P] + [Mo] (SAIF
 87.3 %), routed-netlist zero-delay GLS bit-exact (81 438 cycles = RTL) [M]; pad 2 overflows in global route.  The v3 route needs a floorplan / xbar change, not a
 flow setting.
+
+### v4 P&R ([results/pnr_v4.md](results/pnr_v4.md))
+
+`qa4.cfg` (improved recipe, bank-column ring floorplan `macro_place4.tcl`, 1 600-um band), `qa4b.cfg` (+ structured
+crossbar placement `xbar_place.tcl` / `xbar_unfix.tcl`), `qa4c.cfg` (route-of-record recipe: + partial blockages
+`ch_block.tcl`, incremental global placement after the DRV repair, weight / param hold margin, macro clock gates at
+their macros `macro_icg.tcl`); the route step runs split (`route_split.tcl`, `run.sh route`: detailed route without
+STA, fillers afterwards).  Diagnostics `locs.tcl` / `locs.py`, `tilemap.py`, `guide_density.py`, `drc_map.py`.
+
+```bash
+# on the P&R host, in /tmp/$USER/qc18acc/repo (synthesis qa4_w3.3 under $QC_BUILD/syn):
+QA_CFG=qc18acc/pnr/qa4c.cfg QC_PNR_TO=cts qc18acc/pnr/run.sh pnr qa4_t6     # floorplan .. CTS
+QA_CFG=qc18acc/pnr/qa4c.cfg qc18acc/pnr/run.sh route qa4_t6                # GRT + repair, detailed route, finish, SPEF
+QA_V=4 QA_IO_REF=1 qc18acc/pnr/run.sh pt qa4_t6                            # PrimeTime ss / tt with SPEF
+QC_FLOW=$PWD/flow/tsmc65 QC_PNR_OUT=$QC_BUILD/pnr/qa4_t6 QC_BUILD=$QC_BUILD openroad -exit qc18acc/pnr/ant_check.tcl > ant.out
+# locally:
+QA_V=4 qc18acc/pnr/power.sh -H <host> -t qa4_t6 <period_ns> && QA_V=4 python3 qc18acc/pnr/report.py <period_ns> qa4_t6
+QA_V=4 qc18acc/gls/run_gls.sh start <host> qa4_t6_pnr 0 1                    # after copying out/qa_top.v to build/syn/qa4_t6_pnr/
+```
+
+Result (`qa4_u9`, results/pnr_v4.md): the v3 recipe forms the crossbar hub again (GRT guide indicator = v3's failing
+hub); with structured crossbar placement, partial blockages and incremental global placement the band is uniform and
+**detailed route converges: 73 DRC markers after 25 iterations** [S]; die 12.685 mm2, 155 antenna nets, fmax ss 200.3 /
+tt 290.7 MHz [S], hold -0.47 / -0.71 ns tt / ss at the macro inputs (OpenROAD's pre-route clock-latency estimate and
+far macro clock gates, section 4), 751.8 mW = 111.46 uJ / inference at 3.5 ns [R] + [Mod], routed-netlist GLS
+bit-exact (42 360 cycles) [M], 0.188 peak / 0.139 average executed TOPS / mm2 at 290.7 MHz.
