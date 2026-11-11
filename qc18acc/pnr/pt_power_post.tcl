@@ -100,7 +100,8 @@ puts $fh "# instance ref clk_toggle_rate_per_ns cen_static_prob wen_static_prob 
 set mf {}; foreach m $qa_macros { lappend mf "ref_name==$m" }
 foreach_in_collection c [filter_collection $leaf [join $mf { || }]] {
     set n [get_object_name $c]
-    puts $fh "$n [get_attribute $c ref_name] [pa $n/CLK toggle_rate] [pa $n/CEN static_probability] [pa $n/WEN static_probability]"
+    set wen [get_object_name [index_collection [get_pins -quiet -of_objects $c -filter "lib_pin_name=~WEN*"] 0]]   ;# v4 act: write-mask bus WEN[3:0], one bit
+    puts $fh "$n [get_attribute $c ref_name] [pa $n/CLK toggle_rate] [pa $n/CEN static_probability] [pa $wen static_probability]"
 }
 close $fh
 exit

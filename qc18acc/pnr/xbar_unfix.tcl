@@ -8,3 +8,8 @@ foreach i [[ord::get_db_block] getInsts] {
     }
 }
 qc_log "xbar_unfix: $n crossbar registers FIRM -> PLACED"
+# P(QA_MACRO_ICG) <cell> (qa4c.cfg: CKLNQD16): macro clock gates resized and moved next to their macros (macro_icg.tcl)
+if {[info exists ::qa_xbar_cts] == 0 && [p QA_MACRO_ICG ""] ne "" && [info level] == 0} {
+    set ::qa_xbar_cts 1
+    source [file normalize $::env(QC_FLOW)/../../qc18acc/pnr]/macro_icg.tcl
+}

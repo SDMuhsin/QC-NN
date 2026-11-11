@@ -61,6 +61,7 @@ if {[sizeof_collection $mcs]} {
     fl $fh reg2reg_logic [get_timing_paths -delay_type max -max_paths 1 -exclude [add_to_collection $io $mpins]] $per
 }
 redirect $dir/rpt/pt_post_${corner}_reg2reg.rpt { report_timing -max_paths 5 -nosplit -exclude $io -path_type full_clock_expanded }
+redirect $dir/rpt/pt_post_${corner}_min_clk.rpt { report_timing -delay_type min -max_paths 3 -nosplit -path_type full_clock_expanded -input_pins -nets -capacitance -transition_time }
 redirect $dir/rpt/pt_post_${corner}_skew.rpt { report_clock_timing -type skew -nworst 5 -nosplit }
 redirect -variable lat { report_clock_timing -type latency -nworst 1 -nosplit }
 puts $fh "clock_latency_worst [string map {"\n" " | "} [string range [regsub -all {\s+} [regsub {^.*?-{5,}} $lat ""] " "] 0 300]]"

@@ -32,6 +32,7 @@ route) # v4: the route step split into processes (route_split.tcl: grt, then drt
 pt)  # flow/tsmc65/pnr/run_pt_post.sh with pt_post_qa.tcl (fmax lines, reg2reg, clock latency / skew)
      . "$root/flow/tsmc65/common/tool.sh"; dir=$QC_BUILD/pnr/$tag; . "$dir/kit.env"
      set -a; . "$(dirname "$NETLIST")/run.env"; set +a; cd "$dir" || exit 1
+     export QA_SDC_BASE=${QA_SDC_BASE:-$root/qc18acc/impl/constraints.sdc}   # v4: impl/v4/constraints.sdc sources it
      for c in ${QA_PT_CORNERS:-ss tt}; do
          QC_PNR_OUT=$dir QC_TOP=$TOP QC_CORNER=$c QC_SDC_FILE=$SDC qc_tool "pt_post_$c.log" pt_shell -f "$here/pt_post_qa.tcl"
          echo "PT_POST_DONE $tag $c errors $(grep -c "^Error" "pt_post_$c.log")"; cat "pt_post_$c.txt"
