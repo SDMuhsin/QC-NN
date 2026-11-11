@@ -197,7 +197,8 @@ rescaled to the same toggles per cycle; act-macro writes from the program, 41 98
 | inferences / s at 285.7 MHz | 6 745 [M] cycles | 9 443 at 400 MHz |
 | executed ops / J | 2.31 TOPS / W [Mod] | 4.10 |
 
-Full tables `results/pnr_v4/qa4_u9_post_3.5ns*` (`report.py 3.5 qa4_u9`).  Where the x1.78 comes from (per
+`qa4_t6` at its tt fmax (3.7 ns, 270.3 MHz): 718.85 mW (PT 671.35) = **112.67 uJ / inference** [R] + [Mod] (clock tree
+15.3 %, glue 101.5 mW, SAIF 83.3 %).  Full tables `results/pnr_v4/qa4_u9_post_3.5ns*`, `qa4_t6_post_3.7ns*` (`report.py`).  Where the x1.78 comes from (per
 inference, 3.5 vs 2.5 ns): the clock tree (+17.1 uJ, absent pre-route), the P&R glue (+15.7 uJ: ~101 k DRV-repair
 buffers of the two place-step repairs and 24.1 k hold buffers of the post-CTS / post-GRT repairs), the leakage of the longer cycle (+4.4 uJ), the routed wires in
 the PE array / PPU (switching 263 vs 156 mW in total), partly offset by the lower macro read power per cycle.
