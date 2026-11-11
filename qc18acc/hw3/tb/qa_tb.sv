@@ -18,7 +18,20 @@ module qa_tb;
   always #1.25 clk = ~clk;                                     // 2.5 ns
   longint cyc = 0;
   always @(posedge clk) cyc <= cyc + 1;
-  logic host_req = 1'b0, host_we = 1'b0, host_rvalid, busy, done;
+  logic host_we = 1'b0, host_rvalid, busy, done;
+  // Status (e2e verification, paused): the VERILATOR paths below were checked on v4 RTL images 0..1 only (logits +
+  // all 20 stored maps bit-exact, 42 360 cycles / image = VCS); v2 / v3 under Verilator and the VCS path after this
+  // edit (expv valid mask, LOGITS line) were not re-run.  qc18acc/verify/e2e.sh is not written yet.
+`ifdef VERILATOR
+  // (VERILATOR) v5.050 --timing applies two NBAs to one variable in one time step of a resumed process out of order
+  // (host_req <= 0 at the end of one hwr, host_req <= 1 at the start of the next: the request is lost), so here
+  // host_req comes from a request counter with one NBA per time step: same request cycles as the VCS path
+  int unsigned hreq_tag = 0, hreq_seen = 0;
+  always @(posedge clk) hreq_seen <= hreq_tag;
+  wire host_req = hreq_tag != hreq_seen;
+`else
+  logic host_req = 1'b0;
+`endif
   logic [23:0] host_addr = '0;
   logic [31:0] host_wdata = '0, host_rdata;
   qa_top dut (.clk, .rst_n, .host_req, .host_we, .host_addr, .host_wdata, .host_rvalid, .host_rdata, .busy, .done);
@@ -32,20 +45,31 @@ module qa_tb;
   logic [31:0] dimg [0:DWORDS-1];
   logic [127:0] inimg [0:1023];
   logic [127:0] expw [0:4095];
+  bit expv [0:4095];                                       // word written by the pass (not 'x' in the file)
   logic [31:0] lexp [0:MAXCLS-1];
   logic [127:0] snap [0:NBUF*4096-1];
   integer no;
 
   // ---- host port tasks -----------------------------------------------------------------------------------------
   task automatic hwr(input logic [23:0] a, input logic [31:0] d);
+`ifdef VERILATOR
+    hreq_tag <= hreq_tag + 1; host_we <= 1'b1; host_addr <= a; host_wdata <= d;
+    @(posedge clk);
+`else
     host_req <= 1'b1; host_we <= 1'b1; host_addr <= a; host_wdata <= d;
     @(posedge clk);
     host_req <= 1'b0; host_we <= 1'b0;
+`endif
   endtask
   task automatic hrd(input logic [23:0] a, output logic [31:0] d);
+`ifdef VERILATOR
+    hreq_tag <= hreq_tag + 1; host_we <= 1'b0; host_addr <= a;
+    @(posedge clk);
+`else
     host_req <= 1'b1; host_we <= 1'b0; host_addr <= a;
     @(posedge clk);
     host_req <= 1'b0;
+`endif
     do @(posedge clk); while (host_rvalid !== 1'b1);
     d = host_rdata;
   endtask
@@ -96,10 +120,27 @@ module qa_tb;
     #0.5;                                                       // after the copy blocks of this edge
     ob = dimg[8*chk_k][14:13];
     $sformat(fn, "%0s/img%0d/pass%02d_%0s.hex", dir, cur_img, chk_k, pname[chk_k]);
+`ifdef VERILATOR
+    // 2-state: $readmemh reads the 'x' words of the file as 0, so the written words are taken from the text
+    begin
+      integer fx, rx;
+      string ln;
+      logic [127:0] wv;
+      fx = $fopen(fn, "r");
+      for (int i = 0; i < 4096; i++) begin
+        expw[i] = '0; expv[i] = 1'b0;
+        if (fx != 0 && $fgets(ln, fx) > 0 && ln.len() > 0 && ln[0] != "x" && ln[0] != "X")
+          if ($sscanf(ln, "%h", wv) == 1) begin expw[i] = wv; expv[i] = 1'b1; end
+      end
+      if (fx != 0) $fclose(fx);
+    end
+`else
     for (int i = 0; i < 4096; i++) expw[i] = 'x;
     $readmemh(fn, expw);
+    for (int i = 0; i < 4096; i++) expv[i] = expw[i][0] !== 1'bx;
+`endif
     bad = 0; cnt = 0;
-    for (int i = 0; i < 4096; i++) if (expw[i][0] !== 1'bx) begin
+    for (int i = 0; i < 4096; i++) if (expv[i]) begin
       cnt = cnt + 1;
       if (snap[ob*4096 + i] !== expw[i]) begin
         if (bad < 5) $display("  MISMATCH img %0d pass %0d %0s buf %0d bank %0d addr %0d: got %h exp %h", cur_img,
@@ -146,6 +187,7 @@ module qa_tb;
     reg [8*600-1:0] fn;
     logic [31:0] v, st, tot, bsy, stl, pld, npa, ard;
     logic [31:0] pc [0:MAXPASS-1];
+    logic [31:0] lgot [0:9];
     integer lerr, ncv_cyc;
     if (!$value$plusargs("DIR=%s", dir)) begin $display("FAIL: need +DIR=<export dir>"); $finish; end
     if (!$value$plusargs("IMG0=%d", img0)) img0 = 0;
@@ -228,11 +270,16 @@ module qa_tb;
       lerr = 0;
       for (int j = 0; j < 10; j++) begin
         hrd(CSR_LOGIT0 + j, v);
+        lgot[j] = v;
         if (v !== lexp[j]) begin
           $display("  LOGIT MISMATCH img %0d j %0d got %0d exp %0d", im, j, $signed(v), $signed(lexp[j]));
           lerr = lerr + 1;
         end
       end
+      // RTL logits as read through the host port (qc18acc/verify/e2e.py compares them with IntNet)
+      $display("LOGITS img %0d %0d %0d %0d %0d %0d %0d %0d %0d %0d %0d", im, $signed(lgot[0]), $signed(lgot[1]),
+               $signed(lgot[2]), $signed(lgot[3]), $signed(lgot[4]), $signed(lgot[5]), $signed(lgot[6]),
+               $signed(lgot[7]), $signed(lgot[8]), $signed(lgot[9]));
       // perf counters
       hrd(CSR_CYC_TOTAL, tot); hrd(CSR_CYC_BUSY, bsy); hrd(CSR_CYC_STALL, stl); hrd(CSR_CYC_PLOAD, pld); hrd(CSR_ACT_RD, ard);
       hrd(CSR_NPASS, npa);
