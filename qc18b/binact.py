@@ -16,6 +16,8 @@ The stem reads the FP normalised image (bin_stem=0 only).  Dense models are retu
 preact=1: B1 reads the PRE-ReLU block input s (the stem passes its BN output s0, no relu):
   block: h = B1(s);  out = c2(B2(c1(h))) + (sc(h) if sc else relu(s));  return out (pre-ReLU);
   network: relu(last block out) -> pool -> fc.  act=False: B1 = B2 = ReLU (same function as qc18).
+arch="bireal" (needs preact=1; same modules / state_dict keys, wiring only; A = BinAct, or ReLU when act=False):
+  block: h = A1(s);  y1 = c1(h) + (sc(h) if sc else s);  return c2(A2(y1)) + y1  (pre-ReLU).
 
 Grad-flow logging (training forwards with grad enabled, every `log_every`-th call): that forward runs eager with
 tensor hooks; per BinAct p1 = mean(b), const = frac. channels with mean(b) < 0.01 or > 0.99, pass = frac. |u| < w,
@@ -103,6 +105,13 @@ class PreBlock(BasicBlock):
         return out + (self.sc(h) if self.sc is not None else F.relu(s))
 
 
+class BiRealBlock(BasicBlock):
+    def forward(self, s):
+        h = self.b1(s)
+        y1 = self.c1(h) + (self.sc(h) if self.sc is not None else s)
+        return self.c2(self.b2(y1)) + y1
+
+
 class BinQCResNet18(QCResNet18):
     """Forward = qc18 forward; training forwards dispatch to a compiled copy, every log_every-th one eager+logged."""
 
@@ -165,14 +174,15 @@ class BinQCResNet18(QCResNet18):
 
 
 def binarize(model, ste="clip", w=1.0, bin_stem=0, log_path="", log_every=50, spe=1, compile=True, act=True, k=1.0,
-             t_train=1, preact=0):
+             t_train=1, preact=0, arch="qc18"):
     """act=False: no BinAct (FP-activation reference), only the logging forward (grad theta records)."""
     if model.mode == "dense":
         return model
     assert not bin_stem, "--bin-stem 1 not implemented"
+    assert arch in ("qc18", "bireal") and (arch == "qc18" or preact), "--arch bireal requires --preact 1"
     for blk in (model.blocks if act or preact else ()):
         dev = blk.c1.bn.weight.device
-        blk.__class__ = PreBlock if preact else BinBlock
+        blk.__class__ = BiRealBlock if arch == "bireal" else PreBlock if preact else BinBlock
         blk.b1 = BinAct(blk.c1.conv.cin, ste, w, k, t_train).to(dev) if act else nn.ReLU()
         blk.b2 = BinAct(blk.c2.conv.cin, ste, w, k, t_train).to(dev) if act else nn.ReLU()
     model.__class__ = BinQCResNet18

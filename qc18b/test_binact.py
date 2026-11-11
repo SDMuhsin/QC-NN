@@ -47,3 +47,18 @@ with torch.no_grad():
     d = (pre(x) - ref(x)).abs().max().item()
 print(f"preact, act off vs qc18 (same weights, eval): max |logit diff| {d}")
 assert d == 0
+from qc18b.binact import BiRealBlock
+
+for act in (0, 1):                                        # bireal: forward, b exact 0/1, state_dict interchangeable with qc18
+    br = binarize(copy.deepcopy(ref), compile=False, act=bool(act), preact=1, arch="bireal").train()
+    assert all(isinstance(b, BiRealBlock) for b in br.blocks)
+    q = binarize(copy.deepcopy(ref), compile=False, act=bool(act), preact=1)
+    assert br.state_dict().keys() == q.state_dict().keys()
+    br.load_state_dict(q.state_dict()); q.load_state_dict(br.state_dict())
+    bs = []
+    hk = [m.register_forward_hook(lambda m, i, o: bs.append(o)) for _, m in br.binacts()]
+    y = br(x)
+    y.sum().backward()
+    assert torch.isfinite(y).all() and y.shape == (4, 100)
+    assert len(bs) == 16 * act and all(((b == 0) | (b == 1)).all() for b in bs)
+    print(f"bireal binact={act}: forward ok, {len(bs)} BinAct outputs exact 0/1, state_dict loads both ways")
