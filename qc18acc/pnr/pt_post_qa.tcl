@@ -69,4 +69,6 @@ redirect -variable sk { report_clock_timing -type skew -nworst 1 -nosplit }
 puts $fh "clock_skew_worst [string map {"\n" " | "} [string range [regsub -all {\s+} [regsub {^.*?-{5,}} $sk ""] " "] 0 300]]"
 puts $fh "pt_wall_s [expr {[clock seconds] - $t0}]"
 close $fh
+# QA_PT_EXTRA: optional Tcl file of extra reports (diagnosis), sourced with the design timed
+if {[qc_env QA_PT_EXTRA] ne ""} { source [qc_env QA_PT_EXTRA] }
 exit
