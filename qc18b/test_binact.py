@@ -31,3 +31,19 @@ m(x).backward(torch.ones(2, 3, 4, 4))
 assert m.t.grad is None and not m.t.requires_grad
 assert torch.allclose(x.grad, 0.43 * (x.detach().abs() < 1).float())
 print("clip K=0.43 t_train=0: ok")
+import copy
+
+from qc18.model import QCResNet18
+from qc18b.binact import binarize
+
+ref = QCResNet18("signed", 8, num_classes=100).eval()
+for mod in ref.modules():                                 # non-trivial BN stats / affine
+    if isinstance(mod, torch.nn.BatchNorm2d):
+        with torch.no_grad():
+            mod.running_mean.normal_(0, 0.3); mod.running_var.uniform_(0.5, 2); mod.weight.uniform_(0.5, 1.5); mod.bias.normal_(0, 0.3)
+pre = binarize(copy.deepcopy(ref), compile=False, act=False, preact=1).eval()
+x = torch.randn(4, 3, 32, 32)
+with torch.no_grad():
+    d = (pre(x) - ref(x)).abs().max().item()
+print(f"preact, act off vs qc18 (same weights, eval): max |logit diff| {d}")
+assert d == 0
