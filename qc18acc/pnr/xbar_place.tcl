@@ -110,3 +110,34 @@ if {[info commands qa_gpl_orig] eq ""} {
         source [file normalize $::env(QC_FLOW)/../../qc18acc/pnr]/xbar_unfix.tcl
     }
 }
+# P(QA_GPL_INCR) 1: incremental global placement after the DRV repair of the place step (qc_repair_drv wrapped):
+# that repair grows the cell area by ~40 % after global placement (qa4_t4: 68 k buffers, 116 k resized cells),
+# which detailed placement can only legalise in place, so the PE-row clusters around the window registers end at
+# 95-100 % utilisation; the incremental pass re-spreads the post-repair cells at density P(QA_GPL_INCR_DENS)
+# (default 0.76: after the repair the padded cells fill 72.7 % of the free core area, so P(PLACE_DENSITY) 0.6 is
+# infeasible, GPL-0302).
+if {[p QA_GPL_INCR 0] && [info commands qa_drv_orig] eq ""} {
+    rename qc_repair_drv qa_drv_orig
+    proc qc_repair_drv {} {
+        qa_drv_orig
+        qc_log "xbar_place: incremental global placement after the DRV repair"
+        qa_gpl_orig -incremental -density [p QA_GPL_INCR_DENS 0.76] -pad_left [p PLACE_PAD] -pad_right [p PLACE_PAD] {*}[p GPL_ARGS]
+        # the incremental pass ignores the hard blockages of rows_fix.tcl (qa4_u8: 349 cells in the 20-um row strips
+        # outside the weight tiers, where TritonCTS then looped on a clock net with a sink inside a blockage): the
+        # rows inside hard blockages are removed (the PDN is built), so the legalisation moves those cells out
+        set blk [ord::get_db_block]; set nr 0
+        foreach b [$blk getBlockages] {
+            if {[$b getMaxDensity] > 0} { continue }
+            set bb [$b getBBox]
+            foreach r [$blk getRows] {
+                set rb [$r getBBox]
+                if {[$rb yMin] >= [$bb yMin] && [$rb yMax] <= [$bb yMax]} { odb::dbRow_destroy $r; incr nr }
+            }
+        }
+        qc_log "xbar_place: $nr rows inside hard placement blockages removed"
+        estimate_parasitics -placement
+        # the moved cells leave the first repair's buffers off their wires (qa4_u7 without this: place tt -3.56 ns,
+        # TNS -21 923 ns): DRV repair of the nets violating now
+        if {[p QA_GPL_INCR_DRV 1]} { qa_drv_orig }
+    }
+}
