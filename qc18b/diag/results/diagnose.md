@@ -137,3 +137,54 @@ per-class train acc gap FP - BIN: mean 14.54 pp; corr(gap, FP per-class train ac
 | blocks.6.sc.bn | 1.1292 | 0.8439 | 1.5579 | 1.1124 | 4.7969 | 12.1084 |
 | blocks.7.c1.bn | 1.2422 | 1.2357 | 1.1468 | 0.9510 | 18.9485 | 47.3539 |
 | blocks.7.c2.bn | 2.9834 | 2.5630 | 3.6122 | 2.3143 | 14.9761 | 16.3806 |
+
+## D7 downsampling blocks: probe on pooled relu() of block input / shortcut / branch / output (acc %, train / val)
+
+All D7-D9 tensors from an fp64 copy of each model (BIN block convs integer-exact); fp64 val acc BIN 62.08, FP 68.64.  Probe protocol as D1.  (i) s_{k-1}; (ii) sc-BN output; (iii) c2-BN output; (iv) s_k; (v) BIN only: sc-BN(sc-conv(relu(s_{k-1}))) with stored eval BN; (v') same with BN mean/var recomputed on the 10k train set (sc-conv(relu(s)) statistics, biased var), stored gamma/beta.
+
+| block | model | (i) in | (ii) sc | (iii) branch | (iv) out | (v) sc(relu s), eval BN | (v') sc(relu s), BN recomputed |
+|---|---|---|---|---|---|---|---|
+| 2 | BIN | 30.72 / 22.00 | 31.94 / 19.56 | 37.62 / 28.00 | 37.05 / 28.06 | 31.16 / 20.58 | 32.52 / 21.12 |
+| 2 | FP | 35.47 / 26.24 | 40.66 / 26.12 | 34.43 / 25.72 | 51.83 / 32.66 | - | - |
+| 4 | BIN | 43.82 / 30.64 | 48.86 / 30.54 | 63.93 / 39.78 | 62.93 / 39.40 | 47.71 / 28.12 | 50.67 / 29.32 |
+| 4 | FP | 50.39 / 35.92 | 52.84 / 34.56 | 75.02 / 47.62 | 74.26 / 46.94 | - | - |
+| 6 | BIN | 58.54 / 43.96 | 70.13 / 40.46 | 80.25 / 53.60 | 81.21 / 53.76 | 64.45 / 40.28 | 58.51 / 37.32 |
+| 6 | FP | 78.86 / 52.70 | 76.56 / 49.76 | 89.71 / 62.26 | 90.60 / 63.18 | - | - |
+
+BIN shortcut on binary vs FP input (val): A = sc(b1(s)), B = sc(relu(s)) (both sc-BN outputs, eval BN), each channel's mean over (N,H,W) removed; scalar alpha = <A,B>/<B,B>; rel err = ||A - alpha B|| / ||A||; also with a per-channel alpha, and centred cosine(A, B).
+
+| block | alpha | rel err (scalar alpha) | rel err (per-channel alpha) | centred cos |
+|---|---|---|---|---|
+| 2 | 0.5147 | 0.5157 | 0.5065 | 0.8568 |
+| 4 | 0.6638 | 0.6017 | 0.5969 | 0.7987 |
+| 6 | 0.6845 | 0.6127 | 0.6094 | 0.7903 |
+
+## D8 non-downsampling blocks: branch (c2-BN output) vs identity (relu(s_in)) (val)
+
+centred: each channel's mean over (N,H,W) removed from both; raw: as D4.  m_b, m_i = per-channel means of branch / identity; opp = fraction of channels with m_b * m_i < 0; m_i = 0 = fraction of channels with identity identically 0.
+
+| block | model | cos centred | cos raw | median m_b | median m_i | opp | m_i = 0 |
+|---|---|---|---|---|---|---|---|
+| 0 | BIN | -0.163 | -0.607 | -1.5143 | 1.8841 | 0.891 | 0.047 |
+| 0 | FP | 0.102 | -0.006 | 0.2541 | 1.0284 | 0.359 | 0.188 |
+| 1 | BIN | 0.075 | -0.564 | -0.3683 | 0.4061 | 0.750 | 0.016 |
+| 1 | FP | 0.301 | 0.120 | 0.0321 | 1.4873 | 0.438 | 0.031 |
+| 3 | BIN | -0.073 | -0.500 | -0.9526 | 0.5179 | 0.922 | 0.023 |
+| 3 | FP | 0.212 | -0.184 | -1.0164 | 1.0564 | 0.750 | 0.000 |
+| 5 | BIN | -0.059 | -0.460 | -0.6709 | 0.2933 | 0.977 | 0.004 |
+| 5 | FP | 0.072 | -0.182 | -0.5795 | 0.7308 | 0.777 | 0.004 |
+| 7 | BIN | 0.161 | -0.109 | -3.6047 | 0.3682 | 0.984 | 0.016 |
+| 7 | FP | 0.134 | -0.100 | -2.2788 | 0.2846 | 0.986 | 0.014 |
+
+## D9 BIN: probe on pooled relu(s_k) vs on pooled b1 of block k+1 (the binary map block k+1 consumes) (acc %)
+
+| k | relu(s_k) train | relu(s_k) val | b1_{k+1} train | b1_{k+1} val |
+|---|---|---|---|---|
+| stem | 21.28 | 18.06 | 23.44 | 16.80 |
+| 0 | 27.25 | 20.24 | 26.93 | 18.94 |
+| 1 | 30.72 | 22.00 | 28.62 | 18.10 |
+| 2 | 37.05 | 28.06 | 38.01 | 26.12 |
+| 3 | 43.82 | 30.64 | 41.53 | 30.40 |
+| 4 | 62.93 | 39.40 | 48.48 | 35.02 |
+| 5 | 58.54 | 43.96 | 67.68 | 41.82 |
+| 6 | 81.21 | 53.76 | 79.25 | 50.12 |

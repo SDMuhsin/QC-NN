@@ -275,15 +275,212 @@ def d6(m):
     return out
 
 
+DS = (2, 4, 6)
+NDS = (0, 1, 3, 5, 7)
+
+
+class Acc:
+    """per-channel running sums for a pair (A, B) of [N, C, H, W] tensors (fp64)."""
+
+    def __init__(self):
+        self.n = 0
+        self.s = None
+
+    def add(self, A, B):
+        t = dict(a=A.sum((0, 2, 3)), b=B.sum((0, 2, 3)), aa=(A * A).sum((0, 2, 3)), bb=(B * B).sum((0, 2, 3)),
+                 ab=(A * B).sum((0, 2, 3)))
+        self.s = t if self.s is None else {k: self.s[k] + v for k, v in t.items()}
+        self.n += A.shape[0] * A.shape[2] * A.shape[3]
+
+    def centred(self):
+        """per-channel centred (aa, bb, ab) and channel means (ma, mb)."""
+        s, n = self.s, self.n
+        ma, mb = s["a"] / n, s["b"] / n
+        return s["aa"] - n * ma * ma, s["bb"] - n * mb * mb, s["ab"] - n * ma * mb, ma, mb
+
+
+def _bn(bn, z, stats=None):
+    if stats is None:
+        mu, var = bn.running_mean, bn.running_var
+    else:
+        mu, var = stats
+    return (z - mu.view(1, -1, 1, 1)) / (var.view(1, -1, 1, 1) + bn.eps).sqrt() * bn.weight.view(1, -1, 1, 1) \
+        + bn.bias.view(1, -1, 1, 1)
+
+
+@torch.no_grad()
+def collect789(md, x, binary, scstats=None, want_stats=False):
+    """fp64 model md (eval).  -> pooled features {key: [N, C]} and accumulators.  scstats: {k: (mean, var)} of
+    sc.conv(relu(s_{k-1})) (BIN) for the recomputed-BN variant; want_stats: return those stats instead."""
+    feats, accs, cur, hs = {}, {}, {}, []
+    put = lambda key, t: feats.setdefault(key, []).append(F.relu(t).mean((2, 3)))
+    st = {}
+    hs.append(md.stem.register_forward_hook(lambda mm, i, o: put(("s", -1), o)))
+    for k, blk in enumerate(md.blocks):
+        hs.append(blk.register_forward_pre_hook(lambda mm, i, k=k: cur.__setitem__("in", i[0])))
+        hs.append(blk.b1.register_forward_hook(lambda mm, i, o, k=k: cur.__setitem__("h", o)))
+        hs.append(blk.c2.register_forward_hook(lambda mm, i, o: cur.__setitem__("br", o)))
+        if blk.sc is not None:
+            hs.append(blk.sc.register_forward_hook(lambda mm, i, o: cur.__setitem__("sc", o)))
+
+        def post(mm, i, o, k=k):
+            s, h, br = cur.pop("in"), cur.pop("h"), cur.pop("br")
+            if binary:
+                assert bool(((h == 0) | (h == 1)).all()), k
+                put(("b1", k), h)                                     # mean of the binary map (relu is identity)
+            put(("s", k), o)
+            if want_stats:
+                if mm.sc is not None:
+                    z = mm.sc.conv(F.relu(s))
+                    a = st.setdefault(k, [0, 0.0, 0.0])
+                    a[0] += z.shape[0] * z.shape[2] * z.shape[3]
+                    a[1] = a[1] + z.sum((0, 2, 3))
+                    a[2] = a[2] + (z * z).sum((0, 2, 3))
+                cur.pop("sc", None)
+                return
+            if mm.sc is not None:
+                sc = cur.pop("sc")
+                assert torch.allclose(br + sc, o, atol=1e-9, rtol=1e-9), k
+                put(("in", k), s)
+                put(("sc", k), sc)
+                put(("br", k), br)
+                if binary:
+                    z = mm.sc.conv(F.relu(s))
+                    v = mm.sc.bn(z)                                   # eval BN, stored running stats
+                    put(("v", k), v)
+                    if scstats is not None:
+                        put(("vr", k), _bn(mm.sc.bn, z, scstats[k]))
+                    accs.setdefault(("v", k), Acc()).add(sc, v)
+            else:
+                idt = F.relu(s)
+                assert torch.allclose(br + idt, o, atol=1e-9, rtol=1e-9), k
+                accs.setdefault(("d8", k), Acc()).add(br, idt)
+        hs.append(blk.register_forward_hook(post))
+    try:
+        for i in range(0, len(x), BS):
+            md(data.prep(x[i:i + BS], torch.float64))
+    finally:
+        for h in hs:
+            h.remove()
+    if want_stats:
+        return {k: (a[1] / a[0], a[2] / a[0] - (a[1] / a[0]) ** 2) for k, a in st.items()}
+    return {key: torch.cat(v) for key, v in feats.items()}, accs
+
+
+def main789(a, dev, log):
+    (xtr, ytr), (xva, yva) = data.split(dev)
+    xtr, ytr = xtr[:10000], ytr[:10000]
+    mb, _, ob = build_bin(a.bin, dev)
+    mf, _ = build_fp(a.fp, dev)
+    R = dict(bin=a.bin, fp=a.fp, bin_opts=ob, d7={}, d7err={}, d8={}, d9=[])
+    F_, A_ = {}, {}
+    for tag, m, binary in (("BIN", mb, True), ("FP", mf, False)):
+        md = copy.deepcopy(m).double().eval()
+        del m
+        ss = collect789(md, xtr, binary, want_stats=True) if binary else None
+        ft, _ = collect789(md, xtr, binary, ss)
+        fv, av = collect789(md, xva, binary, ss)
+        with torch.no_grad():
+            R.setdefault("val_fp64", {})[tag] = sum((md(data.prep(xva[i:i + BS], torch.float64)).argmax(1) == yva[i:i + BS])
+                                                   .sum().item() for i in range(0, len(xva), BS)) / len(xva)
+        F_[tag], A_[tag] = (ft, fv), av
+        del md
+        torch.cuda.empty_cache()
+        log(f"{tag} collected, fp64 val {R['val_fp64'][tag]:.4f}")
+    pr = lambda tag, key: probe(F_[tag][0][key], ytr, F_[tag][1][key], yva)
+    # D7
+    for k in DS:
+        for tag in ("BIN", "FP"):
+            keys = [("i", ("s", k - 1)), ("ii", ("sc", k)), ("iii", ("br", k)), ("iv", ("s", k))]
+            if tag == "BIN":
+                keys += [("v", ("v", k)), ("v_bnrec", ("vr", k))]
+            for nm, key in keys:
+                p = pr(tag, key)
+                R["d7"][f"{tag}/{k}/{nm}"] = {kk: p[kk] for kk in ("train", "val", "lr", "wd")}
+            log(f"D7 {tag} block{k} " + " ".join(f"{nm} {100 * R['d7'][f'{tag}/{k}/{nm}']['val']:.2f}" for nm, _ in keys))
+        aa, bb, ab, _, _ = A_["BIN"][("v", k)].centred()
+        al = ab.sum() / bb.sum()
+        err = ((aa.sum() - 2 * al * ab.sum() + al * al * bb.sum()) / aa.sum()).clamp_min(0).sqrt()
+        alc = ab / bb.clamp_min(1e-300)                                     # per-channel alpha
+        errc = ((aa - alc * ab).sum() / aa.sum()).clamp_min(0).sqrt()
+        R["d7err"][k] = dict(alpha=al.item(), rel_err=err.item(), rel_err_perch_alpha=errc.item(),
+                             cos_centred=(ab.sum() / (aa.sum() * bb.sum()).sqrt()).item())
+        log(f"D7 err block{k} {R['d7err'][k]}")
+    # D8
+    for k in NDS:
+        for tag in ("BIN", "FP"):
+            A = A_[tag][("d8", k)]
+            aa, bb, ab, ma, mb_ = A.centred()
+            s = A.s
+            R["d8"][f"{tag}/{k}"] = dict(cos_centred=(ab.sum() / (aa.sum() * bb.sum()).sqrt()).item(),
+                                         cos_raw=(s["ab"].sum() / (s["aa"].sum() * s["bb"].sum()).sqrt()).item(),
+                                         med_mean_branch=ma.median().item(), med_mean_id=mb_.median().item(),
+                                         frac_opp=((ma * mb_) < 0).double().mean().item(),
+                                         frac_id_zero=(mb_ == 0).double().mean().item())
+    log("D8 done")
+    # D9
+    for k in range(-1, len(mb.blocks) - 1):
+        r = dict(block=k, relu_s=pr("BIN", ("s", k)), b1_next=pr("BIN", ("b1", k + 1)))
+        R["d9"].append({kk: (v if not isinstance(v, dict) else {q: v[q] for q in ("train", "val", "lr", "wd")})
+                        for kk, v in r.items()})
+        log(f"D9 {k} {100 * r['relu_s']['val']:.2f} vs {100 * r['b1_next']['val']:.2f}")
+    with open(a.out + "_d789.json", "w") as fh:
+        json.dump({**R, "d7err": {str(k): v for k, v in R["d7err"].items()}}, fh, indent=1)
+    append_md789(R, a.out + ".md")
+
+
+def append_md789(R, path):
+    v = lambda d: f"{100 * d['val']:.2f}"
+    t = lambda d: f"{100 * d['train']:.2f}"
+    L = ["", "## D7 downsampling blocks: probe on pooled relu() of block input / shortcut / branch / output (acc %, train / val)", "",
+         "All D7-D9 tensors from an fp64 copy of each model (BIN block convs integer-exact); fp64 val acc "
+         f"BIN {100 * R['val_fp64']['BIN']:.2f}, FP {100 * R['val_fp64']['FP']:.2f}.  Probe protocol as D1.  "
+         "(i) s_{k-1}; (ii) sc-BN output; (iii) c2-BN output; (iv) s_k; (v) BIN only: sc-BN(sc-conv(relu(s_{k-1}))) with "
+         "stored eval BN; (v') same with BN mean/var recomputed on the 10k train set (sc-conv(relu(s)) statistics, biased var), "
+         "stored gamma/beta.", "",
+         "| block | model | (i) in | (ii) sc | (iii) branch | (iv) out | (v) sc(relu s), eval BN | (v') sc(relu s), BN recomputed |",
+         "|---|---|---|---|---|---|---|---|"]
+    for k in (2, 4, 6):
+        for tag in ("BIN", "FP"):
+            d = lambda nm: R["d7"].get(f"{tag}/{k}/{nm}")
+            cells = [f"{t(d(nm))} / {v(d(nm))}" if d(nm) else "-" for nm in ("i", "ii", "iii", "iv", "v", "v_bnrec")]
+            L.append(f"| {k} | {tag} | " + " | ".join(cells) + " |")
+    L += ["", "BIN shortcut on binary vs FP input (val): A = sc(b1(s)), B = sc(relu(s)) (both sc-BN outputs, eval BN), each "
+          "channel's mean over (N,H,W) removed; scalar alpha = <A,B>/<B,B>; rel err = ||A - alpha B|| / ||A||; also with a "
+          "per-channel alpha, and centred cosine(A, B).", "",
+          "| block | alpha | rel err (scalar alpha) | rel err (per-channel alpha) | centred cos |", "|---|---|---|---|---|"]
+    for k, e in R["d7err"].items():
+        L.append(f"| {k} | {e['alpha']:.4f} | {e['rel_err']:.4f} | {e['rel_err_perch_alpha']:.4f} | {e['cos_centred']:.4f} |")
+    L += ["", "## D8 non-downsampling blocks: branch (c2-BN output) vs identity (relu(s_in)) (val)", "",
+          "centred: each channel's mean over (N,H,W) removed from both; raw: as D4.  m_b, m_i = per-channel means of branch / "
+          "identity; opp = fraction of channels with m_b * m_i < 0; m_i = 0 = fraction of channels with identity identically 0.", "",
+          "| block | model | cos centred | cos raw | median m_b | median m_i | opp | m_i = 0 |", "|---|---|---|---|---|---|---|---|"]
+    for k in (0, 1, 3, 5, 7):
+        for tag in ("BIN", "FP"):
+            d = R["d8"][f"{tag}/{k}"]
+            L.append(f"| {k} | {tag} | {d['cos_centred']:.3f} | {d['cos_raw']:.3f} | {d['med_mean_branch']:.4f} | "
+                     f"{d['med_mean_id']:.4f} | {d['frac_opp']:.3f} | {d['frac_id_zero']:.3f} |")
+    L += ["", "## D9 BIN: probe on pooled relu(s_k) vs on pooled b1 of block k+1 (the binary map block k+1 consumes) (acc %)", "",
+          "| k | relu(s_k) train | relu(s_k) val | b1_{k+1} train | b1_{k+1} val |", "|---|---|---|---|---|"]
+    for r in R["d9"]:
+        n = "stem" if r["block"] == -1 else r["block"]
+        L.append(f"| {n} | {t(r['relu_s'])} | {v(r['relu_s'])} | {t(r['b1_next'])} | {v(r['b1_next'])} |")
+    with open(path, "a") as fh:
+        fh.write("\n".join(L) + "\n")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--bin", required=True)
     ap.add_argument("--fp", required=True)
     ap.add_argument("--out", required=True)
+    ap.add_argument("--d789", action="store_true", help="only D7-D9; append to OUT.md, write OUT_d789.json")
     a = ap.parse_args()
     dev = "cuda"
     t0 = time.time()
     log = lambda s: print(f"[{time.time() - t0:7.1f}s] {s}", flush=True)
+    if a.d789:
+        return main789(a, dev, log)
     (xtr, ytr), (xva, yva) = data.split(dev)
     xtr, ytr = xtr[:10000], ytr[:10000]
     mb, ckb, ob = build_bin(a.bin, dev)
