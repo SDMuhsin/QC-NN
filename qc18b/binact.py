@@ -207,17 +207,20 @@ class BinQCResNet18(QCResNet18):
 
 
 def binarize(model, ste="clip", w=1.0, bin_stem=0, log_path="", log_every=50, spe=1, compile=True, act=True, k=1.0,
-             t_train=1, preact=0, arch="qc18"):
-    """act=False: no BinAct (FP-activation reference), only the logging forward (grad theta records)."""
+             t_train=1, preact=0, arch="qc18", fp_blocks=()):
+    """act=False: no BinAct (FP-activation reference), only the logging forward (grad theta records).
+    fp_blocks: block indices whose b1 / b2 are ReLU instead of BinAct (FP-activation block, same pre-activation)."""
     if model.mode == "dense":
         return model
     assert not bin_stem, "--bin-stem 1 not implemented"
     assert arch in ("qc18", "bireal") and (arch == "qc18" or preact), "--arch bireal requires --preact 1"
-    for blk in (model.blocks if act or preact else ()):
+    assert all(0 <= i < len(model.blocks) for i in fp_blocks), fp_blocks
+    for i, blk in enumerate(model.blocks if act or preact else ()):
         dev = blk.c1.bn.weight.device
         blk.__class__ = BiRealBlock if arch == "bireal" else PreBlock if preact else BinBlock
-        blk.b1 = BinAct(blk.c1.conv.cin, ste, w, k, t_train).to(dev) if act else nn.ReLU()
-        blk.b2 = BinAct(blk.c2.conv.cin, ste, w, k, t_train).to(dev) if act else nn.ReLU()
+        ba = act and i not in fp_blocks
+        blk.b1 = BinAct(blk.c1.conv.cin, ste, w, k, t_train).to(dev) if ba else nn.ReLU()
+        blk.b2 = BinAct(blk.c2.conv.cin, ste, w, k, t_train).to(dev) if ba else nn.ReLU()
     model.__class__ = BinQCResNet18
     model._preact = bool(preact)
     model._hooks, model._calls, model._pending, model._log_path, model._log_every, model._spe = [], 0, None, log_path, log_every, spe

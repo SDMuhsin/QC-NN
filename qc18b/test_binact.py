@@ -83,3 +83,13 @@ tm = therm_stem(copy.deepcopy(ref), 16, data.MEAN, data.STD, mode="signed", b=8)
 tm = binarize(tm, compile=False, preact=1, arch="bireal").to(memory_format=torch.channels_last).train()
 assert tm.stem.conv.cin == 48 and torch.isfinite(tm(xn)).all()
 print("therm_stem K=16 + bireal binact: forward ok, stem cin 48")
+
+fb = binarize(copy.deepcopy(ref), compile=False, preact=1, fp_blocks=tuple(range(8))).eval()      # --fp-blocks 0..7 == --binact 0
+assert not fb.binacts()
+with torch.no_grad():
+    d = (fb(x) - pre(x)).abs().max().item()
+print(f"preact fp_blocks 0..7 vs binact 0 (same weights, eval): max |logit diff| {d}")
+assert d == 0
+fh = binarize(copy.deepcopy(ref), compile=False, preact=1, fp_blocks=(2, 3))
+assert [n for n, _ in fh.binacts()] == [f"blocks.{i}.b{j}" for i in (0, 1, 4, 5, 6, 7) for j in (1, 2)]
+print("fp_blocks 2,3: BinActs only in blocks 0,1,4..7")
