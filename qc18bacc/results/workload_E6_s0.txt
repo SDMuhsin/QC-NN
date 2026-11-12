@@ -1,0 +1,98 @@
+/tmp/root/qc18b/exc200/E6_s0/best.pt: epoch 197, fp_blocks [6]; IntBin calibrated on train[:2000] (float_trace); val[:2000]; instrumented forward == IntBin logits bit-exact on all 2000 images: PASS; integer val[:2000] acc 64.05 %
+
+[1] conv workload per image  +  [2] accumulator acc' = sign(g) M x (before bias / requant)
+conv             Cin Cout k s  HoxWo in-b    exec MAC    slot MAC   fill |acc| bound bits  obs max bits
+stem               3   64 3 1  32x32    8      405504     1179648  0.344        1270   12     1158   12
+blocks.0.c1       64   64 3 1  32x32    1     8232960     9437184  0.872          80    8       53    7
+blocks.0.c2       64   64 3 1  32x32    1     8323072     9437184  0.882          88    8       71    8
+blocks.1.c1       64   64 3 1  32x32    1     8298496     9437184  0.879          75    8       63    7
+blocks.1.c2       64   64 3 1  32x32    1     7757824     9437184  0.822          77    8       56    7
+blocks.2.c1       64  128 3 2  16x16    1     3670016     4718592  0.778          81    8       64    8
+blocks.2.c2      128  128 3 1  16x16    1     6866944     9437184  0.728         135    9       74    8
+blocks.2.sc       64  128 1 2  16x16    1      462848      524288  0.883          14    5       14    5
+blocks.3.c1      128  128 3 1  16x16    1     7911424     9437184  0.838         135    9      109    8
+blocks.3.c2      128  128 3 1  16x16    1     7745536     9437184  0.821         200    9       68    8
+blocks.4.c1      128  256 3 2    8x8    1     3846656     4718592  0.815         170    9       96    8
+blocks.4.c2      256  256 3 1    8x8    1     8086528     9437184  0.857         304   10      167    9
+blocks.4.sc      128  256 1 2    8x8    1      450560      524288  0.859          25    6       22    6
+blocks.5.c1      256  256 3 1    8x8    1     7987712     9437184  0.846         310   10      136    9
+blocks.5.c2      256  256 3 1    8x8    1     8336896     9437184  0.883         403   10       99    8
+blocks.6.c1      256  512 3 2    4x4    8     4302336     4718592  0.912       43434   17     1265   12
+blocks.6.c2      512  512 3 1    4x4    8     8927104     9437184  0.946       87757   18     1394   12
+blocks.6.sc      256  512 1 2    4x4    8      479616      524288  0.915        5461   14      362   10
+blocks.7.c1      512  512 3 1    4x4    1     8846976     9437184  0.937         733   11      180    9
+blocks.7.c2      512  512 3 1    4x4    1     8934016     9437184  0.947         673   11      128    9
+total                                       119873024   139591680  0.859   (8-bit-input convs: exec 14114560, slot 15859712; 1-bit: exec 105758464, slot 123731968)
+
+[3] int8 tensors (stem input q; fp block hq = c1/sc input, z = c1 output / c2 input); words 16 raster px x 8 ch
+  q        max |v|  127  zeros   0.67 %   elements/img 3072
+  b6.hq    max |v|  127  zeros  67.17 %   elements/img 16384
+  b6.z     max |v|  127  zeros  83.44 %   elements/img 8192
+  fraction of words with plane b all zero, b = 0..7 (LSB first):
+  q (2's c)        0.000 0.000 0.000 0.000 0.001 0.004 0.023 0.105   planes/word 7.866   words/img 64
+  q (s-m,b7=sign)  0.000 0.000 0.000 0.002 0.001 0.012 0.141 0.105   planes/word 7.738   words/img 64
+  b6.hq            0.009 0.014 0.032 0.107 0.536 0.967 0.999 1.000   planes/word 4.335   words/img 128
+  b6.z             0.013 0.018 0.030 0.084 0.399 0.908 0.998 1.000   planes/word 4.551   words/img 64
+
+[4] requant multipliers: minimal exact multiplier bits m' (any shift sh') over the worst-case domain (IntBin m0 is 31-bit)
+  requant                ch                domain   unclamped max/med   clamped max/med  sh max
+  stem_m                 64         [-4147, 1610]               26/22                 -      23
+  b0.c2m                 64             [-88, 87]               20/17                 -      13
+  b0.idm                  1            [0, 32767]               21/21                 -      20
+  b1.c2m                 64             [-76, 77]             20/16.5                 -      13
+  b1.idm                  1            [0, 32767]               24/24                 -      24
+  b2.c2m                128           [-135, 132]               22/19                 -      14
+  b2.scm                128             [-14, 14]               17/14                 -       7
+  b3.c2m                128           [-200, 200]               23/20                 -      15
+  b3.idm                  1            [0, 32767]               23/23                 -      22
+  b4.c2m                256           [-304, 282]               26/20                 -      18
+  b4.scm                256             [-25, 25]               18/14                 -      10
+  b5.c2m                256           [-403, 403]               25/21                 -      17
+  b5.idm                  1            [0, 32767]               24/24                 -      24
+  b6.hm                   1            [0, 32767]               15/15             15/15      23
+  b6.c1m                512       [-43804, 39836]               29/24             22/16      31
+  b6.c2m                512      [-339542, 85991]               31/30                 -      33
+  b6.scm                512        [-15712, 5135]               30/26                 -      26
+  b7.c2m                512           [-673, 622]               26/23                 -      19
+  b7.idm                  1            [0, 32767]               22/22                 -      22
+  pool_m                  1           [0, 524272]               23/23             23/23      33
+  all requants (unclamped): max 31, median 23 bits over 3399 channel multipliers
+
+[5] residual stream s_k (int16, before the saturating clamp): observed max |s_k|, saturations
+  s0 32057 (0)  s1 32952 (1)  s2 32212 (0)  s3 35641 (8)  s4 32293 (0)  s5 34654 (2)  s6 40332 (1)  s7 29156 (0)  s8 31702 (0)   total saturations 12 over 2000 images
+
+[6] weight codes (QC coefficients of M; 8x8 blocks; sign(g) is 1 b per output channel on top)
+  conv             blocks   0-term   1-term   2-term  code bits
+  stem                 72    0.056    0.056    0.889        720
+  blocks.0.c1         576    0.069    0.116    0.814       5760
+  blocks.0.c2         576    0.059    0.118    0.823       5760
+  blocks.1.c1         576    0.075    0.092    0.833       5760
+  blocks.1.c2         576    0.108    0.141    0.752       5760
+  blocks.2.c1        1152    0.171    0.102    0.727      11520
+  blocks.2.c2        2304    0.200    0.145    0.655      23040
+  blocks.2.sc         128    0.062    0.109    0.828       1280
+  blocks.3.c1        2304    0.099    0.126    0.775      23040
+  blocks.3.c2        2304    0.112    0.135    0.753      23040
+  blocks.4.c1        4608    0.118    0.134    0.748      46080
+  blocks.4.c2        9216    0.076    0.133    0.790      92160
+  blocks.4.sc         512    0.088    0.105    0.807       5120
+  blocks.5.c1        9216    0.083    0.141    0.776      92160
+  blocks.5.c2        9216    0.058    0.118    0.824      92160
+  blocks.6.c1       18432    0.037    0.102    0.861     184320
+  blocks.6.c2       36864    0.018    0.072    0.910     368640
+  blocks.6.sc        2048    0.041    0.088    0.871      20480
+  blocks.7.c1       36864    0.024    0.078    0.899     368640
+  blocks.7.c2       36864    0.021    0.065    0.914     368640
+  network          174408    0.040    0.090    0.870    1744080   (counts [6994, 15612, 151802])
+  distinct slot codes (shift, trit) used: 16 of 16; distinct block codes: 129 (of 129 legal: empty + 8 shifts x 2 signs + C(8,2) x 4); code storage 1744080 b = 212.9 KiB
+  sign(g) bits: 4800 output channels (190 negative)
+  FC int8 weights (100, 512) = 409600 b (50.0 KiB) + int32 bias 3200 b
+
+[7] binary tensors: fraction of ones
+  block 0: b1 0.4956   b2 0.5020
+  block 1: b1 0.5274   b2 0.4372
+  block 2: b1 0.3950   b2 0.2509
+  block 3: b1 0.4518   b2 0.1194
+  block 4: b1 0.3731   b2 0.3307
+  block 5: b1 0.3340   b2 0.1330
+  block 7: b1 0.1735   b2 0.1346
