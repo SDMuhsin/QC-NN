@@ -1,0 +1,82 @@
+# Candidate macro shapes for the qc18bacc buffer sweep (qc18bacc/impl/mem/mc_sweep.sh). <inst> <compiler> <words> <bits> <mux>
+# --- weights: 611 rows x 2304 b (8 col x 36 codes; 3x3: Cout/64 x ceil(Cin/32) rows, 1x1 / stem: Cout/64), lanes x bits >= 2304
+w_s8_624x144   sram_sp_adv 624 144 8
+w_s8_624x128   sram_sp_adv 624 128 8
+w_s8_624x96    sram_sp_adv 624 96 8
+w_s8_624x72    sram_sp_adv 624 72 8
+w_s8_624x64    sram_sp_adv 624 64 8
+w_s8_624x48    sram_sp_adv 624 48 8
+w_s8_624x36    sram_sp_adv 624 36 8
+w_s16_640x72   sram_sp_adv 640 72 16
+w_s16_640x64   sram_sp_adv 640 64 16
+w_s16_640x48   sram_sp_adv 640 48 16
+w_s16_640x36   sram_sp_adv 640 36 16
+w_s32_1024x36  sram_sp_adv 1024 36 32
+w_r2_208x144   rf_sp_adv 208 144 2
+w_r2_208x128   rf_sp_adv 208 128 2
+w_r4_312x72    rf_sp_adv 312 72 4
+w_r4_312x64    rf_sp_adv 312 64 4
+w_r1_124x128   rf_sp_adv 124 128 1
+# --- stream S: 65536 x 17 b, 256 R + 256 W entries / cycle; word = g entries (17g b), lanes 256/g, depth 256
+s_2p1_256x136  rf_2p_adv 256 136 1
+s_2p2_256x136  rf_2p_adv 256 136 2
+s_2p1_256x68   rf_2p_adv 256 68 1
+s_2p2_256x68   rf_2p_adv 256 68 2
+s_2p4_256x68   rf_2p_adv 256 68 4
+s_2p1_256x34   rf_2p_adv 256 34 1
+s_2p2_256x34   rf_2p_adv 256 34 2
+s_2p1_256x17   rf_2p_adv 256 17 1
+s_r2_256x136   rf_sp_adv 256 136 2
+s_r2_256x68    rf_sp_adv 256 68 2
+s_r4_256x68    rf_sp_adv 256 68 4
+s_r2_256x34    rf_sp_adv 256 34 2
+s_s8_256x136   sram_sp_adv 256 136 8
+s_s8_256x68    sram_sp_adv 256 68 8
+s_r1_128x136   rf_sp_adv 128 136 1
+s_r2_128x136   rf_sp_adv 128 136 2
+s_r1_128x68    rf_sp_adv 128 68 1
+s_r2_128x68    rf_sp_adv 128 68 2
+s_r4_128x68    rf_sp_adv 128 68 4
+s_r1_128x34    rf_sp_adv 128 34 1
+# --- binary maps / image: 64 kb each, 512 b / cycle: 128 words x 512 b
+b_2p1_128x128  rf_2p_adv 128 128 1
+b_2p2_128x128  rf_2p_adv 128 128 2
+b_2p1_128x64   rf_2p_adv 128 64 1
+b_2p2_128x64   rf_2p_adv 128 64 2
+b_2p4_128x64   rf_2p_adv 128 64 4
+b_r1_128x128   rf_sp_adv 128 128 1
+b_r2_128x128   rf_sp_adv 128 128 2
+b_r1_128x64    rf_sp_adv 128 64 1
+b_r2_128x64    rf_sp_adv 128 64 2
+b_r4_128x64    rf_sp_adv 128 64 4
+b_r1_64x128    rf_sp_adv 64 128 1
+b_r2_64x128    rf_sp_adv 64 128 2
+b_s8_256x128   sram_sp_adv 256 128 8
+b_s8_512x128   sram_sp_adv 512 128 8
+b_r2_256x128   rf_sp_adv 256 128 2
+# --- params: ~3900 x 110 b (+1 b sign -> 111), low bandwidth
+p_s8_3904x110  sram_sp_adv 3904 110 8
+p_s16_3904x55  sram_sp_adv 3904 55 16
+p_s32_3904x28  sram_sp_adv 3904 28 32
+p_s8_1952x110  sram_sp_adv 1952 110 8
+p_s8_4800x111  sram_sp_adv 4800 111 8
+p_s16_4800x56  sram_sp_adv 4800 56 16
+p_s32_4800x28  sram_sp_adv 4800 28 32
+g_r1_76x64     rf_sp_adv 76 64 1
+g_r2_152x32    rf_sp_adv 152 32 2
+# --- FC: 409600 + 3200 b = 807 x 512 b
+f_s8_816x128   sram_sp_adv 816 128 8
+f_s8_816x64    sram_sp_adv 816 64 8
+f_s16_832x64   sram_sp_adv 832 64 16
+f_s16_832x32   sram_sp_adv 832 32 16
+f_s32_1024x32  sram_sp_adv 1024 32 32
+f_r4_408x64    rf_sp_adv 408 64 4
+f_r2_204x128   rf_sp_adv 204 128 2
+# --- image alternatives (narrower port)
+i_s8_512x128   sram_sp_adv 512 128 8
+i_s16_1024x64  sram_sp_adv 1024 64 16
+i_s32_2048x32  sram_sp_adv 2048 32 32
+# --- ROM reference (weights)
+w_rom_probe1   rom_via_adv 2 16 1
+w_rom_probe8   rom_via_adv 624 144 8
+w_rom_probe16  rom_via_adv 640 72 16

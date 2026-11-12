@@ -1,0 +1,283 @@
+MS w_s8_624x144 sram_sp_adv 624 144 8  | w_um 1318.5 h_um 151.0 area_um2 199104 | tt dat_ta_tcyc 0.888 1.121 lib_ta 0.919 | ss dat_ta_tcyc 1.393 1.843 lib_ta 1.441
+MS w_s8_624x128 sram_sp_adv 624 128 8  | w_um 1184.1 h_um 151.0 area_um2 178809 | tt dat_ta_tcyc 0.849 1.079 lib_ta 0.879 | ss dat_ta_tcyc 1.330 1.774 lib_ta 1.379
+MS w_s8_624x96 sram_sp_adv 624 96 8  | w_um 915.3 h_um 151.0 area_um2 138219 | tt dat_ta_tcyc 0.770 0.997 lib_ta 0.800 | ss dat_ta_tcyc 1.205 1.635 lib_ta 1.253
+MS w_s8_624x72 sram_sp_adv 624 72 8  | w_um 713.7 h_um 151.0 area_um2 107776 | tt dat_ta_tcyc 0.721 0.948 lib_ta 0.752 | ss dat_ta_tcyc 1.128 1.556 lib_ta 1.177
+MS w_s8_624x64 sram_sp_adv 624 64 8  | w_um 646.5 h_um 151.0 area_um2 97629 | tt dat_ta_tcyc 0.707 0.935 lib_ta 0.737 | ss dat_ta_tcyc 1.106 1.536 lib_ta 1.155
+MS w_s8_624x48 sram_sp_adv 624 48 8  | w_um 512.1 h_um 151.0 area_um2 77333 | tt dat_ta_tcyc 0.678 0.910 lib_ta 0.709 | ss dat_ta_tcyc 1.062 1.495 lib_ta 1.110
+MS w_s8_624x36 sram_sp_adv 624 36 8  | w_um 411.3 h_um 151.0 area_um2 62112 | tt dat_ta_tcyc 0.657 0.891 lib_ta 0.687 | ss dat_ta_tcyc 1.029 1.464 lib_ta 1.077
+MS w_s16_640x72 sram_sp_adv 640 72 16  | w_um 1318.5 h_um 129.6 area_um2 170887 | tt dat_ta_tcyc 0.901 1.106 lib_ta 0.931 | ss dat_ta_tcyc 1.414 1.838 lib_ta 1.463
+MS w_s16_640x64 sram_sp_adv 640 64 16  | w_um 1184.1 h_um 129.6 area_um2 153469 | tt dat_ta_tcyc 0.862 1.074 lib_ta 0.892 | ss dat_ta_tcyc 1.351 1.786 lib_ta 1.400
+MS w_s16_640x48 sram_sp_adv 640 48 16  | w_um 915.3 h_um 129.6 area_um2 118631 | tt dat_ta_tcyc 0.782 1.012 lib_ta 0.813 | ss dat_ta_tcyc 1.226 1.682 lib_ta 1.274
+MS w_s16_640x36 sram_sp_adv 640 36 16  | w_um 713.7 h_um 129.6 area_um2 92502 | tt dat_ta_tcyc 0.735 0.976 lib_ta 0.765 | ss dat_ta_tcyc 1.151 1.629 lib_ta 1.199
+MS w_s32_1024x36 sram_sp_adv 1024 36 32  | w_um 1318.5 h_um 124.0 area_um2 163504 | tt dat_ta_tcyc 0.932 1.124 lib_ta 0.962 | ss dat_ta_tcyc 1.465 1.871 lib_ta 1.513
+MS w_r2_208x144 rf_sp_adv 208 144 2  | w_um 439.8 h_um 127.5 area_um2 56083 | tt dat_ta_tcyc 0.777 0.679 lib_ta 0.776 | ss dat_ta_tcyc 1.268 1.096 lib_ta 1.263
+MS w_r2_208x128 rf_sp_adv 208 128 2  | w_um 398.0 h_um 127.5 area_um2 50749 | tt dat_ta_tcyc 0.750 0.656 lib_ta 0.749 | ss dat_ta_tcyc 1.225 1.060 lib_ta 1.221
+MS w_r4_312x72 rf_sp_adv 312 72 4  | w_um 439.8 h_um 108.3 area_um2 47626 | tt dat_ta_tcyc 0.744 0.659 lib_ta 0.742 | ss dat_ta_tcyc 1.212 1.062 lib_ta 1.206
+MS w_r4_312x64 rf_sp_adv 312 64 4  | w_um 398.0 h_um 108.3 area_um2 43096 | tt dat_ta_tcyc 0.718 0.636 lib_ta 0.716 | ss dat_ta_tcyc 1.172 1.026 lib_ta 1.166
+MS w_r1_124x128 rf_sp_adv 124 128 1  | w_um 230.7 h_um 144.8 area_um2 33395 | tt dat_ta_tcyc 0.628 0.602 lib_ta 0.641 | ss dat_ta_tcyc 1.015 0.933 lib_ta 1.036
+MS s_2p1_256x136 rf_2p_adv 256 136 1  | w_um 400.6 h_um 204.1 area_um2 81748 | tt dat_ta_tcyc 0.703 0.855 lib_ta 0.749 | ss dat_ta_tcyc 1.147 1.307 lib_ta 1.213
+MS s_2p2_256x136 rf_2p_adv 256 136 2  | w_um 706.4 h_um 134.6 area_um2 95066 | tt dat_ta_tcyc 0.925 1.101 lib_ta 0.971 | ss dat_ta_tcyc 1.595 1.689 lib_ta 1.635
+MS s_2p1_256x68 rf_2p_adv 256 68 1  | w_um 246.2 h_um 204.1 area_um2 50245 | tt dat_ta_tcyc 0.623 0.807 lib_ta 0.668 | ss dat_ta_tcyc 1.020 1.245 lib_ta 1.086
+MS s_2p2_256x68 rf_2p_adv 256 68 2  | w_um 397.7 h_um 134.6 area_um2 53518 | tt dat_ta_tcyc 0.696 0.870 lib_ta 0.742 | ss dat_ta_tcyc 1.219 1.342 lib_ta 1.260
+MS s_2p4_256x68 rf_2p_adv 256 68 4  | w_um 703.5 h_um 99.4 area_um2 69943 | tt dat_ta_tcyc 0.846 1.046 lib_ta 0.892 | ss dat_ta_tcyc 1.470 1.587 lib_ta 1.510
+MS s_2p1_256x34 rf_2p_adv 256 34 1  | w_um 169.0 h_um 204.1 area_um2 34493 | tt dat_ta_tcyc 0.582 0.786 lib_ta 0.628 | ss dat_ta_tcyc 0.957 1.215 lib_ta 1.023
+MS s_2p2_256x34 rf_2p_adv 256 34 2  | w_um 243.3 h_um 134.6 area_um2 32745 | tt dat_ta_tcyc 0.581 0.755 lib_ta 0.627 | ss dat_ta_tcyc 1.032 1.168 lib_ta 1.073
+MS s_2p1_256x17 rf_2p_adv 256 17 1  | w_um 132.7 h_um 204.1 area_um2 27081 | tt dat_ta_tcyc 0.562 0.775 lib_ta 0.608 | ss dat_ta_tcyc 0.926 1.200 lib_ta 0.992
+MS s_r2_256x136 rf_sp_adv 256 136 2  | w_um 420.0 h_um 139.5 area_um2 58593 | tt dat_ta_tcyc 0.781 0.684 lib_ta 0.780 | ss dat_ta_tcyc 1.277 1.107 lib_ta 1.272
+MS s_r2_256x68 rf_sp_adv 256 68 2  | w_um 242.7 h_um 139.5 area_um2 33864 | tt dat_ta_tcyc 0.667 0.587 lib_ta 0.666 | ss dat_ta_tcyc 1.097 0.982 lib_ta 1.092
+MS s_r4_256x68 rf_sp_adv 256 68 4  | w_um 418.4 h_um 101.3 area_um2 42376 | tt dat_ta_tcyc 0.721 0.638 lib_ta 0.719 | ss dat_ta_tcyc 1.174 1.027 lib_ta 1.169
+MS s_r2_256x34 rf_sp_adv 256 34 2  | w_um 153.0 h_um 139.5 area_um2 21350 | tt dat_ta_tcyc 0.609 0.538 lib_ta 0.609 | ss dat_ta_tcyc 1.007 0.928 lib_ta 1.003
+MS s_s8_256x136 sram_sp_adv 256 136 8  | w_um 1251.3 h_um 124.0 area_um2 155171 | tt dat_ta_tcyc 0.863 1.092 lib_ta 0.894 | ss dat_ta_tcyc 1.353 1.796 lib_ta 1.401
+MS s_s8_256x68 sram_sp_adv 256 68 8  | w_um 680.1 h_um 124.0 area_um2 84339 | tt dat_ta_tcyc 0.708 0.934 lib_ta 0.739 | ss dat_ta_tcyc 1.108 1.534 lib_ta 1.157
+MS s_r1_128x136 rf_sp_adv 128 136 1  | w_um 242.7 h_um 146.8 area_um2 35628 | tt dat_ta_tcyc 0.638 0.618 lib_ta 0.652 | ss dat_ta_tcyc 1.032 0.956 lib_ta 1.053
+MS s_r2_128x136 rf_sp_adv 128 136 2  | w_um 418.4 h_um 107.5 area_um2 44982 | tt dat_ta_tcyc 0.734 0.640 lib_ta 0.733 | ss dat_ta_tcyc 1.195 1.029 lib_ta 1.191
+MS s_r1_128x68 rf_sp_adv 128 68 1  | w_um 153.0 h_um 146.8 area_um2 22462 | tt dat_ta_tcyc 0.569 0.522 lib_ta 0.583 | ss dat_ta_tcyc 0.923 0.846 lib_ta 0.945
+MS s_r2_128x68 rf_sp_adv 128 68 2  | w_um 241.1 h_um 107.5 area_um2 25925 | tt dat_ta_tcyc 0.620 0.543 lib_ta 0.619 | ss dat_ta_tcyc 1.015 0.876 lib_ta 1.011
+MS s_r4_128x68 rf_sp_adv 128 68 4  | w_um 416.8 h_um 81.5 area_um2 33953 | tt dat_ta_tcyc 0.697 0.616 lib_ta 0.695 | ss dat_ta_tcyc 1.134 0.988 lib_ta 1.128
+MS s_r1_128x34 rf_sp_adv 128 34 1  | FAIL *** Error *** -bits: TotalBits must be divisible by (4/mux) 
+MS b_2p1_128x128 rf_2p_adv 128 128 1  | w_um 379.5 h_um 133.8 area_um2 50767 | tt dat_ta_tcyc 0.604 0.771 lib_ta 0.650 | ss dat_ta_tcyc 0.992 1.197 lib_ta 1.058
+MS b_2p2_128x128 rf_2p_adv 128 128 2  | w_um 667.2 h_um 99.4 area_um2 66332 | tt dat_ta_tcyc 0.845 1.041 lib_ta 0.891 | ss dat_ta_tcyc 1.467 1.595 lib_ta 1.508
+MS b_2p1_128x64 rf_2p_adv 128 64 1  | w_um 234.2 h_um 133.8 area_um2 31333 | tt dat_ta_tcyc 0.528 0.708 lib_ta 0.574 | ss dat_ta_tcyc 0.872 1.106 lib_ta 0.938
+MS b_2p2_128x64 rf_2p_adv 128 64 2  | w_um 376.6 h_um 99.4 area_um2 37445 | tt dat_ta_tcyc 0.629 0.824 lib_ta 0.675 | ss dat_ta_tcyc 1.114 1.269 lib_ta 1.155
+MS b_2p4_128x64 rf_2p_adv 128 64 4  | w_um 664.3 h_um 80.6 area_um2 53530 | tt dat_ta_tcyc 0.797 1.005 lib_ta 0.843 | ss dat_ta_tcyc 1.388 1.527 lib_ta 1.428
+MS b_r1_128x128 rf_sp_adv 128 128 1  | w_um 230.7 h_um 146.8 area_um2 33856 | tt dat_ta_tcyc 0.630 0.604 lib_ta 0.643 | ss dat_ta_tcyc 1.019 0.936 lib_ta 1.040
+MS b_r2_128x128 rf_sp_adv 128 128 2  | w_um 396.4 h_um 107.5 area_um2 42618 | tt dat_ta_tcyc 0.721 0.628 lib_ta 0.720 | ss dat_ta_tcyc 1.174 1.011 lib_ta 1.170
+MS b_r1_128x64 rf_sp_adv 128 64 1  | w_um 147.0 h_um 146.8 area_um2 21576 | tt dat_ta_tcyc 0.565 0.519 lib_ta 0.578 | ss dat_ta_tcyc 0.917 0.841 lib_ta 0.938
+MS b_r2_128x64 rf_sp_adv 128 64 2  | w_um 229.0 h_um 107.5 area_um2 24627 | tt dat_ta_tcyc 0.613 0.537 lib_ta 0.612 | ss dat_ta_tcyc 1.005 0.867 lib_ta 1.000
+MS b_r4_128x64 rf_sp_adv 128 64 4  | w_um 394.8 h_um 81.5 area_um2 32162 | tt dat_ta_tcyc 0.685 0.605 lib_ta 0.683 | ss dat_ta_tcyc 1.114 0.970 lib_ta 1.108
+MS b_r1_64x128 rf_sp_adv 64 128 1  | w_um 229.0 h_um 114.8 area_um2 26292 | tt dat_ta_tcyc 0.589 0.575 lib_ta 0.602 | ss dat_ta_tcyc 0.948 0.890 lib_ta 0.968
+MS b_r2_64x128 rf_sp_adv 64 128 2  | w_um 394.8 h_um 87.7 area_um2 34621 | tt dat_ta_tcyc 0.697 0.606 lib_ta 0.696 | ss dat_ta_tcyc 1.134 0.972 lib_ta 1.129
+MS b_s8_256x128 sram_sp_adv 256 128 8  | w_um 1184.1 h_um 124.0 area_um2 146837 | tt dat_ta_tcyc 0.844 1.072 lib_ta 0.874 | ss dat_ta_tcyc 1.322 1.762 lib_ta 1.370
+MS b_s8_512x128 sram_sp_adv 512 128 8  | w_um 1184.1 h_um 141.6 area_um2 167678 | tt dat_ta_tcyc 0.847 1.077 lib_ta 0.878 | ss dat_ta_tcyc 1.328 1.770 lib_ta 1.376
+MS b_r2_256x128 rf_sp_adv 256 128 2  | w_um 398.0 h_um 139.5 area_um2 55525 | tt dat_ta_tcyc 0.767 0.672 lib_ta 0.766 | ss dat_ta_tcyc 1.256 1.089 lib_ta 1.251
+MS p_s8_3904x110 sram_sp_adv 3904 110 8  | w_um 1032.9 h_um 441.4 area_um2 455897 | tt dat_ta_tcyc 0.851 1.104 lib_ta 0.882 | ss dat_ta_tcyc 1.336 1.805 lib_ta 1.385
+MS p_s16_3904x55 sram_sp_adv 3904 55 16  | w_um 1032.9 h_um 263.5 area_um2 272202 | tt dat_ta_tcyc 0.841 1.103 lib_ta 0.871 | ss dat_ta_tcyc 1.320 1.827 lib_ta 1.368
+MS p_s32_3904x28 sram_sp_adv 3904 28 32  | w_um 1049.7 h_um 174.6 area_um2 183287 | tt dat_ta_tcyc 0.872 1.095 lib_ta 0.902 | ss dat_ta_tcyc 1.371 1.819 lib_ta 1.419
+MS p_s8_1952x110 sram_sp_adv 1952 110 8  | w_um 1032.9 h_um 263.5 area_um2 272202 | tt dat_ta_tcyc 0.824 1.062 lib_ta 0.854 | ss dat_ta_tcyc 1.291 1.740 lib_ta 1.339
+MS p_s8_4800x111 sram_sp_adv 4800 111 8  | w_um 1041.3 h_um 523.7 area_um2 545326 | tt dat_ta_tcyc 0.943 1.187 lib_ta 0.973 | ss dat_ta_tcyc 1.479 1.936 lib_ta 1.527
+MS p_s16_4800x56 sram_sp_adv 4800 56 16  | w_um 1049.7 h_um 315.4 area_um2 331131 | tt dat_ta_tcyc 0.852 1.125 lib_ta 0.883 | ss dat_ta_tcyc 1.338 1.861 lib_ta 1.387
+MS p_s32_4800x28 sram_sp_adv 4800 28 32  | w_um 1049.7 h_um 210.9 area_um2 221413 | tt dat_ta_tcyc 0.875 1.103 lib_ta 0.906 | ss dat_ta_tcyc 1.376 1.833 lib_ta 1.424
+MS g_r1_76x64 rf_sp_adv 76 64 1  | w_um 147.0 h_um 120.8 area_um2 17754 | tt dat_ta_tcyc 0.532 0.489 lib_ta 0.544 | ss dat_ta_tcyc 0.859 0.788 lib_ta 0.879
+MS g_r2_152x32 rf_sp_adv 152 32 2  | w_um 147.0 h_um 113.5 area_um2 16686 | tt dat_ta_tcyc 0.568 0.500 lib_ta 0.567 | ss dat_ta_tcyc 0.935 0.809 lib_ta 0.931
+MS f_s8_816x128 sram_sp_adv 816 128 8  | w_um 1184.1 h_um 164.6 area_um2 194913 | tt dat_ta_tcyc 0.852 1.084 lib_ta 0.882 | ss dat_ta_tcyc 1.335 1.780 lib_ta 1.383
+MS f_s8_816x64 sram_sp_adv 816 64 8  | w_um 646.5 h_um 164.6 area_um2 106421 | tt dat_ta_tcyc 0.710 0.939 lib_ta 0.740 | ss dat_ta_tcyc 1.111 1.542 lib_ta 1.159
+MS f_s16_832x64 sram_sp_adv 832 64 16  | w_um 1184.1 h_um 135.6 area_um2 160573 | tt dat_ta_tcyc 0.863 1.078 lib_ta 0.893 | ss dat_ta_tcyc 1.354 1.791 lib_ta 1.402
+MS f_s16_832x32 sram_sp_adv 832 32 16  | w_um 646.5 h_um 135.6 area_um2 87672 | tt dat_ta_tcyc 0.721 0.970 lib_ta 0.752 | ss dat_ta_tcyc 1.130 1.615 lib_ta 1.179
+MS f_s32_1024x32 sram_sp_adv 1024 32 32  | w_um 1184.1 h_um 124.0 area_um2 146837 | tt dat_ta_tcyc 0.896 1.095 lib_ta 0.927 | ss dat_ta_tcyc 1.409 1.823 lib_ta 1.457
+MS f_r4_408x64 rf_sp_adv 408 64 4  | w_um 398.0 h_um 120.3 area_um2 47872 | tt dat_ta_tcyc 0.736 0.653 lib_ta 0.734 | ss dat_ta_tcyc 1.203 1.055 lib_ta 1.197
+MS f_r2_204x128 rf_sp_adv 204 128 2  | w_um 398.0 h_um 126.5 area_um2 50351 | tt dat_ta_tcyc 0.748 0.654 lib_ta 0.747 | ss dat_ta_tcyc 1.223 1.057 lib_ta 1.218
+MS i_s8_512x128 sram_sp_adv 512 128 8  | w_um 1184.1 h_um 141.6 area_um2 167678 | tt dat_ta_tcyc 0.847 1.077 lib_ta 0.878 | ss dat_ta_tcyc 1.328 1.770 lib_ta 1.376
+MS i_s16_1024x64 sram_sp_adv 1024 64 16  | w_um 1184.1 h_um 141.6 area_um2 167678 | tt dat_ta_tcyc 0.864 1.082 lib_ta 0.895 | ss dat_ta_tcyc 1.356 1.797 lib_ta 1.404
+MS i_s32_2048x32 sram_sp_adv 2048 32 32  | w_um 1184.1 h_um 141.6 area_um2 167678 | tt dat_ta_tcyc 0.900 1.105 lib_ta 0.931 | ss dat_ta_tcyc 1.415 1.839 lib_ta 1.463
+MS w_rom_probe1 rom_via_adv 2 16 1  | FAIL *** Error *** -mux should be one of: 8, 16, 32, 64 
+MS w_rom_probe8 rom_via_adv 624 144 8  | FAIL *** Error *** ascii: -words argument must be divisible by (mux*8) 
+MS w_rom_probe16 rom_via_adv 640 72 16  | w_um 479.6 h_um 107.8 area_um2 51715 | tt dat_ta_tcyc 1.466 1.579 lib_ta 1.461 | ss dat_ta_tcyc 2.409 2.664 lib_ta 2.449
+MS x_rfsp1_102x144 rf_sp_adv 102 144 1  | w_um 252.6 h_um 133.8 area_um2 33799 | tt dat_ta_tcyc 0.630 0.621 lib_ta 0.643 | ss dat_ta_tcyc 1.016 0.958 lib_ta 1.037
+MS x_rfsp1_124x128 rf_sp_adv 124 128 1  | w_um 230.7 h_um 144.8 area_um2 33395 | tt dat_ta_tcyc 0.628 0.602 lib_ta 0.641 | ss dat_ta_tcyc 1.015 0.933 lib_ta 1.036
+MS x_rfsp1_124x96 rf_sp_adv 124 96 1  | w_um 188.8 h_um 144.8 area_um2 27338 | tt dat_ta_tcyc 0.595 0.544 lib_ta 0.608 | ss dat_ta_tcyc 0.964 0.880 lib_ta 0.985
+MS x_rfsp1_124x72 rf_sp_adv 124 72 1  | w_um 159.1 h_um 144.8 area_um2 23030 | tt dat_ta_tcyc 0.571 0.523 lib_ta 0.584 | ss dat_ta_tcyc 0.925 0.847 lib_ta 0.946
+MS x_rfsp1_124x64 rf_sp_adv 124 64 1  | w_um 147.0 h_um 144.8 area_um2 21282 | tt dat_ta_tcyc 0.563 0.516 lib_ta 0.576 | ss dat_ta_tcyc 0.913 0.837 lib_ta 0.934
+MS x_rfsp1_124x48 rf_sp_adv 124 48 1  | w_um 127.2 h_um 144.8 area_um2 18409 | tt dat_ta_tcyc 0.546 0.503 lib_ta 0.560 | ss dat_ta_tcyc 0.887 0.815 lib_ta 0.908
+MS x_rfsp1_124x36 rf_sp_adv 124 36 1  | w_um 111.2 h_um 144.8 area_um2 16099 | tt dat_ta_tcyc 0.534 0.493 lib_ta 0.547 | ss dat_ta_tcyc 0.868 0.799 lib_ta 0.889
+MS x_rfsp1_124x32 rf_sp_adv 124 32 1  | w_um 105.2 h_um 144.8 area_um2 15226 | tt dat_ta_tcyc 0.530 0.492 lib_ta 0.543 | ss dat_ta_tcyc 0.861 0.793 lib_ta 0.883
+MS x_rfsp2_204x144 rf_sp_adv 204 144 2  | w_um 439.8 h_um 126.5 area_um2 55643 | tt dat_ta_tcyc 0.775 0.677 lib_ta 0.774 | ss dat_ta_tcyc 1.265 1.094 lib_ta 1.260
+MS x_rfsp2_204x128 rf_sp_adv 204 128 2  | w_um 398.0 h_um 126.5 area_um2 50351 | tt dat_ta_tcyc 0.748 0.654 lib_ta 0.747 | ss dat_ta_tcyc 1.223 1.057 lib_ta 1.218
+MS x_rfsp2_204x96 rf_sp_adv 204 96 2  | w_um 314.3 h_um 126.5 area_um2 39767 | tt dat_ta_tcyc 0.695 0.609 lib_ta 0.694 | ss dat_ta_tcyc 1.138 0.985 lib_ta 1.133
+MS x_rfsp2_204x72 rf_sp_adv 204 72 2  | w_um 252.6 h_um 126.5 area_um2 31964 | tt dat_ta_tcyc 0.654 0.575 lib_ta 0.653 | ss dat_ta_tcyc 1.074 0.931 lib_ta 1.070
+MS x_rfsp2_204x64 rf_sp_adv 204 64 2  | w_um 230.7 h_um 126.5 area_um2 29182 | tt dat_ta_tcyc 0.641 0.563 lib_ta 0.640 | ss dat_ta_tcyc 1.053 0.913 lib_ta 1.049
+MS x_rfsp2_204x48 rf_sp_adv 204 48 2  | w_um 188.8 h_um 126.5 area_um2 23890 | tt dat_ta_tcyc 0.614 0.540 lib_ta 0.613 | ss dat_ta_tcyc 1.011 0.877 lib_ta 1.006
+MS x_rfsp2_204x36 rf_sp_adv 204 36 2  | w_um 159.1 h_um 126.5 area_um2 20124 | tt dat_ta_tcyc 0.594 0.523 lib_ta 0.593 | ss dat_ta_tcyc 0.979 0.850 lib_ta 0.975
+MS x_rfsp2_204x32 rf_sp_adv 204 32 2  | w_um 147.0 h_um 126.5 area_um2 18597 | tt dat_ta_tcyc 0.587 0.518 lib_ta 0.586 | ss dat_ta_tcyc 0.968 0.840 lib_ta 0.964
+MS x_rfsp4_312x72 rf_sp_adv 312 72 4  | w_um 439.8 h_um 108.3 area_um2 47626 | tt dat_ta_tcyc 0.744 0.659 lib_ta 0.742 | ss dat_ta_tcyc 1.212 1.062 lib_ta 1.206
+MS x_rfsp4_312x64 rf_sp_adv 312 64 4  | w_um 398.0 h_um 108.3 area_um2 43096 | tt dat_ta_tcyc 0.718 0.636 lib_ta 0.716 | ss dat_ta_tcyc 1.172 1.026 lib_ta 1.166
+MS x_rfsp4_312x48 rf_sp_adv 312 48 4  | w_um 314.3 h_um 108.3 area_um2 34037 | tt dat_ta_tcyc 0.668 0.591 lib_ta 0.666 | ss dat_ta_tcyc 1.092 0.954 lib_ta 1.087
+MS x_rfsp4_312x36 rf_sp_adv 312 36 4  | w_um 252.6 h_um 108.3 area_um2 27358 | tt dat_ta_tcyc 0.630 0.557 lib_ta 0.628 | ss dat_ta_tcyc 1.032 0.901 lib_ta 1.027
+MS x_rfsp4_312x32 rf_sp_adv 312 32 4  | w_um 230.7 h_um 108.3 area_um2 24977 | tt dat_ta_tcyc 0.617 0.546 lib_ta 0.615 | ss dat_ta_tcyc 1.012 0.883 lib_ta 1.007
+MS x_sramsp8_624x144 sram_sp_adv 624 144 8  | FAIL *** Error *** An instance name ("x_sramsp8_624x144") of more than 16 characters may create cellnames *** Error *** that exceed the number of characters supported by some tools. 
+MS x_sramsp8_624x128 sram_sp_adv 624 128 8  | FAIL *** Error *** An instance name ("x_sramsp8_624x128") of more than 16 characters may create cellnames *** Error *** that exceed the number of characters supported by some tools. 
+MS x_sramsp8_624x96 sram_sp_adv 624 96 8  | w_um 915.3 h_um 151.0 area_um2 138219 | tt dat_ta_tcyc 0.770 0.997 lib_ta 0.800 | ss dat_ta_tcyc 1.205 1.635 lib_ta 1.253
+MS x_sramsp8_624x72 sram_sp_adv 624 72 8  | w_um 713.7 h_um 151.0 area_um2 107776 | tt dat_ta_tcyc 0.721 0.948 lib_ta 0.752 | ss dat_ta_tcyc 1.128 1.556 lib_ta 1.177
+MS x_sramsp8_624x64 sram_sp_adv 624 64 8  | w_um 646.5 h_um 151.0 area_um2 97629 | tt dat_ta_tcyc 0.707 0.935 lib_ta 0.737 | ss dat_ta_tcyc 1.106 1.536 lib_ta 1.155
+MS x_sramsp8_624x48 sram_sp_adv 624 48 8  | w_um 512.1 h_um 151.0 area_um2 77333 | tt dat_ta_tcyc 0.678 0.910 lib_ta 0.709 | ss dat_ta_tcyc 1.062 1.495 lib_ta 1.110
+MS x_sramsp8_624x36 sram_sp_adv 624 36 8  | w_um 411.3 h_um 151.0 area_um2 62112 | tt dat_ta_tcyc 0.657 0.891 lib_ta 0.687 | ss dat_ta_tcyc 1.029 1.464 lib_ta 1.077
+MS x_sramsp8_624x32 sram_sp_adv 624 32 8  | w_um 377.7 h_um 151.0 area_um2 57038 | tt dat_ta_tcyc 0.649 0.884 lib_ta 0.680 | ss dat_ta_tcyc 1.018 1.454 lib_ta 1.066
+MS x_sramsp16_640x72 sram_sp_adv 640 72 16  | FAIL *** Error *** An instance name ("x_sramsp16_640x72") of more than 16 characters may create cellnames *** Error *** that exceed the number of characters supported by some tools. 
+MS x_sramsp16_640x64 sram_sp_adv 640 64 16  | FAIL *** Error *** An instance name ("x_sramsp16_640x64") of more than 16 characters may create cellnames *** Error *** that exceed the number of characters supported by some tools. 
+MS x_sramsp16_640x48 sram_sp_adv 640 48 16  | FAIL *** Error *** An instance name ("x_sramsp16_640x48") of more than 16 characters may create cellnames *** Error *** that exceed the number of characters supported by some tools. 
+MS x_sramsp16_640x36 sram_sp_adv 640 36 16  | FAIL *** Error *** An instance name ("x_sramsp16_640x36") of more than 16 characters may create cellnames *** Error *** that exceed the number of characters supported by some tools. 
+MS x_sramsp16_640x32 sram_sp_adv 640 32 16  | FAIL *** Error *** An instance name ("x_sramsp16_640x32") of more than 16 characters may create cellnames *** Error *** that exceed the number of characters supported by some tools. 
+MS x_sramsp32_1024x36 sram_sp_adv 1024 36 32  | FAIL *** Error *** An instance name ("x_sramsp32_1024x36") of more than 16 characters may create cellnames *** Error *** that exceed the number of characters supported by some tools. 
+MS x_sramsp32_1024x32 sram_sp_adv 1024 32 32  | FAIL *** Error *** An instance name ("x_sramsp32_1024x32") of more than 16 characters may create cellnames *** Error *** that exceed the number of characters supported by some tools. 
+MS x_rf2p1_256x17 rf_2p_adv 256 17 1  | w_um 132.7 h_um 204.1 area_um2 27081 | tt dat_ta_tcyc 0.562 0.775 lib_ta 0.608 | ss dat_ta_tcyc 0.926 1.200 lib_ta 0.992
+MS x_rf2p2_256x17 rf_2p_adv 256 17 2  | w_um 166.1 h_um 134.6 area_um2 22358 | tt dat_ta_tcyc 0.524 0.697 lib_ta 0.570 | ss dat_ta_tcyc 0.938 1.081 lib_ta 0.979
+MS x_rf2p4_256x17 rf_2p_adv 256 17 4  | w_um 240.4 h_um 99.4 area_um2 23904 | tt dat_ta_tcyc 0.542 0.710 lib_ta 0.588 | ss dat_ta_tcyc 0.943 1.115 lib_ta 0.983
+MS x_rfsp4_256x17 rf_sp_adv 256 17 4  | w_um 151.4 h_um 101.3 area_um2 15338 | tt dat_ta_tcyc 0.559 0.494 lib_ta 0.557 | ss dat_ta_tcyc 0.919 0.798 lib_ta 0.914
+MS x_sramsp8_256x17 sram_sp_adv 256 17 8  | w_um 251.7 h_um 124.0 area_um2 31215 | tt dat_ta_tcyc 0.617 0.853 lib_ta 0.647 | ss dat_ta_tcyc 0.968 1.404 lib_ta 1.016
+MS x_sramsp16_512x17 sram_sp_adv 512 17 16  | FAIL *** Error *** An instance name ("x_sramsp16_512x17") of more than 16 characters may create cellnames *** Error *** that exceed the number of characters supported by some tools. 
+MS x_sramsp32_1024x17 sram_sp_adv 1024 17 32  | FAIL *** Error *** An instance name ("x_sramsp32_1024x17") of more than 16 characters may create cellnames *** Error *** that exceed the number of characters supported by some tools. 
+MS x_rfsp4_128x17 rf_sp_adv 128 17 4  | w_um 149.8 h_um 81.5 area_um2 12206 | tt dat_ta_tcyc 0.536 0.472 lib_ta 0.534 | ss dat_ta_tcyc 0.879 0.759 lib_ta 0.873
+MS x_rf2p1_256x34 rf_2p_adv 256 34 1  | w_um 169.0 h_um 204.1 area_um2 34493 | tt dat_ta_tcyc 0.582 0.786 lib_ta 0.628 | ss dat_ta_tcyc 0.957 1.215 lib_ta 1.023
+MS x_rf2p2_256x34 rf_2p_adv 256 34 2  | w_um 243.3 h_um 134.6 area_um2 32745 | tt dat_ta_tcyc 0.581 0.755 lib_ta 0.627 | ss dat_ta_tcyc 1.032 1.168 lib_ta 1.073
+MS x_rf2p4_256x34 rf_2p_adv 256 34 4  | w_um 394.8 h_um 99.4 area_um2 39250 | tt dat_ta_tcyc 0.643 0.822 lib_ta 0.689 | ss dat_ta_tcyc 1.119 1.272 lib_ta 1.159
+MS x_rfsp2_256x34 rf_sp_adv 256 34 2  | w_um 153.0 h_um 139.5 area_um2 21350 | tt dat_ta_tcyc 0.609 0.538 lib_ta 0.609 | ss dat_ta_tcyc 1.007 0.928 lib_ta 1.003
+MS x_rfsp4_256x34 rf_sp_adv 256 34 4  | w_um 241.1 h_um 101.3 area_um2 24423 | tt dat_ta_tcyc 0.613 0.542 lib_ta 0.611 | ss dat_ta_tcyc 1.004 0.875 lib_ta 0.999
+MS x_sramsp8_256x34 sram_sp_adv 256 34 8  | w_um 394.5 h_um 124.0 area_um2 48923 | tt dat_ta_tcyc 0.647 0.880 lib_ta 0.678 | ss dat_ta_tcyc 1.015 1.447 lib_ta 1.063
+MS x_sramsp16_512x34 sram_sp_adv 512 34 16  | FAIL *** Error *** An instance name ("x_sramsp16_512x34") of more than 16 characters may create cellnames *** Error *** that exceed the number of characters supported by some tools. 
+MS x_sramsp32_1024x34 sram_sp_adv 1024 34 32  | FAIL *** Error *** An instance name ("x_sramsp32_1024x34") of more than 16 characters may create cellnames *** Error *** that exceed the number of characters supported by some tools. 
+MS x_rfsp2_128x34 rf_sp_adv 128 34 2  | w_um 151.4 h_um 107.5 area_um2 16281 | tt dat_ta_tcyc 0.563 0.494 lib_ta 0.562 | ss dat_ta_tcyc 0.925 0.799 lib_ta 0.921
+MS x_rfsp4_128x34 rf_sp_adv 128 34 4  | w_um 239.5 h_um 81.5 area_um2 19514 | tt dat_ta_tcyc 0.590 0.520 lib_ta 0.588 | ss dat_ta_tcyc 0.964 0.836 lib_ta 0.958
+MS x_rf2p1_256x68 rf_2p_adv 256 68 1  | w_um 246.2 h_um 204.1 area_um2 50245 | tt dat_ta_tcyc 0.623 0.807 lib_ta 0.668 | ss dat_ta_tcyc 1.020 1.245 lib_ta 1.086
+MS x_rf2p2_256x68 rf_2p_adv 256 68 2  | w_um 397.7 h_um 134.6 area_um2 53518 | tt dat_ta_tcyc 0.696 0.870 lib_ta 0.742 | ss dat_ta_tcyc 1.219 1.342 lib_ta 1.260
+MS x_rf2p4_256x68 rf_2p_adv 256 68 4  | w_um 703.5 h_um 99.4 area_um2 69943 | tt dat_ta_tcyc 0.846 1.046 lib_ta 0.892 | ss dat_ta_tcyc 1.470 1.587 lib_ta 1.510
+MS x_rfsp1_128x68 rf_sp_adv 128 68 1  | w_um 153.0 h_um 146.8 area_um2 22462 | tt dat_ta_tcyc 0.569 0.522 lib_ta 0.583 | ss dat_ta_tcyc 0.923 0.846 lib_ta 0.945
+MS x_rfsp2_256x68 rf_sp_adv 256 68 2  | w_um 242.7 h_um 139.5 area_um2 33864 | tt dat_ta_tcyc 0.667 0.587 lib_ta 0.666 | ss dat_ta_tcyc 1.097 0.982 lib_ta 1.092
+MS x_rfsp4_256x68 rf_sp_adv 256 68 4  | w_um 418.4 h_um 101.3 area_um2 42376 | tt dat_ta_tcyc 0.721 0.638 lib_ta 0.719 | ss dat_ta_tcyc 1.174 1.027 lib_ta 1.169
+MS x_sramsp8_256x68 sram_sp_adv 256 68 8  | w_um 680.1 h_um 124.0 area_um2 84339 | tt dat_ta_tcyc 0.708 0.934 lib_ta 0.739 | ss dat_ta_tcyc 1.108 1.534 lib_ta 1.157
+MS x_sramsp16_512x68 sram_sp_adv 512 68 16  | FAIL *** Error *** An instance name ("x_sramsp16_512x68") of more than 16 characters may create cellnames *** Error *** that exceed the number of characters supported by some tools. 
+MS x_rfsp2_128x68 rf_sp_adv 128 68 2  | w_um 241.1 h_um 107.5 area_um2 25925 | tt dat_ta_tcyc 0.620 0.543 lib_ta 0.619 | ss dat_ta_tcyc 1.015 0.876 lib_ta 1.011
+MS x_rfsp4_128x68 rf_sp_adv 128 68 4  | w_um 416.8 h_um 81.5 area_um2 33953 | tt dat_ta_tcyc 0.697 0.616 lib_ta 0.695 | ss dat_ta_tcyc 1.134 0.988 lib_ta 1.128
+MS x_rf2p1_256x136 rf_2p_adv 256 136 1  | w_um 400.6 h_um 204.1 area_um2 81748 | tt dat_ta_tcyc 0.703 0.855 lib_ta 0.749 | ss dat_ta_tcyc 1.147 1.307 lib_ta 1.213
+MS x_rf2p2_256x136 rf_2p_adv 256 136 2  | w_um 706.4 h_um 134.6 area_um2 95066 | tt dat_ta_tcyc 0.925 1.101 lib_ta 0.971 | ss dat_ta_tcyc 1.595 1.689 lib_ta 1.635
+MS x_rfsp1_86x136 rf_sp_adv 86 136 1  | w_um 242.7 h_um 125.8 area_um2 30531 | tt dat_ta_tcyc 0.611 0.599 lib_ta 0.624 | ss dat_ta_tcyc 0.985 0.926 lib_ta 1.006
+MS x_rfsp2_128x136 rf_sp_adv 128 136 2  | w_um 418.4 h_um 107.5 area_um2 44982 | tt dat_ta_tcyc 0.734 0.640 lib_ta 0.733 | ss dat_ta_tcyc 1.195 1.029 lib_ta 1.191
+MS x_sramsp8_256x136 sram_sp_adv 256 136 8  | FAIL *** Error *** An instance name ("x_sramsp8_256x136") of more than 16 characters may create cellnames *** Error *** that exceed the number of characters supported by some tools. 
+MS x_rfsp1_64x136 rf_sp_adv 64 136 1  | w_um 241.1 h_um 114.8 area_um2 27677 | tt dat_ta_tcyc 0.597 0.589 lib_ta 0.610 | ss dat_ta_tcyc 0.961 0.910 lib_ta 0.981
+MS x_rf2p1_114x144 rf_2p_adv 114 144 1  | w_um 415.8 h_um 126.6 area_um2 52657 | tt dat_ta_tcyc 0.614 0.780 lib_ta 0.659 | ss dat_ta_tcyc 1.006 1.209 lib_ta 1.072
+MS x_rf2p1_128x128 rf_2p_adv 128 128 1  | w_um 379.5 h_um 133.8 area_um2 50767 | tt dat_ta_tcyc 0.604 0.771 lib_ta 0.650 | ss dat_ta_tcyc 0.992 1.197 lib_ta 1.058
+MS x_rf2p1_114x72 rf_2p_adv 114 72 1  | w_um 252.4 h_um 126.6 area_um2 31960 | tt dat_ta_tcyc 0.528 0.709 lib_ta 0.574 | ss dat_ta_tcyc 0.871 1.107 lib_ta 0.938
+MS x_rf2p1_128x64 rf_2p_adv 128 64 1  | w_um 234.2 h_um 133.8 area_um2 31333 | tt dat_ta_tcyc 0.528 0.708 lib_ta 0.574 | ss dat_ta_tcyc 0.872 1.106 lib_ta 0.938
+MS x_rf2p1_128x32 rf_2p_adv 128 32 1  | w_um 161.6 h_um 133.8 area_um2 21616 | tt dat_ta_tcyc 0.491 0.677 lib_ta 0.536 | ss dat_ta_tcyc 0.812 1.061 lib_ta 0.879
+MS x_rf2p2_120x144 rf_2p_adv 120 144 2  | w_um 739.8 h_um 97.4 area_um2 72045 | tt dat_ta_tcyc 0.895 1.094 lib_ta 0.941 | ss dat_ta_tcyc 1.550 1.674 lib_ta 1.591
+MS x_rf2p2_128x128 rf_2p_adv 128 128 2  | w_um 667.2 h_um 99.4 area_um2 66332 | tt dat_ta_tcyc 0.845 1.041 lib_ta 0.891 | ss dat_ta_tcyc 1.467 1.595 lib_ta 1.508
+MS x_rf2p2_120x72 rf_2p_adv 120 72 2  | w_um 413.0 h_um 97.4 area_um2 40213 | tt dat_ta_tcyc 0.653 0.849 lib_ta 0.699 | ss dat_ta_tcyc 1.153 1.306 lib_ta 1.194
+MS x_rf2p2_128x64 rf_2p_adv 128 64 2  | w_um 376.6 h_um 99.4 area_um2 37445 | tt dat_ta_tcyc 0.629 0.824 lib_ta 0.675 | ss dat_ta_tcyc 1.114 1.269 lib_ta 1.155
+MS x_rf2p2_128x32 rf_2p_adv 128 32 2  | w_um 231.3 h_um 99.4 area_um2 23001 | tt dat_ta_tcyc 0.521 0.715 lib_ta 0.567 | ss dat_ta_tcyc 0.937 1.105 lib_ta 0.978
+MS x_rf2p4_128x72 rf_2p_adv 128 72 4  | w_um 737.0 h_um 80.6 area_um2 59383 | tt dat_ta_tcyc 0.845 1.058 lib_ta 0.891 | ss dat_ta_tcyc 1.470 1.601 lib_ta 1.510
+MS x_rf2p4_128x64 rf_2p_adv 128 64 4  | w_um 664.3 h_um 80.6 area_um2 53530 | tt dat_ta_tcyc 0.797 1.005 lib_ta 0.843 | ss dat_ta_tcyc 1.388 1.527 lib_ta 1.428
+MS x_rf2p4_128x32 rf_2p_adv 128 32 4  | w_um 373.8 h_um 80.6 area_um2 30117 | tt dat_ta_tcyc 0.607 0.794 lib_ta 0.652 | ss dat_ta_tcyc 1.057 1.231 lib_ta 1.098
+MS x_rfsp1_58x144 rf_sp_adv 58 144 1  | w_um 251.0 h_um 108.0 area_um2 27104 | tt dat_ta_tcyc 0.601 0.601 lib_ta 0.614 | ss dat_ta_tcyc 0.967 0.926 lib_ta 0.987
+MS x_rfsp1_128x128 rf_sp_adv 128 128 1  | w_um 230.7 h_um 146.8 area_um2 33856 | tt dat_ta_tcyc 0.630 0.604 lib_ta 0.643 | ss dat_ta_tcyc 1.019 0.936 lib_ta 1.040
+MS x_rfsp1_114x72 rf_sp_adv 114 72 1  | w_um 159.1 h_um 139.8 area_um2 22234 | tt dat_ta_tcyc 0.564 0.517 lib_ta 0.577 | ss dat_ta_tcyc 0.914 0.837 lib_ta 0.935
+MS x_rfsp1_128x64 rf_sp_adv 128 64 1  | w_um 147.0 h_um 146.8 area_um2 21576 | tt dat_ta_tcyc 0.565 0.519 lib_ta 0.578 | ss dat_ta_tcyc 0.917 0.841 lib_ta 0.938
+MS x_rfsp1_128x32 rf_sp_adv 128 32 1  | w_um 105.2 h_um 146.8 area_um2 15436 | tt dat_ta_tcyc 0.533 0.504 lib_ta 0.546 | ss dat_ta_tcyc 0.866 0.797 lib_ta 0.887
+MS x_rfsp2_116x144 rf_sp_adv 116 144 2  | w_um 438.2 h_um 100.7 area_um2 44127 | tt dat_ta_tcyc 0.743 0.647 lib_ta 0.742 | ss dat_ta_tcyc 1.209 1.040 lib_ta 1.204
+MS x_rfsp2_128x128 rf_sp_adv 128 128 2  | w_um 396.4 h_um 107.5 area_um2 42618 | tt dat_ta_tcyc 0.721 0.628 lib_ta 0.720 | ss dat_ta_tcyc 1.174 1.011 lib_ta 1.170
+MS x_rfsp2_116x72 rf_sp_adv 116 72 2  | w_um 251.0 h_um 100.7 area_um2 25280 | tt dat_ta_tcyc 0.622 0.544 lib_ta 0.621 | ss dat_ta_tcyc 1.018 0.877 lib_ta 1.014
+MS x_rfsp2_128x64 rf_sp_adv 128 64 2  | w_um 229.0 h_um 107.5 area_um2 24627 | tt dat_ta_tcyc 0.613 0.537 lib_ta 0.612 | ss dat_ta_tcyc 1.005 0.867 lib_ta 1.000
+MS x_rfsp2_128x32 rf_sp_adv 128 32 2  | w_um 145.4 h_um 107.5 area_um2 15632 | tt dat_ta_tcyc 0.559 0.491 lib_ta 0.559 | ss dat_ta_tcyc 0.920 0.794 lib_ta 0.916
+MS x_rfsp4_120x72 rf_sp_adv 120 72 4  | w_um 436.6 h_um 80.5 area_um2 35133 | tt dat_ta_tcyc 0.709 0.626 lib_ta 0.707 | ss dat_ta_tcyc 1.151 1.004 lib_ta 1.145
+MS x_rfsp4_128x64 rf_sp_adv 128 64 4  | w_um 394.8 h_um 81.5 area_um2 32162 | tt dat_ta_tcyc 0.685 0.605 lib_ta 0.683 | ss dat_ta_tcyc 1.114 0.970 lib_ta 1.108
+MS x_rfsp4_128x32 rf_sp_adv 128 32 4  | w_um 227.4 h_um 81.5 area_um2 18530 | tt dat_ta_tcyc 0.583 0.514 lib_ta 0.582 | ss dat_ta_tcyc 0.954 0.827 lib_ta 0.948
+MS x_sramsp8_256x144 sram_sp_adv 256 144 8  | FAIL *** Error *** An instance name ("x_sramsp8_256x144") of more than 16 characters may create cellnames *** Error *** that exceed the number of characters supported by some tools. 
+MS x_sramsp8_256x128 sram_sp_adv 256 128 8  | FAIL *** Error *** An instance name ("x_sramsp8_256x128") of more than 16 characters may create cellnames *** Error *** that exceed the number of characters supported by some tools. 
+MS x_sramsp8_256x72 sram_sp_adv 256 72 8  | w_um 713.7 h_um 124.0 area_um2 88505 | tt dat_ta_tcyc 0.716 0.940 lib_ta 0.746 | ss dat_ta_tcyc 1.119 1.545 lib_ta 1.168
+MS x_sramsp8_256x64 sram_sp_adv 256 64 8  | w_um 646.5 h_um 124.0 area_um2 80172 | tt dat_ta_tcyc 0.701 0.928 lib_ta 0.732 | ss dat_ta_tcyc 1.097 1.524 lib_ta 1.145
+MS x_sramsp8_256x32 sram_sp_adv 256 32 8  | w_um 377.7 h_um 124.0 area_um2 46840 | tt dat_ta_tcyc 0.644 0.877 lib_ta 0.674 | ss dat_ta_tcyc 1.009 1.442 lib_ta 1.057
+MS x_sramsp16_512x72 sram_sp_adv 512 72 16  | FAIL *** Error *** An instance name ("x_sramsp16_512x72") of more than 16 characters may create cellnames *** Error *** that exceed the number of characters supported by some tools. 
+MS x_sramsp16_512x64 sram_sp_adv 512 64 16  | FAIL *** Error *** An instance name ("x_sramsp16_512x64") of more than 16 characters may create cellnames *** Error *** that exceed the number of characters supported by some tools. 
+MS x_sramsp16_512x32 sram_sp_adv 512 32 16  | FAIL *** Error *** An instance name ("x_sramsp16_512x32") of more than 16 characters may create cellnames *** Error *** that exceed the number of characters supported by some tools. 
+MS x_rfsp1_64x128 rf_sp_adv 64 128 1  | w_um 229.0 h_um 114.8 area_um2 26292 | tt dat_ta_tcyc 0.589 0.575 lib_ta 0.602 | ss dat_ta_tcyc 0.948 0.890 lib_ta 0.968
+MS x_rfsp1_62x72 rf_sp_adv 62 72 1  | w_um 157.5 h_um 110.0 area_um2 17315 | tt dat_ta_tcyc 0.531 0.488 lib_ta 0.543 | ss dat_ta_tcyc 0.856 0.785 lib_ta 0.876
+MS x_rfsp1_64x64 rf_sp_adv 64 64 1  | w_um 145.4 h_um 114.8 area_um2 16689 | tt dat_ta_tcyc 0.524 0.482 lib_ta 0.536 | ss dat_ta_tcyc 0.846 0.776 lib_ta 0.866
+MS x_rfsp1_64x32 rf_sp_adv 64 32 1  | w_um 103.6 h_um 114.8 area_um2 11887 | tt dat_ta_tcyc 0.491 0.455 lib_ta 0.504 | ss dat_ta_tcyc 0.795 0.733 lib_ta 0.815
+MS x_rfsp2_60x144 rf_sp_adv 60 144 2  | w_um 436.6 h_um 86.7 area_um2 37853 | tt dat_ta_tcyc 0.723 0.628 lib_ta 0.722 | ss dat_ta_tcyc 1.173 1.006 lib_ta 1.168
+MS x_rfsp2_64x128 rf_sp_adv 64 128 2  | w_um 394.8 h_um 87.7 area_um2 34621 | tt dat_ta_tcyc 0.697 0.606 lib_ta 0.696 | ss dat_ta_tcyc 1.134 0.972 lib_ta 1.129
+MS x_rfsp2_64x72 rf_sp_adv 64 72 2  | w_um 249.4 h_um 87.7 area_um2 21876 | tt dat_ta_tcyc 0.603 0.526 lib_ta 0.602 | ss dat_ta_tcyc 0.985 0.846 lib_ta 0.981
+MS x_rfsp2_64x64 rf_sp_adv 64 64 2  | w_um 227.4 h_um 87.7 area_um2 19947 | tt dat_ta_tcyc 0.590 0.515 lib_ta 0.589 | ss dat_ta_tcyc 0.964 0.828 lib_ta 0.959
+MS x_rfsp2_64x32 rf_sp_adv 64 32 2  | w_um 143.8 h_um 87.7 area_um2 12610 | tt dat_ta_tcyc 0.536 0.469 lib_ta 0.535 | ss dat_ta_tcyc 0.879 0.755 lib_ta 0.875
+MS x_rfsp4_64x72 rf_sp_adv 64 72 4  | w_um 435.0 h_um 73.5 area_um2 31959 | tt dat_ta_tcyc 0.698 0.616 lib_ta 0.696 | ss dat_ta_tcyc 1.133 0.987 lib_ta 1.128
+MS x_rfsp4_64x64 rf_sp_adv 64 64 4  | w_um 393.2 h_um 73.5 area_um2 28886 | tt dat_ta_tcyc 0.673 0.594 lib_ta 0.671 | ss dat_ta_tcyc 1.093 0.951 lib_ta 1.088
+MS x_rfsp4_64x32 rf_sp_adv 64 32 4  | w_um 225.8 h_um 73.5 area_um2 16593 | tt dat_ta_tcyc 0.572 0.503 lib_ta 0.570 | ss dat_ta_tcyc 0.933 0.807 lib_ta 0.928
+MS x_rfsp2_244x110 rf_sp_adv 244 110 2  | w_um 351.2 h_um 136.5 area_um2 47943 | tt dat_ta_tcyc 0.733 0.643 lib_ta 0.732 | ss dat_ta_tcyc 1.200 1.041 lib_ta 1.196
+MS x_sramsp8_3904x110 sram_sp_adv 3904 110 8  | FAIL *** Error *** An instance name ("x_sramsp8_3904x110") of more than 16 characters may create cellnames *** Error *** that exceed the number of characters supported by some tools. 
+MS x_rfsp4_488x55 rf_sp_adv 488 55 4  | w_um 351.2 h_um 130.3 area_um2 45755 | tt dat_ta_tcyc 0.722 0.641 lib_ta 0.720 | ss dat_ta_tcyc 1.183 1.055 lib_ta 1.177
+MS x_sramsp8_3904x55 sram_sp_adv 3904 55 8  | FAIL *** Error *** An instance name ("x_sramsp8_3904x55") of more than 16 characters may create cellnames *** Error *** that exceed the number of characters supported by some tools. 
+MS x_sramsp16_3904x55 sram_sp_adv 3904 55 16  | FAIL *** Error *** An instance name ("x_sramsp16_3904x55") of more than 16 characters may create cellnames *** Error *** that exceed the number of characters supported by some tools. 
+MS x_rfsp1_126x28 rf_sp_adv 126 28 1  | w_um 100.2 h_um 145.8 area_um2 14608 | tt dat_ta_tcyc 0.527 0.497 lib_ta 0.541 | ss dat_ta_tcyc 0.857 0.790 lib_ta 0.878
+MS x_rfsp2_244x28 rf_sp_adv 244 28 2  | w_um 137.1 h_um 136.5 area_um2 18713 | tt dat_ta_tcyc 0.595 0.526 lib_ta 0.594 | ss dat_ta_tcyc 0.983 0.894 lib_ta 0.979
+MS x_rfsp4_488x28 rf_sp_adv 488 28 4  | w_um 210.8 h_um 130.3 area_um2 27466 | tt dat_ta_tcyc 0.636 0.565 lib_ta 0.634 | ss dat_ta_tcyc 1.048 0.918 lib_ta 1.043
+MS x_sramsp8_3904x28 sram_sp_adv 3904 28 8  | FAIL *** Error *** An instance name ("x_sramsp8_3904x28") of more than 16 characters may create cellnames *** Error *** that exceed the number of characters supported by some tools. 
+MS x_sramsp16_3904x28 sram_sp_adv 3904 28 16  | FAIL *** Error *** An instance name ("x_sramsp16_3904x28") of more than 16 characters may create cellnames *** Error *** that exceed the number of characters supported by some tools. 
+MS x_sramsp32_3904x28 sram_sp_adv 3904 28 32  | FAIL *** Error *** An instance name ("x_sramsp32_3904x28") of more than 16 characters may create cellnames *** Error *** that exceed the number of characters supported by some tools. 
+MS x_sramsp8_1952x110 sram_sp_adv 1952 110 8  | FAIL *** Error *** An instance name ("x_sramsp8_1952x110") of more than 16 characters may create cellnames *** Error *** that exceed the number of characters supported by some tools. 
+MS x_rfsp1_76x64 rf_sp_adv 76 64 1  | w_um 147.0 h_um 120.8 area_um2 17754 | tt dat_ta_tcyc 0.532 0.489 lib_ta 0.544 | ss dat_ta_tcyc 0.859 0.788 lib_ta 0.879
+MS x_rfsp1_76x32 rf_sp_adv 76 32 1  | w_um 105.2 h_um 120.8 area_um2 12702 | tt dat_ta_tcyc 0.499 0.461 lib_ta 0.512 | ss dat_ta_tcyc 0.808 0.745 lib_ta 0.828
+MS x_rfsp1_76x16 rf_sp_adv 76 16 1  | w_um 85.3 h_um 120.8 area_um2 10305 | tt dat_ta_tcyc 0.483 0.448 lib_ta 0.496 | ss dat_ta_tcyc 0.783 0.723 lib_ta 0.803
+MS x_rfsp2_76x64 rf_sp_adv 76 64 2  | w_um 229.0 h_um 90.7 area_um2 20775 | tt dat_ta_tcyc 0.594 0.519 lib_ta 0.593 | ss dat_ta_tcyc 0.972 0.835 lib_ta 0.967
+MS x_rfsp2_76x32 rf_sp_adv 76 32 2  | w_um 145.4 h_um 90.7 area_um2 13187 | tt dat_ta_tcyc 0.540 0.473 lib_ta 0.540 | ss dat_ta_tcyc 0.887 0.763 lib_ta 0.882
+MS x_rfsp2_76x16 rf_sp_adv 76 16 2  | w_um 103.6 h_um 90.7 area_um2 9393 | tt dat_ta_tcyc 0.514 0.451 lib_ta 0.513 | ss dat_ta_tcyc 0.844 0.726 lib_ta 0.840
+MS x_rfsp4_80x64 rf_sp_adv 80 64 4  | w_um 394.8 h_um 75.5 area_um2 29793 | tt dat_ta_tcyc 0.676 0.596 lib_ta 0.674 | ss dat_ta_tcyc 1.098 0.956 lib_ta 1.093
+MS x_rfsp4_80x32 rf_sp_adv 80 32 4  | w_um 227.4 h_um 75.5 area_um2 17166 | tt dat_ta_tcyc 0.575 0.506 lib_ta 0.573 | ss dat_ta_tcyc 0.938 0.812 lib_ta 0.933
+MS x_rfsp4_80x16 rf_sp_adv 80 16 4  | w_um 143.8 h_um 75.5 area_um2 10852 | tt dat_ta_tcyc 0.524 0.460 lib_ta 0.522 | ss dat_ta_tcyc 0.858 0.740 lib_ta 0.853
+MS x_sramsp8_256x16 sram_sp_adv 256 16 8  | w_um 243.3 h_um 124.0 area_um2 30174 | tt dat_ta_tcyc 0.615 0.851 lib_ta 0.646 | ss dat_ta_tcyc 0.965 1.401 lib_ta 1.013
+MS x_sramsp16_512x16 sram_sp_adv 512 16 16  | FAIL *** Error *** An instance name ("x_sramsp16_512x16") of more than 16 characters may create cellnames *** Error *** that exceed the number of characters supported by some tools. 
+MS x_sramsp32_1024x16 sram_sp_adv 1024 16 32  | FAIL *** Error *** An instance name ("x_sramsp32_1024x16") of more than 16 characters may create cellnames *** Error *** that exceed the number of characters supported by some tools. 
+MS x_rfsp1_104x144 rf_sp_adv 104 144 1  | w_um 252.6 h_um 134.8 area_um2 34052 | tt dat_ta_tcyc 0.631 0.622 lib_ta 0.644 | ss dat_ta_tcyc 1.018 0.959 lib_ta 1.039
+MS x_rfsp1_116x128 rf_sp_adv 116 128 1  | w_um 230.7 h_um 140.8 area_um2 32472 | tt dat_ta_tcyc 0.622 0.598 lib_ta 0.636 | ss dat_ta_tcyc 1.006 0.927 lib_ta 1.027
+MS x_rfsp1_120x72 rf_sp_adv 120 72 1  | w_um 159.1 h_um 142.8 area_um2 22711 | tt dat_ta_tcyc 0.568 0.521 lib_ta 0.581 | ss dat_ta_tcyc 0.921 0.843 lib_ta 0.942
+MS x_rfsp1_116x64 rf_sp_adv 116 64 1  | w_um 147.0 h_um 140.8 area_um2 20694 | tt dat_ta_tcyc 0.557 0.512 lib_ta 0.571 | ss dat_ta_tcyc 0.904 0.829 lib_ta 0.925
+MS x_rfsp1_116x32 rf_sp_adv 116 32 1  | w_um 105.2 h_um 140.8 area_um2 14805 | tt dat_ta_tcyc 0.525 0.484 lib_ta 0.538 | ss dat_ta_tcyc 0.853 0.785 lib_ta 0.874
+MS x_rfsp2_180x144 rf_sp_adv 180 144 2  | w_um 439.8 h_um 120.5 area_um2 53005 | tt dat_ta_tcyc 0.767 0.669 lib_ta 0.765 | ss dat_ta_tcyc 1.250 1.079 lib_ta 1.245
+MS x_rfsp2_240x72 rf_sp_adv 240 72 2  | w_um 252.6 h_um 135.5 area_um2 34238 | tt dat_ta_tcyc 0.667 0.587 lib_ta 0.667 | ss dat_ta_tcyc 1.097 0.956 lib_ta 1.093
+MS x_rfsp4_360x72 rf_sp_adv 360 72 4  | w_um 439.8 h_um 114.3 area_um2 50265 | tt dat_ta_tcyc 0.752 0.667 lib_ta 0.750 | ss dat_ta_tcyc 1.228 1.077 lib_ta 1.222
+MS x_rfsp4_408x64 rf_sp_adv 408 64 4  | w_um 398.0 h_um 120.3 area_um2 47872 | tt dat_ta_tcyc 0.736 0.653 lib_ta 0.734 | ss dat_ta_tcyc 1.203 1.055 lib_ta 1.197
+MS x_rfsp4_408x32 rf_sp_adv 408 32 4  | w_um 230.7 h_um 120.3 area_um2 27745 | tt dat_ta_tcyc 0.634 0.562 lib_ta 0.632 | ss dat_ta_tcyc 1.043 0.912 lib_ta 1.037
+MS x_sramsp8_720x144 sram_sp_adv 720 144 8  | FAIL *** Error *** An instance name ("x_sramsp8_720x144") of more than 16 characters may create cellnames *** Error *** that exceed the number of characters supported by some tools. 
+MS x_sramsp8_816x128 sram_sp_adv 816 128 8  | FAIL *** Error *** An instance name ("x_sramsp8_816x128") of more than 16 characters may create cellnames *** Error *** that exceed the number of characters supported by some tools. 
+MS x_sramsp8_720x72 sram_sp_adv 720 72 8  | w_um 713.7 h_um 157.0 area_um2 112058 | tt dat_ta_tcyc 0.723 0.950 lib_ta 0.753 | ss dat_ta_tcyc 1.131 1.559 lib_ta 1.179
+MS x_sramsp8_816x64 sram_sp_adv 816 64 8  | w_um 646.5 h_um 164.6 area_um2 106421 | tt dat_ta_tcyc 0.710 0.939 lib_ta 0.740 | ss dat_ta_tcyc 1.111 1.542 lib_ta 1.159
+MS x_sramsp8_816x32 sram_sp_adv 816 32 8  | w_um 377.7 h_um 164.6 area_um2 62175 | tt dat_ta_tcyc 0.652 0.888 lib_ta 0.683 | ss dat_ta_tcyc 1.023 1.460 lib_ta 1.071
+MS x_sramsp16_736x72 sram_sp_adv 736 72 16  | FAIL *** Error *** An instance name ("x_sramsp16_736x72") of more than 16 characters may create cellnames *** Error *** that exceed the number of characters supported by some tools. 
+MS x_sramsp16_832x64 sram_sp_adv 832 64 16  | FAIL *** Error *** An instance name ("x_sramsp16_832x64") of more than 16 characters may create cellnames *** Error *** that exceed the number of characters supported by some tools. 
+MS x_sramsp16_832x32 sram_sp_adv 832 32 16  | FAIL *** Error *** An instance name ("x_sramsp16_832x32") of more than 16 characters may create cellnames *** Error *** that exceed the number of characters supported by some tools. 
+MS x_rfsp2_256x128 rf_sp_adv 256 128 2  | w_um 398.0 h_um 139.5 area_um2 55525 | tt dat_ta_tcyc 0.767 0.672 lib_ta 0.766 | ss dat_ta_tcyc 1.256 1.089 lib_ta 1.251
+MS x_rfsp2_256x64 rf_sp_adv 256 64 2  | w_um 230.7 h_um 139.5 area_um2 32180 | tt dat_ta_tcyc 0.660 0.581 lib_ta 0.659 | ss dat_ta_tcyc 1.086 0.976 lib_ta 1.082
+MS x_rfsp2_256x32 rf_sp_adv 256 32 2  | w_um 147.0 h_um 139.5 area_um2 20508 | tt dat_ta_tcyc 0.606 0.535 lib_ta 0.605 | ss dat_ta_tcyc 1.001 0.925 lib_ta 0.997
+MS x_rfsp4_512x64 rf_sp_adv 512 64 4  | w_um 398.0 h_um 133.3 area_um2 53045 | tt dat_ta_tcyc 0.755 0.671 lib_ta 0.753 | ss dat_ta_tcyc 1.236 1.122 lib_ta 1.230
+MS x_rfsp4_512x32 rf_sp_adv 512 32 4  | w_um 230.7 h_um 133.3 area_um2 30743 | tt dat_ta_tcyc 0.653 0.580 lib_ta 0.651 | ss dat_ta_tcyc 1.076 0.958 lib_ta 1.070
+MS x_sramsp8_512x128 sram_sp_adv 512 128 8  | FAIL *** Error *** An instance name ("x_sramsp8_512x128") of more than 16 characters may create cellnames *** Error *** that exceed the number of characters supported by some tools. 
+MS x_sramsp8_512x64 sram_sp_adv 512 64 8  | w_um 646.5 h_um 141.6 area_um2 91551 | tt dat_ta_tcyc 0.705 0.933 lib_ta 0.736 | ss dat_ta_tcyc 1.104 1.532 lib_ta 1.152
+MS x_sramsp8_512x32 sram_sp_adv 512 32 8  | w_um 377.7 h_um 141.6 area_um2 53488 | tt dat_ta_tcyc 0.648 0.882 lib_ta 0.678 | ss dat_ta_tcyc 1.015 1.450 lib_ta 1.064
+MS r01 sram_sp_adv 624 144 8  | w_um 1318.5 h_um 151.0 area_um2 199104 | tt dat_ta_tcyc 0.888 1.121 lib_ta 0.919 | ss dat_ta_tcyc 1.393 1.843 lib_ta 1.441
+MS r02 sram_sp_adv 624 128 8  | w_um 1184.1 h_um 151.0 area_um2 178809 | tt dat_ta_tcyc 0.849 1.079 lib_ta 0.879 | ss dat_ta_tcyc 1.330 1.774 lib_ta 1.379
+MS r03 sram_sp_adv 640 72 16  | w_um 1318.5 h_um 129.6 area_um2 170887 | tt dat_ta_tcyc 0.901 1.106 lib_ta 0.931 | ss dat_ta_tcyc 1.414 1.838 lib_ta 1.463
+MS r04 sram_sp_adv 640 64 16  | w_um 1184.1 h_um 129.6 area_um2 153469 | tt dat_ta_tcyc 0.862 1.074 lib_ta 0.892 | ss dat_ta_tcyc 1.351 1.786 lib_ta 1.400
+MS r05 sram_sp_adv 640 48 16  | w_um 915.3 h_um 129.6 area_um2 118631 | tt dat_ta_tcyc 0.782 1.012 lib_ta 0.813 | ss dat_ta_tcyc 1.226 1.682 lib_ta 1.274
+MS r06 sram_sp_adv 640 36 16  | w_um 713.7 h_um 129.6 area_um2 92502 | tt dat_ta_tcyc 0.735 0.976 lib_ta 0.765 | ss dat_ta_tcyc 1.151 1.629 lib_ta 1.199
+MS r07 sram_sp_adv 640 32 16  | w_um 646.5 h_um 129.6 area_um2 83793 | tt dat_ta_tcyc 0.720 0.966 lib_ta 0.750 | ss dat_ta_tcyc 1.128 1.611 lib_ta 1.176
+MS r08 sram_sp_adv 1024 36 32  | w_um 1318.5 h_um 124.0 area_um2 163504 | tt dat_ta_tcyc 0.932 1.124 lib_ta 0.962 | ss dat_ta_tcyc 1.465 1.871 lib_ta 1.513
+MS r09 sram_sp_adv 1024 32 32  | w_um 1184.1 h_um 124.0 area_um2 146837 | tt dat_ta_tcyc 0.896 1.095 lib_ta 0.927 | ss dat_ta_tcyc 1.409 1.823 lib_ta 1.457
+MS r10 sram_sp_adv 512 17 16  | w_um 394.5 h_um 124.0 area_um2 48923 | tt dat_ta_tcyc 0.664 0.925 lib_ta 0.694 | ss dat_ta_tcyc 1.041 1.540 lib_ta 1.089
+MS r11 sram_sp_adv 1024 17 32  | w_um 680.1 h_um 124.0 area_um2 84339 | tt dat_ta_tcyc 0.757 0.990 lib_ta 0.787 | ss dat_ta_tcyc 1.188 1.641 lib_ta 1.237
+MS r12 sram_sp_adv 512 34 16  | w_um 680.1 h_um 124.0 area_um2 84339 | tt dat_ta_tcyc 0.726 0.969 lib_ta 0.757 | ss dat_ta_tcyc 1.138 1.618 lib_ta 1.186
+MS r13 sram_sp_adv 1024 34 32  | w_um 1251.3 h_um 124.0 area_um2 155171 | tt dat_ta_tcyc 0.914 1.110 lib_ta 0.944 | ss dat_ta_tcyc 1.437 1.847 lib_ta 1.485
+MS r14 sram_sp_adv 512 68 16  | w_um 1251.3 h_um 124.0 area_um2 155171 | tt dat_ta_tcyc 0.880 1.087 lib_ta 0.911 | ss dat_ta_tcyc 1.381 1.808 lib_ta 1.430
+MS r15 sram_sp_adv 256 136 8  | w_um 1251.3 h_um 124.0 area_um2 155171 | tt dat_ta_tcyc 0.863 1.092 lib_ta 0.894 | ss dat_ta_tcyc 1.353 1.796 lib_ta 1.401
+MS r16 sram_sp_adv 256 144 8  | w_um 1318.5 h_um 124.0 area_um2 163504 | tt dat_ta_tcyc 0.883 1.113 lib_ta 0.914 | ss dat_ta_tcyc 1.385 1.831 lib_ta 1.433
+MS r17 sram_sp_adv 256 128 8  | w_um 1184.1 h_um 124.0 area_um2 146837 | tt dat_ta_tcyc 0.844 1.072 lib_ta 0.874 | ss dat_ta_tcyc 1.322 1.762 lib_ta 1.370
+MS r18 sram_sp_adv 512 72 16  | w_um 1318.5 h_um 124.0 area_um2 163504 | tt dat_ta_tcyc 0.900 1.103 lib_ta 0.931 | ss dat_ta_tcyc 1.413 1.834 lib_ta 1.461
+MS r19 sram_sp_adv 512 64 16  | w_um 1184.1 h_um 124.0 area_um2 146837 | tt dat_ta_tcyc 0.861 1.072 lib_ta 0.891 | ss dat_ta_tcyc 1.350 1.782 lib_ta 1.398
+MS r20 sram_sp_adv 512 32 16  | w_um 646.5 h_um 124.0 area_um2 80172 | tt dat_ta_tcyc 0.719 0.963 lib_ta 0.749 | ss dat_ta_tcyc 1.126 1.609 lib_ta 1.175
+MS r21 sram_sp_adv 3904 110 8  | w_um 1032.9 h_um 441.4 area_um2 455897 | tt dat_ta_tcyc 0.851 1.104 lib_ta 0.882 | ss dat_ta_tcyc 1.336 1.805 lib_ta 1.385
+MS r22 sram_sp_adv 3904 55 8  | w_um 570.9 h_um 441.4 area_um2 251986 | tt dat_ta_tcyc 0.741 0.988 lib_ta 0.771 | ss dat_ta_tcyc 1.163 1.615 lib_ta 1.211
+MS r23 sram_sp_adv 3904 55 16  | w_um 1032.9 h_um 263.5 area_um2 272202 | tt dat_ta_tcyc 0.841 1.103 lib_ta 0.871 | ss dat_ta_tcyc 1.320 1.827 lib_ta 1.368
+MS r24 sram_sp_adv 3904 28 8  | w_um 344.1 h_um 441.4 area_um2 151885 | tt dat_ta_tcyc 0.692 0.952 lib_ta 0.723 | ss dat_ta_tcyc 1.088 1.546 lib_ta 1.136
+MS r25 sram_sp_adv 3904 28 16  | w_um 579.3 h_um 263.5 area_um2 152667 | tt dat_ta_tcyc 0.730 1.020 lib_ta 0.760 | ss dat_ta_tcyc 1.146 1.661 lib_ta 1.194
+MS r26 sram_sp_adv 3904 28 32  | w_um 1049.7 h_um 174.6 area_um2 183287 | tt dat_ta_tcyc 0.872 1.095 lib_ta 0.902 | ss dat_ta_tcyc 1.371 1.819 lib_ta 1.419
+MS r27 sram_sp_adv 1952 110 8  | w_um 1032.9 h_um 263.5 area_um2 272202 | tt dat_ta_tcyc 0.824 1.062 lib_ta 0.854 | ss dat_ta_tcyc 1.291 1.740 lib_ta 1.339
+MS r28 sram_sp_adv 512 16 16  | w_um 377.7 h_um 124.0 area_um2 46840 | tt dat_ta_tcyc 0.660 0.922 lib_ta 0.690 | ss dat_ta_tcyc 1.036 1.536 lib_ta 1.084
+MS r29 sram_sp_adv 1024 16 32  | w_um 646.5 h_um 124.0 area_um2 80172 | tt dat_ta_tcyc 0.749 0.984 lib_ta 0.780 | ss dat_ta_tcyc 1.177 1.631 lib_ta 1.225
+MS r30 sram_sp_adv 720 144 8  | w_um 1318.5 h_um 157.0 area_um2 207015 | tt dat_ta_tcyc 0.890 1.123 lib_ta 0.920 | ss dat_ta_tcyc 1.395 1.846 lib_ta 1.444
+MS r31 sram_sp_adv 816 128 8  | w_um 1184.1 h_um 164.6 area_um2 194913 | tt dat_ta_tcyc 0.852 1.084 lib_ta 0.882 | ss dat_ta_tcyc 1.335 1.780 lib_ta 1.383
+MS r32 sram_sp_adv 736 72 16  | w_um 1318.5 h_um 132.6 area_um2 174843 | tt dat_ta_tcyc 0.902 1.107 lib_ta 0.932 | ss dat_ta_tcyc 1.415 1.841 lib_ta 1.464
+MS r33 sram_sp_adv 832 64 16  | w_um 1184.1 h_um 135.6 area_um2 160573 | tt dat_ta_tcyc 0.863 1.078 lib_ta 0.893 | ss dat_ta_tcyc 1.354 1.791 lib_ta 1.402
+MS r34 sram_sp_adv 832 32 16  | w_um 646.5 h_um 135.6 area_um2 87672 | tt dat_ta_tcyc 0.721 0.970 lib_ta 0.752 | ss dat_ta_tcyc 1.130 1.615 lib_ta 1.179
+MS r35 sram_sp_adv 512 128 8  | w_um 1184.1 h_um 141.6 area_um2 167678 | tt dat_ta_tcyc 0.847 1.077 lib_ta 0.878 | ss dat_ta_tcyc 1.328 1.770 lib_ta 1.376
+MS o1 rom_via_adv 640 144 8  | FAIL *** Error *** ascii: -bits option out of range, 144, must be within 2 and 128 
+MS o2 rom_via_adv 640 999 8  | FAIL *** Error *** ascii: -bits option out of range, 999, must be within 2 and 128 
+MS o3 rom_via_adv 8 72 16  | FAIL *** Error *** ascii: -words option out of range, 8, must be within 512 and 8192 
+MS o4 rom_via_adv 640 999 16  | FAIL *** Error *** ascii: -bits option out of range, 999, must be within 2 and 128 
+MS o5 rom_via_adv 640 36 32  | FAIL *** Error *** ascii: -words option out of range, 640, must be within 1024 and 16384 
+MS o6 rom_via_adv 640 128 8  | w_um 437.3 h_um 124.2 area_um2 54327 | tt dat_ta_tcyc 1.449 1.556 lib_ta 1.446 | ss dat_ta_tcyc 2.399 2.635 lib_ta 2.442
+MS o7 rom_via_adv 8 128 8  | FAIL *** Error *** ascii: -words option out of range, 8, must be within 256 and 4096 
+MS o8 rom_via_adv 640 128 16  | w_um 791.6 h_um 107.8 area_um2 85366 | tt dat_ta_tcyc 1.614 1.702 lib_ta 1.612 | ss dat_ta_tcyc 2.675 2.891 lib_ta 2.719
