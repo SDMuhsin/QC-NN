@@ -1,0 +1,43 @@
+/tmp/root/qc18b/exc200/E6_s0/best.pt: mode signed, b 8, epoch 197, saved val 63.96 %
+binact options (/tmp/root/qc18b/exc200/E6_s0/log.txt): binact=1 ste=clip w=1.0 K=0.6 t_train=1 bin_stem=0 preact=1 arch=qc18 stem_therm=0 fp_blocks=6 abits_blocks= abits=0 xfb_blocks= xfb=
+[1] model fp32 val (cudnn tf32=False): 63.96 % (3198/5000), saved 3198/5000: +0 images
+[1] model fp32 val (cudnn tf32=True): 63.56 % (3178/5000), saved 3198/5000: -20 images
+[2] fold: layer                  matrix  density   zero    1sh    2sh   in-act  result
+    stem                 (64, 72)   0.2292  0.056  0.056  0.889   8b-img  PASS |g| min 0.03 g<0 3
+    blocks.0.c1         (64, 576)   0.2181  0.069  0.116  0.814        1  PASS |g| min 0.04 g<0 0
+    blocks.0.c2         (64, 576)   0.2205  0.059  0.118  0.823        1  PASS |g| min 0.0084 g<0 4
+    blocks.1.c1         (64, 576)   0.2198  0.075  0.092  0.833        1  PASS |g| min 0.0009 g<0 6
+    blocks.1.c2         (64, 576)   0.2055  0.108  0.141  0.752        1  PASS |g| min 0.004 g<0 7
+    blocks.2.c1        (128, 576)   0.1944  0.171  0.102  0.727        1  PASS |g| min 0.0047 g<0 3
+    blocks.2.c2       (128, 1152)   0.1819  0.200  0.145  0.655        1  PASS |g| min 0.0006 g<0 5
+    blocks.2.sc         (128, 64)   0.2207  0.062  0.109  0.828        1  PASS |g| min 0.0023 g<0 14
+    blocks.3.c1       (128, 1152)   0.2096  0.099  0.126  0.775        1  PASS |g| min 0.0051 g<0 3
+    blocks.3.c2       (128, 1152)   0.2052  0.112  0.135  0.753        1  PASS |g| min 0.00063 g<0 15
+    blocks.4.c1       (256, 1152)   0.2038  0.118  0.134  0.748        1  PASS |g| min 0.0012 g<0 5
+    blocks.4.c2       (256, 2304)   0.2142  0.076  0.133  0.790        1  PASS |g| min 0.00026 g<0 3
+    blocks.4.sc        (256, 128)   0.2148  0.088  0.105  0.807        1  PASS |g| min 0.00084 g<0 12
+    blocks.5.c1       (256, 2304)   0.2116  0.083  0.141  0.776        1  PASS |g| min 1.6e-06 g<0 12
+    blocks.5.c2       (256, 2304)   0.2209  0.058  0.118  0.824        1  PASS |g| min 0.00031 g<0 22
+    blocks.6.c1       (512, 2304)   0.2279  0.037  0.102  0.861       FP  PASS |g| min 6.9e-05 g<0 1
+    blocks.6.c2       (512, 4608)   0.2365  0.018  0.072  0.910       FP  PASS |g| min 1.2e-05 g<0 9
+    blocks.6.sc        (512, 256)   0.2287  0.041  0.088  0.871       FP  PASS |g| min 0.00021 g<0 37
+    blocks.7.c1       (512, 4608)   0.2344  0.024  0.078  0.899        1  PASS |g| min 6.2e-05 g<0 28
+    blocks.7.c2       (512, 4608)   0.2367  0.021  0.065  0.914        1  PASS |g| min 0.0018 g<0 1
+    QC proof: 20 convs PASS (signed=True, b=8, <= 2 shifts per block, re-expanded, == model weight)
+    b2 fold per block (c1 BN + BinAct t -> 1[sign(g) acc >= T], acc = integer M b1):
+      block 0: 64 ch, g<0 0, g=0 0, constant-output ch 0, T in [-14, 16], min |tau - round(tau)| 0.00223
+      block 1: 64 ch, g<0 6, g=0 0, constant-output ch 2, T in [-18, 173], min |tau - round(tau)| 0.00708
+      block 2: 128 ch, g<0 3, g=0 0, constant-output ch 1, T in [-14, 282], min |tau - round(tau)| 0.00282
+      block 3: 128 ch, g<0 3, g=0 0, constant-output ch 2, T in [-140, 119], min |tau - round(tau)| 0.00256
+      block 4: 256 ch, g<0 5, g=0 0, constant-output ch 3, T in [-33, 886], min |tau - round(tau)| 0.00434
+      block 5: 256 ch, g<0 12, g=0 0, constant-output ch 5, T in [-21, 944], min |tau - round(tau)| 0.00511
+      block 6: fp-block (b1 = b2 = ReLU, float)
+      block 7: 512 ch, g<0 28, g=0 0, constant-output ch 9, T in [-23, 16402], min |tau - round(tau)| 0.000751
+[3] val: model fp64 63.96 % (3198/5000), folded fp64 63.96 % (3198/5000), argmax differs on 0 images (0.000 %) PASS
+    val: model fp32 63.96 % (3198/5000); model fp32 vs fp64 argmax differs on 0 images (+0 correct)
+[3] test: model fp64 63.33 % (6333/10000), folded fp64 63.33 % (6333/10000), argmax differs on 0 images (0.000 %) PASS
+    test: model fp32 63.32 % (6332/10000); model fp32 vs fp64 argmax differs on 3 images (-1 correct)
+    b2 elements integer compare != float compare 1[g acc + h > t]: 0; non-integer binary-input accumulators: 0
+[4] per-conv input activation: stem 8-bit image (normalised (x/255 - mean)/std, float); block 0 c1/sc/c2 1-bit; block 1 c1/sc/c2 1-bit; block 2 c1/sc/c2 1-bit; block 3 c1/sc/c2 1-bit; block 4 c1/sc/c2 1-bit; block 5 c1/sc/c2 1-bit; block 6 c1/sc/c2 FP (fp-block, ReLU); block 7 c1/sc/c2 1-bit
+    multi-bit tensors: stem input image (8-bit, normalised float) | stem BN output s0 (pre-ReLU stream) | residual stream s_k = block outputs (pre-ReLU, read by b1 float compare) | c2 BN outputs g2*acc2 + h2 (added into the stream) | sc BN outputs (downsampling blocks 2, 4, 6) | identity shortcut relu(s) (non-downsampling blocks) | integer accumulators acc = M b (c1, c2, sc; c1 acc compared to integer T for b2) | fp-block 6 activations: relu(s) (c1/sc input), c1 BN output, relu(c1 BN) (c2 input) | pool/FC input relu(s_7) and its global average (512-d)
+VERIFY PASS

@@ -1,0 +1,24 @@
+/tmp/root/qc18b/init200/I1/best.pt: mode signed, b 8, epoch 196, fp_blocks []; integer-exact inference
+calibration (folded fp64, train[:2000]): input int8 S 0.0159; stream int16 S_k = max|s_k|/32767: s0=0.000407 s1=0.000332 s2=0.000886 s3=0.000778 s4=0.000564 s5=0.000551 s6=0.000342 s7=0.00191 s8=0.00248; pool int8 S 0.1198
+weights: 20 convs int sign(g) M in {-1,0,1}, QC re-proved (decompose + re-expand == M) PASS, 238 sign-flipped rows; FC int8 per-channel
+thresholds: b1 = 1[s_int > floor(t/S_k)], b2 = 1[sign(g) M b1 >= T] (verify_bin); 0 requant multipliers < 2^-32 set to 0
+val: folded fp64 61.90 % (3095/5000), integer 61.86 % (3093/5000), argmax differs on 1121 images; int16 stream saturations 9
+1-bit activations differing integer vs folded fp64 (end-to-end, val[:500]):
+  b0.b1    (64, 32, 32)  2.526e-03  (82781 / 32768000)
+  b0.b2    (64, 32, 32)  1.588e-02  (520449 / 32768000)
+  b1.b1    (64, 32, 32)  2.162e-02  (708357 / 32768000)
+  b1.b2    (64, 32, 32)  4.622e-02  (1514463 / 32768000)
+  b2.b1    (64, 32, 32)  4.608e-02  (1509885 / 32768000)
+  b2.b2    (128, 16, 16)  7.072e-02  (1158609 / 16384000)
+  b3.b1    (128, 16, 16)  8.045e-02  (1318099 / 16384000)
+  b3.b2    (128, 16, 16)  6.186e-02  (1013463 / 16384000)
+  b4.b1    (128, 16, 16)  1.012e-01  (1658571 / 16384000)
+  b4.b2    (256, 8, 8)  8.984e-02  (735960 / 8192000)
+  b5.b1    (256, 8, 8)  8.984e-02  (735979 / 8192000)
+  b5.b2    (256, 8, 8)  4.557e-02  (373330 / 8192000)
+  b6.b1    (256, 8, 8)  1.344e-01  (1100961 / 8192000)
+  b6.b2    (512, 4, 4)  9.204e-02  (376977 / 4096000)
+  b7.b1    (512, 4, 4)  7.806e-02  (319715 / 4096000)
+  b7.b2    (512, 4, 4)  7.911e-02  (324052 / 4096000)
+  worst: b6.b1 1.344e-01
+test accuracy: integer 60.59 % (6059/10000); int16 stream saturations 21
