@@ -19,3 +19,6 @@ hw/kulcluster/generated/
 # Python bytecode
 __pycache__/
 *.pyc
+
+# cloned third-party repos for literature integration (qc18b)
+/temp/
