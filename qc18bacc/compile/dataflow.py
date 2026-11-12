@@ -130,8 +130,135 @@ def pe_array(p, planes, skip, W):
     return acc, items
 
 
+GROUP_PLANE = lambda h, g: 4 * h + g          # stem packing: group g of cycle h carries this plane (test hook)
+
+
+def pe_stem_packed(p, planes, W):
+    """v1.1 stem packing: the KB = 36 bytes of a chunk are 9 taps x 4 channel groups; in stem mode group g of cycle h
+    carries bit-plane 4h + g of the 8 (padded) image channels, every group holds the same 9 tap codes, and the PE
+    popcounts the 4 groups separately: sum_{g,i} = u_{g,i} - nneg_g, acc_i += sum_g (+/-) (sum_{g,i} << g) << 4h
+    (plane 7 = group 3 of h = 1 negative, two's-complement MSB), mod 2^20.  2 cycles per tile (no plane skip).
+    Returns acc [N, L, Cout] and items [N, Tp] (= 2)."""
+    assert p.cinp == 8 and p.nchunk == 1 and len(planes) == 8
+    N = planes[0][0].shape[0]
+    L, Tp = p.Hout * p.Wout, p.tiles_px
+    pos = W.pos[0].view(9, P.CH, -1)                                                   # [tap, 32 ch, Cout]
+    neg = W.neg[0].view(9, P.CH, -1)
+    assert not pos[:, 8:].any() and not neg[:, 8:].any(), "stem weights outside group 0"
+    acc = torch.zeros(N, L, p.cout, dtype=torch.int64, device=pos.device)
+    exact = torch.zeros_like(acc)
+    for h in range(2):
+        a = torch.cat([patches(planes[GROUP_PLANE(h, g)][0], p)[:, :, 0].view(N, L, 9, P.CH)[..., :8]
+                       for g in range(4)], -1)
+        a = a.reshape(N, L, 9 * P.CH)                                                  # byte j = tap * 4 + g
+        tot = 0
+        for g in range(4):
+            Wp = torch.zeros(9, 4, 8, p.cout, device=pos.device)
+            Wn = torch.zeros_like(Wp)
+            Wp[:, g], Wn[:, g] = pos[:, :8], neg[:, :8]                                # same 9 tap codes in group g
+            u = torch.matmul(a, Wp.view(9 * P.CH, -1)) + torch.matmul(1 - a, Wn.view(9 * P.CH, -1))
+            ui = u.round().long()
+            # the 1 - a term counts only group-g bytes because Wn is zero elsewhere
+            assert torch.equal(ui.double(), u.double()) and (ui >= 0).all() and (ui <= 2 * 9).all(), "group popcount"
+            nn = Wn.sum((0, 1, 2)).long()
+            sg = (ui - nn) << g
+            tot = tot + (-sg if 4 * h + g == 7 else sg)
+            assert planes[4 * h + g][1] == (4 * h + g == 7)
+        v = tot << (4 * h)
+        exact += v
+        acc = (acc + v) & MASK
+    acc = torch.where(acc >= 1 << (P.ACC_W - 1), acc - (1 << P.ACC_W), acc)
+    assert torch.equal(acc, exact), "ACC_W wrap"
+    return acc, torch.full((N, Tp), 2, dtype=torch.int64, device=acc.device)
+
+
 def col(t):
     return torch.as_tensor(t).to(torch.int64)
+
+
+def fz(p):
+    """fused-lane parameters of a v1.1 pass on the device."""
+    return {k: (col(v).to(p.p["dev"]) if torch.is_tensor(v) else v) for k, v in p.p["f"].items()}
+
+
+def do_pass(prog, p, bf, Ws, dev, stats):
+    """one pass of the program on buffers bf (reads its source / S, writes its destinations)."""
+    p.p["dev"] = dev
+    dv = lambda k: col(p.p[k]).to(dev)
+    L, Li = p.Hout * p.Wout, p.Hin * p.Win
+    if p.k:
+        if p.inb == 8:
+            C = 8 if p.src == "IMG" else p.cin
+            planes = [(nchw(bf.read(p.src, Li, C, plane=b), p.Hin, p.Win).float(), b == 7) for b in range(8)]
+        else:
+            planes = [(nchw(bf.read(p.src, Li, p.cin), p.Hin, p.Win).float(), False)]
+        if p.p.get("pack"):
+            acc, items = pe_stem_packed(p, planes, Ws[p.name])
+        else:
+            acc, items = pe_array(p, planes, p.inb == 8 and p.kind != "stem", Ws[p.name])
+        stats[p.name] = items.cpu().numpy()
+        x_ = acc * col(p.sgn).to(dev)                                               # PPU input: acc' = sign(g) acc
+    if p.kind == "stem":
+        ys, b = P.lane_s8(x_ + dv("bias"), dv("m"), dv("sel"), t=dv("T"))
+        bf.write("S", ys)
+        bf.write("B1", b.long())
+    elif p.kind == "bc1":
+        bf.write("B2", (x_ >= dv("T")).long())
+    elif p.kind == "bsc":
+        r, _ = P.lane_s8(x_, dv("m"), dv("sel"), dv("h"), rmode=True)
+        obs(p.name, r)
+        bf.write("S", r)
+    elif p.kind == "bc2":
+        sin = bf.read("S", L, p.cout)                                                # in place: same addresses
+        if p.p["res"] == "idm":
+            r = P.lane_s8_rq(sin.clamp(min=0), dv("idm_m"), dv("idm_sel"))
+            obs(p.name + ".idm", r)
+        else:
+            r = sin
+        t = None if p.p["T"] is None else dv("T")
+        ys, b = P.lane_s8(x_, dv("m"), dv("sel"), dv("h"), r, t)
+        bf.write("S", ys)
+        if b is not None:
+            bf.write("B1", b.long())
+    elif p.kind == "hm":
+        s = bf.read("S", L, p.cin)
+        if "f" in p.p:
+            y, _ = P.lane_f(s, fz(p))                                                  # input ReLU, pre-clamp, u8
+        else:
+            y, _ = P.lane_w(s.clamp(min=0), dv("m0"), dv("sh"), mode="u8")
+        for b in range(8):
+            bf.write("HQ", (y >> b) & 1, plane=b)
+    elif p.kind == "wc1":
+        if "f" in p.p:
+            y, _ = P.lane_f(x_, fz(p))
+        else:
+            y, _ = P.lane_w(x_ + dv("bias"), dv("m0"), dv("sh"), mode="u8")
+        for b in range(8):
+            bf.write("Z", (y >> b) & 1, plane=b)
+    elif p.kind == "wsc":
+        if "f" in p.p:
+            r, _ = P.lane_f(x_, fz(p))
+        else:
+            r, _ = P.lane_w(x_ + dv("bias"), dv("m0"), dv("sh"), mode="r")
+        obs(p.name, r)
+        if p.p.get("r1"):
+            bf.write("S", r)                                                         # 17 b: one entry
+        else:
+            bf.write("S", r & 0xFFFF)                                                # lo 16 b
+            bf.write("S", r >> 16, off=L * p.cout)                                   # hi (signed)
+    elif p.kind == "wc2":
+        sc = next(q for q in prog.passes if q.block == p.block and q.kind == "wsc")
+        r = bf.read("S", L, p.cout)
+        if not sc.p.get("r1"):
+            r = r + (bf.read("S", L, p.cout, off=L * p.cout) << 16)
+        if "f" in p.p:
+            ys, b = P.lane_f(x_, fz(p), r=r, t=dv("T"))
+        else:
+            ys, b = P.lane_w(x_ + dv("bias"), dv("m0"), dv("sh"), r=r, t=dv("T"))
+        bf.write("S", ys)
+        bf.write("B1", b.long())
+    else:
+        raise ValueError(p.kind)
 
 
 @torch.no_grad()
@@ -140,74 +267,102 @@ def run(prog, x, dev="cuda", Ws=None):
     N = x.shape[0]
     bf = Bufs(N, dev)
     Ws = Ws if Ws is not None else {p.name: PEWeights(p, dev) for p in prog.passes if p.k}
+    load_image(prog, bf, x, dev)
+    stats = {}
+    for p in prog.passes:
+        do_pass(prog, p, bf, Ws, dev, stats)
+    return head(prog, bf, dev), stats
+
+
+def head(prog, bf, dev):
+    h = prog.head
+    last = prog.passes[-1]
+    s = bf.read("S", last.Hout * last.Wout, last.cout)
+    pq, _ = P.lane_w(s.clamp(min=0).sum(1), col(h["pool_m0"]).to(dev), col(h["pool_sh"]).to(dev), mode="u8")
+    return (igemm(F.linear, pq, h["fW8"]) + h["fbq"]).double() * h["fscale"]
+
+
+def load_image(prog, bf, x, dev):
     lut = prog.lut.to(dev)
     xi = x.permute(0, 3, 1, 2).long()                                                  # [N, 3, 32, 32]
     q = torch.stack([lut[c][xi[:, c]] for c in range(3)], 1)
     q8 = F.pad(q, (0, 0, 0, 0, 0, 5)).flatten(2).transpose(1, 2) & 0xFF                # [N, L, 8] two's complement
     for b in range(8):
         bf.write("IMG", (q8 >> b) & 1, plane=b)
-    stats = {}
-    for p in prog.passes:
-        dv = lambda k: col(p.p[k]).to(dev)
-        L, Li = p.Hout * p.Wout, p.Hin * p.Win
-        if p.k:
-            if p.inb == 8:
-                C = 8 if p.src == "IMG" else p.cin
-                planes = [(nchw(bf.read(p.src, Li, C, plane=b), p.Hin, p.Win).float(), b == 7) for b in range(8)]
+
+
+ENT = {}
+
+
+def _entries(T, base, dev):
+    """per tile: buffer entry indices of its footprints {(t, 'ar' | 'dr' | 'wr', buf): LongTensor} (cached)."""
+    key = id(T)
+    if key in ENT:
+        return ENT[key]
+    nb = {k: -(-P.BUFS[k][0] // 64) for k in P.BUFS}
+    out = {}
+    for t, d in enumerate(T):
+        for f in ("ar", "dr", "wr"):
+            b = np.array(sorted(d[f]), dtype=np.int64)
+            for buf in P.BUFS:
+                m = b[(b >= base[buf]) & (b < base[buf] + nb[buf])] - base[buf]
+                if len(m):
+                    out[t, f, buf] = torch.as_tensor((m[:, None] * 64 + np.arange(64)).ravel(), device=dev)
+    ENT[key] = out
+    return out
+
+
+@torch.no_grad()
+def replay(prog, x, T, base, tim, dev="cuda", Ws=None):
+    """Execute the program on ONE image tile by tile in the scheduled order (cycles.list_schedule times tim[f][tile]):
+    events sorted by time (writes before reads at equal times): array read at st (snapshot of the tile's input rows,
+    every other entry zeroed), drain read at ds (snapshot of its S entries), write at de (pecmp: capture) = the pass
+    computed from the tile's snapshots, only the tile's own output entries written to the shared buffers.  A read of a
+    stale / not yet written / clobbered entry changes the values (unwritten entries assert).  Returns the logits."""
+    Ws = Ws if Ws is not None else {p.name: PEWeights(p, dev) for p in prog.passes if p.k}
+    bf = Bufs(1, dev)
+    load_image(prog, bf, x, dev)
+    ent = _entries(T, base, dev)
+    ev = []
+    for t, d in enumerate(T):
+        if d["arr"]:
+            ev.append((int(tim["st"][t]), 1, t, "a"))
+        if d["dr"]:
+            ev.append((int(tim["ds"][t]), 1, t, "d"))
+        ev.append((int(tim["de"][t]), 0, t, "w"))
+    ev.sort()
+    snap = {}
+    obs0 = dict(OBS)
+    for _, _, t, k in ev:
+        d = T[t]
+        p = prog.passes[d["pi"]]
+        if k == "a":
+            if p.src == "IMG":
+                snap[t, "a"] = bf.b["IMG"].clone()
             else:
-                planes = [(nchw(bf.read(p.src, Li, p.cin), p.Hin, p.Win).float(), False)]
-            acc, items = pe_array(p, planes, p.inb == 8 and p.kind != "stem", Ws[p.name])
-            stats[p.name] = items.cpu().numpy()
-            x_ = acc * col(p.sgn).to(dev)                                               # PPU input: acc' = sign(g) acc
-        if p.kind == "stem":
-            ys, b = P.lane_s8(x_ + dv("bias"), dv("m"), dv("sel"), t=dv("T"))
-            bf.write("S", ys)
-            bf.write("B1", b.long())
-        elif p.kind == "bc1":
-            bf.write("B2", (x_ >= dv("T")).long())
-        elif p.kind == "bsc":
-            r, _ = P.lane_s8(x_, dv("m"), dv("sel"), dv("h"), rmode=True)
-            obs(p.name, r)
-            bf.write("S", r)
-        elif p.kind == "bc2":
-            sin = bf.read("S", L, p.cout)                                                # in place: same addresses
-            if p.p["res"] == "idm":
-                r = P.lane_s8_rq(sin.clamp(min=0), dv("idm_m"), dv("idm_sel"))
-                obs(p.name + ".idm", r)
-            else:
-                r = sin
-            t = None if p.p["T"] is None else dv("T")
-            ys, b = P.lane_s8(x_, dv("m"), dv("sel"), dv("h"), r, t)
-            bf.write("S", ys)
-            if b is not None:
-                bf.write("B1", b.long())
-        elif p.kind == "hm":
-            s = bf.read("S", L, p.cin)
-            y, _ = P.lane_w(s.clamp(min=0), dv("m0"), dv("sh"), mode="u8")
-            for b in range(8):
-                bf.write("HQ", (y >> b) & 1, plane=b)
-        elif p.kind == "wc1":
-            y, _ = P.lane_w(x_ + dv("bias"), dv("m0"), dv("sh"), mode="u8")
-            for b in range(8):
-                bf.write("Z", (y >> b) & 1, plane=b)
-        elif p.kind == "wsc":
-            r, _ = P.lane_w(x_ + dv("bias"), dv("m0"), dv("sh"), mode="r")
-            obs(p.name, r)
-            bf.write("S", r & 0xFFFF)                                                    # lo 16 b
-            bf.write("S", r >> 16, off=L * p.cout)                                       # hi (signed)
-        elif p.kind == "wc2":
-            r = bf.read("S", L, p.cout) + (bf.read("S", L, p.cout, off=L * p.cout) << 16)
-            ys, b = P.lane_w(x_ + dv("bias"), dv("m0"), dv("sh"), r=r, t=dv("T"))
-            bf.write("S", ys)
-            bf.write("B1", b.long())
+                z = torch.zeros_like(bf.b[p.src])
+                e = ent[t, "ar", p.src]
+                z[:, e] = bf.b[p.src][:, e]
+                snap[t, "a"] = z
+        elif k == "d":
+            z = torch.zeros_like(bf.b["S"])
+            e = ent[t, "dr", "S"]
+            z[:, e] = bf.b["S"][:, e]
+            snap[t, "d"] = z
         else:
-            raise ValueError(p.kind)
-    h = prog.head
-    last = prog.passes[-1]
-    s = bf.read("S", last.Hout * last.Wout, last.cout)
-    pq, _ = P.lane_w(s.clamp(min=0).sum(1), col(h["pool_m0"]).to(dev), col(h["pool_sh"]).to(dev), mode="u8")
-    logits = (igemm(F.linear, pq, h["fW8"]) + h["fbq"]).double() * h["fscale"]
-    return logits, stats
+            sb = Bufs(1, dev)
+            if (t, "a") in snap:
+                sb.b[p.src] = snap.pop((t, "a"))
+            if (t, "d") in snap:
+                sb.b["S"] = snap.pop((t, "d"))
+            do_pass(prog, p, sb, Ws, dev, {})
+            for buf in P.BUFS:
+                e = ent.get((t, "wr", buf))
+                if e is not None:
+                    bf.b[buf][:, e] = sb.b[buf][:, e]
+    OBS.clear()
+    OBS.update(obs0)                     # tile replays compute whole passes on partial snapshots: not observations
+    return head(prog, bf, dev)
 
 
 @torch.no_grad()
@@ -233,8 +388,9 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("ckpt")
     ap.add_argument("--n", type=int, default=500)
+    ap.add_argument("--v", type=int, default=11, choices=(1, 11))
     a = ap.parse_args()
-    prog, net, val = P.build_program(a.ckpt)
+    prog, net, val = P.build_program(a.ckpt, v=a.v)
     run_val(prog, net, val, a.n)
     return 0
 

@@ -2,6 +2,8 @@
 model's executed chunk items (plane skipping is data dependent):
 
     CUDA_VISIBLE_DEVICES=0 python3 -m qc18bacc.compile.cycles RUN1/best.pt [RUN2/best.pt ...] [--n 500] [--out MD]
+        [--v 11 (default: v1 sections + v1.1 section) | --v 1 (v1 only)] [--nrep 20] [--cache DIR]
+v1.1 (changes 1-3, list scheduler): see list_schedule / tiles_of and the v1.1 section of results/cycles.md.
 
 Schedule of an array pass (tiles in order pixel tile outer, 64-channel tile inner):
   compute C_k = executed chunk items of tile k (binary: Cin / 32 chunks, 1x1: 1; stem: 8 planes; block 6: (chunk, plane)
@@ -20,6 +22,7 @@ import os
 import sys
 
 import numpy as np
+import torch
 
 from . import dataflow as D
 from . import program as P
@@ -27,53 +30,500 @@ from . import program as P
 SLOTS = P.ROWS * P.COLS * P.KB * 2 * P.B          # 73 728 MAC slots / cycle
 NCMP, NW, OVH = 512, 16, 12
 NLS = (64, 128, 192, 256, 384)
+BLK = 64                                           # dependency / version-check granularity (buffer entries)
+WIN = 4                                            # list scheduler: tiles of the first WIN unfinished passes
+FL_ALL = frozenset((1, 2, 3))                      # v1.1 changes: 1 block 6 on fused lanes, 2 stem packing,
+                                                   # 3 per-PE c1 comparators + interleaved list schedule
 
 
 def cdiv(a, b):
     return -(-a // b)
 
 
-def drain(p, NL, nw=NW):
-    return cdiv(1024, {"compare": NCMP, "fused": NL, "wide": nw}[p.ppu])
+def unit(p, fl):
+    """PPU unit draining pass p under the v1.1 change set fl (empty = v1)."""
+    if p.kind == "bc1":
+        return "pecmp" if 3 in fl else "compare"
+    if p.kind in ("stem", "bsc", "bc2"):
+        return "fused"
+    return "fused" if (1 in fl and p.ppu == "fused") else "wide"
 
 
-def pass_cycles(p, items, NL, nw=NW, ovh=OVH):
-    """items: [N, Tp] executed chunk items per pixel tile (None for the PPU-only pass).  Returns per-image arrays
-    (cycles, array cycles, PPU cycles)."""
-    if p.ppu == "wide-only":
-        c = cdiv(p.cin * p.Hout * p.Wout, nw)
+def drain(p, NL, nw=NW, fl=frozenset()):
+    u = unit(p, fl)
+    return 0 if u == "pecmp" else cdiv(1024, {"compare": NCMP, "fused": NL, "wide": nw}[u])
+
+
+def tile_items(p, items, fl):
+    """[N, tiles] compute cycles (pixel tile outer, 64-channel tile inner).  Stem: 8 plane cycles (v1) or 2 packed."""
+    if p.kind == "stem":
+        items = np.full_like(items, 2 if 2 in fl else 8)
+    return np.repeat(items, p.cout // P.NCH, axis=1)
+
+
+def pass_cycles(p, items, NL, nw=NW, ovh=OVH, fl=frozenset()):
+    """v1 pass-serial schedule.  items: [N, Tp] executed chunk items per pixel tile (None for the PPU-only pass).
+    Returns per-image arrays (cycles, array cycles, PPU cycles)."""
+    if p.kind == "hm":
+        c = cdiv(p.cin * p.Hout * p.Wout, NL if unit(p, fl) == "fused" else nw)
         return np.full(1, c + ovh), np.zeros(1), np.full(1, c)
-    ncg = p.cout // P.NCH
-    C = np.repeat(items, ncg, axis=1)                    # [N, tiles], pixel tile outer, channel tile inner
-    d = drain(p, NL, nw)
+    C = tile_items(p, items, fl)
+    d = drain(p, NL, nw, fl)
     cap = C[:, 0].astype(np.int64)
     for k in range(1, C.shape[1]):
         cap = cap + np.maximum(C[:, k], d)
     return cap + d + ovh, C.sum(1), np.full(C.shape[0], d * C.shape[1])
 
 
-def schedule(prog, st, NL, nw=NW, ovh=OVH):
-    rows = []
+def _rows(prog, st, fl):
+    out = []
     for p in prog.passes:
-        cyc, arr, ppu = pass_cycles(p, st.get(p.name), NL, nw, ovh)
         if p.k:
             tot = p.nchunk * (8 if p.inb == 8 else 1) * p.tiles_px
-            skip = 1 - st[p.name].sum(1).mean() / tot if p.inb == 8 else 0.0
-            items = st[p.name].sum(1).mean() * (p.cout // P.NCH)
+            skip = 1 - st[p.name].sum(1).mean() / tot if (p.inb == 8 and p.kind != "stem") else 0.0
+            items = tile_items(p, st[p.name], fl).sum(1).mean()
         else:
             skip, items = 0.0, 0.0
-        rows.append(dict(name=p.name, ppu=p.ppu, tiles=p.tiles if p.k else 0, items=items, skip=skip, arr=arr.mean(), ppuc=ppu.mean(),
-                         cyc=cyc.mean(), mac=p.mac, cyc_img=cyc))
+        out.append(dict(name=p.name, ppu=unit(p, fl), tiles=p.tiles if p.k else 0, items=items, skip=skip, mac=p.mac))
+    return out
+
+
+def schedule(prog, st, NL, nw=NW, ovh=OVH, fl=frozenset(), check=False):
+    """per-pass rows + per-image cycles.  Without change 3: v1 pass-serial schedule; with it: list scheduler."""
+    if 3 in fl:
+        return list_schedule(prog, st, NL, nw, ovh, fl, check)
+    rows = _rows(prog, st, fl)
+    for r, p in zip(rows, prog.passes):
+        cyc, arr, ppu = pass_cycles(p, st.get(p.name), NL, nw, ovh, fl)
+        r.update(arr=arr.mean(), ppuc=ppu.mean(), cyc=cyc.mean(), cyc_img=cyc)
     N = len(next(iter(st.values())))
     per_img = sum(np.broadcast_to(r["cyc_img"], (N,)) for r in rows)
     return rows, per_img
+
+
+# ------------------------------------------------------------------------------------------------ v1.1 list scheduler
+BASE = {}
+
+
+def _bufbase(prog):
+    o, base = 0, {}
+    for k, (n, _) in prog.buffers.items():
+        base[k] = o
+        o += cdiv(n, BLK)
+    return base
+
+
+def _blk(base, buf, a, b):
+    """blocks of entries [a, b) of buffer buf."""
+    return range(base[buf] + a // BLK, base[buf] + cdiv(b, BLK))
+
+
+def tiles_of(prog):
+    """Static tile list with footprints (sets of BLK-entry blocks; IMG is input, never overwritten in an image):
+    ar  array-time reads (the full input rows of the tile's patch, incl. halo / stride / phase, all channels, all planes:
+        row-granular, as the line buffer loads them), dr drain-time reads (c2: s_in / r in place; block-6 c2: r lo / hi;
+        hm: s), wr writes (outputs of every destination buffer, int8 maps: all 8 planes; block-6 r: lo + hi entries)."""
+    base = _bufbase(prog)
+    T = []
+    for pi, p in enumerate(prog.passes):
+        if p.kind == "hm":
+            C, L = p.cin, p.Hout * p.Wout
+            for tp in range(L // P.ROWS):
+                for cg in range(C // P.NCH):
+                    px = range(tp * P.ROWS, (tp + 1) * P.ROWS)
+                    dr = {b for x in px for b in _blk(base, "S", x * C + cg * P.NCH, x * C + (cg + 1) * P.NCH)}
+                    wr = {b for pl in range(8) for x in px
+                          for b in _blk(base, "HQ", pl * L * C + x * C + cg * P.NCH, pl * L * C + x * C + (cg + 1) * P.NCH)}
+                    T.append(dict(pi=pi, arr=False, tp=tp, cg=cg, ar=set(), dr=dr, wr=wr))
+            continue
+        L, Li = p.Hout * p.Wout, p.Hin * p.Win
+        Cs = 8 if p.src == "IMG" else p.cin
+        npl = 8 if p.src in D.PLANAR else 1
+        sc = next((q for q in prog.passes if q.block == p.block and q.kind == "wsc"), None)
+        for tp in range(p.tiles_px):
+            px = range(tp * P.ROWS, (tp + 1) * P.ROWS)
+            oys = sorted({x // p.Wout for x in px})
+            rows = sorted({oy * p.stride + dy - p.pad for oy in oys for dy in range(p.k)} & set(range(p.Hin)))
+            ar = set() if p.src == "IMG" else {b for pl in range(npl) for r in rows
+                                              for b in _blk(base, p.src, pl * Li * Cs + r * p.Win * Cs,
+                                                            pl * Li * Cs + (r + 1) * p.Win * Cs)}
+            for cg in range(p.cout // P.NCH):
+                own = lambda buf, off=0: {b for x in px for b in _blk(base, buf, off + x * p.cout + cg * P.NCH,
+                                                                       off + x * p.cout + (cg + 1) * P.NCH)}
+                dr = set()
+                if p.kind == "bc2":
+                    dr = own("S")
+                elif p.kind == "wc2":
+                    dr = own("S") | (set() if sc.p.get("r1") else own("S", L * p.cout))
+                wr = set()
+                for buf in p.dst:
+                    if buf in ("HQ", "Z"):
+                        wr |= {b for pl in range(8) for b in own(buf, pl * L * p.cout)}
+                    else:
+                        wr |= own(buf)
+                if p.kind == "wsc" and not p.p.get("r1"):
+                    wr |= own("S", L * p.cout)
+                T.append(dict(pi=pi, arr=True, tp=tp, cg=cg, ar=ar, dr=dr, wr=wr))
+    # hazards in program order: RAW (read start >= producer's write done), WAR (write start >= earlier readers' read
+    # done, the in-place self read excluded), WAW (write start >= previous writer's write done)
+    last_w, rdrs, pairs = {}, {}, set()
+    for t, d in enumerate(T):
+        for kind, fs in (("a", d["ar"]), ("d", d["dr"])):
+            for b in fs:
+                if b in last_w:
+                    pairs.add((last_w[b], "wd", t, "r" + kind + "s"))
+                rdrs.setdefault(b, set()).add((t, kind))
+        for b in d["wr"]:
+            for r, kind in rdrs.get(b, ()):
+                if r != t:
+                    pairs.add((r, "r" + kind + "d", t, "ws"))
+            if b in last_w:
+                pairs.add((last_w[b], "wd", t, "ws"))
+            last_w[b] = t
+            rdrs[b] = set()
+    for d in T:
+        d["deps"] = []
+    for a, fa, b, fb in sorted(pairs):
+        T[b]["deps"].append((a, fa, fb))
+    return T, sorted(pairs)
+
+
+FIELDS = ("st", "ce", "ds", "de")          # array start, compute end (= capture if no stall), drain start, drain end
+
+
+def _field(f, arrtile):
+    """time field of a pair endpoint: ras / rad array read start / done, rds / rdd drain read start / done,
+    ws / wd write start / done (pecmp tiles write at capture: ds = de = capture)."""
+    return {"ras": "st", "rad": "ce", "rds": "ds", "rdd": "de", "ws": "ds", "wd": "de"}[f]
+
+
+class Sched:
+    """List scheduler state for one image (see list_schedule)."""
+
+    def __init__(self, n, npass):
+        self.t = {f: [None] * n for f in FIELDS}
+        self.cap = [None] * n
+        self.done = [False] * n
+        self.heads = None
+        self.t_arr = self.t_sh = 0
+        self.lane = {"fused": 0, "wide": 0}
+        self.last_arr = None
+        self.sh_pass = None
+        self.attr = [0] * npass
+
+    def copy(self):
+        c = Sched.__new__(Sched)
+        c.t = {f: list(v) for f, v in self.t.items()}
+        c.cap, c.done, c.heads = list(self.cap), list(self.done), list(self.heads)
+        c.t_arr, c.t_sh, c.lane, c.last_arr, c.sh_pass, c.attr = (self.t_arr, self.t_sh, dict(self.lane), self.last_arr,
+                                                                  self.sh_pass, list(self.attr))
+        return c
+
+
+def list_schedule(prog, st, NL, nw=NW, ovh=OVH, fl=FL_ALL, check=False):
+    """v1.1 event-driven list scheduler over tiles (per image):
+    resources: array (one tile at a time, compute = executed chunk items), shadow (one per PE: a drained tile captures
+    only when the previous drain has finished; the array stalls holding its accumulators otherwise), fused lanes (NL
+    outputs / cycle) and wide lanes (NW / cycle), shared in FIFO order by shadow drains and PPU-only jobs (hm, 1024
+    outputs each); per-PE comparators (change 3: binary c1, b2 written at capture, no shadow, no lanes).
+    A tile may start when every hazard pair (tiles_of: RAW row-granular input rows incl. halo / stride / phase; WAR of
+    the in-place stream and every re-used buffer; WAW) is satisfied: array reads after the producers' drains complete,
+    writes (drain start; pecmp: capture) after earlier readers / writers.  Tiles of one pass issue in order; at each
+    decision the candidate (head tile of each of the first WIN unfinished passes, all hazards scheduled) with the
+    earliest feasible start wins, ties in program order.  Pass overhead OVH only where the array idles at a pass
+    boundary (start = ready + OVH); end of image = last write + OVH.  Cycles are attributed to passes (array compute ->
+    own pass, idle -> pass of the binding hazard, shadow stall -> pass holding the shadow, tail -> last drain) so the
+    per-pass attribution sums to the image cycles.  check: verify the hazard pairs on the scheduled times of every image
+    (every read sees the program-order version) and return the time arrays."""
+    key = (id(prog), "tiles")
+    if key not in BASE:
+        BASE[key] = tiles_of(prog)
+    T, pairs = BASE[key]
+    n, npass = len(T), len(prog.passes)
+    N = len(next(iter(st.values())))
+    rows = _rows(prog, st, fl)
+    # per tile durations [N, n]
+    dur = np.zeros((N, n), np.int64)
+    dd = np.zeros(n, np.int64)
+    k0 = {}
+    for t, d in enumerate(T):
+        p = prog.passes[d["pi"]]
+        u = unit(p, fl)
+        if d["arr"]:
+            if d["pi"] not in k0:
+                k0[d["pi"]] = (t, tile_items(p, st[p.name], fl))
+            t0, C = k0[d["pi"]]
+            dur[:, t] = C[:, t - t0]
+            dd[t] = drain(p, NL, nw, fl)
+        else:
+            dd[t] = cdiv(1024, NL if u == "fused" else nw)
+        d["u"] = u
+    var = (dur != dur[:1]).any(0)
+    first = [None] * npass
+    for t, d in enumerate(T):
+        if first[d["pi"]] is None:
+            first[d["pi"]] = t
+    nt = [sum(1 for d in T if d["pi"] == pi) for pi in range(npass)]
+
+    def ready(S, t, fsel):
+        best, bt = 0, None
+        for a, fa, fb in T[t]["deps"]:
+            if fb in fsel:
+                v = S.t[_field(fa, T[a]["arr"])][a]
+                if v > best:
+                    best, bt = v, a
+        return best, bt
+
+    def _start(S, t, C, d):
+        """array start of tile t and the pass binding it (None: no idle).  Data: ready + OVH at a pass switch;
+        drained tiles start just in time to capture when the shadow frees (the array is not held meanwhile);
+        pecmp tiles capture (= write b2) after the WAR / WAW hazards of their writes."""
+        rw, bw = ready(S, t, ("ws", "rds"))
+        ra, ba = ready(S, t, ("ras",))
+        if d["pi"] != S.last_arr and ra > S.t_arr:
+            ra += ovh
+        c = [(S.t_arr, None), (ra, T[ba]["pi"] if ba is not None else None)]
+        if d["u"] == "pecmp":
+            c.append((rw - C, T[bw]["pi"] if bw is not None else None))
+        else:
+            c.append((S.t_sh - C, S.sh_pass))
+        s, b = max(c, key=lambda x: x[0])
+        return s, (b if s > S.t_arr else None)
+
+    def est(S, t, C):
+        d = T[t]
+        rw, _ = ready(S, t, ("ws", "rds"))
+        if d["arr"]:
+            return _start(S, t, C, d)[0]
+        return max(S.lane[d["u"]], rw) + (ovh if (t == first[d["pi"]] and rw > S.lane[d["u"]]) else 0)
+
+    def step(S, img, stop_var=False):
+        lo = min(pi for pi in range(npass) if S.heads[pi] < nt[pi])
+        best = None
+        for pi in range(lo, min(lo + WIN, npass)):
+            if S.heads[pi] >= nt[pi]:
+                continue
+            t = first[pi] + S.heads[pi]
+            if not all(S.done[a] for a, _, _ in T[t]["deps"]):
+                continue
+            if stop_var and var[t]:
+                return None                              # a per-image duration enters the decision
+            e = est(S, t, int(dur[img, t]))
+            if best is None or e < best[0]:
+                best = (e, t)
+        assert best is not None, "list scheduler deadlock"
+        return best
+
+    def commit(S, t, s, img):  # noqa
+        d = T[t]
+        pi, u = d["pi"], d["u"]
+        C, D_ = int(dur[img, t]), int(dd[t])
+        rw, bw = ready(S, t, ("ws", "rds"))
+        if d["arr"]:
+            s_, b = _start(S, t, C, d)
+            assert s_ == s
+            if s > S.t_arr:
+                S.attr[b if b is not None else pi] += s - S.t_arr
+            ce = s + C
+            S.attr[pi] += C
+            if u == "pecmp":
+                cap, ds, de = ce, ce, ce
+            else:
+                cap = max(ce, S.t_sh)
+                if cap > ce:
+                    S.attr[S.sh_pass] += cap - ce
+                ds = max(cap, S.lane[u], rw)
+                de = ds + D_
+                S.t_sh, S.lane[u], S.sh_pass = de, de, pi
+            S.t_arr, S.last_arr = cap, pi
+        else:
+            ce = cap = None
+            ds = s
+            de = ds + D_
+            S.lane[u] = de
+        S.t["st"][t], S.t["ce"][t], S.t["ds"][t], S.t["de"][t] = s, ce, ds, de
+        S.done[t] = True
+        S.heads[pi] += 1
+
+    def run(S, img, stop_var):
+        while not all(S.heads[pi] >= nt[pi] for pi in range(npass)):
+            b = step(S, img, stop_var)
+            if b is None:
+                return False
+            commit(S, *b[::-1], img)
+        return True
+
+    S0 = Sched(n, npass)
+    S0.heads = [0] * npass
+    complete = run(S0, 0, True)                          # common prefix (durations equal for every image)
+    per = np.zeros(N, np.int64)
+    attr = np.zeros((N, npass), np.int64)
+    tim = {f: np.zeros((N, n), np.int64) for f in FIELDS}
+    for img in range(N):
+        S = S0.copy() if not complete else S0
+        if not complete:
+            run(S, img, False)
+        end = max(v for v in S.t["de"] if v is not None)
+        tail = end + ovh - S.t_arr
+        last = max(range(n), key=lambda t: (S.t["de"][t], t))
+        S.attr[T[last]["pi"]] += tail
+        per[img] = end + ovh
+        attr[img] = S.attr
+        assert sum(S.attr) == per[img]
+        if complete:
+            S.attr[T[last]["pi"]] -= tail
+        for f in FIELDS:
+            tim[f][img] = [(-1 if v is None else v) for v in S.t[f]]
+    for r, pi in zip(rows, range(npass)):
+        p = prog.passes[pi]
+        ts = [t for t in range(n) if T[t]["pi"] == pi]
+        r.update(arr=dur[:, ts].sum(1).mean() if T[ts[0]]["arr"] else 0.0,
+                 ppuc=float(dd[ts].sum()), cyc=attr[:, pi].mean(), cyc_img=attr[:, pi])
+    if check:
+        verify(T, pairs, tim)
+        return rows, per, tim
+    return rows, per
+
+
+def verify(T, pairs, tim):
+    """every hazard pair (a, field_a) <= (b, field_b) holds on the scheduled times of every image: each read sees, over its
+    whole read interval, exactly the version of its program-order producer; writes are ordered."""
+    for a, fa, b, fb in pairs:
+        ta = tim[_field(fa, T[a]["arr"])][:, a]
+        tb = tim[_field(fb, T[b]["arr"])][:, b]
+        assert (ta >= 0).all() and (tb >= 0).all() and (ta <= tb).all(), f"hazard {a}.{fa} <= {b}.{fb} violated"
+    return len(pairs)
+
+
+def load_stats(ck, v, n, cache=None):
+    """program + dataflow stats (dataflow logits == IntBin asserted).  cache: directory for the stats (.npz)."""
+    prog, net, val = P.build_program(ck, v=v)
+    path = None if cache is None else os.path.join(cache, f"{prog.run}_v{v}_n{n}.npz")
+    if path and os.path.exists(path):
+        z = np.load(path)
+        st, correct = {k: z[k] for k in z.files if k != "_correct"}, int(z["_correct"])
+    else:
+        st, correct = D.run_val(prog, net, val, n)
+        if path:
+            os.makedirs(cache, exist_ok=True)
+            np.savez(path, _correct=correct, **st)
+    return prog, net, val, st, correct
+
+
+def v1_md(prog, st, correct, n, ck):
+    md = [f"## {prog.run} ({ck})", "",
+          f"Bit-exact: dataflow logits == IntBin logits on val[:{n}]: PASS (acc {100 * correct / n:.2f} %).", ""]
+    rows, per = schedule(prog, st, 256)
+    mac = sum(r["mac"] for r in rows)
+    md += ["### Per pass, NL = 256 (means over images)", "",
+           "| pass | PPU | tiles | chunk items | plane skip | array cyc | PPU cyc | cycles | bound | exec MAC | util |",
+           "|---|---|---|---|---|---|---|---|---|---|---|"]
+    for r, p in zip(rows, prog.passes):
+        bound = "PPU" if r["ppuc"] > r["arr"] else "array"
+        md.append(f"| {r['name']} | {p.ppu} | {r['tiles']} | {r['items']:.1f} | "
+                  f"{100 * r['skip']:.1f} % | {r['arr']:.1f} | {r['ppuc']:.0f} | {r['cyc']:.1f} | {bound} | "
+                  f"{r['mac']} | {r['mac'] / (SLOTS * r['cyc']):.3f} |")
+    md.append(f"| **image** | | {sum(r['tiles'] for r in rows)} | {sum(r['items'] for r in rows):.1f} | | "
+              f"{sum(r['arr'] for r in rows):.1f} | {sum(r['ppuc'] for r in rows):.0f} | **{per.mean():.1f}** | | "
+              f"{mac} | **{mac / (SLOTS * per.mean()):.3f}** |")
+    top = sorted(rows, key=lambda r: -r["cyc"])[:3]
+    md += ["", "Most expensive passes (NL 256): " + ", ".join(
+        f"{r['name']} {r['cyc']:.0f} ({'PPU' if r['ppuc'] > r['arr'] else 'array'}-bound)" for r in top), ""]
+    md += ["### NL sweep (fused lanes; compare units 512, wide lanes 16)", "",
+           "| NL | cycles / image (mean) | min | max | utilisation | images/s at 500 MHz |", "|---|---|---|---|---|---|"]
+    sw = {}
+    for NL in NLS:
+        _, pi = schedule(prog, st, NL)
+        sw[NL] = pi.mean()
+        md.append(f"| {NL} | {pi.mean():.1f} | {pi.min()} | {pi.max()} | {mac / (SLOTS * pi.mean()):.3f} | "
+                  f"{500e6 / pi.mean():.0f} |")
+    md += ["", "### Wide-lane count sensitivity (NL 256; spec NW = 16)", "", "| NW | cycles / image | block-6 cycles | utilisation |",
+           "|---|---|---|---|"]
+    for nw in (16, 32, 64, 128):
+        rws, pi = schedule(prog, st, 256, nw)
+        b6 = sum(r["cyc"] for r in rws if r["name"].startswith("b6."))
+        md.append(f"| {nw} | {pi.mean():.1f} | {b6:.1f} | {mac / (SLOTS * pi.mean()):.3f} |")
+    sk = {r["name"]: r["skip"] for r in rows if r["skip"] > 0}
+    md += ["", "Plane-skip ratio (skipped (chunk, plane) items / all 8-plane items): "
+           + ", ".join(f"{k} {100 * v:.1f} %" for k, v in sk.items()), ""]
+    return md, (prog.run, sw, mac, top, sk)
+
+
+
+CONFIGS = (("v1", frozenset()), ("1 only", frozenset((1,))), ("2 only", frozenset((2,))), ("3 only", frozenset((3,))),
+           ("all (v1.1)", FL_ALL))
+NLS11 = (128, 192, 256, 384)
+
+
+def replay_check(prog, net, val, st, NL, k):
+    """tile-granular value replay (dataflow.replay) of the v1.1 schedule at NL on val[:k]: logits == IntBin."""
+    T, _ = BASE[(id(prog), "tiles")]
+    _, _, tim = list_schedule(prog, {a: b[:k] for a, b in st.items()}, NL, fl=FL_ALL, check=True)
+    base = _bufbase(prog)
+    xv, _ = val
+    Ws = {p.name: D.PEWeights(p, "cuda") for p in prog.passes if p.k}
+    for i in range(k):
+        lg = D.replay(prog, xv[i:i + 1], T, base, {f: v[i] for f, v in tim.items()}, Ws=Ws)
+        assert torch.equal(lg, net(xv[i:i + 1])), f"scheduled-order replay != IntBin (image {i})"
+    return k
+
+
+def v11_md(prog, st, correct, n, ck, st1, net=None, val=None, nrep=0):
+    """v1.1 section of one checkpoint.  st1: v1 dataflow stats (v1 cycles from both must agree)."""
+    md = [f"### {prog.run} ({ck})", "",
+          f"Bit-exact (v1.1 program: packed stem, fused-lane block 6 where it fits): dataflow logits == IntBin logits "
+          f"on val[:{n}]: PASS (acc {100 * correct / n:.2f} %).", ""]
+    md += [f"* {c}" for c in prog.checks if c.startswith("v1.1")]
+    for NL in NLS11:
+        a = schedule(prog, st, NL)[1]
+        b = schedule(prog, {k: v for k, v in st1.items()}, NL)[1]
+        assert np.array_equal(a, b), "v1 count from the v1.1 dataflow stats != v1 count"
+    res = {}
+    for nm, fl in CONFIGS:
+        for NL in NLS11:
+            out = schedule(prog, st, NL, fl=fl, check=(3 in fl))
+            res[nm, NL] = out
+    npairs = len(BASE[(id(prog), "tiles")][1])
+    md += ["", f"Schedule check (changes 3 / all, every NL, every image): {npairs} hazard pairs (RAW row-granular incl. "
+           f"halo / stride / phase, WAR incl. the in-place stream, WAW; {BLK}-entry blocks) hold on the scheduled times: "
+           f"every read sees exactly its program-order producer's data, so the dataflow values (logits == IntBin) are "
+           f"unchanged in the scheduled order: PASS.", ""]
+    if nrep:
+        replay_check(prog, net, val, st, 256, nrep)
+        md += [f"Value replay (dataflow.replay): val[:{nrep}] executed tile by tile in the NL-256 scheduled order (events "
+               f"by time; each tile computed from snapshots of exactly its footprint rows taken at its read times, only "
+               f"its own outputs written at its write time) gives logits == IntBin (torch.equal): PASS. (Sensitivity: "
+               f"dropping the WAR or the drain-read RAW hazards from the scheduler makes both the hazard check and the "
+               f"replay fail; compile/test_compile.py.)", ""]
+    mac = sum(p.mac for p in prog.passes)
+    md += ["#### Cycles / image (mean over val[:%d]) and the contribution of each change" % n, "",
+           "| config | " + " | ".join(f"NL {k}" for k in NLS11) + " | util NL 256 |",
+           "|---|" + "---|" * (len(NLS11) + 1)]
+    for nm, _ in CONFIGS:
+        md.append(f"| {nm} | " + " | ".join(f"{res[nm, k][1].mean():.1f}" for k in NLS11)
+                  + f" | {mac / (SLOTS * res[nm, 256][1].mean()):.3f} |")
+    rows, per = res["all (v1.1)", 256][:2]
+    md += ["", "#### v1.1 per pass, NL = 256 (attributed cycles: array compute -> own pass, array idle -> pass of the "
+           "binding hazard, shadow stall -> pass holding the shadow, tail -> last drain; sums to the image)", "",
+           "| pass | PPU | tiles | chunk items | array cyc | PPU cyc | attributed cyc | exec MAC |", "|---|---|---|---|---|---|---|---|"]
+    for r in rows:
+        md.append(f"| {r['name']} | {r['ppu']} | {r['tiles']} | {r['items']:.1f} | {r['arr']:.1f} | {r['ppuc']:.0f} | "
+                  f"{r['cyc']:.1f} | {r['mac']} |")
+    md.append(f"| **image** | | | | {sum(r['arr'] for r in rows):.1f} | | **{per.mean():.1f}** (min {per.min()}, max "
+              f"{per.max()}) | {mac} |")
+    top = sorted(rows, key=lambda r: -r["cyc"])[:3]
+    md += ["", "Top-3 passes (NL 256, attributed): " + ", ".join(f"{r['name']} {r['cyc']:.0f}" for r in top), ""]
+    return md, dict(run=prog.run, res=res, mac=mac, top=top, arr=sum(r["arr"] for r in rows))
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("ckpts", nargs="+")
     ap.add_argument("--n", type=int, default=500)
+    ap.add_argument("--v", type=int, default=11, choices=(1, 11))
     ap.add_argument("--out", default=os.path.join(P.RESULTS, "cycles.md"))
+    ap.add_argument("--cache", default=None, help="directory caching the dataflow stats")
+    ap.add_argument("--nrep", type=int, default=20, help="v1.1: images replayed tile by tile in the scheduled order")
     a = ap.parse_args()
     md = ["# QC18B-ACC exact cycle count (compile/cycles.py)", "",
           f"Array 16 x 8 PEs, KB 36: {SLOTS} MAC slots / cycle. Drain 1024 outputs per tile: compare units {NCMP} "
@@ -82,46 +532,17 @@ def main():
           f"(block 6, patch = 16 px x 9 taps x 32 ch, or 16 px x 256 ch for the 1x1 sc) measured per image on val[:{a.n}] "
           f"by the bit-exact dataflow model (logits == IntBin logits, torch.equal, asserted before counting). "
           f"Executed MAC = nonzero ternary terms x output positions. Utilisation = executed MAC / ({SLOTS} x cycles).", ""]
-    summary = []
+    summary, s11, md11 = [], [], []
     for ck in a.ckpts:
-        prog, net, val = P.build_program(ck)
-        st, correct = D.run_val(prog, net, val, a.n)
-        md += [f"## {prog.run} ({ck})", "",
-               f"Bit-exact: dataflow logits == IntBin logits on val[:{a.n}]: PASS (acc {100 * correct / a.n:.2f} %).", ""]
-        rows, per = schedule(prog, st, 256)
-        mac = sum(r["mac"] for r in rows)
-        md += ["### Per pass, NL = 256 (means over images)", "",
-               "| pass | PPU | tiles | chunk items | plane skip | array cyc | PPU cyc | cycles | bound | exec MAC | util |",
-               "|---|---|---|---|---|---|---|---|---|---|---|"]
-        for r in rows:
-            bound = "PPU" if r["ppuc"] > r["arr"] else "array"
-            md.append(f"| {r['name']} | {r['ppu']} | {r['tiles']} | {r['items']:.1f} | "
-                      f"{100 * r['skip']:.1f} % | {r['arr']:.1f} | {r['ppuc']:.0f} | {r['cyc']:.1f} | {bound} | "
-                      f"{r['mac']} | {r['mac'] / (SLOTS * r['cyc']):.3f} |")
-        md.append(f"| **image** | | {sum(r['tiles'] for r in rows)} | {sum(r['items'] for r in rows):.1f} | | "
-                  f"{sum(r['arr'] for r in rows):.1f} | {sum(r['ppuc'] for r in rows):.0f} | **{per.mean():.1f}** | | "
-                  f"{mac} | **{mac / (SLOTS * per.mean()):.3f}** |")
-        top = sorted(rows, key=lambda r: -r["cyc"])[:3]
-        md += ["", "Most expensive passes (NL 256): " + ", ".join(
-            f"{r['name']} {r['cyc']:.0f} ({'PPU' if r['ppuc'] > r['arr'] else 'array'}-bound)" for r in top), ""]
-        md += ["### NL sweep (fused lanes; compare units 512, wide lanes 16)", "",
-               "| NL | cycles / image (mean) | min | max | utilisation | images/s at 500 MHz |", "|---|---|---|---|---|---|"]
-        sw = {}
-        for NL in NLS:
-            _, pi = schedule(prog, st, NL)
-            sw[NL] = pi.mean()
-            md.append(f"| {NL} | {pi.mean():.1f} | {pi.min()} | {pi.max()} | {mac / (SLOTS * pi.mean()):.3f} | "
-                      f"{500e6 / pi.mean():.0f} |")
-        md += ["", "### Wide-lane count sensitivity (NL 256; spec NW = 16)", "", "| NW | cycles / image | block-6 cycles | utilisation |",
-               "|---|---|---|---|"]
-        for nw in (16, 32, 64, 128):
-            rws, pi = schedule(prog, st, 256, nw)
-            b6 = sum(r["cyc"] for r in rws if r["name"].startswith("b6."))
-            md.append(f"| {nw} | {pi.mean():.1f} | {b6:.1f} | {mac / (SLOTS * pi.mean()):.3f} |")
-        sk = {r["name"]: r["skip"] for r in rows if r["skip"] > 0}
-        md += ["", "Plane-skip ratio (skipped (chunk, plane) items / all 8-plane items): "
-               + ", ".join(f"{k} {100 * v:.1f} %" for k, v in sk.items()), ""]
-        summary.append((prog.run, sw, mac, top, sk))
+        prog, net, val, st, correct = load_stats(ck, 1, a.n, a.cache)
+        m, sm = v1_md(prog, st, correct, a.n, ck)
+        md += m
+        summary.append(sm)
+        if a.v == 11:
+            prog11, net11, val11, st11, c11 = load_stats(ck, 11, a.n, a.cache)
+            m, sm = v11_md(prog11, st11, c11, a.n, ck, st, net11, val11, a.nrep)
+            md11 += m
+            s11.append(sm)
     md += ["## Spec deviations / findings (compile/program.py, dataflow.py)", "",
            "1. sign(g): the integer weight sign(g) M is not QC per block, so the PE accumulates M x and the PPU input "
            "negates per output channel (acc' = sgn acc, 1 b / channel, already counted in ARCH's '+ sign(g) bits').",
@@ -146,14 +567,86 @@ def main():
            "",
            "Observed max |r| over all seeds and val images run (worst case: program checks): "
            + ", ".join(f"{k} {v}" for k, v in D.OBS.items()), ""]
+    if a.v == 11:
+        md += v11_section(md11, s11)
     os.makedirs(os.path.dirname(a.out), exist_ok=True)
     with open(a.out, "w") as f:
         f.write("\n".join(md) + "\n")
     for run, sw, mac, top, sk in summary:
-        print(run, " ".join(f"NL{k}: {v:.1f} cyc util {mac / (SLOTS * v):.3f}" for k, v in sw.items()))
+        print(run, "v1", " ".join(f"NL{k}: {v:.1f} cyc util {mac / (SLOTS * v):.3f}" for k, v in sw.items()))
         print("  top:", ", ".join(f"{r['name']} {r['cyc']:.0f}" for r in top), "| skip", {k: round(v, 3) for k, v in sk.items()})
+    for s in s11:
+        for nm, _ in CONFIGS:
+            print(s["run"], f"{nm:<11}", " ".join(f"NL{k}: {s['res'][nm, k][1].mean():.1f}" for k in NLS11),
+                  f"util256 {s['mac'] / (SLOTS * s['res'][nm, 256][1].mean()):.3f}")
+        print("  v1.1 top:", ", ".join(f"{r['name']} {r['cyc']:.0f}" for r in s["top"]))
     print(f"wrote {a.out}")
     return 0
+
+
+V11_TEXT = [
+    "Changes (each selectable in cycles.CONFIGS; the program / dataflow default is --v 11, --v 1 reproduces v1):",
+    "",
+    "1. Fused lane v1.1 (program.lane_f): per-channel bias pre-add before the multiplier, input-ReLU mode, output "
+    "clamp [0, 127] mode and a per-channel input pre-clamp x -> clamp(x, lo_c, hi_c). requant is monotone (m0 >= 0), so "
+    "with the output observed only through clamp(., A_c, B_c) (u8: [0, 127]; r / c2: the int16 saturation of the sum it "
+    "enters, A/B from the worst-case range of the other operand) lo_c = max{x: rq(x) <= A_c}, hi_c = min{x: rq(x) >= "
+    "B_c} change no output; asserted exhaustively on every integer of every channel's worst-case domain (before the "
+    "pre-clamp). A block-6 pass moves to the NL fused lanes iff every channel fits: 16-b signed input after the "
+    "pre-clamp, an exact multiplier of <= 30 b in the lane's shift window s' = 17 + sel, sel < 8 (qb_lane_s8), and the "
+    "lane's internal widths (18-b y, 17-b r, 19-b sum). MW needed per pass and the reason a pass stays on the wide lanes "
+    "are listed per checkpoint below.",
+    "2. Stem packing (dataflow.pe_stem_packed): the 36 bytes are 9 taps x 4 channel groups; in stem mode group g of "
+    "cycle h carries plane 4h + g of the 8-padded image channels (same 9 tap codes in every group), the PE popcounts the "
+    "4 groups separately and adds sum_g (u_g - nneg_g) << g, shifted by 4h, plane 7 (group 3 of h = 1) negative. "
+    "2 cycles per stem tile instead of 8 (bit-exact, ACC_W wrap checked).",
+    "3. Binary c1: b2 = acc' >= T2 by 1024 per-PE comparators at capture (no shadow, no lanes; b2 written at capture), "
+    "and an event-driven list scheduler over tiles (cycles.list_schedule): array one tile at a time; shadow one per PE "
+    "(a drained tile starts just in time to capture when the shadow frees, so the array is not held); fused lanes NL "
+    "outputs / cycle and wide lanes 16 / cycle shared FIFO by drains and PPU-only jobs (hm in 1024-output jobs); "
+    "candidates = head tile of each of the first 4 unfinished passes whose hazards are all scheduled, earliest feasible "
+    "start wins, ties in program order. Hazards (cycles.tiles_of, 64-entry blocks): RAW row-granular (every input row of "
+    "the tile's patch incl. halo / stride / phase, all channels, all planes, counts as written when the producing tile's "
+    "drain completes; drain-time reads of s_in / r likewise), WAR (a write may start only after every earlier-ordered "
+    "reader of the old value has finished reading it; this covers the in-place stream: the sc pass's r overwrites "
+    "s_in rows, block-6 sc's r hi entries overwrite s6 rows that hm has not read yet, and every re-used B1 / B2 / HQ / Z "
+    "row), WAW. OVH = 12 cycles only where the array idles at a pass boundary (start = data ready + 12) and once at the "
+    "end of the image. Per-pass cycles in the schedule are attributed (array compute -> own pass, array idle -> pass of "
+    "the binding hazard or of the shadow holder, tail -> last drain) and sum to the image cycles.",
+    "",
+]
+
+
+V11_FINDINGS = [
+    "### v1.1 findings / deviations", "",
+    "1. Change 1 moves only b6.hm (both seeds): MW needed 15 (the lane keeps MW 29), input ReLU + pre-clamp [129, 32638] "
+    "+ u8 clamp. b6.c1 / sc / c2 stay on the wide lanes: none has an exact multiplier inside qb_lane_s8's shift window "
+    "s' in [17, 24] (they need s' up to 26-31, i.e. a 4-b sel; there MW 22-23 for c1, 30 for sc, 31 for c2), c1 / c2 "
+    "(and s1's sc) need > 16-b inputs after the pre-clamp in 7-15 channels, and sc's r reaches 209 625 / 162 624 (fused "
+    "lane: 17-b r, 18-b y). No moved pass uses the bias pre-add (hm has no bias); it remains needed for the stem.",
+    "2. Block 6 is now ~half of the image (s0: hm 80 + c1 549 + sc 46 + c2 1160 of 3805 attributed cycles): c1 / sc / "
+    "c2 drains are 3 x 8 x 64 = 1536 serial wide-lane cycles at NW 16. Next levers: NW 32, or a fused-lane mode with "
+    "4-b sel and 17-b input for b6.c1.",
+    "3. Change 2 hardware (not synthesized): the PE popcount split into 4 group sub-sums (9 bytes each) + a shift-add "
+    "sum_g (u_g - nneg_g) << g with group 3 subtracted for plane 7, and the plane shift 4h; binary mode adds the 4 "
+    "sub-sums unshifted.",
+    "4. Change 3 hardware: 1024 comparators (20-b acc' vs the column's 16-b T2, sign(g) folded), B2 written at capture "
+    "(1024 b per tile; binary c1 tiles take >= 2 cycles, so a 512-b port + one tile of buffering suffices). The "
+    "interleaved schedule keeps two passes live (c1 of block i+1 and c2 of block i): two line-buffer contexts (2 x "
+    "the ARCH line buffer) and per-tile switching of weight-code / parameter streams.",
+    "5. The WAR hazards are binding, not theoretical: without them the schedule clobbers stream / B1 / B2 rows "
+    "(hazard check and value replay both fail). Modelled in-place cases: binary sc r over s_in rows, block-6 sc r-hi entries "
+    "over s6 rows hm has not read yet, B1 / B2 rows re-used by the next block.",
+    "6. The three changes are close to additive at NL 256 (s0: -960 / -258 / -722 alone, -1952 together). With "
+    "interleaving the fused lanes stop being the bottleneck above NL 256 (NL 384 gains ~70 cycles); NL 128 costs ~1180 "
+    "cycles (stage-1 c2 / stem drains).",
+    "",
+]
+
+
+def v11_section(md11, s11):
+    return (["## v1.1 (compile/*.py --v 11, default; --v 1 reproduces the v1 sections above)", ""] + V11_TEXT + md11
+            + V11_FINDINGS)
 
 
 if __name__ == "__main__":

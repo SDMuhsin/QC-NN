@@ -114,10 +114,11 @@ def decode(codes):
 
 
 # ------------------------------------------------------------------------------------------------ lane arithmetic
-def lane_s8(x, m, sel, h=0, r=0, t=None, rmode=False):
-    """qb_lane_s8 (qbs_new #(16, 29, 16, 3, 17, 0)) mode 0, int64 tensors (broadcast).  Returns (y_sat or r, b)."""
+def lane_s8(x, m, sel, h=0, r=0, t=None, rmode=False, mw=MW, u8=False):
+    """qb_lane_s8 (qbs_new #(16, 29, 16, 3, 17, 0)) mode 0, int64 tensors (broadcast).  Returns (y_sat or r, b).
+    v1.1 (fused lane, see lane_f): mw = multiplier width (<= MW_F), u8 = output clamp [0, 127] instead of sat16."""
     assert ((x >= -2 ** (XW_S - 1)) & (x < 2 ** (XW_S - 1))).all(), "lane x outside 16 b"
-    assert (m >= 0).all() and (m < 2 ** MW).all() and (sel >= 0).all() and (sel < NSEL).all()
+    assert (m >= 0).all() and (m < 2 ** mw).all() and (sel >= 0).all() and (sel < NSEL).all()
     p = (x * m) >> (SB - 1)                                   # registered product window
     assert (p.abs() < 2 ** 25).all(), "product window (26 b) overflow"
     q = p >> sel
@@ -128,6 +129,8 @@ def lane_s8(x, m, sel, h=0, r=0, t=None, rmode=False):
     if rmode:
         assert (s.abs() < 2 ** (R_W - 1)).all(), "r outside 17 b"
         return s, None
+    if u8:
+        return s.clamp(0, 127), None
     ys = s.clamp(-Q16, Q16)
     return ys, (None if t is None else ys > t)
 
@@ -154,6 +157,58 @@ def lane_w(x, m0, sh, h=0, r=0, t=None, mode="sat"):
         return s, None
     ys = s.clamp(-Q16, Q16)
     return ys, (None if t is None else ys > t)
+
+
+# ------------------------------------------------------------------------------------------------ v1.1 fused lane
+MW_F = 30                 # v1.1: largest fused-lane multiplier width allowed (qb_lane_s8 has 29)
+SMAX_F = SB + NSEL - 1    # window shifts s' in [17, 24]
+
+
+def rq1(x, m0, sh):
+    """IntBin requant of one channel (m0, sh python ints), int64 tensor x."""
+    return (x * m0 + (1 << (sh - 1))) >> sh
+
+
+def lane_f(x, f, h=0, r=0, t=None):
+    """v1.1 fused lane: x = acc' (20 b) -> + bias (per-channel pre-add) -> ReLU (mode) -> pre-clamp [lo_c, hi_c]
+    (16 b signed) -> qb_lane_s8 window requant (MW f['mw']) -> + h + r, output mode: 'sat' (sat16, b = y > T),
+    'r' (unsaturated 17-b r), 'u8' (clamp [0, 127]).  f: dict of per-channel tensors (bias, lo, hi, m, sel) + relu, mode,
+    mw (broadcast over the last dim = channels)."""
+    x = x + f["bias"]
+    if f["relu"]:
+        x = x.clamp(min=0)
+    x = torch.maximum(torch.minimum(x, f["hi"]), f["lo"])
+    return lane_s8(x, f["m"], f["sel"], h, r, t, rmode=f["mode"] == "r", mw=f["mw"], u8=f["mode"] == "u8")
+
+
+def fused_fit(m0, sh, dlo, dhi, A, B, relu, dev, nsel=NSEL):
+    """Fit of a requant y = rq(x') (x' = relu(x) if relu, x in [dlo_c, dhi_c] = acc' + bias worst case) whose output is
+    observed only through clamp(y, A_c, B_c) (u8: [0, 127]; r: the int16 saturation of the sum it enters) on the fused
+    lane.  rq is monotone (m0 >= 0), so clamp(rq(.), A, B) is constant below lo_c = max{x': rq(x') <= A_c} and above
+    hi_c = min{x': rq(x') >= B_c}: the pre-clamp [lo_c, hi_c] changes no observed output.  Then the minimal exact window
+    multiplier on [lo_c, hi_c] (qc18bacc.workload.lu_table with clamp (A_c, B_c), shifts s' = 17 + sel, sel < 8).
+    Returns per-channel tensors lo, hi, m, sel, bits (multiplier bits, 99 = no exact multiplier in the window)."""
+    out = dict(lo=[], hi=[], m=[], sel=[], bits=[])
+    for c in range(len(m0)):
+        a0, a1 = int(dlo[c]), int(dhi[c])
+        if relu:
+            a0, a1 = max(a0, 0), max(a1, 0)
+        x = torch.arange(a0, a1 + 1, device=dev)
+        y = rq1(x, int(m0[c]), int(sh[c]))
+        a, b = int(A[c]), int(B[c])
+        k = (y <= a).nonzero()
+        lo = int(x[k[-1, 0]]) if len(k) else a0
+        k = (y >= b).nonzero()
+        hi = int(x[k[0, 0]]) if len(k) else a1
+        assert lo <= hi
+        L, U = wl.lu_table(m0[c:c + 1].cpu(), sh[c:c + 1].cpu(), torch.tensor([lo]), torch.tensor([hi]), SB + nsel - 1,
+                           (a, b), dev)
+        L, U = L[0, SB:], U[0, SB:]
+        bits = [L[i].item().bit_length() if L[i] <= U[i] else 99 for i in range(nsel)]
+        sel = int(np.argmin(bits))
+        for k_, v in (("lo", lo), ("hi", hi), ("m", int(L[sel])), ("sel", sel), ("bits", bits[sel])):
+            out[k_].append(v)
+    return {k: torch.tensor(v, dtype=torch.int64) for k, v in out.items()}
 
 
 # ------------------------------------------------------------------------------------------------ program
@@ -273,7 +328,9 @@ def domain(W8, rlo, rhi):
 
 
 @torch.no_grad()
-def build_program(ckpt, dev="cuda"):
+def build_program(ckpt, dev="cuda", v=11):
+    """v = 1: ARCH.md v1 program; v = 11: v1.1 (stem packing, per-PE c1 comparators, block 6 on the fused lanes
+    where exact; see cycles.md v1.1)."""
     model, fn, net, val = load(ckpt, dev)
     run = os.path.basename(os.path.dirname(os.path.abspath(ckpt)))
     mods = _mods(model)
@@ -397,6 +454,13 @@ def build_program(ckpt, dev="cuda"):
     assert H == 4
     # wide-lane exactness of the 19-b y clamp: sat16(clamp(y) + r) == sat16(y + r) iff 2^18 - 1 >= 32767 + max |r|
     assert 2 ** (YW_W - 1) - 1 >= Q16 + rbound["b6.sc"], "wide lane y clamp not exact"
+    if v >= 11:
+        for p in passes:
+            if p.kind == "stem":
+                p.p["pack"] = True              # 9 taps x 4 groups = planes 4h + g, 2 cycles per tile
+            elif p.kind == "bc1":
+                p.ppu = "pecmp"                 # b2 = acc' >= T2 by per-PE comparators at capture
+        checks.extend(fit_block6(passes, conv, net, fpb, dev))
     # head: pool (wide lane, clamp [0, 127]) + FC
     assert 16 * Q16 < 2 ** (XW_W - 1)
     head = dict(pool_m0=net.pool_m[0].cpu(), pool_sh=net.pool_m[1].cpu(), fW8=net.fW8, fbq=net.fbq, fscale=net.fscale)
@@ -439,7 +503,112 @@ def build_program(ckpt, dev="cuda"):
                                              .expand(1, 1, 256, 3).contiguous(), torch.float64)[0, c, 0]
                                    / net.S["in"]).clamp(-127, 127).long() for c in range(3)])
     prog = Program(run, passes, head, lut, BUFS, checks)
+    prog.v = v
     return prog, net, val
+
+
+def _check_fused(f, m0, sh, dlo, dhi, A, B, relu, dev):
+    """exhaustive: clamp(lane_f(acc'), A, B) == clamp(IntBin rq(relu?(acc' + bias)), A, B) for EVERY integer acc' + bias
+    of every channel's worst-case domain [dlo_c, dhi_c] (before the pre-clamp).  Returns the lane output range."""
+    n, olo, ohi = 0, [], []
+    for c in range(len(m0)):
+        x = torch.arange(int(dlo[c]), int(dhi[c]) + 1, device=dev)
+        fc = {k: (v[c].to(dev) if torch.is_tensor(v) else v) for k, v in f.items()}
+        out, _ = lane_f(x - fc["bias"], fc)
+        ref = rq1(x.clamp(min=0) if relu else x, int(m0[c]), int(sh[c]))
+        assert torch.equal(out.clamp(int(A[c]), int(B[c])), ref.clamp(int(A[c]), int(B[c]))), f"fused lane ch {c} not exact"
+        olo.append(int(out.min()))
+        ohi.append(int(out.max()))
+        n += x.numel()
+    return n, torch.tensor(olo), torch.tensor(ohi)
+
+
+def sbits_t(lo, hi):
+    return wl.sbits(int(torch.as_tensor(lo).min()), int(torch.as_tensor(hi).max()))
+
+
+def fit_block6(passes, conv, net, fpb, dev):
+    """v1.1: block-6 hm / c1 / sc (and c2 if it fits) on the fused lanes (bias pre-add, input ReLU, output clamp
+    [0, 127], per-channel input pre-clamp).  A pass moves iff every channel fits: pre-clamped input 16 b signed,
+    multiplier <= MW_F bits in the window s' in [17, 24], lane internal widths (lane_s8 asserts), r 17 b; exactness is
+    checked exhaustively on the worst-case domain.  Sets p.ppu = 'fused' and p.p['f'] (lane parameters, mw = the
+    pass's measured MW, bounded below by 29)."""
+    out = []
+    (i,) = fpb
+    d = net.blocks[i]
+    pp = {p.name: p for p in passes if p.block == i}
+    cv = lambda n: conv[f"blocks.{i}.{n}"]
+    dom = lambda n, bk: (cv(n)["lo"].cpu() + d[bk].cpu(), cv(n)["hi"].cpu() + d[bk].cpu())
+    rqv = lambda x, m: (x * m[0].cpu() + (1 << (m[1].cpu() - 1))) >> m[1].cpu()
+    C = lambda n, v: torch.full((n,), v, dtype=torch.int64)
+    c2lo, c2hi = dom("c2", "c2b")
+    y2lo, y2hi = rqv(c2lo, d["c2m"]), rqv(c2hi, d["c2m"])           # c2 requant output range (monotone)
+    nC = len(y2lo)
+    jobs = [("hm", d["hm"][0].expand(cv("c1")["cin"]), d["hm"][1].expand(cv("c1")["cin"]), C(cv("c1")["cin"], -Q16),
+             C(cv("c1")["cin"], Q16), None, True, "u8"),
+            ("c1", *d["c1m"], *dom("c1", "c1b"), "c1b", False, "u8"),
+            ("sc", *d["scm"], *dom("sc", "scb"), "scb", False, "r"),
+            ("c2", *d["c2m"], c2lo, c2hi, "c2b", False, "sat")]
+    rlo = rhi = None
+    for nm, m0, sh, dlo, dhi, bk, relu, mode in jobs:
+        m0, sh = m0.cpu(), sh.cpu()
+        p = pp[f"b{i}.{nm}"]
+        n = len(m0)
+        if mode == "u8":
+            A, B = C(n, 0), C(n, 127)
+        elif mode == "r":                       # r enters sat16(y_c2 + r): observed only through [-Q16 - y2hi, Q16 - y2lo]
+            A, B = -Q16 - y2hi, Q16 - y2lo
+        else:                                   # y_c2 enters sat16(y_c2 + r)
+            A, B = -Q16 - rhi, Q16 - rlo
+        fit = fused_fit(m0, sh, dlo, dhi, A, B, relu, dev)
+        mwn = int(fit["bits"].max())
+        f = dict(bias=d[bk].cpu() if bk else C(n, 0), lo=fit["lo"], hi=fit["hi"], m=fit["m"], sel=fit["sel"], relu=relu,
+                 mode=mode, mw=max(MW, min(mwn, MW_F)))
+        xw = sbits_t(fit["lo"], fit["hi"])
+        why = []
+        if xw > XW_S:
+            why.append(f"pre-clamped input {xw} b > 16 b")
+        if mwn > MW_F:
+            why.append(f"MW {mwn} > {MW_F}")
+        olo = ohi = None
+        if not why:
+            try:
+                nchk, olo, ohi = _check_fused(f, m0, sh, dlo, dhi, A, B, relu, dev)
+                if mode == "sat":                   # c2 sum y + h + r inside the 19-b adder at the corners
+                    lane_s8(torch.stack([fit["lo"], fit["hi"]]), fit["m"], fit["sel"], 0, torch.stack([rlo, rhi]),
+                            mw=f["mw"])
+            except AssertionError as e:
+                why.append(str(e))
+        if mwn > MW_F:                          # diagnostic: shift window needed (qb_lane_s8: s' in [17, 24], 3-b sel)
+            for ns in (16, 24):
+                fw = fused_fit(m0, sh, dlo, dhi, A, B, relu, dev, ns)
+                ss = SB + fw["sel"]
+                why.append(f"with a {ns.bit_length() - 1 if ns == 16 else 5}-b sel window [17, {SB + ns - 1}]: MW "
+                           f"{int(fw['bits'].max())}, s' used [{int(ss.min())}, {int(ss.max())}]")
+        if mode == "r":
+            ry = torch.maximum(rq1(fit["lo"], m0, sh).abs(), rq1(fit["hi"], m0, sh).abs()).max()
+            if ry >= 2 ** (R_W - 1):
+                why.append(f"|r| reaches {int(ry)} after the pre-clamp (fused lane: r 17 b, y 18 b)")
+        nwide = int(((fit["lo"] < -2 ** (XW_S - 1)) | (fit["hi"] >= 2 ** (XW_S - 1))).sum())
+        if nwide:
+            why.append(f"{nwide} of {n} channels need > 16 b after the pre-clamp")
+        info = (f"b{i}.{nm}: domain [{int(dlo.min())}, {int(dhi.max())}] ({sbits_t(dlo, dhi)} b, pre-add of a "
+                f"{sbits_t(f['bias'], f['bias'])}-b bias), pre-clamped [{int(fit['lo'].min())}, {int(fit['hi'].max())}] "
+                f"({xw} b), MW needed {mwn}")
+        if why:
+            out.append(f"v1.1 fused fit {info}: stays on the wide lanes ({'; '.join(why)})")
+            if mode == "r":
+                rlo, rhi = rqv(dlo, d["scm"]), rqv(dhi, d["scm"])
+            continue
+        p.ppu = "fused"
+        p.p["f"] = f
+        p.p["mw_need"] = mwn
+        out.append(f"v1.1 fused fit {info}: MOVED to the fused lanes (MW {f['mw']}); exact on every integer of every "
+                   f"channel's worst-case domain ({nchk} values): PASS; output range [{int(olo.min())}, {int(ohi.max())}]")
+        if mode == "r":
+            rlo, rhi = olo, ohi
+            p.p["r1"] = True                        # r fits 17 b: one S entry (v1: two)
+    return out
 
 
 def P_ROWS_PER_TILE(p):
@@ -458,8 +627,9 @@ def describe(prog):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("ckpt")
+    ap.add_argument("--v", type=int, default=11, choices=(1, 11))
     a = ap.parse_args()
-    prog, _, _ = build_program(a.ckpt)
+    prog, _, _ = build_program(a.ckpt, v=a.v)
     print("\n".join(describe(prog)))
     return 0
 
