@@ -185,3 +185,34 @@ mb2 = binarize(copy.deepcopy(ref), compile=False, preact=1, abits_blocks=(6, 7),
 mb2.load_state_dict(mb.state_dict())
 assert all(m._ready for _, m in mb2.binacts() if isinstance(m, MultiBitAct))
 print("abits_blocks 6,7 N=2: 4 MultiBitAct in blocks 6,7 + 12 BinAct, forward/backward ok, state_dict round trip keeps s / inited")
+
+from qc18b.binact import XfbAct
+
+for dt in (torch.float32, torch.bfloat16):                # --xfb: fwdFP = relu fwd + BinAct bwd; fwdBIN = BinAct fwd + relu bwd
+    x0 = (torch.randn(8, 6, 5, 5) * 1.5 + torch.randn(1, 6, 1, 1)).to(dt)
+    x0[0, 0, 0, :4] = torch.tensor([0.0, 1.0, -1.0, 0.5])  # x == 0, window edges
+    g = torch.randn(8, 6, 5, 5).to(dt)
+    t0 = torch.randn(6) * 0.3
+    t0[0] = 0
+    res = {}
+    for name, m in (("bin", BinAct(6, "clip", 1.0, 0.6)), ("fwdFP", XfbAct(6, "fwdFP", "clip", 1.0, 0.6)),
+                    ("fwdBIN", XfbAct(6, "fwdBIN", "clip", 1.0, 0.6))):
+        with torch.no_grad():
+            m.t.copy_(t0)
+        x = x0.clone().requires_grad_()
+        y = m(x)
+        y.backward(g)
+        res[name] = (y.detach(), x.grad, m.t.grad)
+    yb, gxb, gtb = res["bin"]
+    yf, gxf, gtf = res["fwdFP"]
+    assert yf.dtype == dt and torch.equal(yf, torch.relu(x0)) and torch.equal(gxf, gxb) and torch.equal(gtf, gtb), dt
+    yB, gxB, gtB = res["fwdBIN"]
+    assert yB.dtype == dt and torch.equal(yB, yb) and ((yB == 0) | (yB == 1)).all()
+    assert torch.equal(gxB, (x0 > 0).to(dt) * g) and torch.equal(gtB, gtb), dt
+    print(f"xfb {dt}: fwdFP y == relu(x), dL/dx and dL/dt == BinAct clip K=0.6 (torch.equal); "
+          f"fwdBIN y == BinAct (exact 0/1), dL/dx == 1[x>0] g, dL/dt == BinAct (torch.equal)")
+xb = binarize(copy.deepcopy(ref), compile=False, preact=1, xfb_blocks=(4,), xfb="fwdBIN").train()
+names = [(n, type(m).__name__) for n, m in xb.binacts()]
+assert [n for n, c in names if c == "XfbAct"] == ["blocks.4.b1", "blocks.4.b2"] and len(names) == 16
+xb(torch.randn(4, 3, 32, 32)).sum().backward()
+print("xfb_blocks 4: 2 XfbAct in block 4 + 14 BinAct, forward/backward ok")

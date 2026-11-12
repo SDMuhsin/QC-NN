@@ -1,6 +1,6 @@
 """qc18b.train (CIFAR-100 qc18.train) with binary activations (qc18b.binact) on every non-stem QCConv2d input.
 Extra options (stripped before qc18.train parses argv):
-  --binact 0|1  --ste clip|approx|bussgang|stein  --ste-w W  --ste-scale K  --t-train 0|1  --bin-stem 0  --preact 0|1 (B1 reads the pre-ReLU block input, binact.py)  --arch qc18|bireal (needs --preact 1)  --stem-therm K (0: FP stem input; K>0: stem reads a 3K-plane thermometer code, binact.therm_stem)  --fp-blocks LIST (comma block indices 0..7 with ReLU instead of BinAct b1/b2)  --abits-blocks LIST --abits N (those blocks: b1/b2 = N-bit binact.MultiBitAct)  --init CKPT (FP-act checkpoint, loaded before training;
+  --binact 0|1  --ste clip|approx|bussgang|stein  --ste-w W  --ste-scale K  --t-train 0|1  --bin-stem 0  --preact 0|1 (B1 reads the pre-ReLU block input, binact.py)  --arch qc18|bireal (needs --preact 1)  --stem-therm K (0: FP stem input; K>0: stem reads a 3K-plane thermometer code, binact.therm_stem)  --fp-blocks LIST (comma block indices 0..7 with ReLU instead of BinAct b1/b2)  --abits-blocks LIST --abits N (those blocks: b1/b2 = N-bit binact.MultiBitAct)  --xfb-blocks LIST --xfb fwdFP|fwdBIN (those blocks: b1/b2 = binact.XfbAct, ReLU forward + BinAct backward or the reverse)  --init CKPT (FP-act checkpoint, loaded before training;
   BinAct thresholds stay 0)  --qc-teacher CKPT --fkd BETA --tkd A --atkd B (frozen FP-activation preact QC teacher from a qc18b
   QC checkpoint; block-output feature / logit / larq_zoo attention-map distillation added in the student's training forward, qc18b.distill;
   T = --kd-t)  --prog H (binact 1: progressive binarisation over the first H of the training steps, binact.set_prog;
@@ -34,6 +34,8 @@ if __name__ == "__main__":
     p.add_argument("--fp-blocks", default="")
     p.add_argument("--abits-blocks", default="")
     p.add_argument("--abits", type=int, default=0)
+    p.add_argument("--xfb-blocks", default="")
+    p.add_argument("--xfb", default="", choices=["", "fwdFP", "fwdBIN"])
     p.add_argument("--init", default="")
     p.add_argument("--log-every", type=int, default=50)
     p.add_argument("--qc-teacher", default="")
@@ -58,6 +60,7 @@ if __name__ == "__main__":
 
     assert not (x.fkd or x.tkd or x.atkd) or x.qc_teacher, "--fkd / --tkd / --atkd need --qc-teacher"
     assert bool(x.abits_blocks) == bool(x.abits) and (not x.abits or x.binact), "--abits-blocks and --abits N >= 1 go together (binact 1)"
+    assert bool(x.xfb_blocks) == bool(x.xfb) and (not x.xfb or (x.binact and x.ste == "clip")), "--xfb-blocks and --xfb go together (binact 1, ste clip)"
     assert not x.prog or (x.binact and 0 < x.prog <= 1), "--prog needs --binact 1, 0 < H <= 1"
     spe = 45000 // a.bs
     student = []
@@ -79,7 +82,8 @@ if __name__ == "__main__":
                             x.log_every, 45000 // a.bs, bool(a.compile), act=bool(x.binact),
                             k=x.ste_scale, t_train=x.t_train, preact=x.preact, arch=x.arch,
                             fp_blocks=tuple(int(i) for i in x.fp_blocks.split(",") if i),
-                            abits_blocks=tuple(int(i) for i in x.abits_blocks.split(",") if i), abits=x.abits)
+                            abits_blocks=tuple(int(i) for i in x.abits_blocks.split(",") if i), abits=x.abits,
+                            xfb_blocks=tuple(int(i) for i in x.xfb_blocks.split(",") if i), xfb=x.xfb)
         if not model_ref:
             model_ref.append(m)
         if x.prog:
@@ -98,7 +102,7 @@ if __name__ == "__main__":
             t = t.cuda().to(memory_format=torch.channels_last)        # the student is moved to cuda by qc18.train
             distill.attach(m, t, x.fkd, x.tkd, a.kd_t, bool(a.compile), atkd=x.atkd)
             print(f"qc teacher {x.qc_teacher} (val {100 * ck['val']:.2f}) fkd={x.fkd} tkd={x.tkd} atkd={x.atkd} T={a.kd_t}", flush=True)
-        print(f"binact={x.binact} ste={x.ste} w={x.ste_w} K={x.ste_scale} t_train={x.t_train} bin_stem={x.bin_stem} preact={x.preact} arch={x.arch} stem_therm={x.stem_therm} fp_blocks={x.fp_blocks} abits_blocks={x.abits_blocks} abits={x.abits}", flush=True)
+        print(f"binact={x.binact} ste={x.ste} w={x.ste_w} K={x.ste_scale} t_train={x.t_train} bin_stem={x.bin_stem} preact={x.preact} arch={x.arch} stem_therm={x.stem_therm} fp_blocks={x.fp_blocks} abits_blocks={x.abits_blocks} abits={x.abits} xfb_blocks={x.xfb_blocks} xfb={x.xfb}", flush=True)
         return m
 
     qc18.train.QCResNet18 = factory

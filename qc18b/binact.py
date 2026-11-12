@@ -43,6 +43,12 @@ MultiBitAct(C, nbits) (--abits-blocks / --abits; subclass of BinAct, replaces b1
   L thresholds j s_c; L = 1 -> identical to BinAct clip), dL/dt_c = -sum g dq/du as BinAct;
   dq/ds_c = -(u / s_c^2) g_s 1[0 < u < L s_c] (LSQ-style, slope of the linear u / s_c in the active range, LSQ grad scale
   g_s = 1 / sqrt(N H W L) per channel, K not applied).  ste must be "clip"; no progressive mix.
+XfbAct(C, mode) (--xfb-blocks / --xfb; subclass of BinAct, replaces b1 and b2 in the listed blocks; ste clip only),
+  u = x - t_c, window = K 1[|u| < w] (BinAct clip derivative):
+  mode "fwdFP":  forward y = relu(x) (== --fp-blocks), dL/dx = g K 1[|u| < w], dL/dt_c = -sum g K 1[|u| < w] (== BinAct);
+                 t_c affects the backward window only.
+  mode "fwdBIN": forward y = 1[u > 0] (== BinAct, exact {0,1}), dL/dx = g 1[x > 0] (exact ReLU derivative, no K),
+                 dL/dt_c = -sum g K 1[|u| < w] (== BinAct t-gradient).  No progressive mix.
 """
 import json
 
@@ -173,6 +179,41 @@ class MultiBitAct(BinAct):
         return super().extra_repr() + f", nbits={self.nbits}"
 
 
+class XfbAct(BinAct):
+    def __init__(self, C, mode, ste="clip", w=1.0, k=1.0, t_train=1):
+        assert ste == "clip" and mode in ("fwdFP", "fwdBIN"), (ste, mode)
+        super().__init__(C, ste, w, k, t_train)
+        self.mode = mode
+
+    def forward(self, x):
+        assert not self.mix, "--prog not supported with XfbAct"
+        rec = self.rec
+        if rec is not None:
+            x = x.view_as(x)
+            x.register_hook(lambda g: rec.__setitem__("g_in", g.float().norm()))
+        if self.mode == "fwdFP":
+            u = x - self.t.view(1, -1, 1, 1)
+            s = self.k * u.clamp(-self.w, self.w)              # BinAct clip surrogate: dx and dt
+            b = F.relu(x).detach() + (s - s.detach()).to(x.dtype)
+        else:
+            u = x.detach() - self.t.view(1, -1, 1, 1)
+            s = self.k * u.clamp(-self.w, self.w)              # BinAct clip surrogate: dt only
+            r = F.relu(x)                                      # exact ReLU derivative: dx only
+            b = (u.detach() > 0).to(x.dtype) + (r - r.detach()) + (s - s.detach()).to(x.dtype)
+        if rec is not None:
+            with torch.no_grad():
+                bd = b.detach().float()
+                m = (u.detach() > 0).float().mean((0, 2, 3))
+                rec.update(p1=(u.detach() > 0).float().mean(), const=((m < 0.01) | (m > 0.99)).float().mean(),
+                           pass_=(u.detach().abs() < self.w).float().mean(), t_mean=self.t.mean(), t_std=self.t.std(),
+                           eff=self.eff(u), exact01=((bd == 0) | (bd == 1)).all() if self.mode == "fwdBIN" else True)
+            b.register_hook(lambda g: rec.__setitem__("g_out", g.float().norm()))
+        return b
+
+    def extra_repr(self):
+        return super().extra_repr() + f", xfb={self.mode}"
+
+
 class Therm(nn.Module):
     """normalised NCHW image (3 channels) -> 3K planes in {0,1}, order (c, i)."""
 
@@ -299,21 +340,25 @@ def set_prog(model, steps):
 
 
 def binarize(model, ste="clip", w=1.0, bin_stem=0, log_path="", log_every=50, spe=1, compile=True, act=True, k=1.0,
-             t_train=1, preact=0, arch="qc18", fp_blocks=(), abits_blocks=(), abits=1):
+             t_train=1, preact=0, arch="qc18", fp_blocks=(), abits_blocks=(), abits=1, xfb_blocks=(), xfb=""):
     """act=False: no BinAct (FP-activation reference), only the logging forward (grad theta records).
     fp_blocks: block indices whose b1 / b2 are ReLU instead of BinAct (FP-activation block, same pre-activation).
-    abits_blocks: block indices whose b1 / b2 are MultiBitAct(abits) instead of BinAct."""
+    abits_blocks: block indices whose b1 / b2 are MultiBitAct(abits) instead of BinAct.
+    xfb_blocks: block indices whose b1 / b2 are XfbAct(xfb) instead of BinAct."""
     if model.mode == "dense":
         return model
     assert not bin_stem, "--bin-stem 1 not implemented"
     assert arch in ("qc18", "bireal") and (arch == "qc18" or preact), "--arch bireal requires --preact 1"
     assert all(0 <= i < len(model.blocks) for i in fp_blocks), fp_blocks
     assert all(0 <= i < len(model.blocks) for i in abits_blocks) and not set(abits_blocks) & set(fp_blocks), abits_blocks
+    assert all(0 <= i < len(model.blocks) for i in xfb_blocks) and not set(xfb_blocks) & (set(fp_blocks) | set(abits_blocks)), xfb_blocks
+    assert bool(xfb_blocks) == bool(xfb), (xfb_blocks, xfb)
     for i, blk in enumerate(model.blocks if act or preact else ()):
         dev = blk.c1.bn.weight.device
         blk.__class__ = BiRealBlock if arch == "bireal" else PreBlock if preact else BinBlock
         ba = act and i not in fp_blocks
-        A = (lambda C: MultiBitAct(C, abits, ste, w, k, t_train)) if i in abits_blocks else (lambda C: BinAct(C, ste, w, k, t_train))
+        A = (lambda C: MultiBitAct(C, abits, ste, w, k, t_train)) if i in abits_blocks else \
+            (lambda C: XfbAct(C, xfb, ste, w, k, t_train)) if i in xfb_blocks else (lambda C: BinAct(C, ste, w, k, t_train))
         blk.b1 = A(blk.c1.conv.cin).to(dev) if ba else nn.ReLU()
         blk.b2 = A(blk.c2.conv.cin).to(dev) if ba else nn.ReLU()
     model.__class__ = BinQCResNet18
