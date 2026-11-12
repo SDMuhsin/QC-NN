@@ -5,6 +5,7 @@ Extra options (stripped before qc18.train parses argv):
   QC checkpoint; block-output feature / logit distillation added in the student's training forward, qc18b.distill;
   T = --kd-t)  --prog H (binact 1: progressive binarisation over the first H of the training steps, binact.set_prog;
   per-epoch p -> <out>/prog.jsonl; best_hard.pt = best val among epochs whose steps all had p = 1)  --log-every K (grad-flow jsonl -> <out>/gradflow.jsonl)
+  --bn-opt sgd|adam --bn-lr LR (adam: BN weight/bias + BinAct t in a separate Adam, same warmup+cosine shape; qc18b.bnopt)
     CUDA_VISIBLE_DEVICES=0 python3 -m qc18b.train_bin --binact 1 --mode signed --b 8 --epochs 60 --out DIR"""
 import argparse
 import inspect
@@ -17,7 +18,7 @@ import torch
 import qc18.model
 import qc18.train
 
-from . import binact, c100, data, distill
+from . import binact, bnopt, c100, data, distill
 
 if __name__ == "__main__":
     p = argparse.ArgumentParser(allow_abbrev=False)
@@ -37,6 +38,8 @@ if __name__ == "__main__":
     p.add_argument("--fkd", type=float, default=0.0)
     p.add_argument("--tkd", type=float, default=0.0)
     p.add_argument("--prog", type=float, default=0.0)
+    p.add_argument("--bn-opt", default="sgd", choices=["sgd", "adam"])
+    p.add_argument("--bn-lr", type=float, default=1e-3)
     x, rest = p.parse_known_args()
     q = argparse.ArgumentParser(add_help=False, allow_abbrev=False)   # read (not stripped) the qc18.train options binarize needs
     q.add_argument("--out", default="")
@@ -54,6 +57,7 @@ if __name__ == "__main__":
     assert not x.prog or (x.binact and 0 < x.prog <= 1), "--prog needs --binact 1, 0 < H <= 1"
     spe = 45000 // a.bs
     student = []
+    model_ref = []                                 # the student (first non-dense model built), for --bn-opt
 
     def factory(*args, **kw):
         m = base(*args, **kw)
@@ -71,6 +75,8 @@ if __name__ == "__main__":
                             x.log_every, 45000 // a.bs, bool(a.compile), act=bool(x.binact),
                             k=x.ste_scale, t_train=x.t_train, preact=x.preact, arch=x.arch,
                             fp_blocks=tuple(int(i) for i in x.fp_blocks.split(",") if i))
+        if not model_ref:
+            model_ref.append(m)
         if x.prog:
             binact.set_prog(m, round(x.prog * a.epochs * spe))
             student.append(m)
@@ -110,4 +116,8 @@ if __name__ == "__main__":
         return va
 
     qc18.train.accuracy = accuracy
-    qc18.train.main()
+    if x.bn_opt == "adam":
+        with bnopt.patched(model_ref, x.bn_lr):
+            qc18.train.main()
+    else:
+        qc18.train.main()
