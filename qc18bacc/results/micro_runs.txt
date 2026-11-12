@@ -1,0 +1,12 @@
+qb_lane_n_ss_p2.0 area_um2 7564 regs 259 dc_wns 5.22137e-05 | tt wns 0.660477 fmax 746.5 | ss wns 0.003572 fmax 500.9
+qb_lane_n_tt_p2.0 area_um2 7214 regs 259 dc_wns 2.07424e-05 | tt wns 0.004096 fmax 501.0 | ss wns -1.169307 fmax 315.5
+qb_lane_w_ss_p2.0 area_um2 10026 regs 287 dc_wns 0.00041604 | tt wns 0.657450 fmax 744.9 | ss wns 0.002854 fmax 500.7
+qb_lane_w_tt_p2.0 area_um2 9061 regs 287 dc_wns 0.000133991 | tt wns 0.003831 fmax 501.0 | ss wns -1.182568 fmax 314.2
+qb_pe_k16_a14_ss_p2.0 area_um2 13556 regs 610 dc_wns 0.000220776 | tt wns 0.657490 fmax 744.9 | ss wns 0.002636 fmax 500.7 | in 2151 pop 5903 acc 5344 (comb 3760 seq 1584) ctl 159
+qb_pe_k16_a14_tt_p2.0 area_um2 12332 regs 610 dc_wns 0.0476873 | tt wns 0.053579 fmax 513.8 | ss wns -1.021721 fmax 330.9 | in 2127 pop 5455 acc 4593 (comb 3009 seq 1584) ctl 157
+qb_pe_k16_a20_ss_p2.0 area_um2 15452 regs 718 dc_wns 0.00055337 | tt wns 0.660162 fmax 746.4 | ss wns 0.004115 fmax 501.0 | in 2196 pop 5894 acc 7163 (comb 4910 seq 2254) ctl 200
+qb_pe_k16_a20_tt_p2.0 area_um2 13910 regs 718 dc_wns 0.000892997 | tt wns 0.004660 fmax 501.2 | ss wns -1.134086 fmax 319.1 | in 2168 pop 5456 acc 6089 (comb 3835 seq 2254) ctl 198
+qb_pe_k32_a20_ss_p2.0 area_um2 24207 regs 1015 dc_wns 0.00066793 | tt wns 0.671480 fmax 752.7 | ss wns 0.003445 fmax 500.9 | in 4256 pop 12622 acc 7129 (comb 4876 seq 2254) ctl 200
+qb_pe_k32_a20_tt_p2.0 area_um2 21494 regs 1015 dc_wns 0.000169873 | tt wns 0.004298 fmax 501.1 | ss wns -1.130769 fmax 319.4 | in 4138 pop 10848 acc 6310 (comb 4056 seq 2254) ctl 198
+qb_pe_k8_a20_ss_p2.0 area_um2 11160 regs 565 dc_wns 0.000628352 | tt wns 0.658176 fmax 745.3 | ss wns 0.003681 fmax 500.9 | in 1192 pop 3017 acc 6752 (comb 4498 seq 2254) ctl 199
+qb_pe_k8_a20_tt_p2.0 area_um2 9995 regs 565 dc_wns 0.000188231 | tt wns 0.004718 fmax 501.2 | ss wns -1.117685 fmax 320.8 | in 1183 pop 2771 acc 5841 (comb 3587 seq 2254) ctl 199

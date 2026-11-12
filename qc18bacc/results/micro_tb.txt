@@ -1,0 +1,6 @@
+QB_TB qb_lane XW=16 MW=27 cycles 200000 checked 199997 errors 0 PASS
+QB_TB qb_lane XW=20 MW=31 cycles 200000 checked 199997 errors 0 PASS
+QB_TB qb_pe KB=8 ACC_W=20 cycles 200000 checked 199984 errors 0 PASS
+QB_TB qb_pe KB=16 ACC_W=20 cycles 200000 checked 199984 errors 0 PASS
+QB_TB qb_pe KB=16 ACC_W=14 cycles 200000 checked 199984 errors 0 PASS
+QB_TB qb_pe KB=32 ACC_W=20 cycles 200000 checked 199980 errors 0 PASS
