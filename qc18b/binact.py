@@ -29,6 +29,11 @@ level i < K, plane = 1[pixel_c > (i+0.5)*256/K - 0.5] (raw uint8 units; threshol
 between integers, same code), applied to the normalised input via (v/255 - mean_c)/std_c; 3K planes {0,1}, order (c, i);
 model.stem = ThermConvBN(3K, 64, 3, 1) (same state_dict keys stem.conv / stem.bn).
 Records are appended to `log_path` (jsonl) on the next forward call.  Other forwards: compiled (training) or eager.
+Progressive binarisation (set_prog(model, steps) with steps = round(H * total steps) > 0): training forward number t
+(0-based, counted in BinQCResNet18.forward) uses p = min(1, t / steps) in every BinAct; while p < 1 each BinAct output is
+y = where(m, b, soft), m = (U[0,1) < p) resampled every forward, b = hard + STE as above, soft = a_c relu(x) with
+a_c = mean(hard)_c / mean(relu(x))_c over (N, H, W) of this batch (detached, fp32; 1 if the denominator is 0), autograd
+derivative of soft exact.  p = 1 / eval / no-grad (BN recal, val): y = b (mix off).
 """
 import json
 
@@ -47,6 +52,8 @@ class BinAct(nn.Module):
         self.t = nn.Parameter(torch.zeros(C), requires_grad=bool(t_train))
         self.ste, self.w, self.k = ste, float(w), float(k)
         self.rec = None                     # set to a dict by the logging forward
+        self.mix = False                    # progressive: mix hard / soft with P(hard) = self.p (training, grad only)
+        self.register_buffer("p", torch.ones(()), persistent=False)
 
     def forward(self, x):
         rec = self.rec
@@ -71,6 +78,15 @@ class BinAct(nn.Module):
                            eff=self.eff(u) if self.ste in ("clip", "approx") else a.mean(),
                            exact01=((bd == 0) | (bd == 1)).all())
             b.register_hook(lambda g: rec.__setitem__("g_out", g.float().norm()))
+        if self.mix and self.training and torch.is_grad_enabled():
+            hd = hard.detach().float()
+            r = F.relu(x)
+            with torch.no_grad():
+                den = r.detach().float().mean((0, 2, 3))
+                a = torch.where(den > 0, hd.mean((0, 2, 3)) / den.clamp_min(1e-30), torch.ones_like(den))
+            soft = (a.view(1, -1, 1, 1) * r.float()).to(x.dtype)
+            m = torch.rand(x.shape, device=x.device) < self.p
+            b = torch.where(m, b, soft)
         return b
 
     def gain(self, xf, bf):
@@ -153,6 +169,12 @@ class BinQCResNet18(QCResNet18):
         self._flush()
         if not (self.training and torch.is_grad_enabled()):
             return self._net(x)                        # eval / BN recalibration: eager, as qc18.train
+        if self._prog_steps:
+            p = min(1.0, self._calls / self._prog_steps)
+            for _, m in self.binacts():
+                m.mix = p < 1
+                m.p.fill_(p)
+            self._prog_p.append(p)
         self._calls += 1
         if self._log_path and self._log_every and self._calls % self._log_every == 0:
             return self._logged_forward(x)
@@ -206,6 +228,12 @@ class BinQCResNet18(QCResNet18):
         return [(n, m) for n, m in self.named_modules() if isinstance(m, BinAct)]
 
 
+def set_prog(model, steps):
+    """progressive binarisation over the first `steps` training forwards (0: off); model._prog_p = p of each forward."""
+    model._prog_steps, model._prog_p = int(steps), []
+    return model
+
+
 def binarize(model, ste="clip", w=1.0, bin_stem=0, log_path="", log_every=50, spe=1, compile=True, act=True, k=1.0,
              t_train=1, preact=0, arch="qc18", fp_blocks=()):
     """act=False: no BinAct (FP-activation reference), only the logging forward (grad theta records).
@@ -224,6 +252,7 @@ def binarize(model, ste="clip", w=1.0, bin_stem=0, log_path="", log_every=50, sp
     model.__class__ = BinQCResNet18
     model._preact = bool(preact)
     model._hooks, model._calls, model._pending, model._log_path, model._log_every, model._spe = [], 0, None, log_path, log_every, spe
+    set_prog(model, 0)
     fwd = lambda x: model._net(x)
     model._cfwd = torch.compile(fwd) if compile else fwd
     return model

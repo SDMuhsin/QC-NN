@@ -3,10 +3,12 @@ Extra options (stripped before qc18.train parses argv):
   --binact 0|1  --ste clip|approx|bussgang|stein  --ste-w W  --ste-scale K  --t-train 0|1  --bin-stem 0  --preact 0|1 (B1 reads the pre-ReLU block input, binact.py)  --arch qc18|bireal (needs --preact 1)  --stem-therm K (0: FP stem input; K>0: stem reads a 3K-plane thermometer code, binact.therm_stem)  --fp-blocks LIST (comma block indices 0..7 with ReLU instead of BinAct b1/b2)  --init CKPT (FP-act checkpoint, loaded before training;
   BinAct thresholds stay 0)  --qc-teacher CKPT --fkd BETA --tkd A (frozen FP-activation preact QC teacher from a qc18b
   QC checkpoint; block-output feature / logit distillation added in the student's training forward, qc18b.distill;
-  T = --kd-t)  --log-every K (grad-flow jsonl -> <out>/gradflow.jsonl)
+  T = --kd-t)  --prog H (binact 1: progressive binarisation over the first H of the training steps, binact.set_prog;
+  per-epoch p -> <out>/prog.jsonl; best_hard.pt = best val among epochs whose steps all had p = 1)  --log-every K (grad-flow jsonl -> <out>/gradflow.jsonl)
     CUDA_VISIBLE_DEVICES=0 python3 -m qc18b.train_bin --binact 1 --mode signed --b 8 --epochs 60 --out DIR"""
 import argparse
 import inspect
+import json
 import os
 import sys
 
@@ -34,12 +36,14 @@ if __name__ == "__main__":
     p.add_argument("--qc-teacher", default="")
     p.add_argument("--fkd", type=float, default=0.0)
     p.add_argument("--tkd", type=float, default=0.0)
+    p.add_argument("--prog", type=float, default=0.0)
     x, rest = p.parse_known_args()
     q = argparse.ArgumentParser(add_help=False, allow_abbrev=False)   # read (not stripped) the qc18.train options binarize needs
     q.add_argument("--out", default="")
     q.add_argument("--bs", type=int, default=128)
     q.add_argument("--compile", type=int, default=1)
     q.add_argument("--kd-t", type=float, default=4.0)
+    q.add_argument("--epochs", type=int, default=200)
     a, _ = q.parse_known_args(rest)
     assert a.out, "--out required"
     sys.argv = sys.argv[:1] + rest
@@ -47,6 +51,9 @@ if __name__ == "__main__":
     base = qc18.train.QCResNet18                   # c100's num_classes=100 factory
 
     assert not (x.fkd or x.tkd) or x.qc_teacher, "--fkd / --tkd need --qc-teacher"
+    assert not x.prog or (x.binact and 0 < x.prog <= 1), "--prog needs --binact 1, 0 < H <= 1"
+    spe = 45000 // a.bs
+    student = []
 
     def factory(*args, **kw):
         m = base(*args, **kw)
@@ -64,6 +71,9 @@ if __name__ == "__main__":
                             x.log_every, 45000 // a.bs, bool(a.compile), act=bool(x.binact),
                             k=x.ste_scale, t_train=x.t_train, preact=x.preact, arch=x.arch,
                             fp_blocks=tuple(int(i) for i in x.fp_blocks.split(",") if i))
+        if x.prog:
+            binact.set_prog(m, round(x.prog * a.epochs * spe))
+            student.append(m)
         if x.init:
             sd = torch.load(x.init, map_location="cpu")["state"]
             missing, unexpected = m.load_state_dict(sd, strict=False)
@@ -81,4 +91,23 @@ if __name__ == "__main__":
         return m
 
     qc18.train.QCResNet18 = factory
+    acc0, best = qc18.train.accuracy, [-1.0, -1]
+
+    def accuracy(model, *args, **kw):              # --prog: per-epoch p log, best_hard.pt among p = 1 epochs
+        va = acc0(model, *args, **kw)
+        if student and model is student[0] and model._calls % spe == 0 and model._calls:
+            ep = model._calls // spe - 1
+            ps = model._prog_p[ep * spe:(ep + 1) * spe]
+            hard = min(ps) == 1.0
+            if hard and va > best[0]:
+                best[:] = [va, ep]
+                torch.save(dict(args=dict(argv=sys.argv, **vars(x)), state=model.state_dict(), epoch=ep, val=va),
+                           os.path.join(a.out, "best_hard.pt"))
+            with open(os.path.join(a.out, "prog.jsonl"), "a") as fh:
+                fh.write(json.dumps(dict(epoch=ep, p_first=ps[0], p_last=ps[-1], p_mean=sum(ps) / len(ps), hard=hard,
+                                         val=va, best_hard=best[0], best_hard_epoch=best[1])) + "\n")
+            print(f"prog ep {ep}: p {ps[0]:.4f}..{ps[-1]:.4f}  hard {hard}  best_hard {100 * best[0]:.2f}@{best[1]}", flush=True)
+        return va
+
+    qc18.train.accuracy = accuracy
     qc18.train.main()

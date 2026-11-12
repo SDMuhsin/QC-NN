@@ -93,3 +93,47 @@ assert d == 0
 fh = binarize(copy.deepcopy(ref), compile=False, preact=1, fp_blocks=(2, 3))
 assert [n for n, _ in fh.binacts()] == [f"blocks.{i}.b{j}" for i in (0, 1, 4, 5, 6, 7) for j in (1, 2)]
 print("fp_blocks 2,3: BinActs only in blocks 0,1,4..7")
+
+for dt in (torch.float32, torch.bfloat16):                # --prog: p = 1 == binary forward, p = 0 == a_c relu(x)
+    m = BinAct(5, "clip", 1.0, 0.6).train()
+    with torch.no_grad():
+        m.t.copy_(torch.randn(5) * 0.3)
+    x0 = (torch.randn(4, 5, 3, 3) + torch.randn(1, 5, 1, 1)).to(dt)
+    x0[:, 4] = -x0[:, 4].abs() - 0.1                      # channel 4: relu(x) == 0 -> a_c = 1
+    g = torch.randn(4, 5, 3, 3).to(dt)
+    outs = []
+    for mix, p in ((False, 1.0), (True, 1.0), (True, 0.0)):
+        m.mix = mix
+        m.p.fill_(p)
+        m.t.grad = None
+        x = x0.clone().requires_grad_()
+        y = m(x)
+        y.backward(g)
+        outs.append((y.detach(), x.grad, m.t.grad.clone()))
+    (b0, gx0, gt0), (b1, gx1, gt1), (s, gxs, gts) = outs
+    assert torch.equal(b0, b1) and torch.equal(gx0, gx1) and torch.equal(gt0, gt1) and ((b1 == 0) | (b1 == 1)).all()
+    xd, t = x0.double(), m.t.detach().double().view(1, -1, 1, 1)
+    hd, r = (xd > t).double(), xd.clamp_min(0)
+    den = r.mean((0, 2, 3))
+    a = torch.where(den > 0, hd.mean((0, 2, 3)) / den, torch.ones_like(den)).view(1, -1, 1, 1)
+    assert a[0, 4] == 1
+    tol = dict(atol=1e-6, rtol=1e-5) if dt == torch.float32 else dict(atol=2e-2, rtol=1e-2)
+    assert torch.allclose(s.double(), a * r, **tol), (s.double() - a * r).abs().max()
+    assert torch.allclose(gxs.double(), a * (xd > 0).double() * g.double(), **tol)
+    assert torch.equal(gts, torch.zeros_like(gts))        # soft does not depend on t
+    m.mix, m.p = True, torch.full((), 0.3)
+    y = m(x0)
+    k = (y == b0).float().mean().item()
+    m.eval()
+    assert torch.equal(m(x0), b0)                          # eval: binary regardless of mix / p
+    print(f"prog {dt}: p=1 output/grads == binary (exact, values 0/1), p=0 == a_c relu(x) (dx exact), "
+          f"p=0.3 frac==hard {k:.2f}, eval binary")
+
+pm = binarize(copy.deepcopy(ref), compile=False, preact=1).train()
+from qc18b.binact import set_prog
+set_prog(pm, 4)
+xi3 = torch.randn(4, 3, 32, 32)
+for _ in range(6):
+    pm(xi3).sum().backward()
+assert pm._prog_p == [0, 0.25, 0.5, 0.75, 1.0, 1.0] and not any(b.mix for _, b in pm.binacts())
+print("set_prog 4: p per training forward", pm._prog_p)
