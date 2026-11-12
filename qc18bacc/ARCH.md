@@ -77,3 +77,26 @@ bandwidth, routed area factor, routed fmax.
 ## Milestones
 1. Compiler + bit-exact dataflow model + exact cycle count (`compile/`).  2. Macro sweep (weights 2 304 b/cycle, stream
    ports, binary maps).  3. RTL + TB bit-exact.  4. Synthesis + PTPX.  5. OpenROAD P&R.  6. Results / SOTA write-up.
+
+## v1.2 decisions (2026-11-12, measured basis in results/)
+* **Golden = `golden_p2.IntBin2`** (power-of-two stream ladder; val E6 s0/s1 +0.20/+0.38 pt vs IntBin, CI low -0.58/-0.42
+  [M], `results/golden_p2.md`). Identity residual = `relu(s_in) >> {0,1}` round-half-up: no multiplier.
+* **Schedule v1.1** (`results/cycles.md`): stem packed 4 planes / cycle (PE group-shift mode); binary c1 `b2 = acc >= T2`
+  by per-PE comparators at capture (no shadow, no lane); c1 / c2 tiles interleaved by a row-dependency list scheduler;
+  b6.hm on fused lanes. 3 371 / 3 345 cycles / image at NL 256, NW 32 [Mod].
+* **PPU:** 256 fused lanes `qb_lane_fn` (6 339 um2 [S], MW 28, sel 4 b, no pre-clamp) + 32 wide lanes `qb_lane_w`
+  (+ ReLU / [0,127] clamp / 19-b r) for block-6 c1 / sc / c2 and pool.
+* **Buffers** (`results/mem.md`, 7.07 mm2 [S]): weights rf_sp 204x144 m2 x 48 (2 304 b/cycle); stream rf_2p 256x128
+  (16-b entries suffice under p2) x 32 lanes, 1R + 1W; binary maps rf_2p 128x128 x 4 per map, 3 maps (B1, B2, Z);
+  params sram_sp 3904 x 110; FC 256 b/cycle (32 int8 MAC / cycle head, 1 620 cycles, overlapped); image rf_sp x 4.
+* **Estimate** [E]: logic ~5.5 + macros ~7.0 = 12.5 mm2 pre-route / ~17.4 routed -> at 400 MHz routed 3.4 peak / 1.6
+  average executed TOPS/mm2; pre-route at 500 MHz 5.9 / 2.85.
+* **Clock is the main lever left:** floorplan-aware RTL — every macro boundary registered (as v4), weight broadcast and
+  patch wiring pipelined by a register stage per PE-row group, drain/lanes placed per column.
+
+## RTL plan
+* R1 compute core `qb_core`: 128 PEs (KB 36, stem mode, comparators) + 288 code decoders + drain + 256 fused + 32 wide
+  lanes; tile-level TB vs `compile/dataflow.py` vectors; synthesis (area / fmax of the core).
+* R2 activation supply: line buffer + patch network (W 32/16/8/4, stride 1/2, padding, plane-major int8) + weight path.
+* R3 top: buffers on macros, descriptors, list-schedule sequencer, host port, head; full-image bit-exact TB (Verilator).
+* R4 synthesis + PTPX; R5 OpenROAD P&R (8-h box, explicit stop rule); R6 write-up.
