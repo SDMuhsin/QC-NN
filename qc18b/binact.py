@@ -24,6 +24,10 @@ tensor hooks; per BinAct p1 = mean(b), const = frac. channels with mean(b) < 0.0
 g_out = ||dL/db||, g_in = ||dL/dx|| (this BinAct's path only), t_mean / t_std, eff = mean over channels of the
 effective db/du scale (a_c, or K x mean window derivative); per QCConv2d ||grad theta||; kind="bn": max |beta|, max gamma
 over all BatchNorm2d.
+stem_therm K > 0 (therm_stem): the stem reads a fixed thermometer code of the image instead: per colour channel c and
+level i < K, plane = 1[pixel_c > (i+0.5)*256/K - 0.5] (raw uint8 units; threshold moved to floor(.)+0.5, strictly
+between integers, same code), applied to the normalised input via (v/255 - mean_c)/std_c; 3K planes {0,1}, order (c, i);
+model.stem = ThermConvBN(3K, 64, 3, 1) (same state_dict keys stem.conv / stem.bn).
 Records are appended to `log_path` (jsonl) on the next forward call.  Other forwards: compiled (training) or eager.
 """
 import json
@@ -32,7 +36,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from qc18.model import BasicBlock, QCResNet18
+from qc18.model import BasicBlock, ConvBN, QCResNet18
 from qc18.qcconv import QCConv2d
 
 
@@ -89,6 +93,35 @@ class BinAct(nn.Module):
 
     def extra_repr(self):
         return f"{self.t.numel()}, ste={self.ste}, w={self.w}, k={self.k}, t_train={self.t.requires_grad}"
+
+
+class Therm(nn.Module):
+    """normalised NCHW image (3 channels) -> 3K planes in {0,1}, order (c, i)."""
+
+    def __init__(self, K, mean, std):
+        super().__init__()
+        v = torch.floor((torch.arange(K, dtype=torch.float64) + 0.5) * 256 / K - 0.5) + 0.5     # raw thresholds
+        thr = (v.view(1, K) / 255 - torch.tensor(mean, dtype=torch.float64).view(3, 1)) / torch.tensor(std, dtype=torch.float64).view(3, 1)
+        self.register_buffer("thr", thr.float().view(1, 3 * K, 1, 1), persistent=False)
+        self.K = K
+
+    def forward(self, x):
+        return (x.float().repeat_interleave(self.K, 1) > self.thr).to(x.dtype).contiguous(memory_format=torch.channels_last)
+
+
+class ThermConvBN(ConvBN):
+    def __init__(self, K, mean, std, cout, k, stride, **qc):
+        super().__init__(3 * K, cout, k, stride, **qc)
+        self.therm = Therm(K, mean, std)
+
+    def forward(self, x):
+        return self.bn(self.conv(self.therm(x)))
+
+
+def therm_stem(model, K, mean, std, **qc):
+    """replace model.stem by ThermConvBN (QC conv on 3K 1-bit planes); qc = the QCResNet18 qc kwargs."""
+    model.stem = ThermConvBN(K, mean, std, 64, 3, 1, **qc).to(model.stem.bn.weight.device)
+    return model
 
 
 class BinBlock(BasicBlock):

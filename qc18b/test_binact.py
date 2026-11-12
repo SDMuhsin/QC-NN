@@ -62,3 +62,24 @@ for act in (0, 1):                                        # bireal: forward, b e
     assert torch.isfinite(y).all() and y.shape == (4, 100)
     assert len(bs) == 16 * act and all(((b == 0) | (b == 1)).all() for b in bs)
     print(f"bireal binact={act}: forward ok, {len(bs)} BinAct outputs exact 0/1, state_dict loads both ways")
+
+from qc18b import data
+from qc18b.binact import Therm, therm_stem
+
+xi = torch.randint(0, 256, (4, 32, 32, 3), dtype=torch.uint8)
+xi[0, :8] = torch.arange(256, dtype=torch.uint8).view(8, 32, 1)          # every pixel value, all channels
+xn = data.prep(xi)
+for K in (1, 3, 16, 32, 255, 256):
+    pl = Therm(K, data.MEAN, data.STD)(xn)
+    assert pl.shape == (4, 3 * K, 32, 32) and ((pl == 0) | (pl == 1)).all()
+    p = xi.permute(0, 3, 1, 2).long()                                    # level on uint8: #{i : p > (i+.5)256/K - .5}
+    lev = ((K * (2 * p + 1) + 255) // 512).clamp(0, K)                    # = #{i < K : 512 i + 256 < K (2p + 1)}
+    brute = sum((K * (2 * p + 1) > 256 * (2 * i + 1)).long() for i in range(K))
+    assert torch.equal(lev, brute)
+    assert torch.equal(pl.view(4, 3, K, 32, 32).sum(2).long(), lev), K
+    assert torch.equal(pl.view(4, 3, K, 32, 32), torch.sort(pl.view(4, 3, K, 32, 32), 2, descending=True)[0])
+print("stem therm K in 1,3,16,32,255,256: planes exact 0/1, sum over i == uint8 level (exact), monotone in i")
+tm = therm_stem(copy.deepcopy(ref), 16, data.MEAN, data.STD, mode="signed", b=8)
+tm = binarize(tm, compile=False, preact=1, arch="bireal").to(memory_format=torch.channels_last).train()
+assert tm.stem.conv.cin == 48 and torch.isfinite(tm(xn)).all()
+print("therm_stem K=16 + bireal binact: forward ok, stem cin 48")
