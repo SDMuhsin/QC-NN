@@ -1,5 +1,6 @@
 """CPU check of qc18b.distill:  python3 -m qc18b.test_distill
-Param grads of qc18.train's loss (CE on the AuxInject logits) == autograd of CE + aux computed directly."""
+Param grads of qc18.train's loss (CE on the AuxInject logits) == autograd of CE + aux computed directly;
+--atkd: L_a == qc18b.diag.attn r2b (mean over blocks) on the same block outputs."""
 import copy
 import json
 import os
@@ -11,6 +12,7 @@ import torch.nn.functional as F
 from qc18.model import QCResNet18
 from qc18b import distill
 from qc18b.binact import binarize
+from qc18b.diag import attn
 
 torch.manual_seed(0)
 ref = QCResNet18("signed", 8, num_classes=100)
@@ -24,16 +26,24 @@ with torch.no_grad():                                     # teacher != student
         p.add_(0.1 * torch.randn_like(p))
 x, y = torch.randn(4, 3, 32, 32), torch.randint(0, 100, (4,))
 log = os.path.join(tempfile.mkdtemp(), "gradflow.jsonl")
-for fkd, tkd, log_every in ((1.0, 0.0, 0), (0.0, 0.5, 0), (1.0, 0.5, 1)):
+for fkd, tkd, atkd, log_every in ((1.0, 0.0, 0.0, 0), (0.0, 0.5, 0.0, 0), (0.0, 0.0, 30.0, 0), (0.0, 0.5, 30.0, 0),
+                                  (1.0, 0.5, 30.0, 1)):
     st = binarize(copy.deepcopy(ref), compile=False, preact=1, k=0.6, log_path=log, log_every=log_every, spe=1)
-    st = distill.attach(st, copy.deepcopy(teacher), fkd, tkd, 4.0, compile=False).train()
+    st = distill.attach(st, copy.deepcopy(teacher), fkd, tkd, 4.0, compile=False, atkd=atkd).train()
     st2 = copy.deepcopy(st)
     out = st(x)                                           # qc18.train path: loss value is CE only
     F.cross_entropy(out, y).backward()
     st2._aux_on = True                                    # direct: CE + aux
-    o2, lf, lt = st2._net(x)
+    o2, lf, lt, la, lak = st2._net(x)
     assert torch.equal(out, o2)
-    (F.cross_entropy(o2, y) + lf + lt).backward()
+    (F.cross_entropy(o2, y) + lf + lt + atkd * la).backward()
+    if atkd:                                              # L_a vs diag/attn r2b (float64) on the same tensors
+        with torch.no_grad():
+            _, fs = distill.feats(st2, x)
+            _, ts = distill.feats(st2._teacher[0], x)
+        ref_k = [attn.r2b(attn.att(s), attn.att(t)) for s, t in zip(fs, ts)]
+        assert all(abs(a - b) <= 1e-5 * max(abs(b), 1e-12) + 1e-9 for a, b in zip(lak.tolist(), ref_k)), (lak, ref_k)
+        assert abs(la.item() - sum(ref_k) / len(ref_k)) <= 1e-5 * abs(sum(ref_k) / len(ref_k)), (la, ref_k)
     st3 = copy.deepcopy(st2)                              # sanity: aux changes the grads
     st3.zero_grad(); st3._aux_on = False
     F.cross_entropy(st3._net(x), y).backward()
@@ -51,9 +61,9 @@ for fkd, tkd, log_every in ((1.0, 0.0, 0), (0.0, 0.5, 0), (1.0, 0.5, 1)):
     st.eval()
     with torch.no_grad():
         assert st(x).shape == (4, 100)                    # eval: plain logits
-    print(f"fkd={fkd} tkd={tkd} log_every={log_every}: lf {lf.item():.4f} lt {lt.item():.4f}, max rel grad diff {worst:.2e} (aux effect on grads: max rel {eff:.2e})")
+    print(f"fkd={fkd} tkd={tkd} atkd={atkd} la {la.item():.5f} log_every={log_every}: lf {lf.item():.4f} lt {lt.item():.4f}, max rel grad diff {worst:.2e} (aux effect on grads: max rel {eff:.2e})")
 st.train()(x).sum().backward()                            # flush the logged step
 recs = [json.loads(l) for l in open(log)]
 aux = [r for r in recs if r["kind"] == "aux"]
-assert aux and {"lf", "lt"} <= aux[0].keys()
+assert aux and {"lf", "lt", "la", "la_k"} <= aux[0].keys() and len(aux[0]["la_k"]) == 8
 print(f"gradflow aux records: {len(aux)}, first {aux[0]}")

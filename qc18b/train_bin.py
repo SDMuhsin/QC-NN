@@ -1,8 +1,8 @@
 """qc18b.train (CIFAR-100 qc18.train) with binary activations (qc18b.binact) on every non-stem QCConv2d input.
 Extra options (stripped before qc18.train parses argv):
   --binact 0|1  --ste clip|approx|bussgang|stein  --ste-w W  --ste-scale K  --t-train 0|1  --bin-stem 0  --preact 0|1 (B1 reads the pre-ReLU block input, binact.py)  --arch qc18|bireal (needs --preact 1)  --stem-therm K (0: FP stem input; K>0: stem reads a 3K-plane thermometer code, binact.therm_stem)  --fp-blocks LIST (comma block indices 0..7 with ReLU instead of BinAct b1/b2)  --init CKPT (FP-act checkpoint, loaded before training;
-  BinAct thresholds stay 0)  --qc-teacher CKPT --fkd BETA --tkd A (frozen FP-activation preact QC teacher from a qc18b
-  QC checkpoint; block-output feature / logit distillation added in the student's training forward, qc18b.distill;
+  BinAct thresholds stay 0)  --qc-teacher CKPT --fkd BETA --tkd A --atkd B (frozen FP-activation preact QC teacher from a qc18b
+  QC checkpoint; block-output feature / logit / larq_zoo attention-map distillation added in the student's training forward, qc18b.distill;
   T = --kd-t)  --prog H (binact 1: progressive binarisation over the first H of the training steps, binact.set_prog;
   per-epoch p -> <out>/prog.jsonl; best_hard.pt = best val among epochs whose steps all had p = 1)  --log-every K (grad-flow jsonl -> <out>/gradflow.jsonl)
   --bn-opt sgd|adam --bn-lr LR (adam: BN weight/bias + BinAct t in a separate Adam, same warmup+cosine shape; qc18b.bnopt)
@@ -37,6 +37,7 @@ if __name__ == "__main__":
     p.add_argument("--qc-teacher", default="")
     p.add_argument("--fkd", type=float, default=0.0)
     p.add_argument("--tkd", type=float, default=0.0)
+    p.add_argument("--atkd", type=float, default=0.0)
     p.add_argument("--prog", type=float, default=0.0)
     p.add_argument("--bn-opt", default="sgd", choices=["sgd", "adam"])
     p.add_argument("--bn-lr", type=float, default=1e-3)
@@ -53,7 +54,7 @@ if __name__ == "__main__":
     c100.apply()
     base = qc18.train.QCResNet18                   # c100's num_classes=100 factory
 
-    assert not (x.fkd or x.tkd) or x.qc_teacher, "--fkd / --tkd need --qc-teacher"
+    assert not (x.fkd or x.tkd or x.atkd) or x.qc_teacher, "--fkd / --tkd / --atkd need --qc-teacher"
     assert not x.prog or (x.binact and 0 < x.prog <= 1), "--prog needs --binact 1, 0 < H <= 1"
     spe = 45000 // a.bs
     student = []
@@ -91,8 +92,8 @@ if __name__ == "__main__":
             t = binact.binarize(base(*args, **kw), compile=False, act=False, preact=1)   # FP-act preact qc18, no logging
             t.load_state_dict(ck["state"])
             t = t.cuda().to(memory_format=torch.channels_last)        # the student is moved to cuda by qc18.train
-            distill.attach(m, t, x.fkd, x.tkd, a.kd_t, bool(a.compile))
-            print(f"qc teacher {x.qc_teacher} (val {100 * ck['val']:.2f}) fkd={x.fkd} tkd={x.tkd} T={a.kd_t}", flush=True)
+            distill.attach(m, t, x.fkd, x.tkd, a.kd_t, bool(a.compile), atkd=x.atkd)
+            print(f"qc teacher {x.qc_teacher} (val {100 * ck['val']:.2f}) fkd={x.fkd} tkd={x.tkd} atkd={x.atkd} T={a.kd_t}", flush=True)
         print(f"binact={x.binact} ste={x.ste} w={x.ste_w} K={x.ste_scale} t_train={x.t_train} bin_stem={x.bin_stem} preact={x.preact} arch={x.arch} stem_therm={x.stem_therm} fp_blocks={x.fp_blocks}", flush=True)
         return m
 
