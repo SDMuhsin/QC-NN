@@ -34,6 +34,15 @@ Progressive binarisation (set_prog(model, steps) with steps = round(H * total st
 y = where(m, b, soft), m = (U[0,1) < p) resampled every forward, b = hard + STE as above, soft = a_c relu(x) with
 a_c = mean(hard)_c / mean(relu(x))_c over (N, H, W) of this batch (detached, fp32; 1 if the denominator is 0), autograd
 derivative of soft exact.  p = 1 / eval / no-grad (BN recal, val): y = b (mix off).
+MultiBitAct(C, nbits) (--abits-blocks / --abits; subclass of BinAct, replaces b1 and b2 in the listed blocks): L = 2^N - 1,
+  forward q = clamp(floor(u / s_c) + 1, 0, L) for u = x - t_c > 0, else 0 (levels 0..L, exact integers; u / s_c in fp32,
+  output in x.dtype); N = 1: q = 1[u > 0] == BinAct.  t_c learnable (init 0); s_c learnable, set once from the first
+  forward that sees it (eager): s_c = max(2 std_c / L, 1e-3), std over (N, H, W), biased;
+  the forward uses max(s_c, 1e-3).
+  Backward: dq/du = K 1[-w <= u <= (L - 1) s_c + w] (the hull of BinAct's clip window |u - j s_c| <= w around each of the
+  L thresholds j s_c; L = 1 -> identical to BinAct clip), dL/dt_c = -sum g dq/du as BinAct;
+  dq/ds_c = -(u / s_c^2) g_s 1[0 < u < L s_c] (LSQ-style, slope of the linear u / s_c in the active range, LSQ grad scale
+  g_s = 1 / sqrt(N H W L) per channel, K not applied).  ste must be "clip"; no progressive mix.
 """
 import json
 
@@ -111,6 +120,59 @@ class BinAct(nn.Module):
         return f"{self.t.numel()}, ste={self.ste}, w={self.w}, k={self.k}, t_train={self.t.requires_grad}"
 
 
+class MultiBitAct(BinAct):
+    def __init__(self, C, nbits, ste="clip", w=1.0, k=1.0, t_train=1):
+        assert ste == "clip" and nbits >= 1, (ste, nbits)
+        super().__init__(C, ste, w, k, t_train)
+        self.nbits, self.L = int(nbits), 2 ** int(nbits) - 1
+        self.s = nn.Parameter(torch.ones(C))
+        self.register_buffer("inited", torch.zeros((), dtype=torch.bool))
+        self._ready = False                 # python mirror of `inited` (no tensor branch under torch.compile)
+
+    def _load_from_state_dict(self, sd, prefix, *args, **kw):
+        super()._load_from_state_dict(sd, prefix, *args, **kw)
+        self._ready = bool(self.inited)
+
+    def forward(self, x):
+        assert not self.mix, "--prog not supported with MultiBitAct"
+        if not self._ready:
+            with torch.no_grad():
+                sd0 = x.detach().float().std((0, 2, 3), unbiased=False)
+                self.s.copy_((2 * sd0 / self.L).clamp_min(1e-3))
+                self.inited.fill_(True)
+            self._ready = True
+        rec = self.rec
+        if rec is not None:
+            x = x.view_as(x)
+            x.register_hook(lambda g: rec.__setitem__("g_in", g.float().norm()))
+        u = x - self.t.view(1, -1, 1, 1)
+        s_d = self.s.detach().clamp_min(1e-3).view(1, -1, 1, 1)        # guard: s_c used >= 1e-3
+        uf = u.detach().float()
+        hard = torch.where(u.detach() > 0, (torch.floor(uf / s_d) + 1).clamp(0, self.L), torch.zeros_like(uf)).to(x.dtype)
+        sx = self.k * torch.clamp(u, torch.full_like(s_d, -self.w).to(x.dtype), ((self.L - 1) * s_d + self.w).to(x.dtype))                   # L = 1: BinAct clip surrogate
+        n = x.numel() // x.shape[1]
+        gs = 1.0 / (n * self.L) ** 0.5
+        sg = self.s * gs
+        s_sc = (sg - sg.detach()).view(1, -1, 1, 1) + s_d               # value s, grad scaled by g_s
+        r = ((uf > 0) & (uf < self.L * s_d)).float()
+        ss = uf / s_sc * r
+        b = hard + (sx - sx.detach()).to(x.dtype) + (ss - ss.detach()).to(x.dtype)
+        if rec is not None:
+            with torch.no_grad():
+                bd = b.detach().float()
+                m = bd.mean((0, 2, 3)) / self.L
+                rec.update(p1=bd.mean() / self.L, const=((m < 0.01) | (m > 0.99)).float().mean(),
+                           pass_=((uf >= -self.w) & (uf <= (self.L - 1) * s_d + self.w)).float().mean(),
+                           t_mean=self.t.mean(), t_std=self.t.std(), s_mean=self.s.mean(),
+                           eff=self.k * ((uf >= -self.w) & (uf <= (self.L - 1) * s_d + self.w)).float().mean(),
+                           exact01=((bd == torch.round(bd)) & (bd >= 0) & (bd <= self.L)).all())
+            b.register_hook(lambda g: rec.__setitem__("g_out", g.float().norm()))
+        return b
+
+    def extra_repr(self):
+        return super().extra_repr() + f", nbits={self.nbits}"
+
+
 class Therm(nn.Module):
     """normalised NCHW image (3 channels) -> 3K planes in {0,1}, order (c, i)."""
 
@@ -176,6 +238,8 @@ class BinQCResNet18(QCResNet18):
                 m.p.fill_(p)
             self._prog_p.append(p)
         self._calls += 1
+        if any(isinstance(m, MultiBitAct) and not m._ready for _, m in self.binacts()):
+            return self._net(x)                        # MultiBitAct step-size init: eager
         if self._log_path and self._log_every and self._calls % self._log_every == 0:
             return self._logged_forward(x)
         return self._cfwd(x)
@@ -235,20 +299,23 @@ def set_prog(model, steps):
 
 
 def binarize(model, ste="clip", w=1.0, bin_stem=0, log_path="", log_every=50, spe=1, compile=True, act=True, k=1.0,
-             t_train=1, preact=0, arch="qc18", fp_blocks=()):
+             t_train=1, preact=0, arch="qc18", fp_blocks=(), abits_blocks=(), abits=1):
     """act=False: no BinAct (FP-activation reference), only the logging forward (grad theta records).
-    fp_blocks: block indices whose b1 / b2 are ReLU instead of BinAct (FP-activation block, same pre-activation)."""
+    fp_blocks: block indices whose b1 / b2 are ReLU instead of BinAct (FP-activation block, same pre-activation).
+    abits_blocks: block indices whose b1 / b2 are MultiBitAct(abits) instead of BinAct."""
     if model.mode == "dense":
         return model
     assert not bin_stem, "--bin-stem 1 not implemented"
     assert arch in ("qc18", "bireal") and (arch == "qc18" or preact), "--arch bireal requires --preact 1"
     assert all(0 <= i < len(model.blocks) for i in fp_blocks), fp_blocks
+    assert all(0 <= i < len(model.blocks) for i in abits_blocks) and not set(abits_blocks) & set(fp_blocks), abits_blocks
     for i, blk in enumerate(model.blocks if act or preact else ()):
         dev = blk.c1.bn.weight.device
         blk.__class__ = BiRealBlock if arch == "bireal" else PreBlock if preact else BinBlock
         ba = act and i not in fp_blocks
-        blk.b1 = BinAct(blk.c1.conv.cin, ste, w, k, t_train).to(dev) if ba else nn.ReLU()
-        blk.b2 = BinAct(blk.c2.conv.cin, ste, w, k, t_train).to(dev) if ba else nn.ReLU()
+        A = (lambda C: MultiBitAct(C, abits, ste, w, k, t_train)) if i in abits_blocks else (lambda C: BinAct(C, ste, w, k, t_train))
+        blk.b1 = A(blk.c1.conv.cin).to(dev) if ba else nn.ReLU()
+        blk.b2 = A(blk.c2.conv.cin).to(dev) if ba else nn.ReLU()
     model.__class__ = BinQCResNet18
     model._preact = bool(preact)
     model._hooks, model._calls, model._pending, model._log_path, model._log_every, model._spe = [], 0, None, log_path, log_every, spe

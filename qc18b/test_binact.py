@@ -137,3 +137,51 @@ for _ in range(6):
     pm(xi3).sum().backward()
 assert pm._prog_p == [0, 0.25, 0.5, 0.75, 1.0, 1.0] and not any(b.mix for _, b in pm.binacts())
 print("set_prog 4: p per training forward", pm._prog_p)
+
+from qc18b.binact import MultiBitAct
+
+for dt in (torch.float32, torch.bfloat16):                # --abits: N = 1 == BinAct (forward, dx, dt exact); N = 2 levels
+    x0 = (torch.randn(8, 6, 5, 5) * 1.5 + torch.randn(1, 6, 1, 1)).to(dt)
+    x0[0, 0, 0, :3] = torch.tensor([0.0, 1.0, -1.0])     # u == 0 and window edges |u| == w
+    g = torch.randn(8, 6, 5, 5).to(dt)
+    t0 = torch.randn(6) * 0.3
+    t0[0] = 0
+    res = []
+    for m in (BinAct(6, "clip", 1.0, 0.6), MultiBitAct(6, 1, "clip", 1.0, 0.6)):
+        with torch.no_grad():
+            m.t.copy_(t0)
+        x = x0.clone().requires_grad_()
+        y = m(x)
+        y.backward(g)
+        res.append((y.detach(), x.grad, m.t.grad))
+    (yb, gxb, gtb), (ym, gxm, gtm) = res
+    assert torch.equal(yb, ym) and torch.equal(gxb, gxm) and torch.equal(gtb, gtm), dt
+    print(f"abits N=1 {dt}: forward, dL/dx, dL/dt identical (torch.equal) to BinAct clip K=0.6")
+    m = MultiBitAct(6, 2, "clip", 1.0, 0.6)
+    with torch.no_grad():
+        m.t.copy_(t0)
+    x = x0.clone().requires_grad_()
+    y = m(x)
+    y.backward(g)
+    sd = (2 * x0.float().std((0, 2, 3), unbiased=False) / 3).clamp_min(1e-3)
+    assert torch.allclose(m.s.detach(), sd) and bool(m.inited)
+    u = x0.double() - t0.double().view(1, -1, 1, 1)
+    sv = m.s.detach().double().view(1, -1, 1, 1)
+    q = torch.where(u > 0, (torch.floor(u / sv) + 1).clamp(0, 3), torch.zeros_like(u))
+    assert torch.equal(y.detach().double(), q) and set(y.unique().tolist()) == {0.0, 1.0, 2.0, 3.0}
+    win = ((u >= -1) & (u <= 2 * sv + 1)).double()
+    tol = dict(atol=1e-6, rtol=1e-5) if dt == torch.float32 else dict(atol=2e-2, rtol=1e-2)
+    assert torch.allclose(x.grad.double(), 0.6 * win * g.double(), **tol)
+    assert torch.allclose(m.t.grad.double(), -(0.6 * win * g.double()).sum((0, 2, 3)), **tol)
+    es = (-(u / sv ** 2) * ((u > 0) & (u < 3 * sv)).double() * g.double()).sum((0, 2, 3)) / (200 * 3) ** 0.5
+    assert torch.allclose(m.s.grad.double(), es, atol=1e-4, rtol=1e-3), (m.s.grad.double() - es).abs().max()
+    print(f"abits N=2 {dt}: outputs {sorted(y.unique().tolist())} == reference q (exact), s init 2std/3, dx / dt / ds (LSQ) ok")
+mb = binarize(copy.deepcopy(ref), compile=False, preact=1, abits_blocks=(6, 7), abits=2).train()
+names = [(n, type(m).__name__) for n, m in mb.binacts()]
+assert [n for n, c in names if c == "MultiBitAct"] == [f"blocks.{i}.b{j}" for i in (6, 7) for j in (1, 2)] and len(names) == 16
+mb(torch.randn(4, 3, 32, 32)).sum().backward()
+assert all(m._ready for _, m in mb.binacts() if isinstance(m, MultiBitAct))
+mb2 = binarize(copy.deepcopy(ref), compile=False, preact=1, abits_blocks=(6, 7), abits=2)
+mb2.load_state_dict(mb.state_dict())
+assert all(m._ready for _, m in mb2.binacts() if isinstance(m, MultiBitAct))
+print("abits_blocks 6,7 N=2: 4 MultiBitAct in blocks 6,7 + 12 BinAct, forward/backward ok, state_dict round trip keeps s / inited")
