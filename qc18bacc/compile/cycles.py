@@ -12,7 +12,10 @@ Schedule of an array pass (tiles in order pixel tile outer, 64-channel tile inne
   NW wide lanes (block-6 c1 / sc / c2);
   shadow double buffering: tile k's drain overlaps tile k+1's compute; tile k+1 can capture only when the shadow is free:
   capture_k = capture_{k-1} + max(C_k, D_{k-1}) (capture_0 = C_0);  pass = capture_last + D + OVH.
-PPU-only pass (block-6 hm): ceil(outputs / NW) + OVH.  Head (pool + FC) overlapped with the next image: 0.
+PPU-only pass (block-6 hm): ceil(outputs / NW) + OVH.  Head (pool + FC) overlapped with the next image: 0 (its own
+cycles: head_cycles, FC weight port FC_BITS, checked <= the image's cycles in the p2 section).
+--golden p2 (default): p2_md / p2_section (IntBin2 program, v1.1 schedule at NW 16 / 32, head) spliced into --out;
+--golden intbin: the v1 / v1.1 sections (IntBin) as before.
 Array cycles = sum C_k, PPU cycles = tiles x D; bound = array if array cycles >= PPU cycles else PPU.
 Executed MAC = nonzero ternary terms x output positions (workload.py 'exec'); utilisation = MAC / (73 728 x cycles).
 Every run first asserts the dataflow logits == IntBin logits (torch.equal) on the same images.
@@ -395,10 +398,11 @@ def verify(T, pairs, tim):
     return len(pairs)
 
 
-def load_stats(ck, v, n, cache=None):
-    """program + dataflow stats (dataflow logits == IntBin asserted).  cache: directory for the stats (.npz)."""
-    prog, net, val = P.build_program(ck, v=v)
-    path = None if cache is None else os.path.join(cache, f"{prog.run}_v{v}_n{n}.npz")
+def load_stats(ck, v, n, cache=None, golden="intbin"):
+    """program + dataflow stats (dataflow logits == golden asserted).  cache: directory for the stats (.npz)."""
+    prog, net, val = P.build_program(ck, v=v, golden=golden)
+    sfx = "" if golden == "intbin" else "_" + golden
+    path = None if cache is None else os.path.join(cache, f"{prog.run}_v{v}_n{n}{sfx}.npz")
     if path and os.path.exists(path):
         z = np.load(path)
         st, correct = {k: z[k] for k in z.files if k != "_correct"}, int(z["_correct"])
@@ -455,10 +459,12 @@ CONFIGS = (("v1", frozenset()), ("1 only", frozenset((1,))), ("2 only", frozense
 NLS11 = (128, 192, 256, 384)
 
 
-def replay_check(prog, net, val, st, NL, k):
-    """tile-granular value replay (dataflow.replay) of the v1.1 schedule at NL on val[:k]: logits == IntBin."""
+def replay_check(prog, net, val, st, NL, k, nw=NW):
+    """tile-granular value replay (dataflow.replay) of the v1.1 schedule at NL on val[:k]: logits == golden."""
+    if (id(prog), "tiles") not in BASE:
+        BASE[(id(prog), "tiles")] = tiles_of(prog)
     T, _ = BASE[(id(prog), "tiles")]
-    _, _, tim = list_schedule(prog, {a: b[:k] for a, b in st.items()}, NL, fl=FL_ALL, check=True)
+    _, _, tim = list_schedule(prog, {a: b[:k] for a, b in st.items()}, NL, nw, fl=FL_ALL, check=True)
     base = _bufbase(prog)
     xv, _ = val
     Ws = {p.name: D.PEWeights(p, "cuda") for p in prog.passes if p.k}
@@ -524,7 +530,26 @@ def main():
     ap.add_argument("--out", default=os.path.join(P.RESULTS, "cycles.md"))
     ap.add_argument("--cache", default=None, help="directory caching the dataflow stats")
     ap.add_argument("--nrep", type=int, default=20, help="v1.1: images replayed tile by tile in the scheduled order")
+    ap.add_argument("--golden", default="p2", choices=P.GOLDENS, help="p2: write / replace the p2 section of --out; "
+                    "intbin: rewrite --out (v1 + v1.1 sections, IntBin)")
+    ap.add_argument("--nw", type=int, nargs="+", default=[16, 32], help="p2: wide-lane counts")
+    ap.add_argument("--fc-bits", type=int, nargs="+", default=[128, 256, 512], help="p2: FC weight port widths")
     a = ap.parse_args()
+    if a.golden == "p2":
+        md2, s2 = [], []
+        for ck in a.ckpts:
+            m, sm = p2_md(ck, a.n, a.cache, a.nrep, tuple(a.nw), tuple(a.fc_bits))
+            md2 += m
+            s2.append(sm)
+        sec = p2_section(md2, s2)
+        splice(a.out, sec[0], sec)
+        for s in s2:
+            print(s["run"], " ".join(f"NW{nw}: " + " ".join(f"NL{k} {s['res'][nw, k][1].mean():.1f}" for k in NLS11)
+                                     for nw in s["nws"]))
+            print("  top:", ", ".join(f"{r['name']} {r['cyc']:.0f}" for r in s["top"]), "| head",
+                  {k: v["total"] for k, v in s["head"].items()}, "min image", s["minc"])
+        print(f"wrote p2 section of {a.out}")
+        return 0
     md = ["# QC18B-ACC exact cycle count (compile/cycles.py)", "",
           f"Array 16 x 8 PEs, KB 36: {SLOTS} MAC slots / cycle. Drain 1024 outputs per tile: compare units {NCMP} "
           f"(binary c1), NL fused lanes (stem, binary sc / c2), {NW} wide lanes (block 6); shadow double buffering "
@@ -534,12 +559,12 @@ def main():
           f"Executed MAC = nonzero ternary terms x output positions. Utilisation = executed MAC / ({SLOTS} x cycles).", ""]
     summary, s11, md11 = [], [], []
     for ck in a.ckpts:
-        prog, net, val, st, correct = load_stats(ck, 1, a.n, a.cache)
+        prog, net, val, st, correct = load_stats(ck, 1, a.n, a.cache, a.golden)
         m, sm = v1_md(prog, st, correct, a.n, ck)
         md += m
         summary.append(sm)
         if a.v == 11:
-            prog11, net11, val11, st11, c11 = load_stats(ck, 11, a.n, a.cache)
+            prog11, net11, val11, st11, c11 = load_stats(ck, 11, a.n, a.cache, a.golden)
             m, sm = v11_md(prog11, st11, c11, a.n, ck, st, net11, val11, a.nrep)
             md11 += m
             s11.append(sm)
@@ -570,8 +595,11 @@ def main():
     if a.v == 11:
         md += v11_section(md11, s11)
     os.makedirs(os.path.dirname(a.out), exist_ok=True)
+    hdr = "## p2 golden (IntBin2), v1.1 schedule (compile/*.py --golden p2, default)"
+    old = open(a.out).read().split("\n") if os.path.exists(a.out) else []
+    keep = old[old.index(hdr):] if hdr in old else []            # the p2 section survives an intbin rewrite
     with open(a.out, "w") as f:
-        f.write("\n".join(md) + "\n")
+        f.write("\n".join(md + ([""] + keep if keep else [])).rstrip("\n") + "\n")
     for run, sw, mac, top, sk in summary:
         print(run, "v1", " ".join(f"NL{k}: {v:.1f} cyc util {mac / (SLOTS * v):.3f}" for k, v in sw.items()))
         print("  top:", ", ".join(f"{r['name']} {r['cyc']:.0f}" for r in top), "| skip", {k: round(v, 3) for k, v in sk.items()})
@@ -642,6 +670,140 @@ V11_FINDINGS = [
     "cycles (stage-1 c2 / stem drains).",
     "",
 ]
+
+
+# ------------------------------------------------------------------------------------------------ head (pool + FC)
+FC_BITS = 128             # FC weight port (bits / cycle): FC_BITS / 8 int8 MACs per cycle
+FC_LAT = 4                # FC pipeline latency (MAC tree + bias + output register)
+
+
+def head_cycles(prog, nw=NW, fc_bits=FC_BITS):
+    """Head of one image, overlapped with the next image (it must fit in the next image's cycles):
+    pool sum: relu(s8) accumulated per channel while b7.c2 drains (512 x 20-b accumulators at the fused-lane outputs,
+      no extra cycles, no S re-read: the next image's stem overwrites S);  pool requant: 512 sums on the wide lanes
+      (pool_m, clamp [0, 127]; idle until the next image's block 6): ceil(512 / NW);  FC: 512 x 100 int8 MACs at
+      fc_bits / 8 MACs / cycle (weights streamed from the FC macro at fc_bits / cycle, pq held in a 4-kb register) +
+      int32 bias, FC_LAT pipeline.  Returns dict(pool, fc, total, mac)."""
+    last = prog.passes[-1]
+    C = last.cout
+    W8 = prog.head["fW8"]
+    nmac = fc_bits // 8
+    pool = cdiv(C, nw)
+    fc = cdiv(W8.shape[0] * W8.shape[1], nmac) + FC_LAT
+    return dict(pool=pool, fc=fc, total=pool + fc, mac=nmac)
+
+
+def p2_md(ck, n, cache, nrep, nws=(16, 32), fcs=(128, 256, 512)):
+    """p2 golden section of one checkpoint: v1.1 program / dataflow / list schedule with IntBin2 parameters."""
+    prog, net, val, st, correct = load_stats(ck, 11, n, cache, "p2")
+    md = [f"### {prog.run} ({ck})", "",
+          f"Bit-exact (p2 golden, v1.1 program, fused-lane sel window {prog.fsel} b): dataflow logits == IntBin2 logits on "
+          f"val[:{n}]: PASS (acc {100 * correct / n:.2f} %).", ""]
+    md += [f"* {c}" for c in prog.checks if c.startswith("v1.1") or "(p2)" in c or c.startswith("r bounds")
+           or c.startswith("c2 pass")]
+    res = {}
+    for nw in nws:
+        for NL in NLS11:
+            res[nw, NL] = list_schedule(prog, st, NL, nw, fl=FL_ALL, check=True)
+    npairs = len(BASE[(id(prog), "tiles")][1])
+    md += ["", f"Schedule check (NW {', '.join(map(str, nws))}, every NL, every image): {npairs} hazard pairs hold on the "
+           f"scheduled times: PASS.", ""]
+    if nrep:
+        replay_check(prog, net, val, st, 256, nrep, max(nws))
+        md += [f"Value replay: val[:{nrep}] executed tile by tile in the NL-256 / NW-{max(nws)} scheduled order == "
+               f"IntBin2 (torch.equal): PASS.", ""]
+    mac = sum(p.mac for p in prog.passes)
+    md += [f"#### Cycles / image (mean over val[:{n}], v1.1 schedule)", "",
+           "| NW | " + " | ".join(f"NL {k}" for k in NLS11) + " | util NL 256 | min / max NL 256 |",
+           "|---|" + "---|" * (len(NLS11) + 2)]
+    for nw in nws:
+        per = res[nw, 256][1]
+        md.append(f"| {nw} | " + " | ".join(f"{res[nw, k][1].mean():.1f}" for k in NLS11)
+                  + f" | {mac / (SLOTS * per.mean()):.3f} | {per.min()} / {per.max()} |")
+    nw = max(nws)
+    rows, per = res[nw, 256][:2]
+    md += ["", f"#### Per pass, NL 256, NW {nw} (attributed cycles, sum to the image)", "",
+           "| pass | PPU | tiles | chunk items | array cyc | PPU cyc | attributed cyc | exec MAC |", "|---|---|---|---|---|---|---|---|"]
+    for r in rows:
+        md.append(f"| {r['name']} | {r['ppu']} | {r['tiles']} | {r['items']:.1f} | {r['arr']:.1f} | {r['ppuc']:.0f} | "
+                  f"{r['cyc']:.1f} | {r['mac']} |")
+    md.append(f"| **image** | | | | {sum(r['arr'] for r in rows):.1f} | | **{per.mean():.1f}** (min {per.min()}, max "
+              f"{per.max()}) | {mac} |")
+    top = sorted(rows, key=lambda r: -r["cyc"])[:3]
+    md += ["", "Top-3 passes (NL 256, NW %d, attributed): " % nw + ", ".join(f"{r['name']} {r['cyc']:.0f}" for r in top), ""]
+    md += [f"#### Head (pool + FC {tuple(prog.head['fW8'].shape)} int8), overlapped with the next image (NW {nw}; "
+           f"must be <= the image's cycles, min over val[:{n}] = {per.min()})", "",
+           "| FC weight port (b / cycle) | int8 MAC / cycle | pool requant cyc | FC cyc | head cyc | fits |", "|---|---|---|---|---|---|"]
+    hd = {}
+    for fb in fcs:
+        h = head_cycles(prog, nw, fb)
+        hd[fb] = h
+        md.append(f"| {fb} | {h['mac']} | {h['pool']} | {h['fc']} | {h['total']} | "
+                  f"{'yes' if h['total'] <= per.min() else 'NO'} |")
+    md.append("")
+    return md, dict(run=prog.run, res=res, mac=mac, top=top, head=hd, nws=nws, minc=per.min())
+
+
+P2_TEXT = [
+    "Golden qc18bacc.golden_p2.IntBin2 (power-of-two stream ladder, results/golden_p2.md); `python3 -m "
+    "qc18bacc.compile.cycles CKPT... --golden p2` writes this section (`--golden intbin` rewrites the sections above and keeps this one). "
+    "Program (compile/program.py --golden p2): every IntBin2 parameter (stem_m, c2m / scm / c2h / sch, T1 / T2, block-6 "
+    "and pool requants) re-exported (results/lane_export_<run>_p2.txt, lane widths results/lane_widths_<run>_p2.txt); "
+    "identity-block c2: rs = relu(s_in) shifted by j = e_{k} - e_{k+1} in {0, -1} (round half up), asserted == IntBin2's "
+    "idm requant on all of [0, 32767] (no second multiplier). v1.1 schedule (changes 1-3) unchanged; the block-6 fused "
+    "fit uses the qb_lane_f sel window s' in [17, 32] (4 b): the p2 b6.hm multiplier needs s' = 29 (MW 22), outside "
+    "qb_lane_s8's [17, 24].",
+    "",
+]
+
+
+P2_FINDINGS = [
+    "### p2 findings", "",
+    "1. Bit-exact: compile/test_compile.py --golden p2 ALL PASS (v1 and v1.1 programs of E6_s0 / E6_s1: dataflow logits == "
+    "IntBin2 on val[:500], schedule hazard check + tile replay, all v1 / v1.1 mutants, plus the p2 mutants: every identity "
+    "block's j flipped 0 <-> -1 and the j = -1 round half up replaced by a floor shift are detected); --golden intbin ALL "
+    "PASS with the unchanged v1.1 counts (3805.3 / 3753.7 at NL 256, NW 16).",
+    "2. p2 lane widths (results/lane_widths_<run>_p2.txt, lane_export_<run>_p2.txt): the in-scope requants (stem, c2m, "
+    "scm) need MW 28 / 27 in qb_lane_s8's window s' in [17, 24] (IntBin: 29 / 28), sel used 0..6; idm is a shift (j = 0 or "
+    "-1). The E6_s0 b6.hm multiplier moved to s' = 29 (MW 22; E6_s1: s' = 23): with qb_lane_s8's 3-b sel it falls back to "
+    "the wide lanes (E6_s0 NL 256 NW 32: 3710.8 instead of 3370.8 cycles / image), so qb_lane_f has a 4-b sel (s' in "
+    "[17, 32], +140 um2 / lane, results/lane.md).",
+    "3. Binary r under p2: idm rs <= 32767, sc r <= 15703 / 12965, so r fits 16 b; the 17-b r port / 17-b stream entry of "
+    "deviation 4 (driven by the IntBin idm output 40160 / 45032) is not needed for the p2 golden (qb_lane_f keeps the "
+    "specified 17-b sv port; S could be 16 b, -64 kb).",
+    "4. NL 256, NW 32: 3370.8 / 3345.1 cycles / image (util 0.482 / 0.496); NW 16 equals the IntBin v1.1 count within 0.3 "
+    "cycles. Block 6 still dominates (s0: b6.c2 904 + b6.c1 371 attributed of 3371).",
+    "5. Head (cycles.head_cycles): pool sum of relu(s8) accumulated during the b7.c2 drain (512 x 20-b accumulators, no S "
+    "re-read), pool requant 512 / NW = 16 cycles on the idle wide lanes, FC 51 200 int8 MACs. At 128 b / cycle of FC "
+    "weights (16 MAC / cycle) the head takes 3220 cycles > the shortest image (3198 / 3182): it does NOT fit overlapped; "
+    "256 b / cycle (32 MAC / cycle) gives 1620 cycles (2x margin), ARCH's 64 MAC / cycle 820.",
+    "",
+]
+
+
+def p2_section(md2, s2):
+    out = ["## p2 golden (IntBin2), v1.1 schedule (compile/*.py --golden p2, default)", ""] + P2_TEXT + md2
+    out += ["### p2 summary", "", "| run | NW | cycles / image NL 256 | util | head cyc (FC 128 b) | head cyc (FC 256 b) |",
+            "|---|---|---|---|---|---|"]
+    for s in s2:
+        for nw in s["nws"]:
+            c = s["res"][nw, 256][1].mean()
+            out.append(f"| {s['run']} | {nw} | {c:.1f} | {s['mac'] / (SLOTS * c):.3f} | {s['head'][128]['total']} | "
+                       f"{s['head'][256]['total']} |")
+    return out + [""] + P2_FINDINGS
+
+
+def splice(path, header, lines):
+    """replace the section starting at the line `header` (up to the next line starting with '## ') or append it."""
+    old = open(path).read().split("\n") if os.path.exists(path) else []
+    if header in old:
+        i = old.index(header)
+        j = next((k for k in range(i + 1, len(old)) if old[k].startswith("## ")), len(old))
+        old = old[:i] + lines + old[j:]
+    else:
+        old = old + lines
+    with open(path, "w") as f:
+        f.write("\n".join(old).rstrip("\n") + "\n")
 
 
 def v11_section(md11, s11):

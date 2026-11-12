@@ -9,3 +9,8 @@ QB_TB qb_lane_sc XW=16 MW=27 TW=17 SW=6 cycles 200007 checked 200000 errors 0 PA
 QB_TB qb_lane_h XW=16 MW=27 TW=17 SW=6 cycles 200008 checked 200000 errors 0 PASS       (rand --base, seed 7)
 QB_TB qb_lane_sa XW=16 MW=27 TW=16 SW=4 cycles 200008 checked 200000 errors 0 PASS      (rand --base, seed 7)
 mutants of qb_lane_s8 (rand / real E6_s0 errors): rounding carry q[0] dropped 47983 / 485102; y_sat > T -> >= 48215 / 88; mode-1 carry-in dropped 3500 / 54
+QB_TB qb_lane_f MW=28 cycles 200007 checked 200000 errors 0 PASS       (gen_f.py rand, seed 7)
+QB_TB qb_lane_f MW=28 cycles 1064606 checked 1064599 errors 0 PASS     (gen_f.py real, p2 E6_s0, seed 1)
+QB_TB qb_lane_f MW=28 cycles 1080406 checked 1080399 errors 0 PASS     (gen_f.py real, p2 E6_s1, seed 1)
+QB_TB qb_lane_fn MW=28 real p2 E6_s0 / E6_s1: errors 0 / 0 PASS (rand: outside its 16-b input contract, not applicable)
+mutants of qb_lane_f (rand / real E6_s0 errors): j = -1 round half up dropped 8838 / 1996; one's-complement sign negate 6787 / 21259; lower pre-clamp removed 20054 / 0 (output-invariant on the p2 domains, see lane.md)

@@ -19,7 +19,8 @@ structure enters through the per-tile skip decision and the per-tile item counts
   channel tiles of a pixel tile).
 PPU: acc' = sgn acc (+ int bias pre-add for the stem / block 6); lanes = program.lane_s8 / lane_w / compare acc' >= T2.
 Head: relu(s_7) summed over the 16 positions, wide lane (pool_m, clamp [0, 127]), FC int8 (int32 acc + bias) x float scale.
-Asserts logits == IntBin logits (torch.equal) per batch.
+Asserts logits == golden logits (torch.equal) per batch (--golden p2: qc18bacc.golden_p2.IntBin2, default; intbin:
+qc18b.int_bin.IntBin).  p2: the identity-block c2 residual is rs = program.idm_shift(relu(s_in), j), j in {0, -1}.
 """
 import argparse
 import sys
@@ -210,7 +211,10 @@ def do_pass(prog, p, bf, Ws, dev, stats):
         bf.write("S", r)
     elif p.kind == "bc2":
         sin = bf.read("S", L, p.cout)                                                # in place: same addresses
-        if p.p["res"] == "idm":
+        if p.p["res"] == "idm" and "idm_j" in p.p:                                 # p2: shift, no multiplier
+            r = P.idm_shift(sin.clamp(min=0), p.p["idm_j"])
+            obs(p.name + ".idm", r)
+        elif p.p["res"] == "idm":
             r = P.lane_s8_rq(sin.clamp(min=0), dv("idm_m"), dv("idm_sel"))
             obs(p.name + ".idm", r)
         else:
@@ -380,7 +384,8 @@ def run_val(prog, net, val, n=500, bs=100, dev="cuda", log=print):
         for k, v in s.items():
             st.setdefault(k, []).append(v)
     st = {k: np.concatenate(v) for k, v in st.items()}
-    log(f"{prog.run}: dataflow logits == IntBin logits (torch.equal) on val[:{n}]: PASS; acc {100 * correct / n:.2f} %")
+    log(f"{prog.run}: dataflow logits == {type(net).__name__} logits (torch.equal) on val[:{n}]: PASS; "
+        f"acc {100 * correct / n:.2f} %")
     return st, correct
 
 
@@ -389,8 +394,9 @@ def main():
     ap.add_argument("ckpt")
     ap.add_argument("--n", type=int, default=500)
     ap.add_argument("--v", type=int, default=11, choices=(1, 11))
+    ap.add_argument("--golden", default="p2", choices=P.GOLDENS)
     a = ap.parse_args()
-    prog, net, val = P.build_program(a.ckpt, v=a.v)
+    prog, net, val = P.build_program(a.ckpt, v=a.v, golden=a.golden)
     run_val(prog, net, val, a.n)
     return 0
 

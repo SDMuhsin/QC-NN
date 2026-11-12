@@ -245,3 +245,152 @@ Top-3 passes (NL 256, attributed): b6.c2 1102, b6.c1 553, b1.c2 195
 5. The WAR hazards are binding, not theoretical: without them the schedule clobbers stream / B1 / B2 rows (hazard check and value replay both fail). Modelled in-place cases: binary sc r over s_in rows, block-6 sc r-hi entries over s6 rows hm has not read yet, B1 / B2 rows re-used by the next block.
 6. The three changes are close to additive at NL 256 (s0: -960 / -258 / -722 alone, -1952 together). With interleaving the fused lanes stop being the bottleneck above NL 256 (NL 384 gains ~70 cycles); NL 128 costs ~1180 cycles (stage-1 c2 / stem drains).
 
+
+## p2 golden (IntBin2), v1.1 schedule (compile/*.py --golden p2, default)
+
+Golden qc18bacc.golden_p2.IntBin2 (power-of-two stream ladder, results/golden_p2.md); `python3 -m qc18bacc.compile.cycles CKPT... --golden p2` writes this section (`--golden intbin` rewrites the sections above and keeps this one). Program (compile/program.py --golden p2): every IntBin2 parameter (stem_m, c2m / scm / c2h / sch, T1 / T2, block-6 and pool requants) re-exported (results/lane_export_<run>_p2.txt, lane widths results/lane_widths_<run>_p2.txt); identity-block c2: rs = relu(s_in) shifted by j = e_{k} - e_{k+1} in {0, -1} (round half up), asserted == IntBin2's idm requant on all of [0, 32767] (no second multiplier). v1.1 schedule (changes 1-3) unchanged; the block-6 fused fit uses the qb_lane_f sel window s' in [17, 32] (4 b): the p2 b6.hm multiplier needs s' = 29 (MW 22), outside qb_lane_s8's [17, 24].
+
+### E6_s0 (/tmp/root/qc18b/exc200/E6_s0/best.pt)
+
+Bit-exact (p2 golden, v1.1 program, fused-lane sel window 4 b): dataflow logits == IntBin2 logits on val[:500]: PASS (acc 62.80 %).
+
+* b0.idm (p2): rs = shift(relu(s_in), 0) == IntBin2 requant on [0, 32767]: PASS
+* b1.idm (p2): rs = shift(relu(s_in), -1) == IntBin2 requant on [0, 32767]: PASS
+* b3.idm (p2): rs = shift(relu(s_in), 0) == IntBin2 requant on [0, 32767]: PASS
+* b5.idm (p2): rs = shift(relu(s_in), 0) == IntBin2 requant on [0, 32767]: PASS
+* b7.idm (p2): rs = shift(relu(s_in), 0) == IntBin2 requant on [0, 32767]: PASS
+* v1.1 fused fit b6.hm: domain [-32767, 32767] (16 b, pre-add of a 1-b bias), pre-clamped [103, 26280] (16 b), MW needed 22: MOVED to the fused lanes (MW 29, MW needed 22, sel window s' in [17, 32], s' used [29, 29]); exact on every integer of every channel's worst-case domain (16776960 values): PASS; output range [0, 127]
+* v1.1 fused fit b6.c1: domain [-43804, 39836] (17 b, pre-add of a 13-b bias), pre-clamped [2, 38643] (17 b), MW needed 22: stays on the wide lanes (pre-clamped input 17 b > 16 b; 7 of 512 channels need > 16 b after the pre-clamp)
+* v1.1 fused fit b6.sc: domain [-15712, 5135] (15 b, pre-add of a 15-b bias), pre-clamped [-15712, 5135] (15 b), MW needed 31: stays on the wide lanes (MW 31 > 30; with a 5-b sel window [17, 40]: MW 31, s' used [17, 28]; |r| reaches 180737 after the pre-clamp (fused lane: r 17 b, y 18 b))
+* v1.1 fused fit b6.c2: domain [-339542, 85991] (20 b, pre-add of a 20-b bias), pre-clamped [-339542, 85991] (20 b), MW needed 99: stays on the wide lanes (pre-clamped input 20 b > 16 b; MW 99 > 30; with a 5-b sel window [17, 40]: MW 31, s' used [17, 35]; 15 of 512 channels need > 16 b after the pre-clamp)
+* r bounds (binary blocks 17 b signed < 65536; block 6 19 b, stored as 2 S entries): b0.idm 32767 b1.idm 16384 b2.sc 15703 b3.idm 32767 b4.sc 9170 b5.idm 32767 b6.sc 180737 b7.idm 32767
+* c2 pass |y + h + r| (< 2^18): b0.c2 48109 b1.c2 32377 b2.c2 57275 b3.c2 59520 b4.c2 69718 b5.c2 88291 b7.c2 87670
+
+Schedule check (NW 16, 32, every NL, every image): 6888 hazard pairs hold on the scheduled times: PASS.
+
+Value replay: val[:20] executed tile by tile in the NL-256 / NW-32 scheduled order == IntBin2 (torch.equal): PASS.
+
+#### Cycles / image (mean over val[:500], v1.1 schedule)
+
+| NW | NL 128 | NL 192 | NL 256 | NL 384 | util NL 256 | min / max NL 256 |
+|---|---|---|---|---|---|---|
+| 16 | 4989.6 | 4435.6 | 3805.6 | 3736.6 | 0.427 | 3661 / 3900 |
+| 32 | 4554.8 | 4000.8 | 3370.8 | 3301.8 | 0.482 | 3198 / 3486 |
+
+#### Per pass, NL 256, NW 32 (attributed cycles, sum to the image)
+
+| pass | PPU | tiles | chunk items | array cyc | PPU cyc | attributed cyc | exec MAC |
+|---|---|---|---|---|---|---|---|
+| stem | fused | 64 | 128.0 | 128.0 | 256 | 136.0 | 405504 |
+| b0.c1 | pecmp | 64 | 128.0 | 128.0 | 0 | 128.0 | 8232960 |
+| b0.c2 | fused | 64 | 128.0 | 128.0 | 256 | 134.0 | 8323072 |
+| b1.c1 | pecmp | 64 | 128.0 | 128.0 | 0 | 128.0 | 8298496 |
+| b1.c2 | fused | 64 | 128.0 | 128.0 | 256 | 195.0 | 7757824 |
+| b2.c1 | pecmp | 32 | 64.0 | 64.0 | 0 | 64.0 | 3670016 |
+| b2.sc | fused | 32 | 32.0 | 32.0 | 128 | 32.0 | 462848 |
+| b2.c2 | fused | 32 | 128.0 | 128.0 | 128 | 137.0 | 6866944 |
+| b3.c1 | pecmp | 32 | 128.0 | 128.0 | 0 | 128.0 | 7911424 |
+| b3.c2 | fused | 32 | 128.0 | 128.0 | 128 | 128.0 | 7745536 |
+| b4.c1 | pecmp | 16 | 64.0 | 64.0 | 0 | 64.0 | 3846656 |
+| b4.sc | fused | 16 | 16.0 | 16.0 | 64 | 25.0 | 450560 |
+| b4.c2 | fused | 16 | 128.0 | 128.0 | 64 | 143.0 | 8086528 |
+| b5.c1 | pecmp | 16 | 128.0 | 128.0 | 0 | 128.0 | 7987712 |
+| b5.c2 | fused | 16 | 128.0 | 128.0 | 64 | 128.0 | 8336896 |
+| b6.hm | fused | 0 | 0.0 | 0.0 | 64 | 80.0 | 0 |
+| b6.c1 | wide | 8 | 344.3 | 344.3 | 256 | 370.5 | 4302336 |
+| b6.sc | wide | 8 | 45.8 | 45.8 | 256 | 45.8 | 479616 |
+| b6.c2 | wide | 8 | 676.6 | 676.6 | 256 | 904.5 | 8927104 |
+| b7.c1 | pecmp | 8 | 128.0 | 128.0 | 0 | 128.0 | 8846976 |
+| b7.c2 | fused | 8 | 128.0 | 128.0 | 32 | 144.0 | 8934016 |
+| **image** | | | | 2906.7 | | **3370.8** (min 3198, max 3486) | 119873024 |
+
+Top-3 passes (NL 256, NW 32, attributed): b6.c2 904, b6.c1 371, b1.c2 195
+
+#### Head (pool + FC (100, 512) int8), overlapped with the next image (NW 32; must be <= the image's cycles, min over val[:500] = 3198)
+
+| FC weight port (b / cycle) | int8 MAC / cycle | pool requant cyc | FC cyc | head cyc | fits |
+|---|---|---|---|---|---|
+| 128 | 16 | 16 | 3204 | 3220 | NO |
+| 256 | 32 | 16 | 1604 | 1620 | yes |
+| 512 | 64 | 16 | 804 | 820 | yes |
+
+### E6_s1 (/tmp/root/qc18b/exc200/E6_s1/best.pt)
+
+Bit-exact (p2 golden, v1.1 program, fused-lane sel window 4 b): dataflow logits == IntBin2 logits on val[:500]: PASS (acc 62.80 %).
+
+* b0.idm (p2): rs = shift(relu(s_in), -1) == IntBin2 requant on [0, 32767]: PASS
+* b1.idm (p2): rs = shift(relu(s_in), 0) == IntBin2 requant on [0, 32767]: PASS
+* b3.idm (p2): rs = shift(relu(s_in), 0) == IntBin2 requant on [0, 32767]: PASS
+* b5.idm (p2): rs = shift(relu(s_in), 0) == IntBin2 requant on [0, 32767]: PASS
+* b7.idm (p2): rs = shift(relu(s_in), 0) == IntBin2 requant on [0, 32767]: PASS
+* v1.1 fused fit b6.hm: domain [-32767, 32767] (16 b, pre-add of a 1-b bias), pre-clamped [122, 31035] (16 b), MW needed 16: MOVED to the fused lanes (MW 29, MW needed 16, sel window s' in [17, 32], s' used [23, 23]); exact on every integer of every channel's worst-case domain (16776960 values): PASS; output range [0, 127]
+* v1.1 fused fit b6.c1: domain [-43621, 40386] (17 b, pre-add of a 12-b bias), pre-clamped [4, 39580] (17 b), MW needed 23: stays on the wide lanes (pre-clamped input 17 b > 16 b; 15 of 512 channels need > 16 b after the pre-clamp)
+* v1.1 fused fit b6.sc: domain [-33960, 5689] (17 b, pre-add of a 16-b bias), pre-clamped [-33960, 5689] (17 b), MW needed 30: stays on the wide lanes (pre-clamped input 17 b > 16 b; |r| reaches 109212 after the pre-clamp (fused lane: r 17 b, y 18 b); 1 of 512 channels need > 16 b after the pre-clamp)
+* v1.1 fused fit b6.c2: domain [-86829, 84654] (18 b, pre-add of a 13-b bias), pre-clamped [-85297, 73947] (18 b), MW needed 31: stays on the wide lanes (pre-clamped input 18 b > 16 b; MW 31 > 30; with a 5-b sel window [17, 40]: MW 31, s' used [17, 31]; 12 of 512 channels need > 16 b after the pre-clamp)
+* r bounds (binary blocks 17 b signed < 65536; block 6 19 b, stored as 2 S entries): b0.idm 16384 b1.idm 32767 b2.sc 9310 b3.idm 32767 b4.sc 12965 b5.idm 32767 b6.sc 109212 b7.idm 32767
+* c2 pass |y + h + r| (< 2^18): b0.c2 38054 b1.c2 56442 b2.c2 41910 b3.c2 46883 b4.c2 80733 b5.c2 122455 b7.c2 81791
+
+Schedule check (NW 16, 32, every NL, every image): 6888 hazard pairs hold on the scheduled times: PASS.
+
+Value replay: val[:20] executed tile by tile in the NL-256 / NW-32 scheduled order == IntBin2 (torch.equal): PASS.
+
+#### Cycles / image (mean over val[:500], v1.1 schedule)
+
+| NW | NL 128 | NL 192 | NL 256 | NL 384 | util NL 256 | min / max NL 256 |
+|---|---|---|---|---|---|---|
+| 16 | 4937.6 | 4383.6 | 3753.6 | 3684.6 | 0.442 | 3638 / 3849 |
+| 32 | 4529.1 | 3975.1 | 3345.1 | 3276.1 | 0.496 | 3182 / 3470 |
+
+#### Per pass, NL 256, NW 32 (attributed cycles, sum to the image)
+
+| pass | PPU | tiles | chunk items | array cyc | PPU cyc | attributed cyc | exec MAC |
+|---|---|---|---|---|---|---|---|
+| stem | fused | 64 | 128.0 | 128.0 | 256 | 136.0 | 430080 |
+| b0.c1 | pecmp | 64 | 128.0 | 128.0 | 0 | 128.0 | 8667136 |
+| b0.c2 | fused | 64 | 128.0 | 128.0 | 256 | 134.0 | 8609792 |
+| b1.c1 | pecmp | 64 | 128.0 | 128.0 | 0 | 128.0 | 8306688 |
+| b1.c2 | fused | 64 | 128.0 | 128.0 | 256 | 195.0 | 8241152 |
+| b2.c1 | pecmp | 32 | 64.0 | 64.0 | 0 | 64.0 | 3612672 |
+| b2.sc | fused | 32 | 32.0 | 32.0 | 128 | 32.0 | 471040 |
+| b2.c2 | fused | 32 | 128.0 | 128.0 | 128 | 137.0 | 7772160 |
+| b3.c1 | pecmp | 32 | 128.0 | 128.0 | 0 | 128.0 | 7731200 |
+| b3.c2 | fused | 32 | 128.0 | 128.0 | 128 | 128.0 | 7862272 |
+| b4.c1 | pecmp | 16 | 64.0 | 64.0 | 0 | 64.0 | 3787264 |
+| b4.sc | fused | 16 | 16.0 | 16.0 | 64 | 25.0 | 442368 |
+| b4.c2 | fused | 16 | 128.0 | 128.0 | 64 | 143.0 | 8151552 |
+| b5.c1 | pecmp | 16 | 128.0 | 128.0 | 0 | 128.0 | 8075776 |
+| b5.c2 | fused | 16 | 128.0 | 128.0 | 64 | 128.0 | 8499200 |
+| b6.hm | fused | 0 | 0.0 | 0.0 | 64 | 80.0 | 0 |
+| b6.c1 | wide | 8 | 374.4 | 374.4 | 256 | 400.3 | 4308352 |
+| b6.sc | wide | 8 | 48.7 | 48.7 | 256 | 48.7 | 480512 |
+| b6.c2 | wide | 8 | 620.8 | 620.8 | 256 | 846.2 | 8935552 |
+| b7.c1 | pecmp | 8 | 128.0 | 128.0 | 0 | 128.0 | 8879616 |
+| b7.c2 | fused | 8 | 128.0 | 128.0 | 32 | 144.0 | 8958080 |
+| **image** | | | | 2883.8 | | **3345.1** (min 3182, max 3470) | 122222464 |
+
+Top-3 passes (NL 256, NW 32, attributed): b6.c2 846, b6.c1 400, b1.c2 195
+
+#### Head (pool + FC (100, 512) int8), overlapped with the next image (NW 32; must be <= the image's cycles, min over val[:500] = 3182)
+
+| FC weight port (b / cycle) | int8 MAC / cycle | pool requant cyc | FC cyc | head cyc | fits |
+|---|---|---|---|---|---|
+| 128 | 16 | 16 | 3204 | 3220 | NO |
+| 256 | 32 | 16 | 1604 | 1620 | yes |
+| 512 | 64 | 16 | 804 | 820 | yes |
+
+### p2 summary
+
+| run | NW | cycles / image NL 256 | util | head cyc (FC 128 b) | head cyc (FC 256 b) |
+|---|---|---|---|---|---|
+| E6_s0 | 16 | 3805.6 | 0.427 | 3220 | 1620 |
+| E6_s0 | 32 | 3370.8 | 0.482 | 3220 | 1620 |
+| E6_s1 | 16 | 3753.6 | 0.442 | 3220 | 1620 |
+| E6_s1 | 32 | 3345.1 | 0.496 | 3220 | 1620 |
+
+### p2 findings
+
+1. Bit-exact: compile/test_compile.py --golden p2 ALL PASS (v1 and v1.1 programs of E6_s0 / E6_s1: dataflow logits == IntBin2 on val[:500], schedule hazard check + tile replay, all v1 / v1.1 mutants, plus the p2 mutants: every identity block's j flipped 0 <-> -1 and the j = -1 round half up replaced by a floor shift are detected); --golden intbin ALL PASS with the unchanged v1.1 counts (3805.3 / 3753.7 at NL 256, NW 16).
+2. p2 lane widths (results/lane_widths_<run>_p2.txt, lane_export_<run>_p2.txt): the in-scope requants (stem, c2m, scm) need MW 28 / 27 in qb_lane_s8's window s' in [17, 24] (IntBin: 29 / 28), sel used 0..6; idm is a shift (j = 0 or -1). The E6_s0 b6.hm multiplier moved to s' = 29 (MW 22; E6_s1: s' = 23): with qb_lane_s8's 3-b sel it falls back to the wide lanes (E6_s0 NL 256 NW 32: 3710.8 instead of 3370.8 cycles / image), so qb_lane_f has a 4-b sel (s' in [17, 32], +140 um2 / lane, results/lane.md).
+3. Binary r under p2: idm rs <= 32767, sc r <= 15703 / 12965, so r fits 16 b; the 17-b r port / 17-b stream entry of deviation 4 (driven by the IntBin idm output 40160 / 45032) is not needed for the p2 golden (qb_lane_f keeps the specified 17-b sv port; S could be 16 b, -64 kb).
+4. NL 256, NW 32: 3370.8 / 3345.1 cycles / image (util 0.482 / 0.496); NW 16 equals the IntBin v1.1 count within 0.3 cycles. Block 6 still dominates (s0: b6.c2 904 + b6.c1 371 attributed of 3371).
+5. Head (cycles.head_cycles): pool sum of relu(s8) accumulated during the b7.c2 drain (512 x 20-b accumulators, no S re-read), pool requant 512 / NW = 16 cycles on the idle wide lanes, FC 51 200 int8 MACs. At 128 b / cycle of FC weights (16 MAC / cycle) the head takes 3220 cycles > the shortest image (3198 / 3182): it does NOT fit overlapped; 256 b / cycle (32 MAC / cycle) gives 1620 cycles (2x margin), ARCH's 64 MAC / cycle 820.

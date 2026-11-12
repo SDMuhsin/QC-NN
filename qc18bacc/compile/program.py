@@ -1,6 +1,11 @@
 """QC18B-ACC program (qc18bacc/ARCH.md v1) from a verified qc18b E6 checkpoint:
 
-    CUDA_VISIBLE_DEVICES=0 python3 -m qc18bacc.compile.program RUN/best.pt
+    CUDA_VISIBLE_DEVICES=0 python3 -m qc18bacc.compile.program RUN/best.pt [--golden p2 | intbin] [--v 11 | 1]
+
+Golden (--golden): p2 (default) = qc18bacc.golden_p2.IntBin2 (power-of-two stream ladder: identity-block residual
+rs = idm_shift(relu(s_in), j), j in {0, -1}, no multiplier; lane export cached as results/lane_export_<run>_p2.txt;
+block-6 fused fit with the qb_lane_f 4-b sel window), intbin = qc18b.int_bin.IntBin (v1 / v1.1 results).  "IntBin"
+below = the selected golden.
 
 Network / calibration: exactly qc18b.int_bin.main (build, Folded, float_trace on train[:2000] in chunks of 500 -> IntBin);
 every number of the program is taken from that IntBin (the golden model), nothing is re-derived from floats.
@@ -41,6 +46,10 @@ from qc18b import data
 from qc18b.int_bin import IntBin, Q16, float_trace
 from qc18b.verify_bin import Folded, build
 from qc18bacc import workload as wl
+from qc18bacc.golden_p2 import IntBin2
+
+GOLDENS = ("p2", "intbin")   # p2 (default): qc18bacc.golden_p2.IntBin2 (power-of-two stream ladder, idm = shift j);
+                             # intbin: qc18b.int_bin.IntBin (v1 / v1.1 results, reproducible)
 
 RESULTS = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "results")
 B = 8                     # QC block size
@@ -114,11 +123,11 @@ def decode(codes):
 
 
 # ------------------------------------------------------------------------------------------------ lane arithmetic
-def lane_s8(x, m, sel, h=0, r=0, t=None, rmode=False, mw=MW, u8=False):
+def lane_s8(x, m, sel, h=0, r=0, t=None, rmode=False, mw=MW, u8=False, nsel=NSEL):
     """qb_lane_s8 (qbs_new #(16, 29, 16, 3, 17, 0)) mode 0, int64 tensors (broadcast).  Returns (y_sat or r, b).
     v1.1 (fused lane, see lane_f): mw = multiplier width (<= MW_F), u8 = output clamp [0, 127] instead of sat16."""
     assert ((x >= -2 ** (XW_S - 1)) & (x < 2 ** (XW_S - 1))).all(), "lane x outside 16 b"
-    assert (m >= 0).all() and (m < 2 ** mw).all() and (sel >= 0).all() and (sel < NSEL).all()
+    assert (m >= 0).all() and (m < 2 ** mw).all() and (sel >= 0).all() and (sel < nsel).all()
     p = (x * m) >> (SB - 1)                                   # registered product window
     assert (p.abs() < 2 ** 25).all(), "product window (26 b) overflow"
     q = p >> sel
@@ -133,6 +142,14 @@ def lane_s8(x, m, sel, h=0, r=0, t=None, rmode=False, mw=MW, u8=False):
         return s.clamp(0, 127), None
     ys = s.clamp(-Q16, Q16)
     return ys, (None if t is None else ys > t)
+
+
+def idm_shift(x, j):
+    """p2 golden identity residual: rs = x 2^j for j >= 0, round-half-up x 2^j for j < 0 (x = relu(s_in) >= 0); the
+    fused lane implements j in {0, -1}: rs = x or (x + 1) >> 1 (no multiplier)."""
+    j = torch.as_tensor(j)
+    assert ((j == 0) | (j == -1)).all(), "fused-lane idm shift outside {0, -1}"
+    return torch.where(j == 0, x, (x + 1) >> 1)
 
 
 def lane_s8_rq(x, m, sel):
@@ -178,7 +195,8 @@ def lane_f(x, f, h=0, r=0, t=None):
     if f["relu"]:
         x = x.clamp(min=0)
     x = torch.maximum(torch.minimum(x, f["hi"]), f["lo"])
-    return lane_s8(x, f["m"], f["sel"], h, r, t, rmode=f["mode"] == "r", mw=f["mw"], u8=f["mode"] == "u8")
+    return lane_s8(x, f["m"], f["sel"], h, r, t, rmode=f["mode"] == "r", mw=f["mw"], u8=f["mode"] == "u8",
+                   nsel=f.get("nsel", NSEL))
 
 
 def fused_fit(m0, sh, dlo, dhi, A, B, relu, dev, nsel=NSEL):
@@ -265,8 +283,9 @@ class Program:
     checks: list
 
 
-def load(ckpt, dev="cuda", calib=2000):
-    """build + IntBin calibrated exactly as qc18b.int_bin.main.  Returns model, fn, net, (xv, yv)."""
+def load(ckpt, dev="cuda", calib=2000, golden="p2"):
+    """build + IntBin (golden 'intbin') or IntBin2 (golden 'p2') calibrated exactly as qc18b.int_bin.main.
+    Returns model, fn, net, (xv, yv)."""
     torch.backends.cudnn.allow_tf32 = torch.backends.cuda.matmul.allow_tf32 = False
     model, ck, o, logp, fpb = build(ckpt, dev)
     args = ck["args"]
@@ -277,7 +296,8 @@ def load(ckpt, dev="cuda", calib=2000):
     rec = {}
     for i in range(0, calib, 500):
         float_trace(fn, xt[i:min(i + 500, calib)], rec)
-    return model, fn, IntBin(model, fn, rec, signed), (xv, yv)
+    assert golden in GOLDENS
+    return model, fn, (IntBin2 if golden == "p2" else IntBin)(model, fn, rec, signed), (xv, yv)
 
 
 def _mods(model):
@@ -289,10 +309,16 @@ def _mods(model):
     return mods
 
 
-def lane_export(net, info, run, ckpt):
-    path = os.path.join(RESULTS, f"lane_export_{run}.txt")
+def lane_export(net, info, run, ckpt, golden="intbin"):
+    """export cache results/lane_export_<run>[_p2].txt (+ the lane-width log results/lane_widths_<run>_p2.txt for p2)."""
+    sfx = "" if golden == "intbin" else "_" + golden
+    path = os.path.join(RESULTS, f"lane_export_{run}{sfx}.txt")
     if not os.path.exists(path):
-        wl.lane_widths(net, info, lambda s="": None, (path, SB, NSEL, MW))
+        lines = []
+        wl.lane_widths(net, info, lambda s="": lines.append(s), (path, SB, NSEL, MW))
+        if sfx:
+            with open(os.path.join(RESULTS, f"lane_widths_{run}{sfx}.txt"), "w") as f:
+                f.write(f"# workload.lane_widths of {ckpt}, golden {golden}\n" + "\n".join(lines) + "\n")
     rows = {}
     for ln in open(path):
         f = ln.split()
@@ -328,10 +354,14 @@ def domain(W8, rlo, rhi):
 
 
 @torch.no_grad()
-def build_program(ckpt, dev="cuda", v=11):
+def build_program(ckpt, dev="cuda", v=11, golden="p2", fsel=None):
     """v = 1: ARCH.md v1 program; v = 11: v1.1 (stem packing, per-PE c1 comparators, block 6 on the fused lanes
-    where exact; see cycles.md v1.1)."""
-    model, fn, net, val = load(ckpt, dev)
+    where exact; see cycles.md v1.1).  golden: 'p2' (IntBin2: every identity requant idm is the shift j in {0, -1},
+    the fused lane's residual is rs = idm_shift(relu(s_in), j), no multiplier) or 'intbin' (IntBin: rs = window
+    requant of relu(s_in) with the export's (m', sel)).  fsel: v1.1 block-6 fused-lane sel field bits (window
+    s' in [17, 17 + 2^fsel - 1]); default 3 (qb_lane_s8) for intbin, 4 for p2 (qb_lane_f: the p2 b6.hm needs s' = 29)."""
+    fsel = fsel if fsel is not None else (4 if golden == "p2" else 3)
+    model, fn, net, val = load(ckpt, dev, golden=golden)
     run = os.path.basename(os.path.dirname(os.path.abspath(ckpt)))
     mods = _mods(model)
     checks = []
@@ -367,7 +397,7 @@ def build_program(ckpt, dev="cuda", v=11):
 
     # ---- lane export (qb_lane_s8 m' / sel)
     info = {n: dict(lo=c["lo"], hi=c["hi"]) for n, c in conv.items()}
-    ex, expath = lane_export(net, info, run, ckpt)
+    ex, expath = lane_export(net, info, run, ckpt, golden)
     nx = _check_lane_exact("stem_m", ex["stem_m"], *net.stem_m, conv["stem"]["lo"] + net.stem_b,
                            conv["stem"]["hi"] + net.stem_b, True, dev)
 
@@ -406,6 +436,16 @@ def build_program(ckpt, dev="cuda", v=11):
                 passes.append(Pass(f"b{i}.sc", "bsc", i, "fused", "B1", ["S"], *geo(cs, H), 1, p + ".sc", cs["codes"],
                                    cs["sgn"], cs["nnz"], cs["bound"], dict(m=e["m"], sel=e["sel"], h=e["h"])))
                 rlo, rhi = y.min(0).values, y.max(0).values
+            elif golden == "p2":
+                j = net.e[i + 1] - net.e[i]                     # S_{i}/S_{i+1} = 2^j (golden_p2 ladder)
+                xs_ = torch.arange(0, Q16 + 1, device=dev)
+                ref = requant(xs_[None, :], d["idm"][0].to(dev), d["idm"][1].to(dev))[0]
+                assert torch.equal(idm_shift(xs_, j), ref), f"b{i}.idm: shift {j} != IntBin2 requant"
+                nx += xs_.numel()
+                y = idm_shift(torch.tensor([0, Q16]), j)
+                rbound[f"b{i}.idm"] = int(y.abs().max())
+                rlo, rhi = int(y.min()), int(y.max())
+                checks.append(f"b{i}.idm (p2): rs = shift(relu(s_in), {j}) == IntBin2 requant on [0, {Q16}]: PASS")
             else:
                 e = ex[f"b{i}.idm"]
                 nx += _check_lane_exact(f"b{i}.idm", e, *d["idm"], torch.tensor([0]), torch.tensor([Q16]), False, dev)
@@ -423,7 +463,9 @@ def build_program(ckpt, dev="cuda", v=11):
             assert sb < 2 ** YW, f"b{i}.c2 |y + h + r| {sb} >= 2^18"
             sbound[f"b{i}.c2"] = sb
             pr = dict(m=e2["m"], sel=e2["sel"], h=e2["h"], T=T1n, res="r" if d["sc"] else "idm")
-            if not d["sc"]:
+            if not d["sc"] and golden == "p2":
+                pr.update(idm_j=net.e[i + 1] - net.e[i])
+            elif not d["sc"]:
                 pr.update(idm_m=ex[f"b{i}.idm"]["m"], idm_sel=ex[f"b{i}.idm"]["sel"])
             passes.append(Pass(f"b{i}.c2", "bc2", i, "fused", "B2", ["S"] + (["B1"] if T1n is not None else []),
                                *geo(c2, Ho), 1, p + ".c2", c2["codes"], c2["sgn"], c2["nnz"], c2["bound"], pr))
@@ -460,7 +502,7 @@ def build_program(ckpt, dev="cuda", v=11):
                 p.p["pack"] = True              # 9 taps x 4 groups = planes 4h + g, 2 cycles per tile
             elif p.kind == "bc1":
                 p.ppu = "pecmp"                 # b2 = acc' >= T2 by per-PE comparators at capture
-        checks.extend(fit_block6(passes, conv, net, fpb, dev))
+        checks.extend(fit_block6(passes, conv, net, fpb, dev, 1 << fsel))
     # head: pool (wide lane, clamp [0, 127]) + FC
     assert 16 * Q16 < 2 ** (XW_W - 1)
     head = dict(pool_m0=net.pool_m[0].cpu(), pool_sh=net.pool_m[1].cpu(), fW8=net.fW8, fbq=net.fbq, fscale=net.fscale)
@@ -504,6 +546,8 @@ def build_program(ckpt, dev="cuda", v=11):
                                    / net.S["in"]).clamp(-127, 127).long() for c in range(3)])
     prog = Program(run, passes, head, lut, BUFS, checks)
     prog.v = v
+    prog.golden = golden
+    prog.fsel = fsel
     return prog, net, val
 
 
@@ -527,7 +571,7 @@ def sbits_t(lo, hi):
     return wl.sbits(int(torch.as_tensor(lo).min()), int(torch.as_tensor(hi).max()))
 
 
-def fit_block6(passes, conv, net, fpb, dev):
+def fit_block6(passes, conv, net, fpb, dev, nsel=NSEL):
     """v1.1: block-6 hm / c1 / sc (and c2 if it fits) on the fused lanes (bias pre-add, input ReLU, output clamp
     [0, 127], per-channel input pre-clamp).  A pass moves iff every channel fits: pre-clamped input 16 b signed,
     multiplier <= MW_F bits in the window s' in [17, 24], lane internal widths (lane_s8 asserts), r 17 b; exactness is
@@ -560,10 +604,10 @@ def fit_block6(passes, conv, net, fpb, dev):
             A, B = -Q16 - y2hi, Q16 - y2lo
         else:                                   # y_c2 enters sat16(y_c2 + r)
             A, B = -Q16 - rhi, Q16 - rlo
-        fit = fused_fit(m0, sh, dlo, dhi, A, B, relu, dev)
+        fit = fused_fit(m0, sh, dlo, dhi, A, B, relu, dev, nsel)
         mwn = int(fit["bits"].max())
         f = dict(bias=d[bk].cpu() if bk else C(n, 0), lo=fit["lo"], hi=fit["hi"], m=fit["m"], sel=fit["sel"], relu=relu,
-                 mode=mode, mw=max(MW, min(mwn, MW_F)))
+                 mode=mode, mw=max(MW, min(mwn, MW_F)), nsel=nsel)
         xw = sbits_t(fit["lo"], fit["hi"])
         why = []
         if xw > XW_S:
@@ -576,11 +620,11 @@ def fit_block6(passes, conv, net, fpb, dev):
                 nchk, olo, ohi = _check_fused(f, m0, sh, dlo, dhi, A, B, relu, dev)
                 if mode == "sat":                   # c2 sum y + h + r inside the 19-b adder at the corners
                     lane_s8(torch.stack([fit["lo"], fit["hi"]]), fit["m"], fit["sel"], 0, torch.stack([rlo, rhi]),
-                            mw=f["mw"])
+                            mw=f["mw"], nsel=nsel)
             except AssertionError as e:
                 why.append(str(e))
         if mwn > MW_F:                          # diagnostic: shift window needed (qb_lane_s8: s' in [17, 24], 3-b sel)
-            for ns in (16, 24):
+            for ns in [k for k in (16, 24) if k > nsel]:
                 fw = fused_fit(m0, sh, dlo, dhi, A, B, relu, dev, ns)
                 ss = SB + fw["sel"]
                 why.append(f"with a {ns.bit_length() - 1 if ns == 16 else 5}-b sel window [17, {SB + ns - 1}]: MW "
@@ -603,7 +647,7 @@ def fit_block6(passes, conv, net, fpb, dev):
         p.ppu = "fused"
         p.p["f"] = f
         p.p["mw_need"] = mwn
-        out.append(f"v1.1 fused fit {info}: MOVED to the fused lanes (MW {f['mw']}); exact on every integer of every "
+        out.append(f"v1.1 fused fit {info}: MOVED to the fused lanes (MW {f['mw']}, MW needed {mwn}, sel window s' in [{SB}, {SB + nsel - 1}], s' used [{SB + int(fit['sel'].min())}, {SB + int(fit['sel'].max())}]); exact on every integer of every "
                    f"channel's worst-case domain ({nchk} values): PASS; output range [{int(olo.min())}, {int(ohi.max())}]")
         if mode == "r":
             rlo, rhi = olo, ohi
@@ -628,8 +672,10 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("ckpt")
     ap.add_argument("--v", type=int, default=11, choices=(1, 11))
+    ap.add_argument("--golden", default="p2", choices=GOLDENS)
+    ap.add_argument("--fsel", type=int, default=None, choices=(3, 4))
     a = ap.parse_args()
-    prog, _, _ = build_program(a.ckpt, v=a.v)
+    prog, _, _ = build_program(a.ckpt, v=a.v, golden=a.golden, fsel=a.fsel)
     print("\n".join(describe(prog)))
     return 0
 

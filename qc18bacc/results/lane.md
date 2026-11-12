@@ -108,3 +108,80 @@ Interface of qb_lane_s8 (qbs_new #(XW 16, MW 29, TW 16, SHW 3, SB 17)):
 The worst-case identity-shortcut output can exceed 16 b: idm y reaches 40160 (E6_s0 b0) and 45032 (E6_s1 b3) when the stream is at 32767.
 IntBin keeps rs unclamped, but the lane saturates it to +-32767 and r is 16 b. So r = rs is exact only while |rs| <= 32767.
 This needs a range check in the compiler or a 17-b r. It applies to qb_lane_n as well.
+
+## qb_lane_f: fused lane for the p2 golden (`hw/rtl/qb_lane_f.sv`)
+
+Golden: `qc18bacc.golden_p2.IntBin2` (results/golden_p2.md). Every identity requant idm is the shift j in {0, -1}, so the second 16 x 29 idm multiplier of the old fused lane (cycles.md deviation 5) is gone.
+
+**Function.** It is qb_lane_s8 (qbs_new: window requant s' = 17 + sel, late operands, rounding as the carry-in, 3 register stages, latency 3) plus the following:
+- the compiler deviations of cycles.md: per-channel sign(g) negate of the 20-b accumulator, a 16-b bias pre-add (stem), input ReLU, a per-channel pre-clamp [lo, hi] to 16 b, the [0, 127] output clamp (u8 mode) and a 17-b r output (r mode).
+- the p2 residual, selected by `rmode` from the 17-b stream entry `sv`: 0 none, 1 r (conv-shortcut blocks), 2 relu(s_in) (j = 0), 3 (relu(s_in) + 1) >> 1 (j = -1). It is computed before the late register and needs no multiplier.
+- the b1_next compare: b = sat16(y + h + rs) > T1_next (sat mode only).
+
+Mode 1 (b2 = x >= T2) is dropped, because v1.1 runs binary c1 on the per-PE comparators.
+
+**Interface.**
+- Cycle n: vld, relu, acc (20 b), sgn, bias, lo, hi, m.
+- Cycle n + 1: sel (4 b), h, sv (17 b), rmode, omode, T.
+- Outputs follow edge n + 2: vld_o, y_o (17 b), b_o.
+- The pre-processing (negate, + bias, ReLU, clamp) is combinational in front of the S0 register, in cycle n. It meets 500 MHz tt with the 20 % IO-delay budget.
+
+### p2 lane widths (`workload.lane_widths` on the IntBin2 programs; results/lane_widths_E6_s{0,1}_p2.txt, lane_export_E6_s{0,1}_p2.txt)
+
+| | E6_s0 IntBin | E6_s0 p2 | E6_s1 IntBin | E6_s1 p2 |
+|---|---|---|---|---|
+| MW in qb_lane_s8's window s' in [17, 24], stem + c2m + scm | 29 | **28** | 28 | **27** |
+| sel used (stem / c2m, scm) | 0-6 / 0-2 | 0-6 / 0-3 | 0-4 / 0-3 | 0-4 / 0-3 |
+| idm | 24-b multiplier, sel 3-7 | shift j (b1: -1, others 0) | 24-b multiplier, sel 4-7 | shift j (b0: -1, others 0) |
+| b6.hm on the fused lane (v1.1 change 1) | s' in [17, 24], MW 15 | **s' 29**, MW 22 | s' in [17, 24], MW 15 | s' 23, MW 16 |
+| max binary r (idm rs / sc r) | 40160 | 32767 / 15703 | 45032 | 32767 / 12965 |
+| bias pre-add range (stem) | | [-3004, 975] | | [-1109, 1035] |
+
+Changes vs qb_lane_s8:
+- **MW 29 -> 28.**
+- **sel 3 -> 4 b (s' in [17, 32]).** E6_s0's p2 b6.hm needs s' = 29, which qb_lane_s8's window [17, 24] cannot reach. With 3 b, b6.hm returns to the wide lanes: E6_s0 at NL 256, NW 32 then takes 3710.8 instead of 3370.8 cycles / image (-9.2 % with 4 b). The 4-b field costs 140 um2 / lane (qb_lane_f3 below).
+- **r 17 b is no longer needed.** Binary r is at most 32767 under p2, so a 16-b r / stream entry would suffice. qb_lane_f keeps the specified 17-b sv port.
+- **The pre-clamp is redundant under p2.** Every pass on the fused lanes (stem, binary sc / c2, b6.hm) has an input domain that already fits 16 b. clamp(lane(x)) is monotone in x and exact on [lo, hi], so the pre-clamp changes no output. Evidence: the "lower pre-clamp removed" mutant gives 0 errors on all real vectors, and qb_lane_fn (no pre-clamp) passes both seeds. The pre-clamp only becomes necessary if a > 16-b block-6 pass is moved to the fused lanes.
+
+### Synthesis (tt compile, 2.0 ns, same flow as above; raw lines in lane_runs.txt)
+
+| top | function | area um2 | regs | fmax tt / ss MHz | latency |
+|---|---|---|---|---|---|
+| qb_lane_s8 (reference) | IntBin in-scope requant, mode 1, 16-b r | 5658.8 | 144 | 501.3 / 322.7 | 3 |
+| old fused estimate (cycles.md dev. 5) | qb_lane_s8 + second 16 x 29 idm multiplier (+ ~3000) | ~8660 | | | |
+| **qb_lane_f** | **p2 fused lane, MW 28, sel 4 b, pre-clamp** | **6726.2** | 148 | 501.1 / 318.0 | 3 |
+| qb_lane_f3 | the same with sel 3 b (qb_lane_s8 window) | 6585.8 | 145 | 501.1 / 321.4 | 3 |
+| qb_lane_fn | qb_lane_f without the pre-clamp (exact for p2) | 6339.2 | 148 | 500.9 / 321.9 | 3 |
+
+qb_lane_f against the two references:
+- **vs qb_lane_s8:** +1067 um2 (+18.9 %).
+- **vs the old fused estimate:** about -1930 um2 (-22 %).
+- **At NL = 256:** 1.72 mm2 of fused lanes (qb_lane_fn: 1.62 mm2), against 1.45 mm2 for 256 x qb_lane_s8. The s8 figure covers only the requant; the bias, residual and modes are not included.
+
+Breakdown of qb_lane_f against qb_lane_s8 (um2):
+
+| part | qb_lane_f | qb_lane_s8 | note |
+|---|---|---|---|
+| multiplier (u_mul) | 3604.7 | 3745.8 | 16 x 28 vs 16 x 29 |
+| fin: window shift, 4-operand add, sat, u8 clamp, omode mux, compare (u_fin) | 1234.1 | 921.6 | 4-b shift, 17-b output, u8 / r modes |
+| pre: negate, + bias, ReLU, pre-clamp (u_pre) | 713.5 | - | 329.8 without the pre-clamp |
+| p2 residual select / round (u_res) | 155.2 | - | replaces the ~3000 um2 idm multiplier |
+| S0 registers, x / m / vld (u_rin) | 307.8 | 321.5 | |
+| late registers, rs 17 / h / T / sel 4 / omode (u_rlate) | 376.2 | 348.8 | |
+| P register (u_rp1) | 198.4 | 191.5 | 28 b + vld (the whole product above bit 16) |
+| output registers (u_rout) | 130.0 | 123.1 | 17-b y |
+
+### Self-check (`hw/tb/run_tb_f.sh`; reference `hw/tb/gen_f.py` written from the definitions; real rows from `hw/tb/export_f.py`; Verilator 5.050; raw lines in lane_tb.txt)
+
+- **Random vectors: PASS, 0 errors.** 200,000 vectors (seed 7), reference = the lane arithmetic.
+  - Fields: acc 20 b, sgn, bias 16 b, relu, lo / hi, m 28 b, every sel 0-15, h 16 b, sv 17 b, every rmode x omode (about 16.7k each), T.
+  - Corners: acc +-2^19, m 0 / 1 / max, h / sv extremes, T = y_sat +- 1.
+  - Contracts: |y| < 2^17, and r mode |s| < 2^16.
+- **Real IntBin2 parameters: PASS, 0 errors on both seeds.** The reference is IntBin2's own formula, using its original 31-b (m0, sh) and the idm (2^30, 30 - j). The DUT gets the raw accumulator, sign(g), bias, pre-clamp and converted (m', sel).
+  - Coverage: every channel of the stem, binary sc, binary c2 (r and idm j = 0 / -1) and the moved b6.hm, each over EVERY x' of its worst-case domain. The hm parameters are per-tensor, so its 256 identical channel rows are run once over [-32767, 32767].
+  - sv: uniform over the r range (sc blocks) or over [-32767, 32767] (identity blocks), plus corners. T is the real T1_next.
+  - E6_s0: 1,064,599 vectors. E6_s1: 1,080,399 vectors.
+- **Mutants detected (errors on random / real E6_s0):**
+  - j = -1 round half up dropped: 8838 / 1996
+  - one's-complement negate: 6787 / 21259
+  - lower pre-clamp removed: 20054 / 0. The real count is 0 because the pre-clamp is output-invariant on the p2 domains, as stated above.

@@ -1,6 +1,9 @@
 """QC18B-ACC compiler tests (exit 1 on any failure):
 
-    CUDA_VISIBLE_DEVICES=0 python3 -m qc18bacc.compile.test_compile [CKPT ...] [--n 500]
+    CUDA_VISIBLE_DEVICES=0 python3 -m qc18bacc.compile.test_compile [CKPT ...] [--n 500] [--golden p2 | intbin]
+
+--golden p2 (default): every program / dataflow is built from qc18bacc.golden_p2.IntBin2 and compared with IntBin2's
+logits; --golden intbin: qc18b.int_bin.IntBin (the v1 / v1.1 results).  "IntBin" below = the selected golden.
 
 1. block-code table: 129 legal states, distinct 10-b PE codes, encode / decode round trip of every state, illegal codes
    rejected.
@@ -13,6 +16,8 @@
    IntBin on val[:n] per checkpoint; v1.1 schedule (NL 256, val[:n]) hazard check + tile replay of val[:4] in the
    scheduled order == IntBin; sensitivity: packed-stem group / plane order swapped, hm pre-clamp lo raised, scheduler
    without the WAR hazards (hazard check and replay must fail), without the drain-read RAW hazards (same).
+5. p2 only: idm shift mutants must be detected: one identity block's j flipped (0 <-> -1), and the round-half-up of
+   the j = -1 shift replaced by a floor shift.
 """
 import argparse
 import copy
@@ -98,6 +103,26 @@ def test_v11_sensitivity(prog, net, val):
     return "v1.1 sensitivity: " + ", ".join(f"{k} detected" for k, _ in out) + ": PASS"
 
 
+def test_p2_sensitivity(prog, net, val):
+    out = []
+    for p in prog.passes:
+        if p.kind == "bc2" and "idm_j" in p.p:
+            m = copy.deepcopy(prog)
+            q = next(x for x in m.passes if x.name == p.name)
+            q.p["idm_j"] = -1 - q.p["idm_j"]
+            out.append((f"{p.name} idm j {p.p['idm_j']} -> {q.p['idm_j']}", mismatch(m, net, val)))
+    assert any("-> 0" in k for k, _ in out) and any("-> -1" in k for k, _ in out), "need both j values"
+    sh0 = P.idm_shift
+    P.idm_shift = lambda x, j: x if j == 0 else x >> 1
+    try:
+        out.append(("idm j = -1 floor instead of round half up", mismatch(prog, net, val)))
+    finally:
+        P.idm_shift = sh0
+    bad = [k for k, v in out if not v]
+    assert not bad, f"mutants not detected: {bad}"
+    return "p2 sensitivity: " + ", ".join(f"{k} detected" for k, _ in out) + ": PASS"
+
+
 def test_v11_schedule(prog, net, val, st, nrep=4):
     rows, per, tim = Cy.list_schedule(prog, st, 256, check=True)
     Cy.replay_check(prog, net, val, st, 256, nrep)
@@ -131,7 +156,7 @@ def test_v11_schedule(prog, net, val, st, nrep=4):
     bad = [r for r in res if not (r[1] and r[2])]
     assert not bad, f"hazard mutants not detected: {bad}"
     return (f"{prog.run} v1.1 schedule NL 256: {len(pairs)} hazard pairs hold on val[:{len(per)}], tile replay of "
-            f"val[:{nrep}] == IntBin; scheduler without WAR / drain RAW hazards detected by both: PASS "
+            f"val[:{nrep}] == golden; scheduler without WAR / drain RAW hazards detected by both: PASS "
             f"({per.mean():.1f} cycles / image)")
 
 
@@ -139,7 +164,9 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("ckpts", nargs="*", default=CKPTS)
     ap.add_argument("--n", type=int, default=500)
+    ap.add_argument("--golden", default="p2", choices=P.GOLDENS)
     a = ap.parse_args()
+    print(f"golden: {a.golden}", flush=True)
     fails = 0
 
     def run(name, f, *args):
@@ -155,7 +182,7 @@ def main():
     first = None
     for ck in a.ckpts:
         try:
-            prog, net, val = P.build_program(ck, v=1)
+            prog, net, val = P.build_program(ck, v=1, golden=a.golden)
             print(f"{prog.run}: program build (all bound / exactness / buffer asserts): PASS", flush=True)
             D.run_val(prog, net, val, a.n)
             first = first or (prog, net, val)
@@ -165,10 +192,12 @@ def main():
             traceback.print_exc()
     if first:
         run("sensitivity", test_sensitivity, *first)
+        if a.golden == "p2":
+            run("p2 sensitivity", test_p2_sensitivity, *first)
     first11 = None
     for ck in a.ckpts:
         try:
-            prog, net, val = P.build_program(ck, v=11)
+            prog, net, val = P.build_program(ck, v=11, golden=a.golden)
             print(f"{prog.run}: v1.1 program build (fused-lane fit / exactness asserts): PASS", flush=True)
             st, _ = D.run_val(prog, net, val, a.n)
             run("v11 schedule", test_v11_schedule, prog, net, val, st)
