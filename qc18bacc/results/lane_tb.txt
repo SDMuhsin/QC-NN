@@ -1,0 +1,11 @@
+QB_TB qb_lane_s8 XW=16 MW=29 TW=16 SW=3 cycles 200007 checked 200000 errors 0 PASS      (rand, seed 7)
+QB_TB qb_lane_s8 XW=16 MW=29 TW=16 SW=3 cycles 1187823 checked 1187816 errors 0 PASS    (real E6_s0, 1,162,904 requant + 24,912 mode-1 vectors)
+QB_TB qb_lane_s8 XW=16 MW=29 TW=16 SW=3 cycles 1203543 checked 1203536 errors 0 PASS    (real E6_s1, 1,178,704 requant + 24,832 mode-1 vectors)
+QB_TB qb_lane_s XW=16 MW=27 TW=16 SW=4 cycles 200007 checked 200000 errors 0 PASS       (rand, seed 7)
+QB_TB qb_lane_s XW=16 MW=27 TW=16 SW=4 cycles 1187823 checked 1187816 errors 0 PASS     (real E6_s0, window [9, 24])
+QB_TB qb_lane_sk XW=16 MW=36 TW=16 SW=1 cycles 200007 checked 200000 errors 0 PASS      (rand, seed 7)
+QB_TB qb_lane_sp XW=16 MW=34 TW=16 SW=4 cycles 200007 checked 200000 errors 0 PASS      (rand, seed 7)
+QB_TB qb_lane_sc XW=16 MW=27 TW=17 SW=6 cycles 200007 checked 200000 errors 0 PASS      (rand, seed 7)
+QB_TB qb_lane_h XW=16 MW=27 TW=17 SW=6 cycles 200008 checked 200000 errors 0 PASS       (rand --base, seed 7)
+QB_TB qb_lane_sa XW=16 MW=27 TW=16 SW=4 cycles 200008 checked 200000 errors 0 PASS      (rand --base, seed 7)
+mutants of qb_lane_s8 (rand / real E6_s0 errors): rounding carry q[0] dropped 47983 / 485102; y_sat > T -> >= 48215 / 88; mode-1 carry-in dropped 3500 / 54

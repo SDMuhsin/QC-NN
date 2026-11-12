@@ -2,3 +2,4 @@
 qb_pe.sv
 qb_pe_cfg.sv
 qb_lane.sv
+qb_lane_s.sv

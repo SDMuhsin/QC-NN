@@ -213,6 +213,184 @@ def min_mult_bits(m0, sh, lo, hi, clamp=None, dev="cuda", chunk=2 ** 26):
     return out_b, out_s
 
 
+@torch.no_grad()
+def lu_table(m0, sh, lo, hi, smax, clamp=None, dev="cuda"):
+    """Feasible exact multipliers per channel and per COMMON shift s' = 0..smax (rounding 2^(s'-1), 0 for s' = 0):
+    requant(x, m', s') == requant(x, m0_c, sh_c) (optionally after clamp (clo, chi)) for every integer x in
+    [lo_c, hi_c]  <=>  L[c, s'] <= m' <= U[c, s'].  Same exact interval method as min_mult_bits (no sampling).
+    Returns L, U: [C, smax + 1] int64 (L > U: infeasible)."""
+    C = len(m0)
+    sv = torch.arange(smax + 1, device=dev, dtype=torch.int64)[:, None]
+    rv = torch.where(sv > 0, torch.bitwise_left_shift(torch.ones_like(sv), (sv - 1).clamp(min=0)), torch.zeros_like(sv))
+    p2 = torch.bitwise_left_shift(torch.ones_like(sv), sv)
+    L = torch.zeros(C, smax + 1, dtype=torch.int64)
+    U = torch.full((C, smax + 1), 2 ** 62, dtype=torch.int64)
+    for c in range(C):
+        M0, SH, LO, HI = int(m0[c]), int(sh[c]), int(lo[c]), int(hi[c])
+        if M0 == 0:
+            U[c] = 0                                                     # y == 0: m' = 0 exact for every s'
+            continue
+        x = torch.arange(LO, HI + 1, device=dev, dtype=torch.int64)
+        x = x[x != 0]
+        y = (x * M0 + (1 << (SH - 1))) >> SH
+        assert int(y.abs().max()) * 2 ** (smax + 1) < 2 ** 62, "int64 overflow in lu_table"
+        yl, yu = y, y
+        hl = hu = torch.ones_like(x, dtype=torch.bool)
+        if clamp is not None:                                            # as min_mult_bits
+            clo, chi = clamp
+            hu = y < chi
+            yl = torch.where(y >= chi, torch.full_like(y, chi), y)
+            hl = y > clo
+            yu = torch.where(y <= clo, torch.full_like(y, clo), y)
+        pos, neg = x > 0, x < 0
+        l = torch.zeros(smax + 1, device=dev, dtype=torch.int64)
+        u = torch.full((smax + 1,), 2 ** 62, device=dev, dtype=torch.int64)
+        k = pos & hl     # x m' >= yl 2^s - r
+        if k.any():
+            l = torch.maximum(l, cdiv(yl[k] * p2 - rv, x[k]).amax(1))
+        k = pos & hu     # x m' <= (yu + 1) 2^s - r - 1
+        if k.any():
+            u = torch.minimum(u, fdiv((yu[k] + 1) * p2 - rv - 1, x[k]).amin(1))
+        k = neg & hl
+        if k.any():
+            u = torch.minimum(u, fdiv(-(yl[k] * p2 - rv), -x[k]).amin(1))
+        k = neg & hu
+        if k.any():
+            l = torch.maximum(l, cdiv(-((yu[k] + 1) * p2 - rv - 1), -x[k]).amax(1))
+        L[c], U[c] = l.cpu(), u.cpu()
+    return L, U
+
+
+def sbits(lo, hi):
+    """signed two's-complement width holding every integer of [lo, hi]."""
+    return max(bitlen(max(hi, 0)), bitlen(max(-lo - 1, 0))) + 1
+
+
+def rq_scalar(x, m0, sh):
+    return (x * m0 + (1 << (sh - 1))) >> sh
+
+
+def lane_widths(net, info, log, export=None):
+    """PPU lane (qb_lane_n scope): requants of the stem (bias inside), the binary blocks' c2m / scm (bias h added after)
+    and the identity-shortcut idm (relu'd int16 stream); block-6 / pool requants are out of scope (qb_lane_w).
+    Worst-case domains as in [4].  Per layer: input width (signed), per-channel-shift minimal multiplier bits (as [4]),
+    and the minimal multiplier width MW if the shift s' is COMMON to all channels of the layer: min over s' of
+    max_c bitlen(L[c, s']) (all channels feasible at s').  Plus: the set of common shifts usable at a given MW,
+    the minimal MW for one network-wide constant shift (no shifter) / a k-position shift window, the requant output
+    range y, the bias h, the second operand r (shortcut result) and the thresholds."""
+    rq = [("stem_m", net.stem_m, info["stem"]["lo"] + net.stem_b, info["stem"]["hi"] + net.stem_b, None)]
+    clamp = {"stem_m": (-Q16, Q16)}      # stem pass: y_sat = sat(y) == clamp(requant) of IntBin (h = r = 0)
+    thr = {}
+    for i, d in enumerate(net.blocks):
+        p = f"blocks.{i}"
+        if d["fp"]:
+            continue
+        thr[f"b{i}.T1"] = (int(d["T1"].min()), int(d["T1"].max()))
+        thr[f"b{i}.T2"] = (int(d["T2"].min()), int(d["T2"].max()))
+        thr[f"b{i}.c1acc"] = (int(info[p + ".c1"]["lo"].min()), int(info[p + ".c1"]["hi"].max()))
+        rq.append((f"b{i}.c2m", d["c2m"], info[p + ".c2"]["lo"], info[p + ".c2"]["hi"], d["c2h"]))
+        if d["sc"]:
+            rq.append((f"b{i}.scm", d["scm"], info[p + ".sc"]["lo"], info[p + ".sc"]["hi"], d["sch"]))
+        if "idm" in d:
+            rq.append((f"b{i}.idm", d["idm"], torch.tensor([0]), torch.tensor([Q16]), None))
+    SMAX = 44
+    log(f"[L] PPU lane widths (scope: stem_m, binary c2m / scm, idm; worst-case domains as in [4]; common shift s' in "
+        f"0..{SMAX}; stem_m exact after the [-{Q16}, {Q16}] clamp it gets in IntBin, all others unclamped)")
+    log(f"  {'requant':<10}{'ch':>5}{'domain':>18}{'XW':>4}{'per-ch MW':>10}{'common MW':>10}{'@s':>4}"
+        f"{'y range':>18}{'|h| max':>9}{'|y+h| max':>10}")
+    tabs, res, cbits, Ls, rows = {}, {}, {}, {}, []
+    for nm, (m0, sh), lo, hi, h in rq:
+        lo, hi, m0, sh = lo.cpu().long(), hi.cpu().long(), m0.cpu(), sh.cpu()
+        L, U = lu_table(m0, sh, lo, hi, SMAX, clamp.get(nm))
+        ok = L <= U
+        bits = torch.tensor([[bitlen(v) for v in row] for row in L.tolist()])
+        bl = torch.where(ok.all(0), bits.amax(0), torch.full((SMAX + 1,), 99))      # layer MW at common s'
+        perch = int(torch.where(ok, bits, torch.full_like(bits, 99)).amin(1).max())
+        cmw, cs = int(bl.min()), int(bl.argmin())
+        tabs[nm] = bl
+        cbits[nm] = torch.where(ok, bits, torch.full_like(bits, 99))                  # [C, S] per channel
+        Ls[nm] = L
+        rows.append((nm, m0, sh, lo, hi, h))
+        ylo = [rq_scalar(int(lo[c]), int(m0[c]), int(sh[c])) for c in range(len(m0))]
+        yhi = [rq_scalar(int(hi[c]), int(m0[c]), int(sh[c])) for c in range(len(m0))]
+        hv = [0] * len(m0) if h is None else [int(v) for v in h.cpu().long()]
+        yh = max(max(abs(ylo[c] + hv[c]), abs(yhi[c] + hv[c])) for c in range(len(m0)))
+        xw = sbits(int(lo.min()), int(hi.max()))
+        res[nm] = dict(xw=xw, perch=perch, cmw=cmw, ylo=min(ylo), yhi=max(yhi), h=max(abs(v) for v in hv), yh=yh,
+                       ych=list(zip(ylo, yhi, hv)))
+        log(f"  {nm:<10}{len(m0):>5}{'[%d, %d]' % (int(lo.min()), int(hi.max())):>18}{xw:>4}{perch:>10}{cmw:>10}{cs:>4}"
+            f"{'[%d, %d]' % (min(ylo), max(yhi)):>18}{res[nm]['h']:>9}{yh:>10}")
+    names = list(tabs)
+    log(f"  MAX over layers: input width XW {max(r['xw'] for r in res.values())} (signed), per-channel-shift MW "
+        f"{max(r['perch'] for r in res.values())}, common-shift (per layer) MW {max(r['cmw'] for r in res.values())}"
+        f" (without the stem: {max(r['cmw'] for n, r in res.items() if n != 'stem_m')})")
+    log(f"  usable common shifts per layer at MW (s' with every channel exact and bitlen(L) <= MW):")
+    for mw in sorted({max(r['cmw'] for r in res.values()) + k for k in range(0, 4)}):
+        log(f"    MW {mw}: " + "  ".join(f"{n} {','.join(str(s) for s in range(SMAX + 1) if tabs[n][s] <= mw)}"
+                                        for n in names))
+    log(f"  shift window of k consecutive positions [s0, s0+k-1] shared by all layers (k = 1: network-wide constant "
+        f"shift, no shifter): minimal MW, best s0")
+    for k in (1, 2, 4, 8, 16, 32):
+        best = (99, None)
+        for s0 in range(0, SMAX + 2 - k):
+            mw = max(int(tabs[n][s0:s0 + k].min()) for n in names)
+            if mw < best[0]:
+                best = (mw, s0)
+        log(f"    k {k:>2}: MW {best[0]} (s0 {best[1]})")
+    log(f"  same, without the stem (k: minimal MW) " + "  ".join(
+        f"k {k}: {min(max(int(tabs[n][s0:s0 + k].min()) for n in names if n != 'stem_m') for s0 in range(SMAX + 2 - k))}"
+        for k in (1, 2, 4, 8, 16)))
+    allc = torch.cat([cbits[n] for n in names])
+    log(f"  PER-CHANNEL shift restricted to a window [s0, s0+k-1] (shift field of log2 k bits, all layers): minimal MW "
+        f"and the s0 achieving it; MW per s0 for k = 8 / 16 (s0 = 0..{SMAX})")
+    for k in (1, 2, 4, 8, 16, 32):
+        mws = [int(allc[:, s0:s0 + k].amin(1).max()) for s0 in range(SMAX + 2 - k)]
+        log(f"    k {k:>2}: MW {min(mws)}  s0 {[s0 for s0, v in enumerate(mws) if v == min(mws)]}"
+            + (f"   MW(s0) {mws}" if k in (8, 16) else ""))
+    for k in (8, 16):
+        mws = [max(int(tabs[n][s0:s0 + k].min()) for n in names) for s0 in range(SMAX + 2 - k)]
+        log(f"  per-pass window k {k}: MW(s0) {mws}")
+    if export:
+        path, SB, K, MW = export
+        with open(path, "w") as f:
+            f.write(f"# lane params: per-channel shift s = {SB} + sel, sel in [0, {K}), m' < 2^{MW}; "
+                    f"R name c lo hi m0 sh m' sel h\n")
+            for nm, m0, sh, lo, hi, h in rows:
+                for c in range(len(m0)):
+                    b = cbits[nm][c, SB:SB + K]
+                    sel = int(b.argmin())
+                    assert int(b[sel]) <= MW, f"{nm} ch {c}: no exact {MW}-bit multiplier in the window"
+                    mp = int(Ls[nm][c, SB + sel])
+                    f.write(f"R {nm} {c} {int(lo[c])} {int(hi[c])} {int(m0[c])} {int(sh[c])} {mp} {sel} "
+                            f"{0 if h is None else int(h[c])}\n")
+            for i, d in enumerate(net.blocks):
+                if not d["fp"]:
+                    p = f"blocks.{i}"
+                    f.write(f"T1 b{i} " + " ".join(str(int(v)) for v in d["T1"]) + "\n")
+                    f.write(f"T2 b{i} {int(info[p + '.c1']['lo'].min())} {int(info[p + '.c1']['hi'].max())} "
+                            + " ".join(str(int(v)) for v in d["T2"]) + "\n")
+        log(f"  exported lane parameters (window [{SB}, {SB + K - 1}], MW {MW}) to {path}")
+    # second operand r of the c2 pass = shortcut result rs (= y_sc + sch, or idm(s)) and the full pass sum
+    log(f"  pass sums (worst case): c2 pass y_c2 + c2h + rs, rs = y_sc + sch | y_idm")
+    for i, d in enumerate(net.blocks):
+        if d["fp"]:
+            continue
+        r2 = res[f"b{i}.c2m"]
+        rsn = f"b{i}.scm" if d["sc"] else (f"b{i}.idm" if f"b{i}.idm" in res else None)
+        if rsn is None:
+            continue
+        rr = res[rsn]
+        rmax = rr["yh"] if d["sc"] else max(abs(rr["ylo"]), abs(rr["yhi"]))
+        if d["sc"]:
+            tot = max(max(abs(a + h), abs(b + h)) + max(abs(c + g), abs(e + g))
+                      for (a, b, h), (c, e, g) in zip(r2["ych"], rr["ych"]))
+        else:
+            tot = r2["yh"] + rmax
+        log(f"    block {i}: |y_c2 + c2h| <= {r2['yh']}, |rs| <= {rmax}, |sum| <= {tot} ({sbits(-tot, tot)} b signed)")
+    log("  thresholds (T1 vs y_sat, T2 vs c1 acc = mode-1 x) and the c1 acc domain:")
+    log("    " + "  ".join(f"{k} [{v[0]}, {v[1]}]" for k, v in thr.items()))
+
+
 def plane_line(d, nplanes):
     nw = d["nw"]
     return " ".join(f"{1 - int(d['nz'][b]) / nw:.3f}" for b in range(nplanes)) + f"   planes/word {d['npl'] / nw:.3f}"
@@ -225,11 +403,18 @@ def main():
     ap.add_argument("--n", type=int, default=2000, help="first N val images")
     ap.add_argument("--calib", type=int, default=2000)
     ap.add_argument("--out", default=None)
+    ap.add_argument("--lane", action="store_true", help="only the PPU-lane width analysis (lane_widths), "
+                    "written to results/lane_widths_<run>.txt")
+    ap.add_argument("--lane-export", default=None, help="with --lane: write the in-scope requant parameters converted "
+                    "to the per-channel shift window [SB, SB + K - 1] with MW-bit multipliers (input of hw/tb/gen_s.py real)")
+    ap.add_argument("--lane-sb", type=int, default=17)
+    ap.add_argument("--lane-k", type=int, default=8)
+    ap.add_argument("--lane-mw", type=int, default=29)
     a = ap.parse_args()
     torch.backends.cudnn.allow_tf32 = torch.backends.cuda.matmul.allow_tf32 = False
     dev = "cuda"
     run = os.path.basename(os.path.dirname(os.path.abspath(a.ckpt)))
-    out = a.out or os.path.join(RESULTS, f"workload_{run}.txt")
+    out = a.out or os.path.join(RESULTS, f"{'lane_widths' if a.lane else 'workload'}_{run}.txt")
     lines = []
     log = lambda s="": (print(s, flush=True), lines.append(s))
 
@@ -284,6 +469,14 @@ def main():
         info[n] = dict(cin=conv.cin, cout=conv.cout, k=conv.k, s=ic.stride, Ho=Ho, Wo=Wo, inb=inb, lo=lo, hi=hi,
                        exe=nnz * Ho * Wo, slot=nblk * 16 * Ho * Wo, nblk=nblk, C=fn.fold[n]["C"],
                        bound=int(torch.maximum(lo.abs(), hi.abs()).max()), obs=int(st.accmax[n].max()))
+
+    if a.lane:
+        lane_widths(net, info, log, a.lane_export and (a.lane_export, a.lane_sb, a.lane_k, a.lane_mw))
+        os.makedirs(os.path.dirname(out), exist_ok=True)
+        with open(out, "w") as f:
+            f.write("\n".join(lines) + "\n")
+        print(f"wrote {out}")
+        return 0
 
     log("\n[1] conv workload per image  +  [2] accumulator acc' = sign(g) M x (before bias / requant)")
     log(f"{'conv':<15}{'Cin':>5}{'Cout':>5}{'k':>2}{'s':>2}{'HoxWo':>7}{'in-b':>5}{'exec MAC':>12}{'slot MAC':>12}{'fill':>7}"
