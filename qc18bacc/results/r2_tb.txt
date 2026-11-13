@@ -1,0 +1,79 @@
+# qb_act pass-level bench (hw/tb/run_tb_act.sh, Verilator 5.050), final RTL (shq), vectors hw/tb/export_act.py (cross-checked == export_core stim items), golden p2, E6_s0
+## E6_s0 val image 0
+QB_ACT pass 0 stem cfg 0 items 128 eot 64 cycles 148 err 0 bits 0
+QB_ACT pass 1 b0.c1 cfg 0 items 128 eot 64 cycles 148 err 0 bits 0
+QB_ACT pass 2 b0.c2 cfg 0 items 128 eot 64 cycles 148 err 0 bits 0
+QB_ACT pass 3 b1.c1 cfg 0 items 128 eot 64 cycles 148 err 0 bits 0
+QB_ACT pass 4 b1.c2 cfg 0 items 128 eot 64 cycles 148 err 0 bits 0
+QB_ACT pass 5 b2.c1 cfg 2 items 64 eot 32 cycles 144 err 0 bits 0
+QB_ACT pass 6 b2.sc cfg 3 items 32 eot 32 cycles 90 err 0 bits 0
+QB_ACT pass 7 b2.c2 cfg 4 items 128 eot 32 cycles 148 err 0 bits 0
+QB_ACT pass 8 b3.c1 cfg 4 items 128 eot 32 cycles 148 err 0 bits 0
+QB_ACT pass 9 b3.c2 cfg 4 items 128 eot 32 cycles 148 err 0 bits 0
+QB_ACT pass 10 b4.c1 cfg 5 items 64 eot 16 cycles 113 err 0 bits 0
+QB_ACT pass 11 b4.sc cfg 6 items 16 eot 16 cycles 52 err 0 bits 0
+QB_ACT pass 12 b4.c2 cfg 7 items 128 eot 16 cycles 152 err 0 bits 0
+QB_ACT pass 13 b5.c1 cfg 7 items 128 eot 16 cycles 152 err 0 bits 0
+QB_ACT pass 14 b5.c2 cfg 7 items 128 eot 16 cycles 152 err 0 bits 0
+QB_ACT pass 16 b6.c1 cfg 8 items 336 eot 8 cycles 2774 err 0 bits 0
+QB_ACT pass 17 b6.sc cfg 9 items 48 eot 8 cycles 1718 err 0 bits 0
+QB_ACT pass 18 b6.c2 cfg 10 items 656 eot 8 cycles 1212 err 0 bits 0
+QB_ACT pass 19 b7.c1 cfg 10 items 128 eot 8 cycles 152 err 0 bits 0
+QB_ACT pass 20 b7.c2 cfg 10 items 128 eot 8 cycles 152 err 0 bits 0
+QB_ACT_TB img0 items 2880 act_bytes 1658880 cycles 8047 errors 0 PASS
+## E6_s0 val image 1
+QB_ACT pass 0 stem cfg 0 items 128 eot 64 cycles 148 err 0 bits 0
+QB_ACT pass 1 b0.c1 cfg 0 items 128 eot 64 cycles 148 err 0 bits 0
+QB_ACT pass 2 b0.c2 cfg 0 items 128 eot 64 cycles 148 err 0 bits 0
+QB_ACT pass 3 b1.c1 cfg 0 items 128 eot 64 cycles 148 err 0 bits 0
+QB_ACT pass 4 b1.c2 cfg 0 items 128 eot 64 cycles 148 err 0 bits 0
+QB_ACT pass 5 b2.c1 cfg 2 items 64 eot 32 cycles 144 err 0 bits 0
+QB_ACT pass 6 b2.sc cfg 3 items 32 eot 32 cycles 90 err 0 bits 0
+QB_ACT pass 7 b2.c2 cfg 4 items 128 eot 32 cycles 148 err 0 bits 0
+QB_ACT pass 8 b3.c1 cfg 4 items 128 eot 32 cycles 148 err 0 bits 0
+QB_ACT pass 9 b3.c2 cfg 4 items 128 eot 32 cycles 148 err 0 bits 0
+QB_ACT pass 10 b4.c1 cfg 5 items 64 eot 16 cycles 113 err 0 bits 0
+QB_ACT pass 11 b4.sc cfg 6 items 16 eot 16 cycles 52 err 0 bits 0
+QB_ACT pass 12 b4.c2 cfg 7 items 128 eot 16 cycles 152 err 0 bits 0
+QB_ACT pass 13 b5.c1 cfg 7 items 128 eot 16 cycles 152 err 0 bits 0
+QB_ACT pass 14 b5.c2 cfg 7 items 128 eot 16 cycles 152 err 0 bits 0
+QB_ACT pass 16 b6.c1 cfg 8 items 368 eot 8 cycles 2806 err 0 bits 0
+QB_ACT pass 17 b6.sc cfg 9 items 48 eot 8 cycles 1718 err 0 bits 0
+QB_ACT pass 18 b6.c2 cfg 10 items 664 eot 8 cycles 1212 err 0 bits 0
+QB_ACT pass 19 b7.c1 cfg 10 items 128 eot 8 cycles 152 err 0 bits 0
+QB_ACT pass 20 b7.c2 cfg 10 items 128 eot 8 cycles 152 err 0 bits 0
+QB_ACT_TB img1 items 2920 act_bytes 1681920 cycles 8079 errors 0 PASS
+## mutants (QBA_DEFS=+define+QBA_MUT_x, E6_s0 val 0): passes with errors + summary
+### QBA_MUT_PAD
+QB_ACT pass 0 stem cfg 0 items 128 eot 64 cycles 148 err 4 bits 702
+QB_ACT pass 1 b0.c1 cfg 0 items 128 eot 64 cycles 148 err 8 bits 3894
+QB_ACT pass 2 b0.c2 cfg 0 items 128 eot 64 cycles 148 err 8 bits 5518
+QB_ACT pass 3 b1.c1 cfg 0 items 128 eot 64 cycles 148 err 8 bits 6090
+QB_ACT pass 4 b1.c2 cfg 0 items 128 eot 64 cycles 148 err 8 bits 6490
+QB_ACT pass 5 b2.c1 cfg 2 items 64 eot 32 cycles 144 err 4 bits 2716
+QB_ACT pass 7 b2.c2 cfg 4 items 128 eot 32 cycles 148 err 16 bits 7296
+QB_ACT pass 8 b3.c1 cfg 4 items 128 eot 32 cycles 148 err 16 bits 8960
+QB_ACT pass 9 b3.c2 cfg 4 items 128 eot 32 cycles 148 err 16 bits 6152
+QB_ACT pass 10 b4.c1 cfg 5 items 64 eot 16 cycles 113 err 16 bits 976
+QB_ACT pass 12 b4.c2 cfg 7 items 128 eot 16 cycles 152 err 64 bits 12704
+QB_ACT pass 13 b5.c1 cfg 7 items 128 eot 16 cycles 152 err 64 bits 16016
+QB_ACT pass 14 b5.c2 cfg 7 items 128 eot 16 cycles 152 err 64 bits 11888
+QB_ACT_TB img0 items 2880 act_bytes 1658880 cycles 8047 errors 296 FAIL
+### QBA_MUT_PHASE
+QB_ACT pass 6 b2.sc cfg 3 items 32 eot 32 cycles 90 err 32 bits 13264
+QB_ACT pass 11 b4.sc cfg 6 items 16 eot 16 cycles 52 err 16 bits 13788
+QB_ACT pass 17 b6.sc cfg 9 items 1 eot 0 cycles 1670 err 18 bits 750
+QB_ACT_TB img0 items 2833 act_bytes 1631808 cycles 7999 errors 66 FAIL
+### QBA_MUT_PLANE
+QB_ACT pass 16 b6.c1 cfg 8 items 336 eot 8 cycles 2774 err 336 bits 172208
+QB_ACT pass 17 b6.sc cfg 9 items 48 eot 8 cycles 1718 err 48 bits 24208
+QB_ACT pass 18 b6.c2 cfg 10 items 656 eot 8 cycles 1228 err 656 bits 170368
+QB_ACT_TB img0 items 2880 act_bytes 1658880 cycles 8063 errors 1040 FAIL
+### QBA_MUT_SKIP
+QB_ACT pass 18 b6.c2 cfg 10 items 547 eot 1 cycles 1172 err 611 bits 184816
+QB_ACT_TB img0 items 2771 act_bytes 1596096 cycles 8007 errors 611 FAIL
+## synthetic all-zero HQ / Z maps (zero-item rule: each channel tile = one all-zero item, first, plane 0)
+QB_ACT pass 16 b6.c1 cfg 8 items 8 eot 8 cycles 2438 err 0 bits 0
+QB_ACT pass 17 b6.sc cfg 9 items 8 eot 8 cycles 1670 err 0 bits 0
+QB_ACT pass 18 b6.c2 cfg 10 items 8 eot 8 cycles 1036 err 0 bits 0
+QB_ACT_TB zero items 24 act_bytes 13824 cycles 5144 errors 0 PASS

@@ -1,0 +1,24 @@
+# qb_act synthesis (impl/run.sh all qb_act 2.0, tt compile, tau1), impl/act_summary.py
+## v0 (shift select = vb - vbp decoded at the LB; superseded)
+qb_act_v0_tt_p2.0 total_um2 431105 regs 33054 dc_wns 5.75781e-05 | tt wns 0.002077 fmax 500.5 | ss wns -1.113953 fmax 321.1
+GROUP act output pipe (ACT_PIPE regs)                  total_um2     31518.7 comb         0.0 seq     31518.7 pct   7.3
+GROUP skip detect (group ORs + flags)                  total_um2     17965.1 comb     14463.0 seq      3502.1 pct   4.2
+GROUP line buffer (8 x 2048 b, shift / write mux)      total_um2    203888.2 comb     88503.8 seq    112066.6 pct  47.3
+GROUP S1 chunk slice (regs + chunk mux)                total_um2     99655.9 comb     57631.0 seq     42025.0 pct  23.1
+GROUP S2 patch network (act regs + cfg mux)            total_um2     70525.1 comb     39006.4 seq     31518.7 pct  16.4
+GROUP control (loader, rdq, sequencer, descriptors)    total_um2      7552.4 comb      1722.6 seq      5771.5 pct   1.8
+CRIT tt vb_reg_0_/CP -> u_lb/lb_reg_2__1707_/D
+CRIT ss vb_reg_0_/CP -> u_lb/lb_reg_2__219_/D
+dc_wall_s 908
+## v1 (final: registered one-hot shift select shq)
+qb_act_tt_p2.0 total_um2 435309 regs 33057 dc_wns 0.00315189 | tt wns 0.007107 fmax 501.8 | ss wns -0.993285 fmax 334.1
+GROUP act output pipe (ACT_PIPE regs)                  total_um2     31518.7 comb         0.0 seq     31518.7 pct   7.2
+GROUP skip detect (group ORs + flags)                  total_um2     17965.1 comb     14463.0 seq      3502.1 pct   4.1
+GROUP line buffer (8 x 2048 b, shift / write mux)      total_um2    208482.1 comb     93097.8 seq    112066.6 pct  47.9
+GROUP S1 chunk slice (regs + chunk mux)                total_um2     99401.4 comb     57376.4 seq     42025.0 pct  22.8
+GROUP S2 patch network (act regs + cfg mux)            total_um2     70483.3 comb     38964.6 seq     31518.7 pct  16.2
+GROUP control (loader, rdq, sequencer, descriptors)    total_um2      7458.8 comb      1609.6 seq      5791.0 pct   1.7
+CRIT tt c_cfg[0] -> sel1_reg_23_/D
+CRIT ss sel1_reg_6_/CP -> u_s1/s1_reg_2172_/D
+cell_area_um2 435309.487539 gate_eq_kGE 302.30 cells 125786 regs 33057
+dc_wall_s 614
