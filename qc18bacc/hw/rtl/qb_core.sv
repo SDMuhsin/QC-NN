@@ -489,7 +489,10 @@ module qb_core #(
     parameter int CREG = 0,                  // 1: code / ctl port register -> decode -> BR -> popcount (no PE S0 codes)
     parameter int WTP  = 0,                  // 1: wide-lane tail split (latency 4 -> 5, w_* outputs one cycle later)
     parameter int FTP  = 0,                  // 1: fused-lane tail split (latency 3 -> 4, f_* outputs one cycle later)
-    parameter int PPOP = 0                   // 1: PE weighted group sum retimed from S1 into S2 (latency unchanged)
+    parameter int PPOP = 0,                  // 1: PE weighted group sum retimed from S1 into S2 (latency unchanged)
+    // pnr_slice3.md option (8 = R1 / v2 as built):
+    parameter int BRG  = 8                   // PE rows per broadcast register (8, 4 or 2; ROWS a multiple of BRG):
+                                             // duplicated BRs, logic / latency unchanged
 ) (
     input  logic                         clk, rst_n,
     // array side
@@ -515,7 +518,7 @@ module qb_core #(
     output logic [4*COLS-1:0]            w_b
 );
     localparam int AW = 20;
-    localparam int NG = ROWS / 8;
+    localparam int NG = ROWS / BRG;
     localparam int NLF = 4 * COLS * 8;
     localparam int NLW = 4 * COLS;
     localparam int EW = 1 + 16 + MWF;
@@ -571,8 +574,8 @@ module qb_core #(
                 assign up = '0;
                 assign shi = '0;
             end
-            qbc_pe #(KB, AW, CREG, PPOP) u_pe (.clk, .rst_n, .a(act[KB*8*r +: KB*8]), .c(cbr[r/8][c]), .nnw(nbr[r/8][c]),
-                                   .ctl(kbr[r/8][c]), .t2(tbr[r/8][c]), .fsh(fsh_g[r/8]), .wsh(wsh_g[r/8]), .up,
+            qbc_pe #(KB, AW, CREG, PPOP) u_pe (.clk, .rst_n, .a(act[KB*8*r +: KB*8]), .c(cbr[r/BRG][c]), .nnw(nbr[r/BRG][c]),
+                                   .ctl(kbr[r/BRG][c]), .t2(tbr[r/BRG][c]), .fsh(fsh_g[r/BRG]), .wsh(wsh_g[r/BRG]), .up,
                                    .sh_in(shi), .shd(shd[r][c]), .sh_out(sho[r][c]), .b2(b2[COLS*8*r + 8*c +: 8]));
         end
     end

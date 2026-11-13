@@ -31,11 +31,14 @@ module tb_qb_core;
 `ifndef QBC_FTP
 `define QBC_FTP 0
 `endif
+`ifndef QBC_BRG
+`define QBC_BRG 8
+`endif
 `ifndef QBC_PPOP
 `define QBC_PPOP 0
 `endif
     qb_core #(.ROWS(ROWS), .COLS(COLS), .KB(KB), .MWF(MWF), .CREG(`QBC_CREG), .WTP(`QBC_WTP), .FTP(`QBC_FTP),
-              .PPOP(`QBC_PPOP)) dut (.*);
+              .PPOP(`QBC_PPOP), .BRG(`QBC_BRG)) dut (.*);
     assign {p_ld, f_sh, f_src, f_vld} = fctl;
     assign {w_ld, w_sh, w_vld} = wctl;
 

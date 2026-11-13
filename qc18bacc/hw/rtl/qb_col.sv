@@ -38,3 +38,15 @@ endmodule
 `QB_COL_V(qb_col_cw, 1, 1, 0, 0)
 `QB_COL_V(qb_col_cwf, 1, 1, 1, 0)
 `QB_COL_V(qb_col_cwfp, 1, 1, 1, 1)
+// pnr_slice3.md: qb_col_cwfp + one broadcast register per 2 PE rows (qb_core BRG 2; 8 BRs instead of 2)
+module qb_col_cwfp_b2 (
+    input  logic clk, rst_n,
+    input  logic [36*8-1:0] cd, input logic [9:0] ctl, input logic [16*36*8-1:0] act, input logic [8*17-1:0] t2,
+    output logic [16*8-1:0] b2, output logic b2_vld,
+    input  logic f_vld, f_src, f_sh, p_ld, input logic [8*81+4:0] pf, input logic [4*8*17-1:0] s_rd,
+    output logic f_vld_o, output logic [4*8*17-1:0] f_y, output logic [4*8-1:0] f_b,
+    input  logic w_vld, w_sh, w_ld, input logic [8*79+2:0] pw, input logic [4*19-1:0] w_r,
+    output logic w_vld_o, output logic [4*19-1:0] w_y, output logic [4-1:0] w_b
+);
+    qb_core #(.ROWS(16), .COLS(1), .CREG(1), .WTP(1), .FTP(1), .PPOP(1), .BRG(2)) u_core (.*);
+endmodule

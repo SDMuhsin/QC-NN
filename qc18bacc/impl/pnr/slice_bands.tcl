@@ -15,12 +15,13 @@ proc qb_class {name} {
 proc qb_bands {} {
     set blk [ord::get_db_block]
     set u [[ord::get_db_tech] getDbUnitsPerMicron]
-    array set a {lane 0 pe 0 rest 0}
+    array set a {lane 0 pe 0 rest 0 dec 0}
     foreach i [$blk getInsts] {
         set m [$i getMaster]
         if {![$m isCore]} { continue }
         set ar [expr {[$m getWidth] * double([$m getHeight]) / $u / $u}]
         set c [qb_class [$i getName]]
+        if {$c eq "dec"} { set a(dec) [expr {$a(dec) + $ar}] }
         if {$c eq "lane"} { set a(lane) [expr {$a(lane) + $ar}] } elseif {[string match pe* $c]} { set a(pe) [expr {$a(pe) + $ar}] } else { set a(rest) [expr {$a(rest) + $ar}] }
     }
     set core [$blk getCoreArea]
@@ -30,8 +31,12 @@ proc qb_bands {} {
     set tot [expr {$a(lane) + $a(pe) + $a(rest)}]
     # "other" (top glue: PPU control registers, drain-shift copies) is small; it goes with the lanes
     set ::QB_HL [expr {$H * ($a(lane) + 0.5 * $a(rest)) / $tot}]
-    set ::QB_HP [expr {($H - $::QB_HL) / 16.0}]
-    qc_log [format "slice bands: lane-band cells %.0f um2, PE cells %.0f um2, other %.0f um2; lane band %.1f um, PE row %.1f um" \
-        $a(lane) $a(pe) $a(rest) $::QB_HL $::QB_HP]
+    # QB_DEC_TOP 1 (results/pnr_slice3.md): a decoder band of height QB_HD at the top of the strip (decoders + CREG
+    # port registers at utilisation QB_DEC_UTIL, default 0.7), where global placement takes them anyway (next to the
+    # cd / ctl pins on the top edge); the PE rows share the rest.  Default 0: no decoder band (slice v1 / v2).
+    set ::QB_HD [expr {[qb_env QB_DEC_TOP 0] ? $a(dec) / [qb_env QB_DEC_UTIL 0.7] / ($::QB_X1 - $::QB_X0) : 0.0}]
+    set ::QB_HP [expr {($H - $::QB_HL - $::QB_HD) / 16.0}]
+    qc_log [format "slice bands: lane-band cells %.0f um2, PE cells %.0f um2, other %.0f um2 (decoders %.0f); lane band %.1f um, PE row %.1f um, decoder band %.1f um" \
+        $a(lane) $a(pe) $a(rest) $a(dec) $::QB_HL $::QB_HP $::QB_HD]
 }
 proc qb_row_y {r} { return [list [expr {$::QB_Y0 + $::QB_HL + $r * $::QB_HP}] [expr {$::QB_Y0 + $::QB_HL + ($r + 1) * $::QB_HP}]] }
