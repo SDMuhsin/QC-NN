@@ -32,7 +32,7 @@ proc qb_rep {stage} {
     # worst endpoint per block class (from the 3 000 worst endpoints), full path with input pins (wire_share.py)
     qc_to $f.ends.rpt { report_checks -corner $c -path_delay max -group_count 3000 -endpoint_count 1 -format end }
     set fh [open $f.ends.rpt]; set ends [read $fh]; close $fh
-    foreach {cls re} {pe {u_pe/} lane_f {u_lf/} lane_w {u_lw/} bcast_dec {u_(br|dec)} pbank {u_pb}} {
+    foreach {cls re} {pe {u_pe/} lane_f {u_lf/} lane_w {u_lw/} bcast_dec {u_(br|dec)} pbank {u_pb} creg {cdr_reg|ctlr_reg}} {
         foreach line [split $ends \n] {
             if {[llength $line] >= 4 && [regexp $re [lindex $line 0]] && [regexp {(-?[0-9]+\.[0-9]+)\s*(\(VIOLATED\))?\s*$} $line -> sl]} {
                 qc_to $f.cls_$cls.rpt { report_checks -corner $c -path_delay max -to [get_pins [lindex $line 0]] \
@@ -62,8 +62,9 @@ qb_rep cts
 if {[qc_env QB_GRT 1]} {
     set_routing_layers -signal $::QC_PNR_MIN_LAYER-$::QC_PNR_MAX_LAYER -clock $::QC_PNR_MIN_LAYER-$::QC_PNR_MAX_LAYER
     set_global_routing_layer_adjustment $::QC_PNR_MIN_LAYER-$::QC_PNR_MAX_LAYER [p GR_ADJUST]
+    # QB_GRT_ARGS (results/pnr_pe.md): extra global_route options, e.g. -allow_congestion (estimates despite GRT-0119)
     global_route -guide_file $::OUT/route_est.guide -congestion_iterations [p GR_ITER] \
-        -congestion_report_file $::OUT/rpt/gr_est_congestion.rpt
+        -congestion_report_file $::OUT/rpt/gr_est_congestion.rpt {*}[qc_env QB_GRT_ARGS {}]
     qc_log "global route done ([expr {[clock seconds] - $::T0}] s)"
     estimate_parasitics -global_routing
     qb_rep grt

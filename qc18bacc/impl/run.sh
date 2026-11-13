@@ -14,7 +14,7 @@ FLOW=$ROOT/flow/tsmc65
 export QC_BUILD=${QC_BUILD:-/tmp/$USER/qc18bacc/build}
 export QC_SDC=$HERE/constraints.sdc QC_PT_HOOK=$HERE/pt_hook.tcl QC_CLK=clk
 export QC_CORES=${QC_CORES:-8} QC_CORNER=${QC_CORNER:-tt}
-FL=$ROOT/qc18bacc/hw/rtl/qb.f
+FL=${QB_FL:-$ROOT/qc18bacc/hw/rtl/qb.f}     # QB_FL: other filelist, e.g. hw/rtl/qb_hb.f (results/pnr_pe.md)
 cmd=${1:-}; shift || true
 case "$cmd" in
 syn) "$FLOW/syn/run_dc.sh" "$FL" "$1" "$2" "${3:-$1_${QC_CORNER}_p$2}" ;;
