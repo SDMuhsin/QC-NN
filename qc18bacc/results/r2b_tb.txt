@@ -1,0 +1,65 @@
+# R2b bench (hw/tb/run_tb_act2.sh, Verilator 5.050), E6_s0 val 0 / 1, vectors hw/tb/export_act2.py (config C replay); final RTL
+QB_ACT2 pass 0 stem cfg 0 items 128 eot 64 first_issue 16 last_issue 269 model_last 269 done 274 s_reads 0 s_span -1 -1 err 0
+QB_ACT2 pass 1 b0.c1 cfg 0 items 128 eot 64 first_issue 50 last_issue 288 model_last 288 done 293 s_reads 0 s_span -1 -1 err 0
+QB_ACT2 pass 2 b0.c2 cfg 0 items 128 eot 64 first_issue 297 last_issue 550 model_last 550 done 555 s_reads 0 s_span -1 -1 err 0
+QB_ACT2 pass 3 b1.c1 cfg 0 items 128 eot 64 first_issue 331 last_issue 569 model_last 569 done 574 s_reads 0 s_span -1 -1 err 0
+QB_ACT2 pass 4 b1.c2 cfg 0 items 128 eot 64 first_issue 578 last_issue 831 model_last 831 done 836 s_reads 0 s_span -1 -1 err 0
+QB_ACT2 pass 5 b2.c1 cfg 2 items 64 eot 32 first_issue 612 last_issue 855 model_last 855 done 860 s_reads 0 s_span -1 -1 err 0
+QB_ACT2 pass 6 b2.sc cfg 3 items 32 eot 32 first_issue 846 last_issue 1102 model_last 1102 done 1107 s_reads 0 s_span -1 -1 err 0
+QB_ACT2 pass 7 b2.c2 cfg 4 items 128 eot 32 first_issue 879 last_issue 1106 model_last 1106 done 1111 s_reads 0 s_span -1 -1 err 0
+QB_ACT2 pass 8 b3.c1 cfg 4 items 128 eot 32 first_issue 1124 last_issue 1251 model_last 1251 done 1256 s_reads 0 s_span -1 -1 err 0
+QB_ACT2 pass 9 b3.c2 cfg 4 items 128 eot 32 first_issue 1252 last_issue 1379 model_last 1379 done 1384 s_reads 0 s_span -1 -1 err 0
+QB_ACT2 pass 10 b4.c1 cfg 5 items 64 eot 16 first_issue 1380 last_issue 1464 model_last 1464 done 1469 s_reads 0 s_span -1 -1 err 0
+QB_ACT2 pass 11 b4.sc cfg 6 items 16 eot 16 first_issue 1465 last_issue 1645 model_last 1645 done 1650 s_reads 0 s_span -1 -1 err 0
+QB_ACT2 pass 12 b4.c2 cfg 7 items 128 eot 16 first_issue 1490 last_issue 1653 model_last 1653 done 1658 s_reads 0 s_span -1 -1 err 0
+QB_ACT2 pass 13 b5.c1 cfg 7 items 128 eot 16 first_issue 1671 last_issue 1798 model_last 1798 done 1803 s_reads 0 s_span -1 -1 err 0
+QB_ACT2 pass 14 b5.c2 cfg 7 items 128 eot 16 first_issue 1799 last_issue 1926 model_last 1926 done 1931 s_reads 0 s_span -1 -1 err 0
+QB_ACT2 pass 16 b6.c1 cfg 8 items 336 eot 8 first_issue 2007 last_issue 2342 model_last 2342 done 2347 s_reads 336 s_span 1995 2335 err 0
+QB_ACT2 pass 17 b6.sc cfg 9 items 48 eot 8 first_issue 2369 last_issue 3197 model_last 3197 done 3202 s_reads 96 s_span 2003 3193 err 0
+QB_ACT2 pass 18 b6.c2 cfg 10 items 656 eot 8 first_issue 2379 last_issue 3279 model_last 3279 done 3284 s_reads 176 s_span 2375 3254 err 0
+QB_ACT2 pass 19 b7.c1 cfg 10 items 128 eot 8 first_issue 3331 last_issue 3458 model_last 3458 done 3463 s_reads 0 s_span -1 -1 err 0
+QB_ACT2 pass 20 b7.c2 cfg 10 items 128 eot 8 first_issue 3478 last_issue 3605 model_last 3605 done 3610 s_reads 0 s_span -1 -1 err 0
+QB_ACT2_ARB map_both_req 719 s_both_req 347 map_and_s_grant 0
+QB_ACT2_TB img0 items 2880 act_bytes 1658880 tiles 600 cycle_mismatch 0 last_cycle 3610 errors 0 PASS
+QB_ACT2 pass 0 stem cfg 0 items 128 eot 64 first_issue 16 last_issue 269 model_last 269 done 274 s_reads 0 s_span -1 -1 err 0
+QB_ACT2 pass 1 b0.c1 cfg 0 items 128 eot 64 first_issue 50 last_issue 288 model_last 288 done 293 s_reads 0 s_span -1 -1 err 0
+QB_ACT2 pass 2 b0.c2 cfg 0 items 128 eot 64 first_issue 297 last_issue 550 model_last 550 done 555 s_reads 0 s_span -1 -1 err 0
+QB_ACT2 pass 3 b1.c1 cfg 0 items 128 eot 64 first_issue 331 last_issue 569 model_last 569 done 574 s_reads 0 s_span -1 -1 err 0
+QB_ACT2 pass 4 b1.c2 cfg 0 items 128 eot 64 first_issue 578 last_issue 831 model_last 831 done 836 s_reads 0 s_span -1 -1 err 0
+QB_ACT2 pass 5 b2.c1 cfg 2 items 64 eot 32 first_issue 612 last_issue 855 model_last 855 done 860 s_reads 0 s_span -1 -1 err 0
+QB_ACT2 pass 6 b2.sc cfg 3 items 32 eot 32 first_issue 846 last_issue 1102 model_last 1102 done 1107 s_reads 0 s_span -1 -1 err 0
+QB_ACT2 pass 7 b2.c2 cfg 4 items 128 eot 32 first_issue 879 last_issue 1106 model_last 1106 done 1111 s_reads 0 s_span -1 -1 err 0
+QB_ACT2 pass 8 b3.c1 cfg 4 items 128 eot 32 first_issue 1124 last_issue 1251 model_last 1251 done 1256 s_reads 0 s_span -1 -1 err 0
+QB_ACT2 pass 9 b3.c2 cfg 4 items 128 eot 32 first_issue 1252 last_issue 1379 model_last 1379 done 1384 s_reads 0 s_span -1 -1 err 0
+QB_ACT2 pass 10 b4.c1 cfg 5 items 64 eot 16 first_issue 1380 last_issue 1464 model_last 1464 done 1469 s_reads 0 s_span -1 -1 err 0
+QB_ACT2 pass 11 b4.sc cfg 6 items 16 eot 16 first_issue 1465 last_issue 1645 model_last 1645 done 1650 s_reads 0 s_span -1 -1 err 0
+QB_ACT2 pass 12 b4.c2 cfg 7 items 128 eot 16 first_issue 1490 last_issue 1653 model_last 1653 done 1658 s_reads 0 s_span -1 -1 err 0
+QB_ACT2 pass 13 b5.c1 cfg 7 items 128 eot 16 first_issue 1671 last_issue 1798 model_last 1798 done 1803 s_reads 0 s_span -1 -1 err 0
+QB_ACT2 pass 14 b5.c2 cfg 7 items 128 eot 16 first_issue 1799 last_issue 1926 model_last 1926 done 1931 s_reads 0 s_span -1 -1 err 0
+QB_ACT2 pass 16 b6.c1 cfg 8 items 368 eot 8 first_issue 2007 last_issue 2374 model_last 2374 done 2379 s_reads 368 s_span 1995 2367 err 0
+QB_ACT2 pass 17 b6.sc cfg 9 items 48 eot 8 first_issue 2401 last_issue 3236 model_last 3236 done 3241 s_reads 96 s_span 2003 3232 err 0
+QB_ACT2 pass 18 b6.c2 cfg 10 items 664 eot 8 first_issue 2411 last_issue 3319 model_last 3319 done 3324 s_reads 184 s_span 2407 3297 err 0
+QB_ACT2 pass 19 b7.c1 cfg 10 items 128 eot 8 first_issue 3371 last_issue 3498 model_last 3498 done 3503 s_reads 0 s_span -1 -1 err 0
+QB_ACT2 pass 20 b7.c2 cfg 10 items 128 eot 8 first_issue 3518 last_issue 3645 model_last 3645 done 3650 s_reads 0 s_span -1 -1 err 0
+QB_ACT2_ARB map_both_req 719 s_both_req 379 map_and_s_grant 0
+QB_ACT2_TB img1 items 2920 act_bytes 1681920 tiles 600 cycle_mismatch 0 last_cycle 3650 errors 0 PASS
+## mutants (img0)
+# QBA2_MUT_FLAG
+QB_ACT2_ARB map_both_req 719 s_both_req 347 map_and_s_grant 0
+QB_ACT2_TB img0 items 2880 act_bytes 1658880 tiles 600 cycle_mismatch 0 last_cycle 3610 errors 16 FAIL
+b6.c2 err 16; 
+# QBA2_MUT_CTX
+QB_ACT2_ARB map_both_req 719 s_both_req 347 map_and_s_grant 0
+QB_ACT2_TB img0 items 2880 act_bytes 1658880 tiles 600 cycle_mismatch 0 last_cycle 3610 errors 496 FAIL
+b6.c1 err 168; b6.c2 err 328; 
+# QBA2_MUT_SADDR
+QB_ACT2_ARB map_both_req 719 s_both_req 347 map_and_s_grant 0
+QB_ACT2_TB img0 items 2880 act_bytes 1658880 tiles 600 cycle_mismatch 0 last_cycle 3610 errors 656 FAIL
+b6.c2 err 656; 
+# QBA2_MUT_ARB
+QB_ACT2_ARB map_both_req 501 s_both_req 8 map_and_s_grant 0
+QB_ACT2_TB img0 items 660 act_bytes 380160 tiles 600 cycle_mismatch 367 last_cycle 40000 errors 166 FAIL
+stem err 73; b0.c1 err 53; b1.c1 err 1; b2.c1 err 7; b2.c2 err 1; b3.c2 err 1; b4.c1 err 1; b4.sc err 1; b4.c2 err 7; b5.c1 err 1; b5.c2 err 1; b6.c1 err 1; b6.sc err 1; b6.c2 err 1; b7.c1 err 1; b7.c2 err 1; 
+## R2 bench (qb_act, unchanged) on the same vectors
+QB_ACT_TB img0 items 2880 act_bytes 1658880 cycles 8047 errors 0 PASS
+QB_ACT_TB img1 items 2920 act_bytes 1681920 cycles 8079 errors 0 PASS

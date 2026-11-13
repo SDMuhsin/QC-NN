@@ -17,7 +17,7 @@ candidate tiles by max(scheduler start, supply-ready start)); with the defaults 
 | v1.2 (cycles.py as is) | 3373.1 | 3352.2 | 0 / 0 | free supply, 4-pass interleave (val[:500]: 3370.8 / 3345.1) |
 | A as built | 8658.5 | 8674.0 | +5285 / +5322 | b6 re-reads HQ / Z per channel tile at 512 b (+2421 / +1498 / +531 on c1 / sc / c2), cold window per pass, b2.c1 / b4.c1 port-bound |
 | B | 4241.4 | 4223.0 | +868 / +871 | b6 at rate (c1 1 word / item); left: pass-serial array (A0 +402) + cold windows (~16-25 / pass) + b2.c1 (+81), b4.c1 (+50) |
-| C | 3653.7 | 3634.9 | +281 / +283 | 2nd context hides cold windows and b2.c1 behind the other pass; ctx = 2 limit costs +102 (C0) |
+| C | 3651.7 | 3632.9 | +279 / +281 | 2nd context hides cold windows and b2.c1 behind the other pass; ctx = 2 limit costs +102 (C0); per-cycle port arbitration (R2b, was 3653.7 / 3634.9 with whole-row port slots); **built in R2b, cycle-exact vs RTL (results/r2b.md)** |
 | D | 4066.4 | 4048.0 | +693 / +696 | 1024 b halves cold windows / row loads; still pass-serial |
 | E | 3588.7 | 3569.9 | +216 / +218 | best: = C0 (+102, two contexts instead of 4-pass interleave) + ~114 supply |
 
@@ -56,6 +56,10 @@ after the previous pass's done pulse (as built), counted on its first tile; the 
   vb <= v - 8 has issued its last item), after its data is written (RAW ready of the tile from the scheduler), after
   the context started the pass, and after the port finished the previous load (port served in array-tile commit
   order).  A row is usable LAT = 3 cycles after its last line left the port (m_ra reg -> macro -> rdq -> LB).
+  Port arbitration (R2b, hw/rtl/qb_act2.sv): every port cycle (line, pad line, skipped row; S word) is placed on its
+  own at the earliest free cycle; tiles commit in scheduler order, so an earlier-committed (older) tile's cycles are
+  never displaced = a per-cycle arbiter granting the older tile (smaller commit index), cycle-exact vs the RTL
+  (results/r2b.md).  One context: identical to whole-row placement (A, B, D unchanged).
 * Items: a binary tile issues its items one per cycle once its whole window (vb .. vb + K) is loaded (qb_act S_BIN);
   later channel tiles of the same pixel tile reuse the window.  int8 (block 6, as built): per (channel tile, plane)
   segment, window = the plane's R rows (HQ 8, Z 4, K = R), S_WAIT -> S_FLAG -> items (only nonzero chunks) -> one
@@ -107,7 +111,7 @@ Passes that differ from the RTL: 0 of 40 (cycle-exact on both images).
 | A | as built: 512-b map port, one context, b6 per-plane LB windows | 8658.5 (8605 / 8694) | 8674.0 (8630 / 8719) | +5285.4 |
 | B | A + b6 slice-major in S at 2048 b/cycle, executed slices only | 4241.4 (4116 / 4332) | 4223.0 (4124 / 4308) | +868.3 |
 | C0 | two contexts, free supply | 3475.1 (3356 / 3564) | 3454.2 (3356 / 3540) | +102.0 |
-| C | B + two contexts sharing the 512-b map port | 3653.7 (3529 / 3744) | 3634.9 (3536 / 3720) | +280.5 |
+| C | B + two contexts sharing the 512-b map port | 3651.7 (3527 / 3742) | 3632.9 (3534 / 3718) | +278.5 |
 | D | B with a 1024-b map port | 4066.4 (3941 / 4157) | 4048.0 (3949 / 4133) | +693.3 |
 | E | C with a 1024-b map port | 3588.7 (3464 / 3679) | 3569.9 (3471 / 3655) | +215.5 |
 | B-scfull | B, b6.sc from the full HQ plane (no decimated copy) | 4640.6 (4452 / 4796) | 4647.0 (4524 / 4796) | +1267.5 |
@@ -121,7 +125,7 @@ Passes that differ from the RTL: 0 of 40 (cycle-exact on both images).
 | b0.c2 | 128.0 | 134.0 | 254.0 | 275.0 | 275.0 | 134.0 | 152.0 | 269.0 | 140.0 | 275.0 | 21.0 | 21.0 | 8.0 | 15.0 | 0.0 |
 | b1.c1 | 128.0 | 128.0 | 128.0 | 149.0 | 149.0 | 128.0 | 129.0 | 143.0 | 132.0 | 149.0 | 21.0 | 21.0 | 1.0 | 15.0 | 4.0 |
 | b1.c2 | 128.0 | 195.0 | 254.0 | 275.0 | 275.0 | 195.0 | 206.0 | 269.0 | 198.0 | 275.0 | 21.0 | 21.0 | 8.0 | 15.0 | 0.0 |
-| b2.c1 | 64.0 | 64.0 | 64.0 | 145.0 | 145.0 | 64.0 | 71.0 | 79.0 | 72.0 | 145.0 | 81.0 | 81.0 | 7.0 | 15.0 | 8.0 |
+| b2.c1 | 64.0 | 64.0 | 64.0 | 145.0 | 145.0 | 64.0 | 69.0 | 79.0 | 72.0 | 145.0 | 81.0 | 81.0 | 5.0 | 15.0 | 8.0 |
 | b2.sc | 32.0 | 32.0 | 125.0 | 139.0 | 139.0 | 32.0 | 57.0 | 137.0 | 41.0 | 139.0 | 14.0 | 14.0 | 10.0 | 12.0 | 0.0 |
 | b2.c2 | 128.0 | 137.0 | 128.0 | 149.0 | 149.0 | 218.0 | 205.0 | 143.0 | 214.0 | 149.0 | 21.0 | 21.0 | 2.0 | 15.0 | 2.0 |
 | b3.c1 | 128.0 | 128.0 | 128.0 | 149.0 | 149.0 | 128.0 | 145.0 | 143.0 | 139.0 | 149.0 | 21.0 | 21.0 | 17.0 | 15.0 | 11.0 |
@@ -137,7 +141,7 @@ Passes that differ from the RTL: 0 of 40 (cycle-exact on both images).
 | b6.c2 | 678.2 | 905.6 | 722.2 | 1252.8 | 732.2 | 905.6 | 906.8 | 732.2 | 906.8 | 732.2 | 530.6 | 10.0 | 1.2 | 10.0 | 1.2 |
 | b7.c1 | 128.0 | 128.0 | 128.0 | 135.0 | 135.0 | 128.0 | 135.0 | 128.0 | 128.0 | 135.0 | 7.0 | 7.0 | 7.0 | 0.0 | 0.0 |
 | b7.c2 | 128.0 | 144.0 | 144.0 | 169.0 | 169.0 | 144.0 | 163.0 | 161.0 | 155.0 | 169.0 | 25.0 | 25.0 | 19.0 | 17.0 | 11.0 |
-| **image** | | **3373.1** | **3775.1** | **8658.5** | **4241.4** | **3475.1** | **3653.7** | **4066.4** | **3588.7** | **4640.6** | | | | | |
+| **image** | | **3373.1** | **3775.1** | **8658.5** | **4241.4** | **3475.1** | **3651.7** | **4066.4** | **3588.7** | **4640.6** | | | | | |
 
 S read demand of the block-6 passes, E6_s0 (b / cycle over the pass's span = first array start .. last item; mean over images) [Mod]; the S read port runs at 2048 b / cycle while streaming
 
@@ -156,7 +160,7 @@ S read demand of the block-6 passes, E6_s0 (b / cycle over the pass's span = fir
 | b0.c2 | 128.0 | 134.0 | 254.0 | 275.0 | 275.0 | 134.0 | 152.0 | 269.0 | 140.0 | 275.0 | 21.0 | 21.0 | 8.0 | 15.0 | 0.0 |
 | b1.c1 | 128.0 | 128.0 | 128.0 | 149.0 | 149.0 | 128.0 | 129.0 | 143.0 | 132.0 | 149.0 | 21.0 | 21.0 | 1.0 | 15.0 | 4.0 |
 | b1.c2 | 128.0 | 195.0 | 254.0 | 275.0 | 275.0 | 195.0 | 206.0 | 269.0 | 198.0 | 275.0 | 21.0 | 21.0 | 8.0 | 15.0 | 0.0 |
-| b2.c1 | 64.0 | 64.0 | 64.0 | 145.0 | 145.0 | 64.0 | 71.0 | 79.0 | 72.0 | 145.0 | 81.0 | 81.0 | 7.0 | 15.0 | 8.0 |
+| b2.c1 | 64.0 | 64.0 | 64.0 | 145.0 | 145.0 | 64.0 | 69.0 | 79.0 | 72.0 | 145.0 | 81.0 | 81.0 | 5.0 | 15.0 | 8.0 |
 | b2.sc | 32.0 | 32.0 | 125.0 | 139.0 | 139.0 | 32.0 | 57.0 | 137.0 | 41.0 | 139.0 | 14.0 | 14.0 | 10.0 | 12.0 | 0.0 |
 | b2.c2 | 128.0 | 137.0 | 128.0 | 149.0 | 149.0 | 218.0 | 205.0 | 143.0 | 214.0 | 149.0 | 21.0 | 21.0 | 2.0 | 15.0 | 2.0 |
 | b3.c1 | 128.0 | 128.0 | 128.0 | 149.0 | 149.0 | 128.0 | 145.0 | 143.0 | 139.0 | 149.0 | 21.0 | 21.0 | 17.0 | 15.0 | 11.0 |
@@ -172,7 +176,7 @@ S read demand of the block-6 passes, E6_s0 (b / cycle over the pass's span = fir
 | b6.c2 | 625.3 | 850.6 | 669.3 | 1236.0 | 679.3 | 850.6 | 851.5 | 679.3 | 851.5 | 679.3 | 566.7 | 10.0 | 0.9 | 10.0 | 0.9 |
 | b7.c1 | 128.0 | 128.0 | 128.0 | 135.0 | 135.0 | 128.0 | 135.0 | 128.0 | 128.0 | 135.0 | 7.0 | 7.0 | 7.0 | 0.0 | 0.0 |
 | b7.c2 | 128.0 | 144.0 | 144.0 | 169.0 | 169.0 | 144.0 | 163.0 | 161.0 | 155.0 | 169.0 | 25.0 | 25.0 | 19.0 | 17.0 | 11.0 |
-| **image** | | **3352.2** | **3754.2** | **8674.0** | **4223.0** | **3454.2** | **3634.9** | **4048.0** | **3569.9** | **4647.0** | | | | | |
+| **image** | | **3352.2** | **3754.2** | **8674.0** | **4223.0** | **3454.2** | **3632.9** | **4048.0** | **3569.9** | **4647.0** | | | | | |
 
 S read demand of the block-6 passes, E6_s1 (b / cycle over the pass's span = first array start .. last item; mean over images) [Mod]; the S read port runs at 2048 b / cycle while streaming
 
@@ -181,9 +185,3 @@ S read demand of the block-6 passes, E6_s1 (b / cycle over the pass's span = fir
 | b6.c1 | 772014 | 2048 | 2048 | 2048 | 2048 |
 | b6.sc | 199885 | 784 | 249 | 784 | 249 |
 | b6.c2 | 347832 | 548 | 399 | 548 | 399 |
-
-## Regression
-
-`CUDA_VISIBLE_DEVICES=0 python3 -m qc18bacc.compile.test_compile` (golden p2, val[:500]) after the cycles.py hooks:
-ALL PASS [M].  `cycles.list_schedule(prog, st, 256, 32)` without the new arguments on the cached val[:500] stats:
-3370.848 / 3345.136 cycles / image (cycles.md: 3370.8 / 3345.1).

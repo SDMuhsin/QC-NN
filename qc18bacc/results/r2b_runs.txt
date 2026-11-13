@@ -1,0 +1,41 @@
+# qb_act2 synthesis (impl/run.sh all qb_act2 2.0, tt compile, tau1), impl/act2_summary.py
+# v0: first RTL; v1: + registered flag views; final (qb_act2): + registered vb+K, buffered-word counters
+## qb_act2_v0
+qb_act2_v0_tt_p2.0 total_um2 743675 regs 51840 dc_wns 0.000197411 | tt wns 0.005146 fmax 501.4 | ss wns -1.198912 fmax 316.4
+GROUP top (flags, arbiters, rdq / sdq, descriptors)            total_um2     22733.6 comb      1889.6 seq     20844.0 pct   3.1
+GROUP context control (2: loaders, FIFO counters, sequencers)  total_um2     17452.8 comb     11336.0 seq      6116.8 pct   2.3
+GROUP line buffers u_lb (2 contexts x 8 x 2048 b)              total_um2    424933.6 comb    193131.4 seq    231802.2 pct  57.1
+GROUP act output pipe (ACT_PIPE regs)                          total_um2     31518.7 comb         0.0 seq     31518.7 pct   4.2
+GROUP S1 u_s1 (regs + chunk / context / S-word mux)            total_um2    176511.6 comb    134388.7 seq     42122.9 pct  23.7
+GROUP S2 u_s2 (act regs + static cfg mux)                      total_um2     70524.4 comb     39005.6 seq     31518.7 pct   9.5
+CHECK sum_of_groups 743674.7 total 743674.7
+CRIT tt g_ctx_1__u_ctx/cfg_reg_2_/CP -> g_ctx_1__u_ctx/clk_gate_fin_cnt_reg/latch/E
+CRIT ss g_ctx_1__u_ctx/cfg_reg_2_/CP -> g_ctx_1__u_ctx/clk_gate_lct_reg/latch/E
+cell_area_um2 743674.690029 gate_eq_kGE 516.44 cells 225257 regs 51840
+dc_wall_s 981
+## qb_act2_v1
+qb_act2_v1_tt_p2.0 total_um2 746551 regs 52224 dc_wns 9.42945e-05 | tt wns 0.004220 fmax 501.5 | ss wns -1.183445 fmax 314.1
+GROUP top (flags, arbiters, rdq / sdq, descriptors)            total_um2     22731.5 comb      1889.6 seq     20841.8 pct   3.0
+GROUP context control (2: loaders, FIFO counters, sequencers)  total_um2     20075.4 comb     11339.6 seq      8735.8 pct   2.7
+GROUP line buffers u_lb (2 contexts x 8 x 2048 b)              total_um2    425043.0 comb    193245.8 seq    231797.2 pct  56.9
+GROUP act output pipe (ACT_PIPE regs)                          total_um2     31518.7 comb         0.0 seq     31518.7 pct   4.2
+GROUP S1 u_s1 (regs + chunk / context / S-word mux)            total_um2    176653.1 comb    134525.5 seq     42127.6 pct  23.7
+GROUP S2 u_s2 (act regs + static cfg mux)                      total_um2     70529.0 comb     39010.3 seq     31518.7 pct   9.4
+CHECK sum_of_groups 746550.7 total 746550.7
+CRIT tt g_ctx_1__u_ctx/lval_reg/CP -> g_ctx_0__u_ctx/clk_gate_lct_reg/latch/E
+CRIT ss g_ctx_0__u_ctx/cfg_reg_0_/CP -> g_ctx_0__u_ctx/st_reg_0_/D
+cell_area_um2 746550.730092 gate_eq_kGE 518.44 cells 225365 regs 52224
+dc_wall_s 977
+## final
+qb_act2_tt_p2.0 total_um2 746773 regs 52226 dc_wns 0.000873685 | tt wns 0.002662 fmax 500.7 | ss wns -1.160403 fmax 316.4
+GROUP top (flags, arbiters, rdq / sdq, descriptors)            total_um2     22719.2 comb      1877.4 seq     20841.8 pct   3.0
+GROUP context control (2: loaders, FIFO counters, sequencers)  total_um2     20133.7 comb     11413.4 seq      8720.3 pct   2.7
+GROUP line buffers u_lb (2 contexts x 8 x 2048 b)              total_um2    425166.5 comb    193371.5 seq    231795.0 pct  56.9
+GROUP act output pipe (ACT_PIPE regs)                          total_um2     31518.7 comb         0.0 seq     31518.7 pct   4.2
+GROUP S1 u_s1 (regs + chunk / context / S-word mux)            total_um2    176665.3 comb    134537.8 seq     42127.6 pct  23.7
+GROUP S2 u_s2 (act regs + static cfg mux)                      total_um2     70569.7 comb     39051.0 seq     31518.7 pct   9.4
+CHECK sum_of_groups 746773.2 total 746773.2
+CRIT tt g_ctx_0__u_ctx/ev2_reg_row__0_/CP -> g_ctx_0__u_ctx/u_lb/lb_reg_2__773_/D
+CRIT ss g_ctx_0__u_ctx/lval_reg/CP -> s_ra_reg_5_/D
+cell_area_um2 746773.210100 gate_eq_kGE 518.59 cells 225459 regs 52226
+dc_wall_s 975

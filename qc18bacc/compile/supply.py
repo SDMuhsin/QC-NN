@@ -15,6 +15,10 @@ Model (per image, inside the list scheduler, hook cycles.list_schedule(..., sup=
   vb <= v - 8 has issued its last item), after its data is written (RAW ready of the tile from the scheduler), after
   the context started the pass, and after the port finished the previous load (port served in array-tile commit
   order).  A row is usable LAT = 3 cycles after its last line left the port (m_ra reg -> macro -> rdq -> LB).
+  Port arbitration (R2b, hw/rtl/qb_act2.sv): every port cycle (line, pad line, skipped row; S word) is placed on its
+  own at the earliest free cycle; tiles commit in scheduler order, so an earlier-committed (older) tile's cycles are
+  never displaced = a per-cycle arbiter granting the older tile (smaller commit index), cycle-exact vs the RTL
+  (results/r2b.md).  One context: identical to whole-row placement (A, B, D unchanged).
 * Items: a binary tile issues its items one per cycle once its whole window (vb .. vb + K) is loaded (qb_act S_BIN);
   later channel tiles of the same pixel tile reuse the window.  int8 (block 6, as built): per (channel tile, plane)
   segment, window = the plane's R rows (HQ 8, Z 4, K = R), S_WAIT -> S_FLAG -> items (only nonzero chunks) -> one
@@ -137,12 +141,15 @@ class Supply:
         p = self.prog.passes[pi]
         cx = S.context(pi, self.nt[pi])
         start = s
+        S.lg = []
         if pi in self.geo:
             ce = self._bin(S, cx, pi, d, s, ra, C)
         elif self.b6 == "maps":
             ce = self._b6_maps(S, cx, p, d, s, ra, self.masks[p.name][img])
         else:
             ce = self._b6_s(S, cx, p, d, s, ra, self.masks[p.name][img])
+        S.log.append(dict(t=t, pi=pi, tp=d["tp"], cg=d["cg"], ctx=S.ctx.index(cx), cstart=cx["start"], s=s, ra=ra,
+                          C=C, ce=ce, pos=(cx["vl"] if pi in self.geo else len(cx["rel"])), loads=S.lg))
         cx["left"] -= 1
         cx["last"] = ce
         if cx["left"] == 0:
@@ -187,8 +194,10 @@ class Supply:
         while cx["vl"] < upto:
             v = cx["vl"]
             cost = 1 if kind(v) == "skip" else -(-ROWL // self.m)
-            st = S.grab(port, max(cx["ld"], self._avail(cx, v), ra, cx["start"]), cost)
-            cx["ld"] = st + cost
+            for _ in range(cost):                                  # one port cycle at a time (R2b arbiter: per cycle,
+                st = S.grab(port, max(cx["ld"], self._avail(cx, v), ra, cx["start"]), 1)   # older tile first)
+                cx["ld"] = st + 1
+                S.lg.append((port, st))
             cx["rdy"] = cx["ld"] + LAT
             S.ps[pi]["bits"] += 0 if kind(v) == "skip" else ROWL * 512
             cx["vl"] += 1
@@ -250,6 +259,7 @@ class Supply:
                 rel = cur if rel is None else rel
                 st = S.grab("S", max(cx["ld"], rel, ra, cx["start"]), 1)
                 cx["ld"] = st + 1
+                S.lg.append(("S", st))
                 got[w] = cx["ld"] + LAT
                 S.ps[pi]["bits"] += W
                 idx[w] = len(cx["rel"])
@@ -267,6 +277,7 @@ class _State:
         self.port = {"map": [], "S": []}                        # busy intervals [a, b) of each read port
         self.ctx = [dict(pi=None, left=0, free=0, last=0) for _ in range(nctx)]
         self.ps = [dict(first=None, end=None, extra=0, bits=0) for _ in range(npass)]
+        self.log, self.lg = [], []                              # per array tile in commit order (R2b bench replay)
 
     def copy(self):
         import copy
@@ -284,6 +295,10 @@ class _State:
             t = max(t, iv[k][1])
             k += 1
         iv.insert(k, (t, t + cost))
+        if k + 1 < len(iv) and iv[k + 1][0] == t + cost:          # merge touching intervals (same occupancy)
+            iv[k:k + 2] = [(t, iv[k + 1][1])]
+        if k > 0 and iv[k - 1][1] == t:
+            iv[k - 1:k + 1] = [(iv[k - 1][0], iv[k][1])]
         if len(iv) > 4096:
             del iv[:2048]
         return t
