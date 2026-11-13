@@ -1,0 +1,130 @@
+# qb_core tile-level bench (hw/tb/run_tb_core.sh, Verilator 5.050), vectors hw/tb/export_core.py, golden p2
+## E6_s0 val image 0
+QB_CORE pass 0 b2_bits 0 err 0 fused_words 65536 err 0 wide_words 0 err 0
+QB_CORE pass 1 b2_bits 65536 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_CORE pass 2 b2_bits 0 err 0 fused_words 65536 err 0 wide_words 0 err 0
+QB_CORE pass 3 b2_bits 65536 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_CORE pass 4 b2_bits 0 err 0 fused_words 65536 err 0 wide_words 0 err 0
+QB_CORE pass 5 b2_bits 32768 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_CORE pass 6 b2_bits 0 err 0 fused_words 32768 err 0 wide_words 0 err 0
+QB_CORE pass 7 b2_bits 0 err 0 fused_words 32768 err 0 wide_words 0 err 0
+QB_CORE pass 8 b2_bits 32768 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_CORE pass 9 b2_bits 0 err 0 fused_words 32768 err 0 wide_words 0 err 0
+QB_CORE pass 10 b2_bits 16384 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_CORE pass 11 b2_bits 0 err 0 fused_words 16384 err 0 wide_words 0 err 0
+QB_CORE pass 12 b2_bits 0 err 0 fused_words 16384 err 0 wide_words 0 err 0
+QB_CORE pass 13 b2_bits 16384 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_CORE pass 14 b2_bits 0 err 0 fused_words 16384 err 0 wide_words 0 err 0
+QB_CORE pass 15 b2_bits 0 err 0 fused_words 16384 err 0 wide_words 0 err 0
+QB_CORE pass 16 b2_bits 0 err 0 fused_words 0 err 0 wide_words 8192 err 0
+QB_CORE pass 17 b2_bits 0 err 0 fused_words 0 err 0 wide_words 8192 err 0
+QB_CORE pass 18 b2_bits 0 err 0 fused_words 0 err 0 wide_words 8192 err 0
+QB_CORE pass 19 b2_bits 8192 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_CORE pass 20 b2_bits 0 err 0 fused_words 8192 err 0 wide_words 0 err 0
+QB_CORE_TB /tmp/claude-0/-workspace-qc-nn/da0851dd-429c-44a9-b90c-46005de7b40f/scratchpad/r1/vec/img0 cycles 3644 checked 630784 errors 0 PASS
+## E6_s0 val image 1
+QB_CORE pass 0 b2_bits 0 err 0 fused_words 65536 err 0 wide_words 0 err 0
+QB_CORE pass 1 b2_bits 65536 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_CORE pass 2 b2_bits 0 err 0 fused_words 65536 err 0 wide_words 0 err 0
+QB_CORE pass 3 b2_bits 65536 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_CORE pass 4 b2_bits 0 err 0 fused_words 65536 err 0 wide_words 0 err 0
+QB_CORE pass 5 b2_bits 32768 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_CORE pass 6 b2_bits 0 err 0 fused_words 32768 err 0 wide_words 0 err 0
+QB_CORE pass 7 b2_bits 0 err 0 fused_words 32768 err 0 wide_words 0 err 0
+QB_CORE pass 8 b2_bits 32768 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_CORE pass 9 b2_bits 0 err 0 fused_words 32768 err 0 wide_words 0 err 0
+QB_CORE pass 10 b2_bits 16384 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_CORE pass 11 b2_bits 0 err 0 fused_words 16384 err 0 wide_words 0 err 0
+QB_CORE pass 12 b2_bits 0 err 0 fused_words 16384 err 0 wide_words 0 err 0
+QB_CORE pass 13 b2_bits 16384 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_CORE pass 14 b2_bits 0 err 0 fused_words 16384 err 0 wide_words 0 err 0
+QB_CORE pass 15 b2_bits 0 err 0 fused_words 16384 err 0 wide_words 0 err 0
+QB_CORE pass 16 b2_bits 0 err 0 fused_words 0 err 0 wide_words 8192 err 0
+QB_CORE pass 17 b2_bits 0 err 0 fused_words 0 err 0 wide_words 8192 err 0
+QB_CORE pass 18 b2_bits 0 err 0 fused_words 0 err 0 wide_words 8192 err 0
+QB_CORE pass 19 b2_bits 8192 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_CORE pass 20 b2_bits 0 err 0 fused_words 8192 err 0 wide_words 0 err 0
+QB_CORE_TB /tmp/claude-0/-workspace-qc-nn/da0851dd-429c-44a9-b90c-46005de7b40f/scratchpad/r1/vec/img1 cycles 3684 checked 630784 errors 0 PASS
+## E6_s1 val image 0
+QB_CORE pass 0 b2_bits 0 err 0 fused_words 65536 err 0 wide_words 0 err 0
+QB_CORE pass 1 b2_bits 65536 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_CORE pass 2 b2_bits 0 err 0 fused_words 65536 err 0 wide_words 0 err 0
+QB_CORE pass 3 b2_bits 65536 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_CORE pass 4 b2_bits 0 err 0 fused_words 65536 err 0 wide_words 0 err 0
+QB_CORE pass 5 b2_bits 32768 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_CORE pass 6 b2_bits 0 err 0 fused_words 32768 err 0 wide_words 0 err 0
+QB_CORE pass 7 b2_bits 0 err 0 fused_words 32768 err 0 wide_words 0 err 0
+QB_CORE pass 8 b2_bits 32768 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_CORE pass 9 b2_bits 0 err 0 fused_words 32768 err 0 wide_words 0 err 0
+QB_CORE pass 10 b2_bits 16384 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_CORE pass 11 b2_bits 0 err 0 fused_words 16384 err 0 wide_words 0 err 0
+QB_CORE pass 12 b2_bits 0 err 0 fused_words 16384 err 0 wide_words 0 err 0
+QB_CORE pass 13 b2_bits 16384 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_CORE pass 14 b2_bits 0 err 0 fused_words 16384 err 0 wide_words 0 err 0
+QB_CORE pass 15 b2_bits 0 err 0 fused_words 16384 err 0 wide_words 0 err 0
+QB_CORE pass 16 b2_bits 0 err 0 fused_words 0 err 0 wide_words 8192 err 0
+QB_CORE pass 17 b2_bits 0 err 0 fused_words 0 err 0 wide_words 8192 err 0
+QB_CORE pass 18 b2_bits 0 err 0 fused_words 0 err 0 wide_words 8192 err 0
+QB_CORE pass 19 b2_bits 8192 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_CORE pass 20 b2_bits 0 err 0 fused_words 8192 err 0 wide_words 0 err 0
+QB_CORE_TB /tmp/claude-0/-workspace-qc-nn/da0851dd-429c-44a9-b90c-46005de7b40f/scratchpad/r1/vec_s1/img0 cycles 3660 checked 630784 errors 0 PASS
+## E6_s1 val image 1
+QB_CORE pass 0 b2_bits 0 err 0 fused_words 65536 err 0 wide_words 0 err 0
+QB_CORE pass 1 b2_bits 65536 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_CORE pass 2 b2_bits 0 err 0 fused_words 65536 err 0 wide_words 0 err 0
+QB_CORE pass 3 b2_bits 65536 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_CORE pass 4 b2_bits 0 err 0 fused_words 65536 err 0 wide_words 0 err 0
+QB_CORE pass 5 b2_bits 32768 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_CORE pass 6 b2_bits 0 err 0 fused_words 32768 err 0 wide_words 0 err 0
+QB_CORE pass 7 b2_bits 0 err 0 fused_words 32768 err 0 wide_words 0 err 0
+QB_CORE pass 8 b2_bits 32768 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_CORE pass 9 b2_bits 0 err 0 fused_words 32768 err 0 wide_words 0 err 0
+QB_CORE pass 10 b2_bits 16384 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_CORE pass 11 b2_bits 0 err 0 fused_words 16384 err 0 wide_words 0 err 0
+QB_CORE pass 12 b2_bits 0 err 0 fused_words 16384 err 0 wide_words 0 err 0
+QB_CORE pass 13 b2_bits 16384 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_CORE pass 14 b2_bits 0 err 0 fused_words 16384 err 0 wide_words 0 err 0
+QB_CORE pass 15 b2_bits 0 err 0 fused_words 16384 err 0 wide_words 0 err 0
+QB_CORE pass 16 b2_bits 0 err 0 fused_words 0 err 0 wide_words 8192 err 0
+QB_CORE pass 17 b2_bits 0 err 0 fused_words 0 err 0 wide_words 8192 err 0
+QB_CORE pass 18 b2_bits 0 err 0 fused_words 0 err 0 wide_words 8192 err 0
+QB_CORE pass 19 b2_bits 8192 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_CORE pass 20 b2_bits 0 err 0 fused_words 8192 err 0 wide_words 0 err 0
+QB_CORE_TB /tmp/claude-0/-workspace-qc-nn/da0851dd-429c-44a9-b90c-46005de7b40f/scratchpad/r1/vec_s1/img1 cycles 3644 checked 630784 errors 0 PASS
+## mutants (E6_s0 val image 0; passes with errors)
+mutant QBC_MUT_DEC: cycles 3644 checked 630784 errors 196293 FAIL
+  QB_CORE pass 0 b2_bits 0 err 0 fused_words 65536 err 27527 wide_words 0 err 0
+  QB_CORE pass 1 b2_bits 65536 err 3755 fused_words 0 err 0 wide_words 0 err 0
+  QB_CORE pass 2 b2_bits 0 err 0 fused_words 65536 err 40395 wide_words 0 err 0
+  QB_CORE pass 3 b2_bits 65536 err 2926 fused_words 0 err 0 wide_words 0 err 0
+  QB_CORE pass 4 b2_bits 0 err 0 fused_words 65536 err 33669 wide_words 0 err 0
+  QB_CORE pass 5 b2_bits 32768 err 604 fused_words 0 err 0 wide_words 0 err 0
+  QB_CORE pass 6 b2_bits 0 err 0 fused_words 32768 err 20531 wide_words 0 err 0
+  QB_CORE pass 7 b2_bits 0 err 0 fused_words 32768 err 13553 wide_words 0 err 0
+  QB_CORE pass 8 b2_bits 32768 err 566 fused_words 0 err 0 wide_words 0 err 0
+  QB_CORE pass 9 b2_bits 0 err 0 fused_words 32768 err 13788 wide_words 0 err 0
+  QB_CORE pass 10 b2_bits 16384 err 277 fused_words 0 err 0 wide_words 0 err 0
+  QB_CORE pass 11 b2_bits 0 err 0 fused_words 16384 err 8118 wide_words 0 err 0
+  QB_CORE pass 12 b2_bits 0 err 0 fused_words 16384 err 10302 wide_words 0 err 0
+  QB_CORE pass 13 b2_bits 16384 err 268 fused_words 0 err 0 wide_words 0 err 0
+  QB_CORE pass 14 b2_bits 0 err 0 fused_words 16384 err 7676 wide_words 0 err 0
+  QB_CORE pass 16 b2_bits 0 err 0 fused_words 0 err 0 wide_words 8192 err 509
+  QB_CORE pass 17 b2_bits 0 err 0 fused_words 0 err 0 wide_words 8192 err 3593
+  QB_CORE pass 18 b2_bits 0 err 0 fused_words 0 err 0 wide_words 8192 err 4403
+  QB_CORE pass 19 b2_bits 8192 err 75 fused_words 0 err 0 wide_words 0 err 0
+  QB_CORE pass 20 b2_bits 0 err 0 fused_words 8192 err 3758 wide_words 0 err 0
+mutant QBC_MUT_G3N: cycles 3644 checked 630784 errors 65125 FAIL
+  QB_CORE pass 0 b2_bits 0 err 0 fused_words 65536 err 65125 wide_words 0 err 0
+mutant QBC_MUT_INV: cycles 3644 checked 630784 errors 9216 FAIL
+  QB_CORE pass 3 b2_bits 65536 err 6144 fused_words 0 err 0 wide_words 0 err 0
+  QB_CORE pass 5 b2_bits 32768 err 768 fused_words 0 err 0 wide_words 0 err 0
+  QB_CORE pass 8 b2_bits 32768 err 768 fused_words 0 err 0 wide_words 0 err 0
+  QB_CORE pass 10 b2_bits 16384 err 320 fused_words 0 err 0 wide_words 0 err 0
+  QB_CORE pass 13 b2_bits 16384 err 768 fused_words 0 err 0 wide_words 0 err 0
+  QB_CORE pass 19 b2_bits 8192 err 448 fused_words 0 err 0 wide_words 0 err 0
+mutant QBC_MUT_ROT: cycles 3644 checked 630784 errors 13763 FAIL
+  QB_CORE pass 16 b2_bits 0 err 0 fused_words 0 err 0 wide_words 8192 err 1485
+  QB_CORE pass 17 b2_bits 0 err 0 fused_words 0 err 0 wide_words 8192 err 6136
+  QB_CORE pass 18 b2_bits 0 err 0 fused_words 0 err 0 wide_words 8192 err 6142
+mutant QBC_MUT_NNW: cycles 3644 checked 630784 errors 65536 FAIL
+  QB_CORE pass 0 b2_bits 0 err 0 fused_words 65536 err 65536 wide_words 0 err 0

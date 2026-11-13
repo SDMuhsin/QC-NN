@@ -1,0 +1,39 @@
+# qb_core synthesis (impl/run.sh all <top> 2.0, tt compile; usask / tau1), impl/core_summary.py
+qb_core_tt_p2.0 total_um2 5352604 regs 205020 dc_wns 2.5034e-06 | tt wns 0.001468 fmax 500.4 | ss wns -1.175955 fmax 314.9
+GROUP PE (total)                                    n  128 total_um2    3256472.2 each_um2   25441.2 pct  60.8
+GROUP   PE S0 input regs                            n  128 total_um2     585734.4 each_um2    4576.1 pct  10.9
+GROUP   PE accumulators                             n  128 total_um2     541029.2 each_um2    4226.8 pct  10.1
+GROUP   PE b2 comparators (8 / PE)                  n  128 total_um2      89809.9 each_um2     701.6 pct   1.7
+GROUP   PE control pipeline (rest)                  n  128 total_um2       8438.4 each_um2      65.9 pct   0.2
+GROUP   PE popcount + s regs                        n  128 total_um2    1800424.8 each_um2   14065.8 pct  33.6
+GROUP   PE shadow / drain                           n  128 total_um2     231035.4 each_um2    1805.0 pct   4.3
+GROUP broadcast regs (per 8-row group x column)     n   16 total_um2      59158.4 each_um2    3697.4 pct   1.1
+GROUP decoders (36 / column + NNw)                  n    8 total_um2      57906.0 each_um2    7238.3 pct   1.1
+GROUP fused lanes qb_lane_fn                        n  256 total_um2    1561073.4 each_um2    6097.9 pct  29.2
+GROUP wide lanes qbcw_lane                          n   32 total_um2     294378.8 each_um2    9199.3 pct   5.5
+GROUP fused param bank P0 / P1                      n    1 total_um2      53089.6 each_um2   53089.6 pct   1.0
+GROUP wide param bank (rotating)                    n    1 total_um2      51457.0 each_um2   51457.0 pct   1.0
+GROUP top glue (PPU ctl regs, lane input muxes)     n    1 total_um2      19068.8 each_um2   19068.8 pct   0.4
+CRIT tt g_fq_1__g_fc_1__g_fi_0__u_lf/u_rin/q_reg_29_/CP -> g_fq_1__g_fc_1__g_fi_0__u_lf/u_rp1/q_reg_27_/D
+CRIT ss g_wq_2__g_wc_3__u_lw/m0_reg_4_/CP -> g_wq_2__g_wc_3__u_lw/p1_reg_41_/D
+cell_area_um2 5352604.240973 gate_eq_kGE 3717.09 cells 1373100 regs 205020
+dc_wall_s 4029
+qb_core_s_tt_p2.0 total_um2 921629 regs 32900 dc_wns 1.19209e-06 | tt wns 0.001660 fmax 500.4 | ss wns -1.158252 fmax 316.6
+GROUP PE (total)                                    n   16 total_um2     406471.7 each_um2   25404.5 pct  44.1
+GROUP   PE S0 input regs                            n   16 total_um2      73210.3 each_um2    4575.6 pct   7.9
+GROUP   PE accumulators                             n   16 total_um2      67820.0 each_um2    4238.8 pct   7.4
+GROUP   PE b2 comparators (8 / PE)                  n   16 total_um2      11226.2 each_um2     701.6 pct   1.2
+GROUP   PE control pipeline (rest)                  n   16 total_um2       1049.4 each_um2      65.6 pct   0.1
+GROUP   PE popcount + s regs                        n   16 total_um2     225261.4 each_um2   14078.8 pct  24.4
+GROUP   PE shadow / drain                           n   16 total_um2      27904.3 each_um2    1744.0 pct   3.0
+GROUP broadcast regs (per 8-row group x column)     n    2 total_um2       7471.8 each_um2    3735.9 pct   0.8
+GROUP decoders (36 / column + NNw)                  n    2 total_um2      13868.6 each_um2    6934.3 pct   1.5
+GROUP fused lanes qb_lane_fn                        n   64 total_um2     389254.0 each_um2    6082.1 pct  42.2
+GROUP wide lanes qbcw_lane                          n    8 total_um2      73703.2 each_um2    9212.9 pct   8.0
+GROUP fused param bank P0 / P1                      n    1 total_um2      13295.9 each_um2   13295.9 pct   1.4
+GROUP wide param bank (rotating)                    n    1 total_um2      12896.6 each_um2   12896.6 pct   1.4
+GROUP top glue (PPU ctl regs, lane input muxes)     n    1 total_um2       4667.4 each_um2    4667.4 pct   0.5
+CRIT tt cd[195] -> u_core/g_col_0__g_grp_0__u_br/nnw_q_reg_8_/D
+CRIT ss u_core/g_wq_1__g_wc_0__u_lw/y2_reg_0_/CP -> u_core/g_wq_1__g_wc_0__u_lw/b_o_reg/D
+cell_area_um2 921629.165237 gate_eq_kGE 640.02 cells 243410 regs 32900
+dc_wall_s 771

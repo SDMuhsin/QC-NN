@@ -5,7 +5,7 @@
 #   qc18bacc/impl/run.sh syn  <top> <period> [tag]     DC; compile corner QC_CORNER (default tt here)
 #   qc18bacc/impl/run.sh pt   <tag> [corner..]         PrimeTime (default tt ss)
 #   qc18bacc/impl/run.sh all  <top> <period> [tag]     syn + pt tt ss
-# Tops: qb_pe_k8_a20 qb_pe_k16_a20 qb_pe_k32_a20 qb_pe_k16_a14 qb_lane_n qb_lane_w.  Default tag <top>_<corner>_p<period>.
+# Tops: qb_pe_k8_a20 qb_pe_k16_a20 qb_pe_k32_a20 qb_pe_k16_a14 qb_lane_n qb_lane_w qb_lane_f* qb_core qb_core_s (impl/core_summary.py).  Default tag <top>_<corner>_p<period>.
 # QC_BUILD: build root (default /tmp/$USER/qc18bacc/build); QC_CORES (default 8).
 set -u
 HERE=$(cd "$(dirname "$0")" && pwd)
