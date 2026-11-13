@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # P&R of the qc18bacc compute core alone (results/pnr_core.md), on the build host from the repository root of the
 # host-local tree (/tmp/$USER/qc18bacc/repo), QC_BUILD default /tmp/$USER/qc18bacc/build:
-#   qc18bacc/impl/pnr/run.sh pnr <tag>   flow/tsmc65/pnr/run_pnr.sh core.cfg (QC_PNR_TO etc. pass through; QB_TOP,
+#   qc18bacc/impl/pnr/run.sh pnr <tag>   flow/tsmc65/pnr/run_pnr.sh core.cfg or $QB_CFG (slice.cfg: results/pnr_slice.md) (QC_PNR_TO etc.; QB_TOP,
 #                                        QB_SYN, QB_UTIL, QB_DENS, QB_DR_ITER: core.cfg knobs)
 #   qc18bacc/impl/pnr/run.sh est <tag>   grt_est.tcl: post-CTS / post-GRT timing at OpenROAD estimates (QB_GRT 0: CTS only)
 #   qc18bacc/impl/pnr/run.sh spef <tag>  def2spef (PrimeTime copy) for QB_SPEF_CORNERS (default ss; P&R corners: tt)
@@ -13,7 +13,7 @@ export QC_BUILD=${QC_BUILD:-/tmp/$USER/qc18bacc/build} QC_PNR_THREADS=${QC_PNR_T
 step=${1:-}; tag=${2:?tag}
 dir=$QC_BUILD/pnr/$tag
 case $step in
-pnr) "$root/flow/tsmc65/pnr/run_pnr.sh" "$here/core.cfg" "$tag" ;;
+pnr) "$root/flow/tsmc65/pnr/run_pnr.sh" "$here/${QB_CFG:-core.cfg}" "$tag" ;;
 est) . "$root/flow/tsmc65/common/tool.sh"
      export QC_KIT=$(tcsh -f -c "source $FLOW/site/site.csh >& /dev/null; printenv QC_KIT")
      ( cd "$dir" && QC_FLOW=$root/flow/tsmc65 QC_PNR_OUT=$dir QC_PY=${QC_TOOLS:-/tmp/$USER/tools}/env/bin/python3 \
