@@ -8,6 +8,8 @@ proc qb_class {name} {
     if {[regexp {^u_core/u_pb[fw]/} $name]} { return lane }
     if {[regexp {^u_core/g_col_0__g_grp_(\d+)__u_br/} $name -> g]} { return br$g }
     if {[regexp {^u_core/g_col_0__u_dec/} $name]} { return dec }
+    # CREG port registers of the codes / item controls (results/pnr_slice2.md): next to the decoders they feed
+    if {[regexp {^u_core/(cdr|ctlr|g_creg_cdr|g_creg_ctlr)_?reg} $name]} { return dec }
     return other
 }
 proc qb_bands {} {

@@ -19,6 +19,7 @@ for {set r 0} {$r < 16} {incr r} {
     for {set b [expr {288 * $r}]} {$b < 288 * ($r + 1)} {incr b} { lappend pins "act\[$b\]" }
     for {set b [expr {8 * $r}]} {$b < 8 * ($r + 1)} {incr b} { lappend pins "b2\[$b\]" }
     lassign [qb_row_y $r] y0 y1
+    if {[info exists ::QB_PIN_Y($r)]} { lassign $::QB_PIN_Y($r) y0 y1 }    ;# slice_repin.tcl: placed PE row r
     set_io_pin_constraint -pin_names $pins -region left:[expr {int($y0) + 1}]-[expr {int($y1) - 1}]
     incr n [llength $pins]
 }

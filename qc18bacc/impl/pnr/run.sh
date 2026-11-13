@@ -31,6 +31,7 @@ spef) # def2spef of the routed DEF for corners outside the P&R corners (QB_SPEF_
      done ;;
 pt)  . "$root/flow/tsmc65/common/tool.sh"; . "$dir/kit.env"
      set -a; . "$(dirname "$NETLIST")/run.env"; set +a; cd "$dir" || exit 1
+     [ -n "${QB_PT_PERIOD:-}" ] && export QC_PERIOD=$QB_PT_PERIOD      # pnr_slice2.md: DC margin run, sign-off period
      export QC_SDC=$root/qc18bacc/impl/constraints.sdc QC_PT_HOOK=
      for c in ${QB_PT_CORNERS:-tt ss}; do
          QC_PNR_OUT=$dir QC_TOP=$TOP QC_CORNER=$c QC_SDC_FILE=$SDC qc_tool "pt_post_$c.log" pt_shell -f "$here/pt_post_core.tcl"

@@ -21,7 +21,21 @@ module tb_qb_core;
     logic [3:0]                    fctl;
     logic [2:0]                    wctl;
 
-    qb_core #(.ROWS(ROWS), .COLS(COLS), .KB(KB), .MWF(MWF)) dut (.*);
+    // pnr_slice2.md options of qb_core (default 0 = R1): -DQBC_CREG=1 -DQBC_WTP=1 -DQBC_FTP=1 -DQBC_PPOP=1 (QBC_DEFS)
+`ifndef QBC_CREG
+`define QBC_CREG 0
+`endif
+`ifndef QBC_WTP
+`define QBC_WTP 0
+`endif
+`ifndef QBC_FTP
+`define QBC_FTP 0
+`endif
+`ifndef QBC_PPOP
+`define QBC_PPOP 0
+`endif
+    qb_core #(.ROWS(ROWS), .COLS(COLS), .KB(KB), .MWF(MWF), .CREG(`QBC_CREG), .WTP(`QBC_WTP), .FTP(`QBC_FTP),
+              .PPOP(`QBC_PPOP)) dut (.*);
     assign {p_ld, f_sh, f_src, f_vld} = fctl;
     assign {w_ld, w_sh, w_vld} = wctl;
 

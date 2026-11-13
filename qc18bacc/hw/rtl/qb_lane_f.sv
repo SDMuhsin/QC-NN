@@ -108,8 +108,53 @@ module qbf_fin #(parameter int NP = 29, SHW = 4, TW = 16) (
     end
 endmodule
 
+// qbf_fin split in two stages (FP 1 of qbf_lane, results/pnr_slice2.md): A = window shift + y + h + rs + round (s, 19 b
+// registered), B = saturation / output mode / compare (the compare runs in parallel on s and the two saturation bounds)
+module qbf_fin_a #(parameter int NP = 29, SHW = 4) (
+    input  logic signed [NP-1:0]   p,
+    input  logic        [SHW-1:0]  sh,
+    input  logic signed [15:0]     h,
+    input  logic signed [16:0]     rs,
+    output logic signed [18:0]     s
+);
+    always_comb begin
+        logic signed [NP-1:0] q, yq;
+        logic signed [17:0]   y18;
+        q   = p >>> sh;
+        yq  = q >>> 1;
+        y18 = 18'(yq);
+        s   = 19'(y18) + 19'(h) + 19'(rs) + 19'(q[0]);
+    end
+endmodule
+
+module qbf_fin_b #(parameter int TW = 16) (
+    input  logic signed [18:0]     s,
+    input  logic        [1:0]      omode,
+    input  logic signed [TW-1:0]   t,
+    output logic signed [16:0]     y,
+    output logic                   b
+);
+    localparam int CW = (TW > 16 ? TW : 16) + 1;
+    localparam int KW = (CW > 19 ? CW : 19) + 1;
+    always_comb begin
+        logic hi, lo;
+        logic signed [15:0] ys;
+        hi = s >  19'sd32767;
+        lo = s < -19'sd32767;
+        ys = hi ? 16'sd32767 : lo ? -16'sd32767 : 16'(s);
+        case (omode)
+            2'd0:    y = 17'(ys);
+            2'd1:    y = 17'(s);
+            default: y = (s < 0) ? 17'd0 : (s > 19'sd127) ? 17'd127 : 17'(s);
+        endcase
+        b = (omode == 2'd0) && (hi ? (CW'(32767) > CW'(t)) : lo ? (CW'(-32767) > CW'(t))
+                                   : (KW'(s) > KW'(t)));
+    end
+endmodule
+
 module qbf_lane #(
-    parameter int AW = 20, BW = 16, XW = 16, MW = 29, TW = 16, SHW = 4, SB = 17, PC = 1
+    parameter int AW = 20, BW = 16, XW = 16, MW = 29, TW = 16, SHW = 4, SB = 17, PC = 1,
+    parameter int FP = 0            // 1: S2 split (qbf_fin_a | register | qbf_fin_b), latency 4
 ) (
     input  logic                 clk, rst_n, vld, relu,
     input  logic signed [AW-1:0] acc,                           // cycle n
@@ -154,8 +199,19 @@ module qbf_lane #(
     // S2: window select, + h + rs + round, output modes, compare
     logic signed [16:0] yo;
     logic               bo;
-    qbf_fin #(NP, SHW, TW) u_fin (.p(p1), .sh(sh1), .h(h1), .rs(rs1), .omode(om1), .t(t1), .y(yo), .b(bo));
-    qbf_reg #(19) u_rout (.clk, .d({rst_n & v1, yo, bo}), .q({vld_o, y_o, b_o}));
+    if (FP == 0) begin : g_fin
+        qbf_fin #(NP, SHW, TW) u_fin (.p(p1), .sh(sh1), .h(h1), .rs(rs1), .omode(om1), .t(t1), .y(yo), .b(bo));
+        qbf_reg #(19) u_rout (.clk, .d({rst_n & v1, yo, bo}), .q({vld_o, y_o, b_o}));
+    end else begin : g_fin2
+        logic signed [18:0]   sa, s2;
+        logic        [1:0]    om2;
+        logic signed [TW-1:0] t2;
+        logic                 v2;
+        qbf_fin_a #(NP, SHW) u_fa (.p(p1), .sh(sh1), .h(h1), .rs(rs1), .s(sa));
+        qbf_reg #(1 + 19 + 2 + TW) u_rmid (.clk, .d({rst_n & v1, sa, om1, t1}), .q({v2, s2, om2, t2}));
+        qbf_fin_b #(TW) u_fb (.s(s2), .omode(om2), .t(t2), .y(yo), .b(bo));
+        qbf_reg #(19) u_rout (.clk, .d({rst_n & v2, yo, bo}), .q({vld_o, y_o, b_o}));
+    end
 endmodule
 
 // synthesis tops (parameters from results/lane.md "qb_lane_f": MW / SHW measured on the p2 programs of E6_s0 / E6_s1):

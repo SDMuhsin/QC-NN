@@ -89,7 +89,7 @@ module qbc_br #(parameter int KB = 36) (
 endmodule
 
 // ================================================================================================ PE
-module qbc_pe #(parameter int KB = 36, parameter int ACC_W = 20) (
+module qbc_pe #(parameter int KB = 36, parameter int ACC_W = 20, parameter int CR = 0, parameter int PP = 0) (
     input  logic                clk, rst_n,
     input  logic [KB*8-1:0]     a,
     input  logic [KB*10-1:0]    c,
@@ -108,16 +108,31 @@ module qbc_pe #(parameter int KB = 36, parameter int ACC_W = 20) (
     logic [KB*10-1:0]  c_q;
     logic signed [9:0] nnw_q;
     logic [9:0]        ctl_q;
-    qbc_pe_in #(KB) u_in (.clk, .rst_n, .a, .c, .nnw, .ctl, .a_q, .c_q, .nnw_q, .ctl_q);
+    if (CR == 0) begin : g_s0
+        qbc_pe_in #(KB) u_in (.clk, .rst_n, .a, .c, .nnw, .ctl, .a_q, .c_q, .nnw_q, .ctl_q);
+    end else begin : g_s0cr     // CR 1 (pnr_slice2.md): the broadcast register BR is the code / NNw / ctl S0 stage
+        qbc_reg #(KB*8) u_ina (.clk, .d(a), .q(a_q));
+        assign c_q = c; assign nnw_q = nnw; assign ctl_q = ctl;
+    end
     // ---- S1: group popcounts, weighted sum, - NNw
     logic [8*10-1:0] s_q;
     logic [7:0]      ctl_p;     // {cmp, cap, neg, plane[2:0], first, valid}
-    qbc_pe_pop #(KB) u_pop (.clk, .a(a_q), .c(c_q), .nnw(nnw_q), .stem(ctl_q[6]), .g3n(ctl_q[7]), .s_q);
     always_ff @(posedge clk) ctl_p <= rst_n ? {ctl_q[9:8], ctl_q[5:0]} : {2'b00, ctl_q[5:1], 1'b0};
     // ---- S2: accumulators, comparators, shadow
     logic [8*ACC_W-1:0] acc;
-    qbc_pe_acc #(ACC_W) u_acc (.clk, .s(s_q), .plane(ctl_p[4:2]), .neg(ctl_p[5]), .first(ctl_p[1]),
-                               .valid(ctl_p[0]), .acc);
+    if (PP == 0) begin : g_pop
+        qbc_pe_pop #(KB) u_pop (.clk, .a(a_q), .c(c_q), .nnw(nnw_q), .stem(ctl_q[6]), .g3n(ctl_q[7]), .s_q);
+        qbc_pe_acc #(ACC_W) u_acc (.clk, .s(s_q), .plane(ctl_p[4:2]), .neg(ctl_p[5]), .first(ctl_p[1]),
+                                   .valid(ctl_p[0]), .acc);
+    end else begin : g_pop2     // PP 1: S1 registers the group popcounts, the weighted sum moves into S2
+        logic [8*4*5-1:0]  u_q;
+        logic signed [9:0] nnw_p;
+        logic              stem_p, g3n_p;
+        qbc_pe_pop_u #(KB) u_pop (.clk, .a(a_q), .c(c_q), .u_q);
+        always_ff @(posedge clk) begin nnw_p <= nnw_q; stem_p <= ctl_q[6]; g3n_p <= ctl_q[7]; end
+        qbc_pe_acc_u #(ACC_W) u_acc (.clk, .u(u_q), .nnw(nnw_p), .stem(stem_p), .g3n(g3n_p), .plane(ctl_p[4:2]),
+                                     .neg(ctl_p[5]), .first(ctl_p[1]), .valid(ctl_p[0]), .acc);
+    end
     qbc_pe_cmp #(ACC_W) u_cmp (.clk, .acc, .cmp(ctl_p[7]), .t2, .b2);
     qbc_pe_shd #(ACC_W) u_shd (.clk, .acc, .cap(ctl_p[6]), .fsh, .wsh, .up, .sh_in, .shd);
     assign sh_out = shd[7*ACC_W +: ACC_W];
@@ -177,6 +192,66 @@ module qbc_pe_pop #(parameter int KB = 36) (
     always_ff @(posedge clk) for (int i = 0; i < 8; i++) s_q[10*i +: 10] <= s[i];
 endmodule
 
+// PP 1 (pnr_slice2.md): S1 = rotate / mask / per-group popcounts u_gi (registered, 4 x 5 b per lane); the weighted
+// group sum and - NNw are done at S2 together with the accumulation (same cycle timing as qbc_pe_pop + qbc_pe_acc)
+module qbc_pe_pop_u #(parameter int KB = 36) (
+    input  logic               clk,
+    input  logic [KB*8-1:0]    a,
+    input  logic [KB*10-1:0]   c,
+    output logic [8*4*5-1:0]   u_q
+);
+    localparam int NG = KB / 4;
+    logic [2*NG-1:0] x [8][4];
+    always_comb begin
+        for (int j = 0; j < KB; j++) begin
+            for (int n = 0; n < 2; n++) begin
+                logic [2:0]  k;
+                logic [1:0]  t;
+                logic [15:0] aa;
+                logic [7:0]  rot;
+                k = (n == 0) ? c[10*j+7 +: 3] : c[10*j+2 +: 3];
+                t = (n == 0) ? c[10*j+5 +: 2] : c[10*j+0 +: 2];
+                aa  = {a[8*j +: 8], a[8*j +: 8]};
+                rot = aa[k +: 8];
+                for (int i = 0; i < 8; i++) x[i][j % 4][2*(j/4)+n] = t[0] & (rot[i] ^ t[1]);
+            end
+        end
+    end
+    always_ff @(posedge clk)
+        for (int i = 0; i < 8; i++) for (int g = 0; g < 4; g++) u_q[20*i + 5*g +: 5] <= 5'($countones(x[i][g]));
+endmodule
+
+module qbc_pe_acc_u #(parameter int ACC_W = 20) (
+    input  logic                clk,
+    input  logic [8*4*5-1:0]    u,
+    input  logic signed [9:0]   nnw,
+    input  logic                stem, g3n,
+    input  logic [2:0]          plane,
+    input  logic                neg, first, valid,
+    output logic [8*ACC_W-1:0]  acc
+);
+    always_ff @(posedge clk) begin
+        for (int i = 0; i < 8; i++) begin
+            if (valid) begin
+                logic [4:0]       ug [4];
+                logic signed [9:0] s;
+                logic [ACC_W-1:0] sv, base;
+                for (int g = 0; g < 4; g++) ug[g] = u[20*i + 5*g +: 5];
+                if (stem) s = 10'(ug[0]) + 10'({ug[1], 1'b0}) + 10'({ug[2], 2'b0})
+`ifdef QBC_MUT_G3N
+                            + 10'({ug[3], 3'b0}) - nnw;                               // mutant: plane 7 positive
+`else
+                            + (g3n ? -10'({ug[3], 3'b0}) : 10'({ug[3], 3'b0})) - nnw;
+`endif
+                else      s = 10'(ug[0]) + 10'(ug[1]) + 10'(ug[2]) + 10'(ug[3]) - nnw;
+                sv   = ACC_W'(s) << plane;
+                base = first ? '0 : acc[ACC_W*i +: ACC_W];
+                acc[ACC_W*i +: ACC_W] <= base + (sv ^ {ACC_W{neg}}) + ACC_W'(neg);
+            end
+        end
+    end
+endmodule
+
 module qbc_pe_acc #(parameter int ACC_W = 20) (
     input  logic                clk,
     input  logic [8*10-1:0]     s,
@@ -234,7 +309,9 @@ endmodule
 // + bias (20 b), ReLU (pool / hm mode), x 20 b (compiler contract); y = (x m + 2^(sh-1)) >> sh clamped to 19 b;
 // omode 0 sat: y_o = sat(y + r, +-32767), b = y_o > T;  1 r: y_o = y + r (19 b contract);  2 u8: clamp(y, 0, 127).
 // r (19 b) is a late operand (cycle n + 1, the stream read); everything else at cycle n.  Latency 4.
-module qbcw_lane #(parameter int XW = 20, MW = 31, TW = 21, RW = 19, YW = 19) (
+// TP 1 (pnr_slice2.md): S3 split into S3 (y + r, registered 20 b) and S4 (saturation, output mode, compare in
+// parallel on the registered sum); latency 5.
+module qbcw_lane #(parameter int XW = 20, MW = 31, TW = 21, RW = 19, YW = 19, TP = 0) (
     input  logic                 clk, rst_n, vld, relu, sgn,
     input  logic signed [19:0]   acc,
     input  logic signed [XW-1:0] bias,
@@ -296,6 +373,7 @@ module qbcw_lane #(parameter int XW = 20, MW = 31, TW = 21, RW = 19, YW = 19) (
         v2 <= rst_n ? v1 : 1'b0;
     end
     // S3: + r, output modes, compare
+    if (TP == 0) begin : g_s3
     always_ff @(posedge clk) begin
         logic signed [YW:0]   s;
         logic signed [15:0]   ys;
@@ -310,6 +388,35 @@ module qbcw_lane #(parameter int XW = 20, MW = 31, TW = 21, RW = 19, YW = 19) (
         endcase
         b_o   <= (om2 == 2'd0) && ((TW+1)'(ys) > (TW+1)'(t2));
         vld_o <= rst_n ? v2 : 1'b0;
+    end
+    end else begin : g_s34
+        logic signed [YW:0]   s3;
+        logic signed [YW-1:0] yu3;
+        logic        [1:0]    om3;
+        logic signed [TW-1:0] t3;
+        logic                 v3;
+        always_ff @(posedge clk) begin
+            s3  <= (YW+1)'(y2) + (YW+1)'(r2);
+            yu3 <= (y2 < 0) ? YW'(0) : (y2 > $signed(YW'(127))) ? YW'(127) : y2;
+            om3 <= om2; t3 <= t2;
+            v3  <= rst_n ? v2 : 1'b0;
+        end
+        always_ff @(posedge clk) begin
+            logic hi, lo;
+            logic signed [15:0] ys;
+            hi = s3 >  (YW+1)'(32767);
+            lo = s3 < -(YW+1)'(32767);
+            ys = hi ? 16'sd32767 : lo ? -16'sd32767 : 16'(s3);
+            case (om3)
+                2'd0:    y_o <= YW'(ys);
+                2'd1:    y_o <= YW'(s3);
+                default: y_o <= yu3;
+            endcase
+            b_o   <= (om3 == 2'd0) && (hi ? ((TW+1)'(32767) > (TW+1)'(t3))
+                                       : lo ? ((TW+1)'(-32767) > (TW+1)'(t3))
+                                       :      ((TW+2)'(s3) > (TW+2)'(t3)));
+            vld_o <= rst_n ? v3 : 1'b0;
+        end
     end
 endmodule
 
@@ -377,7 +484,12 @@ module qb_core #(
     parameter int ROWS = 16,                 // multiple of 8 (one broadcast register per 8-row group), >= 4
     parameter int COLS = 8,
     parameter int KB   = 36,
-    parameter int MWF  = 28                  // fused-lane multiplier width
+    parameter int MWF  = 28,                 // fused-lane multiplier width
+    // pnr_slice2.md options (0 = R1 as built):
+    parameter int CREG = 0,                  // 1: code / ctl port register -> decode -> BR -> popcount (no PE S0 codes)
+    parameter int WTP  = 0,                  // 1: wide-lane tail split (latency 4 -> 5, w_* outputs one cycle later)
+    parameter int FTP  = 0,                  // 1: fused-lane tail split (latency 3 -> 4, f_* outputs one cycle later)
+    parameter int PPOP = 0                   // 1: PE weighted group sum retimed from S1 into S2 (latency unchanged)
 ) (
     input  logic                         clk, rst_n,
     // array side
@@ -413,12 +525,24 @@ module qb_core #(
     logic signed [9:0] nbr  [NG][COLS];
     logic [9:0]        kbr  [NG][COLS];
     logic [8*17-1:0]   tbr  [NG][COLS];
+    // CREG 1: codes and item controls registered at the port (cycle n), decoded, then BR at edge n + 1, which drives
+    // the PE popcounts directly (the PE S0 code / NNw / ctl registers are dropped; code -> popcount latency unchanged)
+    logic [COLS*KB*8-1:0] cdr;
+    logic [9:0]           ctlr;
+    if (CREG != 0) begin : g_creg
+        always_ff @(posedge clk) begin
+            cdr  <= cd;
+            ctlr <= rst_n ? ctl : {2'b00, ctl[7:1], 1'b0};
+        end
+    end else begin : g_nocreg
+        assign cdr = cd; assign ctlr = ctl;
+    end
     for (genvar c = 0; c < COLS; c++) begin : g_col
         logic [KB*10-1:0]  dc;
         logic signed [9:0] nw;
-        qbc_coldec #(KB) u_dec (.cd(cd[KB*8*c +: KB*8]), .stem(ctl[6]), .g3n(ctl[7]), .c(dc), .nnw(nw));
+        qbc_coldec #(KB) u_dec (.cd(cdr[KB*8*c +: KB*8]), .stem(ctlr[6]), .g3n(ctlr[7]), .c(dc), .nnw(nw));
         for (genvar g = 0; g < NG; g++) begin : g_grp
-            qbc_br #(KB) u_br (.clk, .rst_n, .c(dc), .nnw(nw), .ctl, .t2(t2[8*17*c +: 8*17]),
+            qbc_br #(KB) u_br (.clk, .rst_n, .c(dc), .nnw(nw), .ctl(ctlr), .t2(t2[8*17*c +: 8*17]),
                                .c_q(cbr[g][c]), .nnw_q(nbr[g][c]), .ctl_q(kbr[g][c]), .t2_q(tbr[g][c]));
         end
     end
@@ -447,15 +571,18 @@ module qb_core #(
                 assign up = '0;
                 assign shi = '0;
             end
-            qbc_pe #(KB, AW) u_pe (.clk, .rst_n, .a(act[KB*8*r +: KB*8]), .c(cbr[r/8][c]), .nnw(nbr[r/8][c]),
+            qbc_pe #(KB, AW, CREG, PPOP) u_pe (.clk, .rst_n, .a(act[KB*8*r +: KB*8]), .c(cbr[r/8][c]), .nnw(nbr[r/8][c]),
                                    .ctl(kbr[r/8][c]), .t2(tbr[r/8][c]), .fsh(fsh_g[r/8]), .wsh(wsh_g[r/8]), .up,
                                    .sh_in(shi), .shd(shd[r][c]), .sh_out(sho[r][c]), .b2(b2[COLS*8*r + 8*c +: 8]));
         end
     end
-    // b2 valid: cmp at S2 (ctl n-1 -> BR n -> S0 n+1 -> S1 n+2 -> b2 at n+3)
-    logic [2:0] cmpd;
-    always_ff @(posedge clk) cmpd <= rst_n ? {cmpd[1:0], kbr[0][0][9]} : 3'b0;
-    assign b2_vld = cmpd[2];
+    // b2 valid: cmp at S2 (ctl n-1 -> BR n -> S0 n+1 -> S1 n+2 -> b2 at n+3; CREG: port reg n -> BR n+1 -> S1 n+2)
+    localparam int ND = (CREG != 0) ? 2 : 3;
+    logic [ND-1:0] cmpd;
+    if (ND > 1) begin : g_cmpd
+        always_ff @(posedge clk) cmpd <= rst_n ? {cmpd[ND-2:0], kbr[0][0][9]} : '0;
+    end
+    assign b2_vld = cmpd[ND-1];
 
     // ---------------------------------------------------------------- fused lanes
     logic [COLS*8*EW-1:0] fe;
@@ -473,7 +600,7 @@ module qb_core #(
                 logic signed [16:0]   sv;
                 assign sv = s_rd[17*L +: 17];
                 assign x  = fs_q ? AW'(sv) : shd[q][c][AW*i +: AW];
-                qbf_lane #(.AW(AW), .BW(16), .XW(16), .MW(MWF), .TW(16), .SHW(4), .SB(17), .PC(0)) u_lf (
+                qbf_lane #(.AW(AW), .BW(16), .XW(16), .MW(MWF), .TW(16), .SHW(4), .SB(17), .PC(0), .FP(FTP)) u_lf (
                     .clk, .rst_n, .vld(fv_q), .relu(frelu), .acc(x), .sgn(fe[EW*CH]),
                     .bias(fe[EW*CH+1 +: 16]), .lo(16'sd0), .hi(16'sd0), .m(fe[EW*CH+17 +: MWF]),
                     .sh(fl[36*CH +: 4]), .h(fl[36*CH+4 +: 16]), .sv, .rmode(flm[1:0]), .omode(flm[3:2]),
@@ -493,7 +620,7 @@ module qb_core #(
             localparam int L = COLS * q + c;
             logic [78:0] pr;
             assign pr = wc[79*c +: 79];
-            qbcw_lane u_lw (.clk, .rst_n, .vld(wv_q), .relu(wcm[0]), .sgn(pr[0]), .acc(sho[q][c]),
+            qbcw_lane #(.TP(WTP)) u_lw (.clk, .rst_n, .vld(wv_q), .relu(wcm[0]), .sgn(pr[0]), .acc(sho[q][c]),
                             .bias(pr[1 +: 20]), .m(pr[21 +: 31]), .sh(pr[52 +: 6]), .omode(wcm[2:1]),
                             .t(pr[58 +: 21]), .r(w_r[19*L +: 19]), .vld_o(wvo[L]), .y_o(w_y[19*L +: 19]),
                             .b_o(w_b[L]));

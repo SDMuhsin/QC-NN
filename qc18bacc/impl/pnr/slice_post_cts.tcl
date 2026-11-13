@@ -35,32 +35,68 @@ qc_to $::OUT/rpt/pc0_skew.rpt { report_clock_skew -setup; report_clock_skew -hol
 qc_to $::OUT/rpt/pc0_setup.rpt { report_checks -path_delay max -format full_clock_expanded -fields {input_pins slew cap fanout} -digits 3 }
 qc_to $::OUT/rpt/pc0_hold.rpt { report_checks -path_delay min -format full_clock_expanded -group_count 5 -endpoint_count 1 -fields {input_pins} -digits 3 }
 qb_counts postcts_pre_repair
-set t [clock seconds]
-repair_timing -setup -setup_margin 0.0 -repair_tns [qb_env QB_TNS 100] -max_utilization [p MAX_UTIL]
-qc_log "repair_timing -setup [expr {[clock seconds] - $t}] s"
-qb_counts postcts_setup_repair
-set t [clock seconds]
-if {[catch { repair_timing -hold -hold_margin [p HOLD_MARGIN] -max_buffer_percent [qb_env QB_HOLD_PCT 10] \
-        -max_utilization [p MAX_UTIL] } e]} { qc_log "repair_timing -hold stopped: $e" }
-qc_log "repair_timing -hold [expr {[clock seconds] - $t}] s"
-detailed_placement {*}[p DPL_ARGS]
-check_placement
-estimate_parasitics -placement
-qb_counts postcts_hold_repair
-# QB_RT2 1 (default): a second setup repair after legalisation (qcs_t1: -0.267 ns after the setup repair, -0.526 after
-# the hold repair + detailed placement moved the resized cells), then legalisation and the hold check again
-if {[qb_env QB_RT2 1]} {
-    set t [clock seconds]
-    repair_timing -setup -setup_margin 0.0 -repair_tns [qb_env QB_TNS 100] -max_utilization [p MAX_UTIL]
+# QB_RTSEQ 2 (results/pnr_slice2.md): every repair is followed by legalisation + parasitics re-estimate and a
+# count line, so the setup lost to legalisation is measured per step; after the hold repair the setup repair is re-run
+# (QB_RT_LOOPS rounds, default 2) and the hold repair only where hold violations reappear.  QB_RTSEQ 1 = pnr_slice.md.
+proc qb_legal {tag} {
     detailed_placement {*}[p DPL_ARGS]
     estimate_parasitics -placement
+    qb_counts $tag
+}
+proc qb_setup {} {
+    set t [clock seconds]
+    repair_timing -setup -setup_margin [qb_env QB_SETUP_MARGIN 0.0] -repair_tns [qb_env QB_TNS 100] -max_utilization [p MAX_UTIL]
+    qc_log "repair_timing -setup [expr {[clock seconds] - $t}] s"
+}
+proc qb_hold {} {
+    set t [clock seconds]
     if {[catch { repair_timing -hold -hold_margin [p HOLD_MARGIN] -max_buffer_percent [qb_env QB_HOLD_PCT 10] \
-            -max_utilization [p MAX_UTIL] } e]} { qc_log "repair_timing -hold (2) stopped: $e" }
+            -max_utilization [p MAX_UTIL] } e]} { qc_log "repair_timing -hold stopped: $e" }
+    qc_log "repair_timing -hold [expr {[clock seconds] - $t}] s"
+}
+if {[qb_env QB_RTSEQ 2] == 2} {
+    qb_setup
+    qb_counts postcts_setup_repair
+    qb_legal postcts_setup_legal
+    qb_hold
+    qb_counts postcts_hold_repair_unlegal
+    qb_legal postcts_hold_legal
+    for {set k 1} {$k <= [qb_env QB_RT_LOOPS 2]} {incr k} {
+        qb_setup
+        qb_counts postcts_setup${k}_repair
+        qb_legal postcts_setup${k}_legal
+        set nh 0; catch { set nh [sta::endpoint_violation_count min] }
+        if {$nh > 0} { qb_hold; qb_legal postcts_hold${k}_legal }
+    }
+    check_placement
+} else {
+    set t [clock seconds]
+    repair_timing -setup -setup_margin 0.0 -repair_tns [qb_env QB_TNS 100] -max_utilization [p MAX_UTIL]
+    qc_log "repair_timing -setup [expr {[clock seconds] - $t}] s"
+    qb_counts postcts_setup_repair
+    set t [clock seconds]
+    if {[catch { repair_timing -hold -hold_margin [p HOLD_MARGIN] -max_buffer_percent [qb_env QB_HOLD_PCT 10] \
+            -max_utilization [p MAX_UTIL] } e]} { qc_log "repair_timing -hold stopped: $e" }
+    qc_log "repair_timing -hold [expr {[clock seconds] - $t}] s"
     detailed_placement {*}[p DPL_ARGS]
     check_placement
     estimate_parasitics -placement
-    qc_log "second setup repair [expr {[clock seconds] - $t}] s"
-    qb_counts postcts_repair2
+    qb_counts postcts_hold_repair
+    # QB_RT2 1 (default): a second setup repair after legalisation (qcs_t1: -0.267 ns after the setup repair, -0.526 after
+    # the hold repair + detailed placement moved the resized cells), then legalisation and the hold check again
+    if {[qb_env QB_RT2 1]} {
+        set t [clock seconds]
+        repair_timing -setup -setup_margin 0.0 -repair_tns [qb_env QB_TNS 100] -max_utilization [p MAX_UTIL]
+        detailed_placement {*}[p DPL_ARGS]
+        estimate_parasitics -placement
+        if {[catch { repair_timing -hold -hold_margin [p HOLD_MARGIN] -max_buffer_percent [qb_env QB_HOLD_PCT 10] \
+                -max_utilization [p MAX_UTIL] } e]} { qc_log "repair_timing -hold (2) stopped: $e" }
+        detailed_placement {*}[p DPL_ARGS]
+        check_placement
+        estimate_parasitics -placement
+        qc_log "second setup repair [expr {[clock seconds] - $t}] s"
+        qb_counts postcts_repair2
+    }
 }
 qc_to $::OUT/rpt/pc1_setup.rpt { report_checks -path_delay max -format full_clock_expanded -fields {input_pins slew cap fanout} -digits 3 }
 qc_to $::OUT/rpt/pc1_hold.rpt { report_checks -path_delay min -format full_clock_expanded -group_count 5 -endpoint_count 1 -fields {input_pins} -digits 3 }

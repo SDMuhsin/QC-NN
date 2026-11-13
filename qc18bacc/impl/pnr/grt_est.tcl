@@ -68,5 +68,17 @@ if {[qc_env QB_GRT 1]} {
     estimate_parasitics -global_routing
     qb_rep grt
     write_db $::OUT/db/grt_est.odb
+    # QB_GRT_REPAIR 1 (results/pnr_slice2.md): setup repair at global-route parasitics, legalisation, incremental
+    # global route of the changed nets, estimates again
+    if {[qc_env QB_GRT_REPAIR 0]} {
+        global_route -start_incremental
+        repair_timing -setup -setup_margin 0.0 -repair_tns 100 -max_utilization [p MAX_UTIL]
+        detailed_placement
+        global_route -end_incremental -congestion_report_file $::OUT/rpt/gr_est2_congestion.rpt
+        estimate_parasitics -global_routing
+        qc_log "grt repair done ([expr {[clock seconds] - $::T0}] s)"
+        unset -nocomplain ::qb_io_off
+        qb_rep grtrep
+    }
 }
 qc_log "grt_est done ([expr {[clock seconds] - $::T0}] s)"
