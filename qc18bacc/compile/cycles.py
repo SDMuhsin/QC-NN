@@ -213,6 +213,7 @@ class Sched:
         self.last_arr = None
         self.sh_pass = None
         self.attr = [0] * npass
+        self.sup = None                          # supply-model state (compile/supply.py), None without a supply hook
 
     def copy(self):
         c = Sched.__new__(Sched)
@@ -220,10 +221,11 @@ class Sched:
         c.cap, c.done, c.heads = list(self.cap), list(self.done), list(self.heads)
         c.t_arr, c.t_sh, c.lane, c.last_arr, c.sh_pass, c.attr = (self.t_arr, self.t_sh, dict(self.lane), self.last_arr,
                                                                   self.sh_pass, list(self.attr))
+        c.sup = None if self.sup is None else self.sup.copy()
         return c
 
 
-def list_schedule(prog, st, NL, nw=NW, ovh=OVH, fl=FL_ALL, check=False):
+def list_schedule(prog, st, NL, nw=NW, ovh=OVH, fl=FL_ALL, check=False, win=None, ctx=None, sup=None):
     """v1.1 event-driven list scheduler over tiles (per image):
     resources: array (one tile at a time, compute = executed chunk items), shadow (one per PE: a drained tile captures
     only when the previous drain has finished; the array stalls holding its accumulators otherwise), fused lanes (NL
@@ -262,6 +264,12 @@ def list_schedule(prog, st, NL, nw=NW, ovh=OVH, fl=FL_ALL, check=False):
             dd[t] = cdiv(1024, NL if u == "fused" else nw)
         d["u"] = u
     var = (dur != dur[:1]).any(0)
+    win = WIN if win is None else win
+    is_arr = [None] * npass
+    for d in T:
+        is_arr[d["pi"]] = d["arr"]
+    if sup is not None:                                  # supply hook (compile/supply.py): image-dependent tiles
+        var |= np.array([sup.varies(T[t]) for t in range(n)], bool)
     first = [None] * npass
     for t, d in enumerate(T):
         if first[d["pi"]] is None:
@@ -303,19 +311,27 @@ def list_schedule(prog, st, NL, nw=NW, ovh=OVH, fl=FL_ALL, check=False):
     def step(S, img, stop_var=False):
         lo = min(pi for pi in range(npass) if S.heads[pi] < nt[pi])
         best = None
-        for pi in range(lo, min(lo + WIN, npass)):
+        narr = 0
+        for pi in range(lo, min(lo + win, npass)):
             if S.heads[pi] >= nt[pi]:
                 continue
+            if ctx is not None and is_arr[pi]:           # at most ctx array passes in flight (qb_act contexts)
+                narr += 1
+                if narr > ctx:
+                    continue
             t = first[pi] + S.heads[pi]
             if not all(S.done[a] for a, _, _ in T[t]["deps"]):
                 continue
             if stop_var and var[t]:
                 return None                              # a per-image duration enters the decision
             e = est(S, t, int(dur[img, t]))
-            if best is None or e < best[0]:
-                best = (e, t)
+            k = e                                        # supply hook: select by the supply-ready start too
+            if sup is not None and T[t]["arr"]:
+                k = max(e, sup.probe(S.sup, T, t, ready(S, t, ("ras",))[0]))
+            if best is None or k < best[0]:
+                best = (k, t, e)
         assert best is not None, "list scheduler deadlock"
-        return best
+        return best[2], best[1]
 
     def commit(S, t, s, img):  # noqa
         d = T[t]
@@ -327,6 +343,8 @@ def list_schedule(prog, st, NL, nw=NW, ovh=OVH, fl=FL_ALL, check=False):
             assert s_ == s
             if s > S.t_arr:
                 S.attr[b if b is not None else pi] += s - S.t_arr
+            if sup is not None:                          # supply-stretched compute (last item issue - start)
+                C = sup.dur(S.sup, T, t, s, C, img, ready(S, t, ("ras",))[0])
             ce = s + C
             S.attr[pi] += C
             if u == "pecmp":
@@ -358,6 +376,8 @@ def list_schedule(prog, st, NL, nw=NW, ovh=OVH, fl=FL_ALL, check=False):
 
     S0 = Sched(n, npass)
     S0.heads = [0] * npass
+    if sup is not None:
+        S0.sup = sup.new(T, nt)
     complete = run(S0, 0, True)                          # common prefix (durations equal for every image)
     per = np.zeros(N, np.int64)
     attr = np.zeros((N, npass), np.int64)
