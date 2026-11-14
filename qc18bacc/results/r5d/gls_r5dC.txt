@@ -1,0 +1,6 @@
+SIM_DONE r5a_r5d_C PASS vcs_rc 0 simv_rc 0 compile_wall 0:42.39 peak_rss_mb 816
+  QB_CORE_TB /tmp/ckp908/qc18bacc/r5a_vec/img0 cycles 3644 checked 630784 errors 0 PASS
+QB_CORE_TB /tmp/ckp908/qc18bacc/r5a_vec/img1 cycles 3684 checked 630784 errors 0 PASS
+QB_CORE_TB /tmp/ckp908/qc18bacc/r5d_vec/img7 cycles 3628 checked 630784 errors 0 PASS
+QB_CORE_TB /tmp/ckp908/qc18bacc/r5d_vec/img123 cycles 3676 checked 630784 errors 0 PASS
+R5D_DONE r5d_C

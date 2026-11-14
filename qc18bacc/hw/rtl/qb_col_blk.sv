@@ -15,7 +15,15 @@ module qb_col_blk (
     output logic w_vld_o, output logic [4*19-1:0] w_y, output logic [4-1:0] w_b
 );
     assign act_o = act;
-    qb_core #(.ROWS(16), .COLS(1), .CREG(1), .WTP(1), .FTP(1), .PPOP(1), .BRG(2)) u_core (
+    // results/r5d.md options (defines, default = the R5a block): QB_COL_CREG 2 (decode before the code register),
+    // QB_COL_WSHP 1 (wide-lane sh - 1 precomputed); impl/r5d/qb_blk_r5d.f sets both
+`ifndef QB_COL_CREG
+`define QB_COL_CREG 1
+`endif
+`ifndef QB_COL_WSHP
+`define QB_COL_WSHP 0
+`endif
+    qb_core #(.ROWS(16), .COLS(1), .CREG(`QB_COL_CREG), .WTP(1), .FTP(1), .PPOP(1), .BRG(2), .WSHP(`QB_COL_WSHP)) u_core (
         .clk, .rst_n, .cd, .ctl, .act, .t2, .b2, .b2_vld, .f_vld, .f_src, .f_sh, .p_ld, .pf, .s_rd, .f_vld_o, .f_y,
         .f_b, .w_vld, .w_sh, .w_ld, .pw, .w_r, .w_vld_o, .w_y, .w_b);
 endmodule

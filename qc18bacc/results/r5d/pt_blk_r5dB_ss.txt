@@ -1,0 +1,16 @@
+design qb_col_blk corner ss period 2.000000 lib tcbn65gpluswc_ccs spef_nets total 257880 rc_network 250467 not_annotated 7413
+insertion_delay_L_ns 1.355 (latencies 1.47 1.24)
+reg2reg slack_ns -1.344 fmax_mhz 299.1 arrival 4.566 path u_core/g_col_0__g_grp_7__u_br/c_q_reg_333_/CP -> u_core/g_r_14__g_c_0__u_pe/g_pop2_u_pop/u_q_reg_8_/D
+act2reg slack_ns 0.414 arrival 2.580 path act[226] -> u_core/g_r_0__g_c_0__u_pe/g_s0cr_u_ina/q_reg_226_/D
+act2act_o slack_ns -0.115 arrival 2.710 path act[3365] -> act_o[3365]
+north2reg slack_ns -1.002 arrival 4.108 path cd[73] -> u_core/g_col_0__nw_reg_7_/D
+south2reg slack_ns -1.134 arrival 4.138 path s_rd[424] -> u_core/g_fq_3__g_fc_0__g_fi_0__u_lf/u_rlate/q_reg_53_/D
+reg2south slack_ns 0.084 arrival 2.521 path u_core/g_r_14__g_c_0__u_pe/u_cmp/b2_reg_2_/CP -> b2[114]
+all slack_ns -1.344 fmax_mhz 299.1 arrival 4.566 path u_core/g_col_0__g_grp_7__u_br/c_q_reg_333_/CP -> u_core/g_r_14__g_c_0__u_pe/g_pop2_u_pop/u_q_reg_8_/D
+hold_reg2reg slack_ns -0.002 arrival 1.527 path u_core/u_pbf/late_reg_219_/CP -> u_core/g_fq_0__g_fc_0__g_fi_6__u_lf/u_rlate/q_reg_5_/D
+hold_in2reg slack_ns -0.018 arrival 1.465 path act[3061] -> u_core/g_r_10__g_c_0__u_pe/g_s0cr_u_ina/q_reg_181_/D
+hold_act2act_o slack_ns 0.146 arrival 1.551 path act[2557] -> act_o[2557]
+feedthrough_delay_ns max 0.255 min 0.096 (budget 0.140 = 0.07 P)
+hold_violating_endpoints 25
+setup_violating_endpoints 11152
+pt_wall_s 37

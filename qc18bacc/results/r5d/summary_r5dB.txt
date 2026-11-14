@@ -1,0 +1,40 @@
+markers 8178
+type x layer: Short/M2 4187, Short/M3 1249, Cut Spacing/VIA1 897, Metal Spacing/M2 724, Short/M4 291, Metal Spacing/M3 226, Short/M5 180, Short/M6 128, Metal Spacing/M1 93, Short/M7 58, Metal Spacing/M4 40, Metal Spacing/M5 23
+top y bins (um): 2150 963, 1600 876, 2200 799, 2300 680, 2100 633, 2050 602, 2000 525, 1750 384, 1550 362, 1850 295, 1700 280, 1200 165
+x bins (25 um): 0 14, 25 166, 50 145, 75 360, 100 177, 125 197, 150 950, 175 2776, 200 2917, 225 360, 250 20, 275 13, 300 16, 325 23, 350 19, 375 25
+net classes: other 2121, pe07 1586, pe08 1530, pe03 1253, pe04 894, pe09 790, pe06 762, pe05 732, br 548, top_buf 541, pe00 354, pe01 309, lane/pbank 249, pe02 226
+init init_tt setup_wns_ns 0.092 setup_tns_ns 0.000 hold_wns_ns 0.016 hold_tns_ns 0.000
+floorplan die_um 390.00 x 3110.00 core_um2 1177848.0 cell_um2 745201.8 macro_um2 0.0 utilisation 0.633
+pdn VDD check_power_grid true
+pdn VSS check_power_grid true
+r5c_tile cells 130020 template_not_in_column 176 pe_cells_not_tiled 48 row_orient_mismatch 0
+r5c_spread_tile max_bbox_w_um 376.0 max_bbox_h_um 113.4 max_y10_90_um 84.6 max_bbox_area_um2 42638
+slice3_gpl rows_in_order 1 inversions 0 max_y10_90_um 85 min_in_band 1.000
+slice3_dpl rows_in_order 1 inversions 0 max_y10_90_um 86 min_in_band 1.000
+slice3_dpl_class_wns lane_f=-0.100 other=-0.220 port=-0.030
+r5c_spread_dpl max_bbox_w_um 379.6 max_bbox_h_um 129.6 max_y10_90_um 86.4 max_bbox_area_um2 49196
+place die_um 390.00 x 3110.00 core_um2 1177848.0 cell_um2 843761.5 macro_um2 0.0 utilisation 0.716
+place place_tt setup_wns_ns -0.216 setup_tns_ns -44.112 hold_wns_ns 0.019 hold_tns_ns 0.000
+repin repin_tt setup_wns_ns -0.187 setup_tns_ns -59.696 hold_wns_ns 0.019 hold_tns_ns 0.000
+cts die_um 390.00 x 3110.00 core_um2 1177848.0 cell_um2 869798.9 macro_um2 0.0 utilisation 0.738
+cts cts_tt setup_wns_ns -0.474 setup_tns_ns -90.185 hold_wns_ns -0.970 hold_tns_ns -6045.278
+postcts_pre_repair tt setup_wns_ns -0.183 setup_viol_endpoints 2930 hold_wns_ns -0.120 hold_viol_endpoints 59 die_um 390.00 x 3110.00 core_um2 1177848.0 cell_um2 869798.9 macro_um2 0.0 utilisation 0.738
+postcts_setup_repair tt setup_wns_ns -0.035 setup_viol_endpoints 27 hold_wns_ns -0.120 hold_viol_endpoints 59 die_um 390.00 x 3110.00 core_um2 1177848.0 cell_um2 872554.7 macro_um2 0.0 utilisation 0.741
+postcts_setup_legal tt setup_wns_ns -0.039 setup_viol_endpoints 61 hold_wns_ns -0.120 hold_viol_endpoints 59 die_um 390.00 x 3110.00 core_um2 1177848.0 cell_um2 872554.7 macro_um2 0.0 utilisation 0.741
+postcts_hold_repair_unlegal tt setup_wns_ns -0.039 setup_viol_endpoints 61 hold_wns_ns 0.020 hold_viol_endpoints 0 die_um 390.00 x 3110.00 core_um2 1177848.0 cell_um2 873554.8 macro_um2 0.0 utilisation 0.742
+postcts_hold_legal tt setup_wns_ns -0.039 setup_viol_endpoints 61 hold_wns_ns 0.020 hold_viol_endpoints 0 die_um 390.00 x 3110.00 core_um2 1177848.0 cell_um2 873554.8 macro_um2 0.0 utilisation 0.742
+groute groute_tt setup_wns_ns -0.129 setup_tns_ns -15.313 hold_wns_ns -0.005 hold_tns_ns -0.030
+grt_r2r grt_r2r_tt setup_wns_ns -0.083 setup_tns_ns -4.213 hold_wns_ns 0.018 hold_tns_ns 0.000
+slice3_grt_class_wns lane_f=-0.080 lane_w=-0.050 pe14=0.000
+final die_um 390.00 x 3110.00 core_um2 1177848.0 cell_um2 873554.8 macro_um2 0.0 utilisation 0.742
+post_route_tt setup_wns_ns 0.426 setup_tns_ns 0.000 hold_wns_ns -0.004 hold_tns_ns -0.006
+drc_violations 8178 antenna_net_violations NA antenna_pin_violations NA
+pnr_wall_s 8105 wall 2:13:01 peak_rss_mb 15120
+design qb_col_blk top qb_col_blk corner tt period_ns 1.65 topo 1 wire_load topo
+cell_area_um2 745201.803481 gate_eq_kGE 517.50 cells 220777 regs 25905
+setup_wns_ns -0.0308014 setup_tns_ns -8.958 setup_viol_endpoints 879
+setup_worst_path cd[53] -> u_core/g_col_0__nw_reg_6_/D
+hold_wns_ns -0.000956587 hold_tns_ns -0.018 hold_viol_endpoints 61
+hold_worst_path u_core/u_pbf/p0_reg_382_/CP -> u_core/u_pbf/late_reg_157_/D
+dc_wall_s 728
+wall 12:13.18 peak_rss_mb 3431

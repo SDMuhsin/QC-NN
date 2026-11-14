@@ -1,0 +1,25 @@
+init init_tt setup_wns_ns 0.092 setup_tns_ns 0.000 hold_wns_ns 0.016 hold_tns_ns 0.000
+floorplan die_um 390.00 x 3110.00 core_um2 1177848.0 cell_um2 745201.8 macro_um2 0.0 utilisation 0.633
+pdn VDD check_power_grid true
+pdn VSS check_power_grid true
+r5c_tile cells 130020 template_not_in_column 176 pe_cells_not_tiled 48 row_orient_mismatch 0
+r5c_spread_tile max_bbox_w_um 376.0 max_bbox_h_um 113.4 max_y10_90_um 84.6 max_bbox_area_um2 42638
+slice3_gpl rows_in_order 1 inversions 0 max_y10_90_um 85 min_in_band 1.000
+slice3_dpl rows_in_order 1 inversions 0 max_y10_90_um 86 min_in_band 1.000
+slice3_dpl_class_wns lane_f=-0.350 other=-0.350 port=-0.030
+r5c_spread_dpl max_bbox_w_um 380.0 max_bbox_h_um 131.4 max_y10_90_um 86.4 max_bbox_area_um2 49643
+place die_um 390.00 x 3110.00 core_um2 1177848.0 cell_um2 843188.4 macro_um2 0.0 utilisation 0.716
+place place_tt setup_wns_ns -0.352 setup_tns_ns -56.953 hold_wns_ns 0.019 hold_tns_ns 0.000
+repin repin_tt setup_wns_ns -0.349 setup_tns_ns -72.275 hold_wns_ns 0.019 hold_tns_ns 0.000
+cts die_um 390.00 x 3110.00 core_um2 1177848.0 cell_um2 869251.7 macro_um2 0.0 utilisation 0.738
+cts cts_tt setup_wns_ns -0.432 setup_tns_ns -88.953 hold_wns_ns -0.934 hold_tns_ns -6041.697
+postcts_pre_repair tt setup_wns_ns -0.355 setup_viol_endpoints 2973 hold_wns_ns -0.084 hold_viol_endpoints 97 die_um 390.00 x 3110.00 core_um2 1177848.0 cell_um2 869251.7 macro_um2 0.0 utilisation 0.738
+postcts_setup_repair tt setup_wns_ns -0.009 setup_viol_endpoints 26 hold_wns_ns -0.084 hold_viol_endpoints 97 die_um 390.00 x 3110.00 core_um2 1177848.0 cell_um2 872122.7 macro_um2 0.0 utilisation 0.740
+postcts_setup_legal tt setup_wns_ns -0.008 setup_viol_endpoints 56 hold_wns_ns -0.084 hold_viol_endpoints 97 die_um 390.00 x 3110.00 core_um2 1177848.0 cell_um2 872122.7 macro_um2 0.0 utilisation 0.740
+postcts_hold_repair_unlegal tt setup_wns_ns -0.008 setup_viol_endpoints 56 hold_wns_ns 0.020 hold_viol_endpoints 0 die_um 390.00 x 3110.00 core_um2 1177848.0 cell_um2 873362.5 macro_um2 0.0 utilisation 0.741
+postcts_hold_legal tt setup_wns_ns -0.008 setup_viol_endpoints 56 hold_wns_ns 0.020 hold_viol_endpoints 0 die_um 390.00 x 3110.00 core_um2 1177848.0 cell_um2 873362.5 macro_um2 0.0 utilisation 0.741
+groute groute_tt setup_wns_ns -0.114 setup_tns_ns -14.449 hold_wns_ns 0.001 hold_tns_ns 0.000
+grt_r2r grt_r2r_tt setup_wns_ns -0.098 setup_tns_ns -3.737 hold_wns_ns 0.020 hold_tns_ns 0.000
+slice3_grt_class_wns lane_f=-0.100 lane_w=-0.050
+drc_violations NA antenna_net_violations NA antenna_pin_violations NA
+pnr_wall_s 989 wall  peak_rss_mb 0

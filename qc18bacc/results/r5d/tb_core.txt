@@ -1,0 +1,15 @@
+== QBC_TAG=_base
+QB_CORE_TB /tmp/claude-0/r5d/vec/img7 cycles 3628 checked 630784 errors 0 PASS
+QB_CORE_TB /tmp/claude-0/r5d/vec/img123 cycles 3676 checked 630784 errors 0 PASS
+== QBC_TAG=_new
+QB_CORE_TB /tmp/claude-0/r5d/vec/img7 cycles 3628 checked 630784 errors 0 PASS
+QB_CORE_TB /tmp/claude-0/r5d/vec/img123 cycles 3676 checked 630784 errors 0 PASS
+== QBC_TAG=_mdec
+QB_CORE_TB /tmp/claude-0/r5d/vec/img7 cycles 3628 checked 630784 errors 201905 FAIL
+QB_CORE_TB /tmp/claude-0/r5d/vec/img123 cycles 3676 checked 630784 errors 204062 FAIL
+== QBC_TAG=_mnnw
+QB_CORE_TB /tmp/claude-0/r5d/vec/img7 cycles 3628 checked 630784 errors 65536 FAIL
+QB_CORE_TB /tmp/claude-0/r5d/vec/img123 cycles 3676 checked 630784 errors 65536 FAIL
+== QBC_TAG=_mg3n
+QB_CORE_TB /tmp/claude-0/r5d/vec/img7 cycles 3628 checked 630784 errors 65536 FAIL
+QB_CORE_TB /tmp/claude-0/r5d/vec/img123 cycles 3676 checked 630784 errors 65536 FAIL

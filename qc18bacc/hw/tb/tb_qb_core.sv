@@ -37,11 +37,14 @@ module tb_qb_core;
 `ifndef QBC_PPOP
 `define QBC_PPOP 0
 `endif
+`ifndef QBC_WSHP
+`define QBC_WSHP 0                                    // results/r5d.md (with -DQBC_CREG=2)
+`endif
 `ifdef QBC_COLARR
     qb_colarr dut (.*);         // results/r5a.md: 8 abutted qb_col_blk (RTL wrapper or block netlist)
 `else
     qb_core #(.ROWS(ROWS), .COLS(COLS), .KB(KB), .MWF(MWF), .CREG(`QBC_CREG), .WTP(`QBC_WTP), .FTP(`QBC_FTP),
-              .PPOP(`QBC_PPOP), .BRG(`QBC_BRG)) dut (.*);
+              .PPOP(`QBC_PPOP), .BRG(`QBC_BRG), .WSHP(`QBC_WSHP)) dut (.*);
 `endif
     assign {p_ld, f_sh, f_src, f_vld} = fctl;
     assign {w_ld, w_sh, w_vld} = wctl;

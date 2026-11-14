@@ -311,7 +311,8 @@ endmodule
 // r (19 b) is a late operand (cycle n + 1, the stream read); everything else at cycle n.  Latency 4.
 // TP 1 (pnr_slice2.md): S3 split into S3 (y + r, registered 20 b) and S4 (saturation, output mode, compare in
 // parallel on the registered sum); latency 5.
-module qbcw_lane #(parameter int XW = 20, MW = 31, TW = 21, RW = 19, YW = 19, TP = 0) (
+module qbcw_lane #(parameter int XW = 20, MW = 31, TW = 21, RW = 19, YW = 19, TP = 0,
+                   parameter int SHP = 0) (     // SHP 1 (results/r5d.md): sh - 1 registered at S1 (same y2, latency)
     input  logic                 clk, rst_n, vld, relu, sgn,
     input  logic signed [19:0]   acc,
     input  logic signed [XW-1:0] bias,
@@ -352,7 +353,7 @@ module qbcw_lane #(parameter int XW = 20, MW = 31, TW = 21, RW = 19, YW = 19, TP
     logic                  v1;
     assign prod = x0 * $signed({1'b0, m0});
     always_ff @(posedge clk) begin
-        p1 <= prod; r1 <= r; sh1 <= sh0; om1 <= om0; t1 <= t0;
+        p1 <= prod; r1 <= r; sh1 <= (SHP != 0) ? sh0 - 6'd1 : sh0; om1 <= om0; t1 <= t0;
         v1 <= rst_n ? v0 : 1'b0;
     end
     // S2: round-shift, clamp to YW b
@@ -364,7 +365,7 @@ module qbcw_lane #(parameter int XW = 20, MW = 31, TW = 21, RW = 19, YW = 19, TP
     always_ff @(posedge clk) begin
         logic signed [PWD-1:0] q;
         logic signed [PWD:0]   y;
-        q = p1 >>> (sh1 - 6'd1);
+        q = p1 >>> ((SHP != 0) ? sh1 : sh1 - 6'd1);
         y = ((PWD+1)'(q) + (PWD+1)'(1)) >>> 1;
         if      (y > (PWD+1)'((1 << (YW-1)) - 1)) y2 <= YW'((1 << (YW-1)) - 1);
         else if (y < -(PWD+1)'(1 << (YW-1)))      y2 <= YW'(-(1 << (YW-1)));
@@ -487,12 +488,16 @@ module qb_core #(
     parameter int MWF  = 28,                 // fused-lane multiplier width
     // pnr_slice2.md options (0 = R1 as built):
     parameter int CREG = 0,                  // 1: code / ctl port register -> decode -> BR -> popcount (no PE S0 codes)
+                                             // 2 (results/r5d.md): as 1, but decode + NNw before the port register
+                                             //   (port -> decode -> register -> BR: the register -> BR path is wire)
     parameter int WTP  = 0,                  // 1: wide-lane tail split (latency 4 -> 5, w_* outputs one cycle later)
     parameter int FTP  = 0,                  // 1: fused-lane tail split (latency 3 -> 4, f_* outputs one cycle later)
     parameter int PPOP = 0,                  // 1: PE weighted group sum retimed from S1 into S2 (latency unchanged)
     // pnr_slice3.md option (8 = R1 / v2 as built):
-    parameter int BRG  = 8                   // PE rows per broadcast register (8, 4 or 2; ROWS a multiple of BRG):
+    parameter int BRG  = 8,                  // PE rows per broadcast register (8, 4 or 2; ROWS a multiple of BRG):
                                              // duplicated BRs, logic / latency unchanged
+    // results/r5d.md option (0 = as built):
+    parameter int WSHP = 0                   // 1: wide lane shift amount sh - 1 precomputed into S1 (latency unchanged)
 ) (
     input  logic                         clk, rst_n,
     // array side
@@ -533,9 +538,11 @@ module qb_core #(
     logic [COLS*KB*8-1:0] cdr;
     logic [9:0]           ctlr;
     if (CREG != 0) begin : g_creg
-        always_ff @(posedge clk) begin
-            cdr  <= cd;
-            ctlr <= rst_n ? ctl : {2'b00, ctl[7:1], 1'b0};
+        always_ff @(posedge clk) ctlr <= rst_n ? ctl : {2'b00, ctl[7:1], 1'b0};
+        if (CREG == 1) begin : g_cdr
+            always_ff @(posedge clk) cdr <= cd;
+        end else begin : g_nocdr                // CREG 2: the codes are registered after the decoders (g_col.g_dreg)
+            assign cdr = '0;
         end
     end else begin : g_nocreg
         assign cdr = cd; assign ctlr = ctl;
@@ -543,7 +550,14 @@ module qb_core #(
     for (genvar c = 0; c < COLS; c++) begin : g_col
         logic [KB*10-1:0]  dc;
         logic signed [9:0] nw;
-        qbc_coldec #(KB) u_dec (.cd(cdr[KB*8*c +: KB*8]), .stem(ctlr[6]), .g3n(ctlr[7]), .c(dc), .nnw(nw));
+        if (CREG == 2) begin : g_dreg       // decode the port codes (cycle n-1, with the port ctl), register the result
+            logic [KB*10-1:0]  dcp;
+            logic signed [9:0] nwp;
+            qbc_coldec #(KB) u_dec (.cd(cd[KB*8*c +: KB*8]), .stem(ctl[6]), .g3n(ctl[7]), .c(dcp), .nnw(nwp));
+            always_ff @(posedge clk) begin dc <= dcp; nw <= nwp; end
+        end else begin : g_dcomb
+            qbc_coldec #(KB) u_dec (.cd(cdr[KB*8*c +: KB*8]), .stem(ctlr[6]), .g3n(ctlr[7]), .c(dc), .nnw(nw));
+        end
         for (genvar g = 0; g < NG; g++) begin : g_grp
             qbc_br #(KB) u_br (.clk, .rst_n, .c(dc), .nnw(nw), .ctl(ctlr), .t2(t2[8*17*c +: 8*17]),
                                .c_q(cbr[g][c]), .nnw_q(nbr[g][c]), .ctl_q(kbr[g][c]), .t2_q(tbr[g][c]));
@@ -574,7 +588,7 @@ module qb_core #(
                 assign up = '0;
                 assign shi = '0;
             end
-            qbc_pe #(KB, AW, CREG, PPOP) u_pe (.clk, .rst_n, .a(act[KB*8*r +: KB*8]), .c(cbr[r/BRG][c]), .nnw(nbr[r/BRG][c]),
+            qbc_pe #(KB, AW, (CREG != 0) ? 1 : 0, PPOP) u_pe (.clk, .rst_n, .a(act[KB*8*r +: KB*8]), .c(cbr[r/BRG][c]), .nnw(nbr[r/BRG][c]),
                                    .ctl(kbr[r/BRG][c]), .t2(tbr[r/BRG][c]), .fsh(fsh_g[r/BRG]), .wsh(wsh_g[r/BRG]), .up,
                                    .sh_in(shi), .shd(shd[r][c]), .sh_out(sho[r][c]), .b2(b2[COLS*8*r + 8*c +: 8]));
         end
@@ -623,7 +637,7 @@ module qb_core #(
             localparam int L = COLS * q + c;
             logic [78:0] pr;
             assign pr = wc[79*c +: 79];
-            qbcw_lane #(.TP(WTP)) u_lw (.clk, .rst_n, .vld(wv_q), .relu(wcm[0]), .sgn(pr[0]), .acc(sho[q][c]),
+            qbcw_lane #(.TP(WTP), .SHP(WSHP)) u_lw (.clk, .rst_n, .vld(wv_q), .relu(wcm[0]), .sgn(pr[0]), .acc(sho[q][c]),
                             .bias(pr[1 +: 20]), .m(pr[21 +: 31]), .sh(pr[52 +: 6]), .omode(wcm[2:1]),
                             .t(pr[58 +: 21]), .r(w_r[19*L +: 19]), .vld_o(wvo[L]), .y_o(w_y[19*L +: 19]),
                             .b_o(w_b[L]));
