@@ -225,7 +225,8 @@ class Sched:
         return c
 
 
-def list_schedule(prog, st, NL, nw=NW, ovh=OVH, fl=FL_ALL, check=False, win=None, ctx=None, sup=None):
+def list_schedule(prog, st, NL, nw=NW, ovh=OVH, fl=FL_ALL, check=False, win=None, ctx=None, sup=None, lat=None,
+                  bub=None):
     """v1.1 event-driven list scheduler over tiles (per image):
     resources: array (one tile at a time, compute = executed chunk items), shadow (one per PE: a drained tile captures
     only when the previous drain has finished; the array stalls holding its accumulators otherwise), fused lanes (NL
@@ -238,7 +239,11 @@ def list_schedule(prog, st, NL, nw=NW, ovh=OVH, fl=FL_ALL, check=False, win=None
     earliest feasible start wins, ties in program order.  Pass overhead OVH only where the array idles at a pass
     boundary (start = ready + OVH); end of image = last write + OVH.  Cycles are attributed to passes (array compute ->
     own pass, idle -> pass of the binding hazard, shadow stall -> pass holding the shadow, tail -> last drain) so the
-    per-pass attribution sums to the image cycles.  check: verify the hazard pairs on the scheduled times of every image
+    per-pass attribution sums to the image cycles.  lat (R3a, default None = unchanged): function (producer tile, consumer
+    field 'ras' / 'rds' / 'ws', consumer tile) -> extra cycles added to the producer's write-done time ('wd') in that
+    hazard (the RTL write-back pipeline after the drain / capture).  bub (R3a, default None = unchanged): function (previous tile on the unit or None, tile) -> idle cycles
+    between two PPU-only jobs / drains on one lane unit (qb_core: an hm job reads s_rd early, so it cannot directly
+    follow a drain that reads s_rd late).  check: verify the hazard pairs on the scheduled times of every image
     (every read sees the program-order version) and return the time arrays."""
     key = (id(prog), "tiles")
     if key not in BASE:
@@ -281,6 +286,8 @@ def list_schedule(prog, st, NL, nw=NW, ovh=OVH, fl=FL_ALL, check=False, win=None
         for a, fa, fb in T[t]["deps"]:
             if fb in fsel:
                 v = S.t[_field(fa, T[a]["arr"])][a]
+                if lat is not None and fa == "wd":
+                    v += lat(T[a], fb, T[t])
                 if v > best:
                     best, bt = v, a
         return best, bt
@@ -306,7 +313,10 @@ def list_schedule(prog, st, NL, nw=NW, ovh=OVH, fl=FL_ALL, check=False, win=None
         rw, _ = ready(S, t, ("ws", "rds"))
         if d["arr"]:
             return _start(S, t, C, d)[0]
-        return max(S.lane[d["u"]], rw) + (ovh if (t == first[d["pi"]] and rw > S.lane[d["u"]]) else 0)
+        ln = S.lane[d["u"]]
+        if bub is not None:
+            ln += bub(S.lane.get(d["u"] + "_last"), t)
+        return max(ln, rw) + (ovh if (t == first[d["pi"]] and rw > ln) else 0)
 
     def step(S, img, stop_var=False):
         lo = min(pi for pi in range(npass) if S.heads[pi] < nt[pi])
@@ -356,12 +366,14 @@ def list_schedule(prog, st, NL, nw=NW, ovh=OVH, fl=FL_ALL, check=False, win=None
                 ds = max(cap, S.lane[u], rw)
                 de = ds + D_
                 S.t_sh, S.lane[u], S.sh_pass = de, de, pi
+                S.lane[u + "_last"] = t
             S.t_arr, S.last_arr = cap, pi
         else:
             ce = cap = None
             ds = s
             de = ds + D_
             S.lane[u] = de
+            S.lane[u + "_last"] = t
         S.t["st"][t], S.t["ce"][t], S.t["ds"][t], S.t["de"][t] = s, ce, ds, de
         S.done[t] = True
         S.heads[pi] += 1
