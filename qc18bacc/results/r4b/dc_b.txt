@@ -1,0 +1,8 @@
+design qb_chip top qb_chip corner tt period_ns 1.65 topo 1 wire_load topo
+cell_area_um2 15106432.343038 gate_eq_kGE 10490.58 cells 2257860 regs 337779
+setup_wns_ns -0.00065434 setup_tns_ns -0.035 setup_viol_endpoints 126
+setup_worst_path u_top/fv_p_reg_2_/CP -> u_top/u_core/g_fq_3__g_fc_0__g_fi_4__u_lf/u_rin/q_reg_30_/D
+hold_wns_ns -0.0490382 hold_tns_ns -16.057 hold_viol_endpoints 14650
+hold_worst_path u_top/g_r3b_g_rt_u_seq/ea_reg_7_/CP -> u_top/g_r3b_g_rt_u_seq/u_de/g_mac_g_d_u_mac/A[7]
+dc_wall_s 8015
+wall 2:13:40 peak_rss_mb 15059

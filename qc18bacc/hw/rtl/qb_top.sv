@@ -40,6 +40,11 @@
 // behavioural qbt_rfsp / qbt_rf2p below are replaced by hw/tech/qb_mem_tech.sv (same ports, ARM macros).  R4 also
 // renamed the functional taps used by qb_chip / qb_head: dbg_{fv,fpi,fct,fk,fy} -> wb_* (fused write-back bus),
 // dbg_{aeot,actx,apic0,apic1} -> ae_{eot,ctx,pic0,pic1} (act-supply tile ends).
+// R4b hooks (defines, defaults = R4): QB_SEQ_RT = 1 builds the retimed sequencer hw/rtl/qb_seq_rt.sv (same cycles;
+// in simulation the R3b qb_seq runs in lockstep and any output difference sets err; QBT_NOLOCK disables it),
+// QB_SEQ_LSW = stored load-permission age width (qb_seq_rt), QB_PRM_NFF / NFW / NFT = qb_prm fetch-list depths,
+// QB_TOP_SROT = 1: the act-port S read rotation (s_q) as a group mux + log rotator (same function, less area),
+// QB_TOP_WBR = 1: the S write requests (stream / HQ / HQD / Z / r / b6.c2) as lane-group selects + log rotators.
 `ifndef QB_SEQ_NT
 `define QB_SEQ_NT 1024
 `endif
@@ -48,6 +53,27 @@
 `endif
 `ifndef QB_SEQ_DSCM
 `define QB_SEQ_DSCM 0
+`endif
+`ifndef QB_SEQ_RT
+`define QB_SEQ_RT 0
+`endif
+`ifndef QB_SEQ_LSW
+`define QB_SEQ_LSW 16
+`endif
+`ifndef QB_TOP_SROT
+`define QB_TOP_SROT 0
+`endif
+`ifndef QB_TOP_WBR
+`define QB_TOP_WBR 0
+`endif
+`ifndef QB_PRM_NFF
+`define QB_PRM_NFF 256
+`endif
+`ifndef QB_PRM_NFW
+`define QB_PRM_NFW 256
+`endif
+`ifndef QB_PRM_NFT
+`define QB_PRM_NFT 256
 `endif
 module qb_top #(parameter int DIST = 1, parameter int AP = 1, parameter bit R3B = 0, parameter bit HSEL = 0) (
     input  logic          clk, rst_n,
@@ -492,7 +518,19 @@ module qb_top #(parameter int DIST = 1, parameter int AP = 1, parameter bit R3B 
     end
     logic s_grp_q;  logic [3:0] s_rot_q;
     always_ff @(posedge clk) begin s_grp_q <= s_grp; s_rot_q <= s_rot; end
-    always_comb for (int l = 0; l < 16; l++) s_q[128 * l +: 128] = s_mq[16 * s_grp_q + ((l + s_rot_q) & 15)];
+    if (`QB_TOP_SROT) begin : g_srot                       // R4b: group mux + 4-stage log rotator (same function)
+        always_comb begin
+            logic [2047:0] x;
+            for (int l = 0; l < 16; l++) x[128 * l +: 128] = s_grp_q ? s_mq[16 + l] : s_mq[l];
+            if (s_rot_q[0]) x = {x[127:0], x[2047:128]};
+            if (s_rot_q[1]) x = {x[255:0], x[2047:256]};
+            if (s_rot_q[2]) x = {x[511:0], x[2047:512]};
+            if (s_rot_q[3]) x = {x[1023:0], x[2047:1024]};
+            s_q = x;
+        end
+    end else begin : g_nsrot
+        always_comb for (int l = 0; l < 16; l++) s_q[128 * l +: 128] = s_mq[16 * s_grp_q + ((l + s_rot_q) & 15)];
+    end
     // ---- reader output registers -> s_rd (fused) / w_r (wide)
     logic [4095:0] rq_r;
     logic [1:0]    f_pg1 [4], f_pg2 [4], f_pg3 [4];
@@ -775,6 +813,164 @@ module qb_top #(parameter int DIST = 1, parameter int AP = 1, parameter bit R3B 
             end
         end
     end
+
+    // ---------------- R4b hook QB_TOP_WBR = 1: the same S write requests built as per-lane-group selects and log
+    // rotators (HQ / HQD / Z words go to 16 lanes as a fixed permutation rotated by the tile position; stream and b6.c2
+    // pixels to lane groups by the swizzle; HQD / Z / c2 data replicated across the masked-off positions).  The map
+    // (B1 / B2) requests stay in the block above.  Conflicts as above (err); under a conflict the data may differ.
+    logic [31:0]  wr_en;  logic [7:0] wr_a [32];  logic [127:0] wr_d [32], wr_m [32];  logic wr_conf;
+    // rotate 16 lanes up by s (new lane l = old lane l - s mod 16): 128-b words / 8-b addresses
+    function automatic logic [2047:0] rup16(input logic [2047:0] x, input logic [3:0] s);
+        if (s[0]) x = {x[1919:0], x[2047:1920]};
+        if (s[1]) x = {x[1791:0], x[2047:1792]};
+        if (s[2]) x = {x[1535:0], x[2047:1536]};
+        if (s[3]) x = {x[1023:0], x[2047:1024]};
+        return x;
+    endfunction
+    function automatic logic [127:0] rup8(input logic [127:0] x, input logic [3:0] s);
+        if (s[0]) x = {x[119:0], x[127:120]};
+        if (s[1]) x = {x[111:0], x[127:112]};
+        if (s[2]) x = {x[95:0], x[127:96]};
+        if (s[3]) x = {x[63:0], x[127:64]};
+        return x;
+    endfunction
+    logic [63:0]  wr_hq;  logic [7:0] wr_hqd;  logic [127:0] wr_z;
+    always_comb begin
+        logic [31:0]  ef, ew;  logic [7:0] af [32], aw [32];  logic [127:0] df [32], mf [32], dw [32], mw [32];
+        logic         cf, cw;
+        ef = '0; ew = '0; cf = 1'b0; cw = 1'b0; wr_hq = '0; wr_hqd = '0; wr_z = '0;
+        for (int l = 0; l < 32; l++) begin af[l] = '0; aw[l] = '0; df[l] = '0; mf[l] = '0; dw[l] = '0; mw[l] = '0; end
+        // ---- fused
+        if (fo.v && f_vld_o) begin
+            logic [88:0] p;
+            p = pt[fo.pi];
+            if (fo.hm) begin
+                logic [3:0] y, l0, bq;  logic [1:0] oy;
+                logic [2047:0] xw, xd;  logic [127:0] xa, xc;               // 16 lanes x (128-b word, 8-b address)
+                y  = 4'(2 * fo.tp + 7'(fo.k[1]));
+                l0 = 4'(2 * y + 4'(fo.k[0]));
+                oy = 2'(y >> 1);
+`ifdef QBT_MUT_WBQ
+                bq = {1'b0, 1'b0, oy};                                    // mutant: HQD rotation without the ct term
+`else
+                bq = {fo.ct[0], 1'b0, oy};                                // HQD base 8 ct[0] + oy
+`endif
+                for (int pl = 0; pl < 8; pl++)
+                    for (int j = 0; j < 2; j++) begin
+                        logic [127:0] w, v;  int ix, iz;
+                        ix = 2 * pl + j;                                    // HQ word index (lane l0 + ix)
+                        iz = 4 * j + int'(rotd(3'(pl)));                    // HQD word index (lane 16 + bq + iz)
+                        for (int q = 0; q < 4; q++) for (int c5 = 0; c5 < 32; c5++)
+                            w[32 * q + c5] = f_y[17 * (64 * q + 32 * j + c5) + pl];
+                        for (int h = 0; h < 2; h++) for (int qq = 0; qq < 2; qq++) for (int c5 = 0; c5 < 32; c5++)
+                            v[64 * h + 32 * qq + c5] = f_y[17 * (64 * (2 * qq) + 32 * j + c5) + pl];
+                        xw[128 * ix +: 128] = w;  xa[8 * ix +: 8] = 8'd128 + 8'(8 * pl) + 8'(2 * fo.ct + 4'(j));
+                        xd[128 * iz +: 128] = v;  xc[8 * iz +: 8] = 8'd128 + 8'(2 * pl) + 8'(fo.ct >> 1);
+                        if (|w) wr_hq[8 * pl + 2 * fo.ct + j] = 1'b1;
+                        if (|v[63:0] && !y[0]) wr_hqd[pl] = 1'b1;
+                    end
+                xw = rup16(xw, l0);  xa = rup8(xa, l0);                     // word ix -> lane l0 + ix
+                xd = rup16(xd, bq);  xc = rup8(xc, bq);                     // word iz -> lane 16 + bq + iz
+                for (int l = 0; l < 16; l++) begin
+                    ef[l] = 1'b1; df[l] = xw[128 * l +: 128]; mf[l] = '1; af[l] = xa[8 * l +: 8];
+                    ef[16 + l] = !y[0]; df[16 + l] = xd[128 * l +: 128]; af[16 + l] = xc[8 * l +: 8];
+                    mf[16 + l] = fo.k[0] ? {64'hffffffffffffffff, 64'd0} : {64'd0, 64'hffffffffffffffff};
+                end
+            end else begin
+                logic [7:0] a [4];  logic [1:0] pg [4];
+                for (int q = 0; q < 4; q++) begin
+                    logic [15:0] px;  logic [23:0] e;
+                    px = 16'(fo.tp) * 16 + 16'(fo.k) * 4 + 16'(q);
+                    e  = (24'(px) << (6 + pt_lgc(p))) + 24'(fo.ct) * 64;
+                    a[q] = e[15:8];
+`ifdef QBT_MUT_SWZ
+                    pg[q] = (pt_lgc(p) == 3'd0) ? e[7:6] : e[7:6] ^ h2(a[q]);
+`else
+                    pg[q] = e[7:6] ^ h2(a[q]);
+`endif
+                end
+                for (int q = 0; q < 4; q++) for (int r = q + 1; r < 4; r++) if (pg[q] == pg[r]) cf = 1'b1;
+                for (int G = 0; G < 4; G++)
+                    for (int col = 0; col < 8; col++) begin
+                        logic [127:0] w;  logic [7:0] aa;  logic en;
+                        w = '0; aa = '0; en = 1'b0;
+                        for (int q = 0; q < 4; q++)
+                            if (pg[q] == 2'(G)) begin
+                                en = 1'b1; aa = aa | a[q];
+                                for (int i = 0; i < 8; i++) w[16 * i +: 16] = w[16 * i +: 16] | f_y[17 * (64 * q + 8 * col + i) +: 16];
+                            end
+                        ef[8 * G + col] = en; df[8 * G + col] = w; mf[8 * G + col] = '1; af[8 * G + col] = aa;
+                    end
+            end
+        end
+        // ---- wide (block 6)
+        if (wo.v && w_vld_o) begin
+            logic [2:0] i0;  logic [1:0] y;  logic [127:0] mi;
+            i0 = 3'd7 - 3'(wo.k);
+            y  = 2'(wo.k >> 3);
+            for (int b = 0; b < 128; b++) mi[b] = 3'(b % 8) == i0;          // bit i0 of every byte
+            if (wo.kind == 3'd5) begin                                      // b6.c1 -> Z planes
+                logic [3:0] bz;  logic [2047:0] xz;  logic [127:0] xa;
+                bz = {wo.ct[0], 1'b0, y};
+                for (int pl = 0; pl < 8; pl++)
+                    for (int jj = 0; jj < 2; jj++) begin
+                        logic [127:0] w;  logic [15:0] h;  int iz;
+                        iz = 4 * jj + int'(rotd(3'(pl)));
+                        for (int q = 0; q < 4; q++) for (int cc = 0; cc < 4; cc++) begin
+                            h[4 * q + cc] = w_y[19 * (8 * q + 4 * jj + cc) + pl];
+                            for (int i = 0; i < 8; i++) w[32 * q + 8 * cc + i] = h[4 * q + cc];
+                        end
+                        xz[128 * iz +: 128] = w;  xa[8 * iz +: 8] = 8'd144 + 8'(4 * pl) + 8'(wo.ct >> 1);
+                        if (|h) wr_z[16 * pl + 2 * wo.ct + jj] = 1'b1;
+                    end
+                xz = rup16(xz, bz);  xa = rup8(xa, bz);                     // word iz -> lane 16 + bz + iz
+                for (int l = 0; l < 16; l++) begin
+                    ew[16 + l] = 1'b1; dw[16 + l] = xz[128 * l +: 128]; mw[16 + l] = mi; aw[16 + l] = xa[8 * l +: 8];
+                end
+            end else if (wo.kind == 3'd6) begin                             // b6.sc -> r lo / hi
+                logic [6:0] idx;  logic [7:0] a;
+                idx = 7'(wo.ct) * 16 + 7'(wo.k[4:1]);
+                a   = idx < 7'd64 ? 8'd64 + 8'(idx) : 8'd128 + 8'(idx);
+                for (int l = 0; l < 16; l++) begin
+                    logic [127:0] w;
+                    for (int cc = 0; cc < 4; cc++) begin
+                        logic [18:0] r;
+                        r = w_y[19 * (8 * ((l & 7) >> 1) + 4 * (l & 1) + cc) +: 19];
+                        w[32 * cc +: 16] = r[15:0];
+                        w[32 * cc + 16 +: 16] = 16'($signed(r[18:16]));
+                    end
+                    ew[l] = (l >> 3) == int'(wo.k[0]); dw[l] = w; mw[l] = '1; aw[l] = a;
+                end
+            end else if (wo.kind == 3'd7) begin                             // b6.c2 -> s
+                logic [7:0] a [4];  logic [1:0] pg [4];  logic [127:0] m16;
+                for (int b = 0; b < 128; b++) m16[b] = 3'(b / 16) == i0;
+                for (int q = 0; q < 4; q++) begin
+                    a[q]  = 8'(2 * (q + 4 * y)) + 8'(wo.ct >> 2);
+                    pg[q] = 2'(wo.ct) ^ h2(a[q]);
+                end
+                for (int q = 0; q < 4; q++) for (int r = q + 1; r < 4; r++) if (pg[q] == pg[r]) cw = 1'b1;
+                for (int G = 0; G < 4; G++)
+                    for (int col = 0; col < 8; col++) begin
+                        logic [15:0] v;  logic [7:0] aa;  logic en;
+                        v = '0; aa = '0; en = 1'b0;
+                        for (int q = 0; q < 4; q++)
+                            if (pg[q] == 2'(G)) begin en = 1'b1; aa = aa | a[q]; v = v | w_y[19 * (8 * q + col) +: 16]; end
+                        ew[8 * G + col] = en; dw[8 * G + col] = {8{v}}; mw[8 * G + col] = m16; aw[8 * G + col] = aa;
+                    end
+            end
+        end
+        wr_en = ef | ew;
+        wr_conf = cf | cw | ((ef & ew) != '0);
+        for (int l = 0; l < 32; l++) begin
+            wr_d[l] = ew[l] ? dw[l] : (ef[l] ? df[l] : '0);  wr_m[l] = ew[l] ? mw[l] : (ef[l] ? mf[l] : '0);
+            wr_a[l] = ew[l] ? aw[l] : (ef[l] ? af[l] : '0);
+        end
+    end
+    wire [31:0]  u_en = `QB_TOP_WBR ? wr_en : sw_en;
+    wire         u_conf = `QB_TOP_WBR ? wr_conf : sw_conf;
+    wire [63:0]  u_hq = `QB_TOP_WBR ? wr_hq : hit_hq;
+    wire [7:0]   u_hqd = `QB_TOP_WBR ? wr_hqd : hit_hqd;
+    wire [127:0] u_z = `QB_TOP_WBR ? wr_z : hit_z;
     // b2 capture FIFO (2 deep) + line counter
     always_ff @(posedge clk or negedge rst_n)
         if (!rst_n) begin b2f_n <= '0; b2_j <= '0; b2_ovf <= 1'b0; end
@@ -793,8 +989,10 @@ module qb_top #(parameter int DIST = 1, parameter int AP = 1, parameter bit R3B 
         end
     // boundary write registers
     always_ff @(posedge clk) begin
-        s_we <= sw_en;
-        for (int l = 0; l < 32; l++) begin s_wa[l] <= sw_a[l]; s_wd[l] <= sw_d[l]; s_wm[l] <= sw_m[l]; end
+        s_we <= u_en;
+        for (int l = 0; l < 32; l++)
+            if (`QB_TOP_WBR) begin s_wa[l] <= wr_a[l]; s_wd[l] <= wr_d[l]; s_wm[l] <= wr_m[l]; end
+            else begin s_wa[l] <= sw_a[l]; s_wd[l] <= sw_d[l]; s_wm[l] <= sw_m[l]; end
         for (int mp = 0; mp < 2; mp++) begin
             b_we[mp] <= bw_en[mp];
             for (int m = 0; m < 4; m++) begin b_wa[mp][m] <= bw_a[mp][m]; b_wd[mp][m] <= bw_d[mp][m]; b_wm[mp][m] <= bw_m[mp][m]; end
@@ -830,12 +1028,12 @@ module qb_top #(parameter int DIST = 1, parameter int AP = 1, parameter bit R3B 
                 2'd1: nd[f_idx[2:0]] = 1'b0;
                 default: nz[f_idx] = 1'b0;
             endcase
-            fp_hq  <= nh | (hit_hq & ~fs_hq);   fs_hq  <= fs_hq | hit_hq;
-            fp_hqd <= nd | (hit_hqd & ~fs_hqd); fs_hqd <= fs_hqd | hit_hqd;
-            fp_z   <= nz | (hit_z & ~fs_z);     fs_z   <= fs_z | hit_z;
+            fp_hq  <= nh | (u_hq & ~fs_hq);   fs_hq  <= fs_hq | u_hq;
+            fp_hqd <= nd | (u_hqd & ~fs_hqd); fs_hqd <= fs_hqd | u_hqd;
+            fp_z   <= nz | (u_z & ~fs_z);     fs_z   <= fs_z | u_z;
             for (int bk = 0; bk < 3; bk++) begin
                 logic act_;
-                act_ = ((f_we || f_clr) && f_bank == 2'(bk)) || (bk == 0 ? hit_hq != '0 : bk == 1 ? hit_hqd != '0 : hit_z != '0);
+                act_ = ((f_we || f_clr) && f_bank == 2'(bk)) || (bk == 0 ? u_hq != '0 : bk == 1 ? u_hqd != '0 : u_z != '0);
                 quiet[bk] <= act_ ? 2'd0 : (quiet[bk] == 2'd3 ? 2'd3 : quiet[bk] + 2'd1);
             end
         end
@@ -850,12 +1048,53 @@ module qb_top #(parameter int DIST = 1, parameter int AP = 1, parameter bit R3B 
         logic [5183:0] pf_s;  logic [5055:0] pw_s;  logic [1087:0] t2_s;
         stp_t fe_, we_;  cev_t ce_, cu_;
         assign fe_ = fdl[D];  assign we_ = wdl[D];  assign ce_ = cdl[D];  assign cu_ = cdl[D + 2];
+        if (`QB_SEQ_RT == 0) begin : g_s0
         qb_seq #(.NT(`QB_SEQ_NT), .NLT(`QB_SEQ_NLT), .DSCM(`QB_SEQ_DSCM)) u_seq (
             .clk, .rst_n, .go, .run, .now, .h_we, .h_sel, .h_addr, .h_d(h_data[95:0]), .pt, .done, .p_fire(s_pfire),
             .p_pi(s_ppi), .tgo(s_tgo), .l_pos0, .l_pos1, .fl_quiet, .l_ok(s_lok), .l_seq0(s_lseq0), .l_seq1(s_lseq1),
             .d_vld, .d_eot, .fs_hq, .fs_hqd, .fs_z, .c_fire(s_cfire), .c_cmp(s_ccmp), .c_pi(s_cpi), .c_tp(s_ctp),
             .c_ct(s_cct), .f_fire(s_ffire), .f_job(s_fjob), .w_fire(s_wfire), .w_job(s_wjob), .err(seq_err));
-        qb_prm #(.HSEL(HSEL)) u_prm (
+        end else begin : g_rt
+        // R4b: retimed sequencer (hw/rtl/qb_seq_rt.sv), same cycle behaviour; in simulation the R3b qb_seq runs in
+        // lockstep on the same inputs and any output difference sets err (QBT_NOLOCK: off, for mutant runs)
+        logic seq_err_rt, lk_err;
+        qb_seq_rt #(.NT(`QB_SEQ_NT), .NLT(`QB_SEQ_NLT), .LSW(`QB_SEQ_LSW)) u_seq (
+            .clk, .rst_n, .go, .run, .now, .h_we, .h_sel, .h_addr, .h_d(h_data[95:0]), .pt, .done, .p_fire(s_pfire),
+            .p_pi(s_ppi), .tgo(s_tgo), .l_pos0, .l_pos1, .fl_quiet, .l_ok(s_lok), .l_seq0(s_lseq0), .l_seq1(s_lseq1),
+            .d_vld, .d_eot, .fs_hq, .fs_hqd, .fs_z, .c_fire(s_cfire), .c_cmp(s_ccmp), .c_pi(s_cpi), .c_tp(s_ctp),
+            .c_ct(s_cct), .f_fire(s_ffire), .f_job(s_fjob), .w_fire(s_wfire), .w_job(s_wjob), .err(seq_err_rt));
+`ifndef SYNTHESIS
+`ifndef QBT_NOLOCK
+        logic [1:0]  r_pfire, r_tgo, r_lok;  logic [4:0] r_ppi [2];  logic [15:0] r_lseq0, r_lseq1, r_fjob, r_wjob;
+        logic        r_cfire, r_ccmp, r_ffire, r_wfire, r_err;  logic [4:0] r_cpi;  logic [6:0] r_ctp;  logic [3:0] r_cct;
+        qb_seq #(.NT(`QB_SEQ_NT), .NLT(`QB_SEQ_NLT), .DSCM(0)) u_ref (
+            .clk, .rst_n, .go, .run, .now, .h_we, .h_sel, .h_addr, .h_d(h_data[95:0]), .pt, .done, .p_fire(r_pfire),
+            .p_pi(r_ppi), .tgo(r_tgo), .l_pos0, .l_pos1, .fl_quiet, .l_ok(r_lok), .l_seq0(r_lseq0), .l_seq1(r_lseq1),
+            .d_vld, .d_eot, .fs_hq, .fs_hqd, .fs_z, .c_fire(r_cfire), .c_cmp(r_ccmp), .c_pi(r_cpi), .c_tp(r_ctp),
+            .c_ct(r_cct), .f_fire(r_ffire), .f_job(r_fjob), .w_fire(r_wfire), .w_job(r_wjob), .err(r_err));
+        int nlk = 0;
+        wire lk_d = s_pfire != r_pfire || (s_pfire[0] && s_ppi[0] != r_ppi[0]) || (s_pfire[1] && s_ppi[1] != r_ppi[1]) ||
+                    s_tgo != r_tgo || s_lok != r_lok || (s_lok[0] && s_lseq0 != r_lseq0) || (s_lok[1] && s_lseq1 != r_lseq1) ||
+                    s_cfire != r_cfire || (s_cfire && {s_ccmp, s_cpi, s_ctp, s_cct} != {r_ccmp, r_cpi, r_ctp, r_cct}) ||
+                    s_ffire != r_ffire || (s_ffire && s_fjob != r_fjob) || s_wfire != r_wfire || (s_wfire && s_wjob != r_wjob);
+        always_ff @(posedge clk or negedge rst_n)
+            if (!rst_n) lk_err <= 1'b0;
+            else if (run && lk_d) begin
+                lk_err <= 1'b1;
+                nlk <= nlk + 1;
+                if (nlk < 5) $display("QB_SEQ_LOCKSTEP mismatch now %0d: pfire %b/%b tgo %b/%b lok %b/%b cfire %b/%b ffire %b/%b fjob %h/%h wfire %b/%b",
+                                      now, s_pfire, r_pfire, s_tgo, r_tgo, s_lok, r_lok, s_cfire, r_cfire, s_ffire, r_ffire,
+                                      s_fjob, r_fjob, s_wfire, r_wfire);
+            end
+`else
+        assign lk_err = 1'b0;
+`endif
+`else
+        assign lk_err = 1'b0;
+`endif
+        assign seq_err = seq_err_rt | lk_err;
+        end
+        qb_prm #(.HSEL(HSEL), .NFF(`QB_PRM_NFF), .NFW(`QB_PRM_NFW), .NFT(`QB_PRM_NFT)) u_prm (
             .clk, .rst_n, .go, .h_we, .h_sel, .h_addr, .h_d(h_data[1295:0]),
             .u_early({ce_.v && ce_.cmp, we_.v && we_.k == 5'd0, fe_.v && (fe_.hm ? fe_.k == 5'd3 : fe_.k == 5'd0)}),
             .u_use({cu_.v && cu_.cmp, wp.v && wp.k == 5'd0, fp.v && (fp.hm ? fp.k == 5'd3 : fp.k == 5'd0)}),
@@ -877,7 +1116,7 @@ module qb_top #(parameter int DIST = 1, parameter int AP = 1, parameter bit R3B 
     // ================================================================ checks (sticky error)
     always_ff @(posedge clk or negedge rst_n)
         if (!rst_n) err <= 1'b0;
-        else err <= err | seq_err | prm_err | a_err | s_conf | rd_conf | f_rconf | (|s_rwc) | (|b_rwc) | sw_conf | bw_conf | b2_ovf | f_ovl | w_ovl |
+        else err <= err | seq_err | prm_err | a_err | s_conf | rd_conf | f_rconf | (|s_rwc) | (|b_rwc) | u_conf | bw_conf | b2_ovf | f_ovl | w_ovl |
                    (b2_vld && !(bo.v && bo.cmp)) | (f_vld_o && !fo.v) | (w_vld_o && !wo.v) |
                    (fo.v && !f_vld_o) | (wo.v && !w_vld_o);
 

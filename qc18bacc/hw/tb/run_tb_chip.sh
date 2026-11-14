@@ -10,11 +10,13 @@ VL=${VERILATOR:-/workspace/eda/opt/verilator/bin/verilator}
 WORK=${QB_TB_WORK:-/tmp/${USER:-$(id -un)}/qc18bacc/tb}/qb_chip${QBT_TAG:-}
 TECH=()
 [ "${QBT_TECH:-0}" = 1 ] && TECH=(+define+QB_TECH+QB_SEQ_NT=640+QB_SEQ_NLT=320+QB_SEQ_DSCM=1 "$HERE/../tech/qb_mem_tech.sv" "$HERE/../tech/qb_mem_arm_beh.sv")
+# R4b: QBT_TECH=2 = the R4b tech build (defines of hw/tech/qb_chip_tech_r4b.f)
+[ "${QBT_TECH:-0}" = 2 ] && TECH=($(grep '^+define' "$HERE/../tech/qb_chip_tech_r4b.f") "$HERE/../tech/qb_mem_tech.sv" "$HERE/../tech/qb_mem_arm_beh.sv")
 case "$1" in
 build) mkdir -p "$WORK"
        "$VL" --binary -j 16 -O2 -Wno-fatal -Wno-WIDTHEXPAND -Wno-WIDTHTRUNC --Mdir "$WORK/obj" -o sim ${QBT_DEFS:-} ${QBT_VFLAGS:-} \
            --top-module tb_qb_chip "$RTL/qb_lane_f.sv" "$RTL/qb_dec.sv" "$RTL/qb_core.sv" "$RTL/qb_act_net.sv" \
-           "$RTL/qb_act.sv" "$RTL/qb_act2_net.sv" "$RTL/qb_act2.sv" "$RTL/qb_seq.sv" "$RTL/qb_top.sv" "$RTL/qb_head.sv" \
+           "$RTL/qb_act.sv" "$RTL/qb_act2_net.sv" "$RTL/qb_act2.sv" "$RTL/qb_seq.sv" "$RTL/qb_seq_rt.sv" "$RTL/qb_top.sv" "$RTL/qb_head.sv" \
            "$RTL/qb_chip.sv" ${TECH[@]+"${TECH[@]}"} "$HERE/tb_qb_chip.sv" > "$WORK/build.log" 2>&1 || { grep -E "%Error" "$WORK/build.log" | head -30; exit 1; }
        echo "QB_CHIP_BUILD_OK $WORK" ;;
 run)   shift; P=$1; shift; i=0; A=()

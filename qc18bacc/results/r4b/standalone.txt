@@ -1,0 +1,45 @@
+== r4b_seqrt1
+design qb_seq_rt_NT640_NLT320_LSW10 top qb_seq_rt corner tt period_ns 1.65 topo 1 wire_load topo
+cell_area_um2 787800.595022 gate_eq_kGE 547.08 cells 162552 regs 25364
+setup_wns_ns -0.416447 setup_tns_ns -89.801 setup_viol_endpoints 632
+setup_worst_path now[6] -> f_fire
+== r4b_seqrt2
+design qb_seq_rt_NT640_NLT320_LSW10 top qb_seq_rt corner tt period_ns 1.65 topo 1 wire_load topo
+cell_area_um2 781778.515088 gate_eq_kGE 542.90 cells 162006 regs 25373
+setup_wns_ns -0.184624 setup_tns_ns -9.072 setup_viol_endpoints 159
+setup_worst_path eqf_reg_0__18_/CP -> w_fire
+== r4b_seqrt3
+design qb_seq_rt_NT640_NLT320_LSW10 top qb_seq_rt corner tt period_ns 1.65 topo 1 wire_load topo
+cell_area_um2 781532.634812 gate_eq_kGE 542.73 cells 162368 regs 25373
+setup_wns_ns -0.264824 setup_tns_ns -14.844 setup_viol_endpoints 185
+setup_worst_path cm_k_reg_3_/CP -> f_fire
+== r4b_rot_a
+design rot_a top rot_a corner tt period_ns 1.65 topo 1 wire_load topo
+cell_area_um2 166916.158704 gate_eq_kGE 115.91 cells 54846 regs 6149
+setup_wns_ns 0.229425 setup_tns_ns 0.000 setup_viol_endpoints 0
+setup_worst_path r_reg_1_/CP -> q_reg_637_/D
+== r4b_rot_b
+design rot_b top rot_b corner tt period_ns 1.65 topo 1 wire_load topo
+cell_area_um2 78294.961260 gate_eq_kGE 54.37 cells 22774 regs 6149
+setup_wns_ns 0.323938 setup_tns_ns 0.000 setup_viol_endpoints 0
+setup_worst_path r_reg_0_/CP -> q_reg_1668_/D
+== r4b_wbx
+design qb_wb_x top qb_wb_x corner tt period_ns 1.65 topo 1 wire_load topo
+cell_area_um2 377622.721372 gate_eq_kGE 262.24 cells 123457 regs 11780
+setup_wns_ns 0.000568271 setup_tns_ns 0.000 setup_viol_endpoints 0
+setup_worst_path w_vld_o -> s_wd_reg_1__68_/D
+== r4b_wby
+design qb_wb_y top qb_wb_y corner tt period_ns 1.65 topo 1 wire_load topo
+cell_area_um2 182720.881797 gate_eq_kGE 126.89 cells 62383 regs 9310
+setup_wns_ns 6.74725e-05 setup_tns_ns 0.000 setup_viol_endpoints 0
+setup_worst_path w_vld_o -> s_wd_reg_14__1_/D
+== r4b_seqrt4
+design qb_seq_rt_NT640_NLT320_LSW10 top qb_seq_rt corner tt period_ns 1.65 topo 1 wire_load topo
+cell_area_um2 780749.995044 gate_eq_kGE 542.19 cells 162162 regs 25373
+setup_wns_ns -0.265161 setup_tns_ns -14.610 setup_viol_endpoints 227
+setup_worst_path cm_k_reg_6_/CP -> w_fire
+worst reg->reg endpoints:
+   g_lp_1__RdB_reg/D            1.39           1.60 r        -0.20  (VIOLATED)
+   g_lp_0__RdB_reg/D            1.40           1.60 r        -0.20  (VIOLATED)
+   g_lp_0__RdA_reg/D            1.39           1.59 r        -0.20  (VIOLATED)
+   g_lp_1__RdA_reg/D            1.39           1.59 r        -0.20  (VIOLATED)

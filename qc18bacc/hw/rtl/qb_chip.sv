@@ -16,6 +16,10 @@
 //   lo_vld / lo_idx / lo_val: logits stream, one int32 class logit per valid (IntBin2 logit = lo_val x fscale[idx],
 //            host side); the head of image i delivers during image i + 1.
 //   err: sticky (qb_top checks, head conflicts, host contract: h_go while busy, IMG write while not free).
+// R4b: define QB_HEAD_HP (default 0) selects qb_head's two-stage FC tree (same cycles).
+`ifndef QB_HEAD_HP
+`define QB_HEAD_HP 0
+`endif
 module qb_chip #(parameter int DIST = 1, parameter int AP = 1) (
     input  logic          clk, rst_n,
     input  logic          h_we,
@@ -89,7 +93,7 @@ module qb_chip #(parameter int DIST = 1, parameter int AP = 1) (
 
     // ---------------------------------------------------------------- head
     logic h_err, pool_done, fc_busy;
-    qb_head u_head (
+    qb_head #(.HP(`QB_HEAD_HP)) u_head (
         .clk, .rst_n, .fc_we(h_we && h_sel == 5'd16), .h_addr, .h_d(h_data[255:0]), .c_m0, .c_sh, .c_last, .c_ncls,
         .c_nrows, .f_v(wb_fv), .f_pi(wb_fpi), .f_ct(wb_fct), .f_k(wb_fk), .f_y(wb_fy), .lo_vld, .lo_idx, .lo_val,
         .pool_done, .fc_busy, .busy(st_head_busy), .err(h_err));

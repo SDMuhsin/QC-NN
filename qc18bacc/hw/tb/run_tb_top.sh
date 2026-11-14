@@ -11,7 +11,7 @@ case "$1" in
 build) mkdir -p "$WORK"
        "$VL" --binary -j 16 -O2 -Wno-fatal -Wno-WIDTHEXPAND -Wno-WIDTHTRUNC --Mdir "$WORK/obj" -o sim ${QBT_DEFS:-} \
            --top-module tb_qb_top "$RTL/qb_lane_f.sv" "$RTL/qb_dec.sv" "$RTL/qb_core.sv" "$RTL/qb_act_net.sv" \
-           "$RTL/qb_act.sv" "$RTL/qb_act2_net.sv" "$RTL/qb_act2.sv" "$RTL/qb_seq.sv" "$RTL/qb_top.sv" "$HERE/tb_qb_top.sv" \
+           "$RTL/qb_act.sv" "$RTL/qb_act2_net.sv" "$RTL/qb_act2.sv" "$RTL/qb_seq.sv" "$RTL/qb_seq_rt.sv" "$RTL/qb_top.sv" "$HERE/tb_qb_top.sv" \
            > "$WORK/build.log" 2>&1 || { grep -E "%Error" "$WORK/build.log" | head -30; exit 1; }
        echo "QB_TOP_BUILD_OK $WORK" ;;
 run)   shift; for d in "$@"; do "$WORK/obj/sim" +dir="$d" ${QBT_PROG:+"+prog=$QBT_PROG"} | tee "$d/sim_top${QBT_TAG:-}.log" | grep -E 'QB_TOP|MISMATCH|Error|error|fatal' | head -60; done ;;

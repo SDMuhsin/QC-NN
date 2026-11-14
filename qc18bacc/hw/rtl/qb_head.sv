@@ -18,7 +18,10 @@
 //   x + 4: acc = (m == 0 ? bias : acc) + psum; class out (lo_vld / lo_idx / lo_val) in x + 5 for m = 15.
 // Overlap: the FC of image i runs while image i + 1 computes; the head's only state shared between images is pq
 //   (written by image i + 1's last pass, read by FC i): err if a pq write or a pool done meets a busy FC.
-module qb_head #(parameter int NQ = 4, parameter int NK = 512, parameter int NFR = 1632) (
+// R4b hook HP (default 0 = as above): the FC adder tree in two stages at the same cycles: the pq chunk of a row is
+//   selected one stage early (from fm[2]; pq is stable while the FC runs: a pq write during the FC is err) into xs, and
+//   the 32 products form two 16-product partial sums (registered) that the accumulate stage adds (3-input add).
+module qb_head #(parameter int NQ = 4, parameter int NK = 512, parameter int NFR = 1632, parameter bit HP = 0) (
     input  logic          clk, rst_n,
     // host: FC macro rows (fc_we) at h_addr
     input  logic          fc_we,
@@ -189,13 +192,35 @@ module qb_head #(parameter int NQ = 4, parameter int NK = 512, parameter int NFR
             if (m3.v && m3.b) breg <= fr_r;
             psum <= s;
         end
+    logic signed [19:0] psa, psb;                                        // HP: partial sums (products 0..15, 16..31)
+    if (HP) begin : g_hp
+        logic [6:0] xs [32];
+        always_ff @(posedge clk) begin
+            logic [3:0] mc2;
+            logic signed [19:0] sa, sb;
+`ifdef QBH_MUT_FCK
+            mc2 = fm[2].m ^ 4'd1;
+`else
+            mc2 = fm[2].m;
+`endif
+            for (int n = 0; n < 32; n++) xs[n] <= pq[32 * int'(mc2) + n];
+            sa = '0; sb = '0;
+            for (int n = 0; n < 16; n++) begin
+                sa = sa + $signed({{12{fr_r[8 * n + 7]}}, fr_r[8 * n +: 8]}) * $signed({13'd0, xs[n]});
+                sb = sb + $signed({{12{fr_r[8 * (n + 16) + 7]}}, fr_r[8 * (n + 16) +: 8]}) * $signed({13'd0, xs[n + 16]});
+            end
+            psa <= sa; psb <= sb;
+        end
+    end else begin : g_nhp
+        assign psa = '0;  assign psb = '0;
+    end
     logic signed [31:0] acc;
     logic               f_done;
     always_ff @(posedge clk or negedge rst_n)
         if (!rst_n) begin lo_vld <= 1'b0; f_done <= 1'b0; end
         else begin
             logic signed [31:0] a;
-            a = (m4.m == 4'd0 ? $signed(breg[32 * m4.j[2:0] +: 32]) : acc) + 32'(psum);
+            a = (m4.m == 4'd0 ? $signed(breg[32 * m4.j[2:0] +: 32]) : acc) + (HP ? 32'(psa) + 32'(psb) : 32'(psum));
             lo_vld <= m4.v && !m4.b && m4.m == 4'd15;
             f_done <= m4.v && m4.last;
             if (m4.v && !m4.b) acc <= a;

@@ -345,7 +345,10 @@ endmodule
 // one row per cycle, priority T2 > fused > wide.  Request in x -> address register -> macro -> staging register valid
 // in x + 3.  Uses (stage D + 2) check the staging register is valid and holds the job's (pass, ct) (err otherwise).
 // HSEL (R3c hook, default 0): 1 = the bank address follows the host only on a bank write (h_sel 1), see qb_top.
-module qb_prm #(parameter int NM = 9, parameter int MW = 144, parameter int DEP = 240, parameter bit HSEL = 0) (
+// R4b: NFF / NFW / NFT = fetch-list depths of the fused / wide / T2 consumers (default 256 = R3b); the R4b chip sizes
+// them to the program capacity (s0 / s1: 156 / 24 / 106 sets; a host write beyond the depth is an error in simulation).
+module qb_prm #(parameter int NM = 9, parameter int MW = 144, parameter int DEP = 240, parameter bit HSEL = 0,
+                parameter int NFF = 256, parameter int NFW = 256, parameter int NFT = 256) (
     input  logic         clk, rst_n, go,
     input  logic         h_we,
     input  logic [3:0]   h_sel,                   // 1 bank row, 12 / 13 / 14 fetch list f / w / t, 15 counts (8..10)
@@ -367,15 +370,23 @@ module qb_prm #(parameter int NM = 9, parameter int MW = 144, parameter int DEP 
 `else
     localparam int NB [3] = '{2, 1, 1};                // staging registers
 `endif
-    logic [24:0] fl [3][256];                          // {nuse[7:0], base[7:0], tag[8:0]}
+    logic [24:0] flf [NFF], flw [NFW], flt [NFT];   // {nuse[7:0], base[7:0], tag[8:0]}
     logic [7:0]  nfl [3];
     always_ff @(posedge clk)
         if (h_we) begin
-            if (h_sel == 4'd12) fl[0][h_addr[7:0]] <= h_d[24:0];
-            if (h_sel == 4'd13) fl[1][h_addr[7:0]] <= h_d[24:0];
-            if (h_sel == 4'd14) fl[2][h_addr[7:0]] <= h_d[24:0];
+            if (h_sel == 4'd12) flf[h_addr[7:0]] <= h_d[24:0];
+            if (h_sel == 4'd13) flw[h_addr[7:0]] <= h_d[24:0];
+            if (h_sel == 4'd14) flt[h_addr[7:0]] <= h_d[24:0];
             if (h_sel == 4'd15 && h_addr[3:0] >= 4'd8 && h_addr[3:0] <= 4'd10) nfl[h_addr[3:0] - 4'd8] <= h_d[7:0];
         end
+`ifndef SYNTHESIS
+    always @(posedge clk) if (h_we && ((h_sel == 4'd12 && 32'(h_addr) >= NFF) || (h_sel == 4'd13 && 32'(h_addr) >= NFW) ||
+                                       (h_sel == 4'd14 && 32'(h_addr) >= NFT)))
+        $error("qb_prm: fetch-list write %0d beyond the list depth (h_sel %0d)", h_addr, h_sel);
+`endif
+    function automatic logic [24:0] fget(input int c, input logic [7:0] i);
+        return c == 0 ? flf[i] : c == 1 ? flw[i] : flt[i];
+    endfunction
     // ---- bank
     logic        b_ren;  logic [7:0] b_a;  logic [RW-1:0] b_q;
     for (genvar m = 0; m < NM; m++) begin : g_pm
@@ -413,7 +424,7 @@ module qb_prm #(parameter int NM = 9, parameter int MW = 144, parameter int DEP 
             b_ren <= gnt;
             p1_v <= gnt;
             if (gnt) begin
-                w = fl[gsel][rf[gsel]];
+                w = fget(int'(gsel), rf[gsel]);
                 b_a  <= w[16:9] + 8'(rowc[gsel]);
                 p1_c <= gsel; p1_r <= rowc[gsel]; p1_b <= rf[gsel][0]; p1_t <= w[8:0];
                 p1_l <= rowc[gsel] == 3'(NR[gsel] - 1);
@@ -437,7 +448,7 @@ module qb_prm #(parameter int NM = 9, parameter int MW = 144, parameter int DEP 
             // early uses: free a staging register 2 cycles ahead of the set's last use
             for (int c = 0; c < 3; c++)
                 if (u_early[c]) begin
-                    w = fl[c][rfree[c]];
+                    w = fget(c, rfree[c]);
                     if (uf[c] + 8'd1 == w[24:17]) begin uf[c] <= '0; rfree[c] <= rfree[c] + 8'd1; end
                     else uf[c] <= uf[c] + 8'd1;
                 end
@@ -445,7 +456,7 @@ module qb_prm #(parameter int NM = 9, parameter int MW = 144, parameter int DEP 
             for (int c = 0; c < 3; c++)
                 if (u_use[c]) begin
                     logic ok;
-                    w = fl[c][ruse[c]];
+                    w = fget(c, ruse[c]);
                     ok = c == 0 ? (vf[ruse[0][0]] && tgf[ruse[0][0]] == tag_f) : c == 1 ? (vw && tgw == tag_w) : (vt && tgt == tag_t);
                     if (!ok) err <= 1'b1;
                     if (uu[c] + 8'd1 == w[24:17]) begin
