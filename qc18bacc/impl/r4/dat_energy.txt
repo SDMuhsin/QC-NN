@@ -1,0 +1,7 @@
+qb_w_204x144m2 read_pJ 26.280 write_pJ 38.198 desel_pJ 1.926 standby_mW 0.1284
+qb_s_256x128m1 read_pJ 19.192 write_pJ 24.362 desel_pJ 4.613 standby_mW 0.0633
+qb_b_128x128m1 read_pJ 16.162 write_pJ 15.830 desel_pJ 2.935 standby_mW 0.0435
+qb_i_128x128m1 read_pJ 15.925 write_pJ 30.533 desel_pJ 0.705 standby_mW 0.0858
+qb_p_240x144m2 read_pJ 26.371 write_pJ 39.317 desel_pJ 1.757 standby_mW 0.1427
+qb_f_408x64m4 read_pJ 17.121 write_pJ 22.644 desel_pJ 1.191 standby_mW 0.1080
+qb_d_624x80m8 read_pJ 18.136 write_pJ 26.849 desel_pJ 4.979 standby_mW 0.2970

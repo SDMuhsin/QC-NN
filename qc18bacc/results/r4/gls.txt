@@ -1,0 +1,12 @@
+QB_CHIP_VSAIF /tmp/ckp908/qc18bacc/gls/r4_chip_d/qb_chip_win12.saif cycles 3748..7536 (3788)
+QB_CHIP img 0 /tmp/ckp908/qc18bacc/r4vec/img0 go 0 img_free +275 end +3748 (rtl_end 3748 model 3747 delta 1) interval 3748 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +5386 (after end +1638) PASS
+QB_CHIP img 1 /tmp/ckp908/qc18bacc/r4vec/img1 go 3748 img_free +275 end +3788 (rtl_end 3788 model 3787 delta 1) interval 3788 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +5426 (after end +1638) PASS
+QB_CHIP img 2 /tmp/ckp908/qc18bacc/r4vec/img2 go 7536 img_free +275 end +3812 (rtl_end 3812 model 3811 delta 1) interval - logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +5450 (after end +1638) PASS
+QB_CHIP_OVERLAP img 0 FC done -1, img 1 first pq write -1: slack 0 cycles
+QB_CHIP_OVERLAP img 1 FC done -1, img 2 first pq write -1: slack 0 cycles
+QB_CHIP_TB GLS images 3 err 0 timeout 0 (logits, intervals; no internal taps) PASS
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 23:39.99
+	Maximum resident set size (kbytes): 4314116
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 4:58.26
+    redirect ${o}_annot.rpt { report_switching_activity -list_not_annotated }
+Number of annotated nets = 2410272 (100.00%)

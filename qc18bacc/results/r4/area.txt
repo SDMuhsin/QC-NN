@@ -1,0 +1,26 @@
+# rpt/area.rpt: top qb_chip, total cell area 15297817 um2, macros 7248003, logic 8049815
+core: PE array (16x8 PEs)                               logic_um2      3189348 mm2 3.189  (n 128)
+core: fused lanes (256)                                 logic_um2      1628581 mm2 1.629  (n 256)
+core: wide lanes (32)                                   logic_um2       307978 mm2 0.308  (n 32)
+core: lane param banks                                  logic_um2       104970 mm2 0.105  (n 2)
+core: decoders + BR                                     logic_um2       299353 mm2 0.299  (n 72)
+core: other (port regs, cmp, ctl)                       logic_um2       103705 mm2 0.104
+core: total                                             logic_um2      5633935 mm2 5.634
+act supply (qb_act2)                                    logic_um2       795710 mm2 0.796
+sequencer (qb_seq)                                      logic_um2       431690 mm2 0.432
+params path (qb_prm)                                    logic_um2       344294 mm2 0.344
+head (qb_head)                                          logic_um2       175160 mm2 0.175
+u_top macro wrappers                                    logic_um2         3503 mm2 0.004  (n 92)
+top glue in qb_top (write-back, delay lines, dist)      logic_um2       661331 mm2 0.661
+qb_chip glue (host port, head cfg)                      logic_um2         4193 mm2 0.004
+logic total                                             logic_um2      8049815 mm2 8.050
+macro qb_b_128x128m1       n   8 um2     406136 mm2 0.406
+macro qb_d_624x80m8        n   2 um2     235847 mm2 0.236
+macro qb_f_408x64m4        n  16 um2     765949 mm2 0.766
+macro qb_i_128x128m1       n   4 um2     135424 mm2 0.135
+macro qb_p_240x144m2       n   9 um2     536415 mm2 0.536
+macro qb_s_256x128m1       n  32 um2    2497343 mm2 2.497
+macro qb_w_204x144m2       n  48 um2    2670888 mm2 2.671
+macro total n 119 mm2 7.248
+chip total (logic + macros) mm2 15.298
+QB_DCRPT regs 350681 cells 2187832

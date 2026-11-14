@@ -1,0 +1,1 @@
+qb_d_624x80m8   sram_sp_adv 624 80 8                             # qb_seq descriptors, DSCM = 1: end + start port copies (2)

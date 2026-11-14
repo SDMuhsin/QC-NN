@@ -34,6 +34,21 @@
 // R3c hook (parameter HSEL, default 0 = as above): HSEL = 1 switches a macro's address mux to the host address only
 // on a host write of that macro (h_we && h_sel == its select) instead of on any h_we, so the host can load the next
 // image into IMG while the image runs (qb_chip, hw/rtl/qb_chip.sv) without disturbing the weight / params reads.
+// R4 hook (define QB_TECH, default off): synthesis / tech build of qb_chip (R3B = 1).  The R3a-only memories (pass
+// queues pq / tq / cq / fq / wq, load table lt, one-set-per-word params prm: ~0.7 Mb of flops, dead when R3B = 1) are
+// neither written nor read (reads tied to 0), the bench read-back dbg_sq (hierarchical into the S model) is 0, and the
+// behavioural qbt_rfsp / qbt_rf2p below are replaced by hw/tech/qb_mem_tech.sv (same ports, ARM macros).  R4 also
+// renamed the functional taps used by qb_chip / qb_head: dbg_{fv,fpi,fct,fk,fy} -> wb_* (fused write-back bus),
+// dbg_{aeot,actx,apic0,apic1} -> ae_{eot,ctx,pic0,pic1} (act-supply tile ends).
+`ifndef QB_SEQ_NT
+`define QB_SEQ_NT 1024
+`endif
+`ifndef QB_SEQ_NLT
+`define QB_SEQ_NLT 1024
+`endif
+`ifndef QB_SEQ_DSCM
+`define QB_SEQ_DSCM 0
+`endif
 module qb_top #(parameter int DIST = 1, parameter int AP = 1, parameter bit R3B = 0, parameter bit HSEL = 0) (
     input  logic          clk, rst_n,
     input  logic          go,                      // start of an image (descriptors / macros loaded)
@@ -44,23 +59,23 @@ module qb_top #(parameter int DIST = 1, parameter int AP = 1, parameter bit R3B 
     input  logic [5188:0] h_data,
     output logic [15:0]   now,
     output logic          err,
-    // debug / bench taps (attribution of the core outputs)
-    output logic          dbg_fv, dbg_wv, dbg_bv,
-    output logic [4:0]    dbg_fpi, dbg_wpi, dbg_bpi,
+    // fused write-back bus wb_* and act tile ends ae_* (functional: qb_chip / qb_head); dbg_*: bench taps only
+    output logic          wb_fv, dbg_wv, dbg_bv,
+    output logic [4:0]    wb_fpi, dbg_wpi, dbg_bpi,
     output logic [6:0]    dbg_ftp,
-    output logic [3:0]    dbg_fct,
-    output logic [1:0]    dbg_fk,
-    output logic [4351:0] dbg_fy,
+    output logic [3:0]    wb_fct,
+    output logic [1:0]    wb_fk,
+    output logic [4351:0] wb_fy,
     output logic [255:0]  dbg_fb,
     output logic [607:0]  dbg_wy,
     output logic [31:0]   dbg_wb,
     output logic [1023:0] dbg_b2,
-    output logic          dbg_av, dbg_actx, dbg_aeot, dbg_af, dbg_aneg, dbg_astem, dbg_ag3n,
+    output logic          dbg_av, ae_ctx, ae_eot, dbg_af, dbg_aneg, dbg_astem, dbg_ag3n,
     output logic [2:0]    dbg_apl, dbg_act_ct,
     output logic [3:0]    dbg_ach,
     output logic [5:0]    dbg_atile,
     output logic [4607:0] dbg_act,
-    output logic [4:0]    dbg_apic0, dbg_apic1,
+    output logic [4:0]    ae_pic0, ae_pic1,
     input  logic [7:0]    dbg_sa,                  // bench read-back of S (all lanes of one address)
     output logic [4095:0] dbg_sq
 );
@@ -78,6 +93,7 @@ module qb_top #(parameter int DIST = 1, parameter int AP = 1, parameter bit R3B 
     logic [41:0] lt [1024];
     logic [10:0] n_pq [2], n_tq, n_cq, n_fq, n_wq;
     logic [5188:0] prm [128];
+`ifndef QB_TECH
     always_ff @(posedge clk)
         if (h_we) unique case (h_sel)
             4'd1:  prm[h_addr[6:0]] <= h_data;
@@ -100,6 +116,9 @@ module qb_top #(parameter int DIST = 1, parameter int AP = 1, parameter bit R3B 
                    endcase
             default: ;
         endcase
+`else
+    always_ff @(posedge clk) if (h_we && h_sel == 4'd3) pt[h_addr[4:0]] <= h_data[95:0];
+`endif
     // pass-table fields
     function automatic logic [3:0] pt_cfg  (input logic [88:0] w); return w[3:0];   endfunction
     function automatic logic [4:0] pt_nch  (input logic [88:0] w); return w[8:4];   endfunction
@@ -130,10 +149,20 @@ module qb_top #(parameter int DIST = 1, parameter int AP = 1, parameter bit R3B 
         else if (go) begin run <= 1'b1; now <= '0; end
         else if (run) now <= now + 16'd1;
     logic [10:0] p_ptr [2], t_ptr, c_ptr, f_ptr, w_ptr;
+`ifndef QB_TECH
     wire [20:0] ph0 = pq[0][p_ptr[0][4:0]], ph1 = pq[1][p_ptr[1][4:0]];
     wire [16:0] th = tq[t_ptr[9:0]];
     wire [32:0] chd_a = cq[c_ptr[9:0]];
+`else
+    wire [20:0] ph0 = '0, ph1 = '0;
+    wire [16:0] th = '0;
+    wire [32:0] chd_a = '0;
+`endif
+`ifndef QB_TECH
     wire [31:0] fh_a = fq[f_ptr[9:0]], wh_a = wq[w_ptr[5:0]];
+`else
+    wire [31:0] fh_a = '0, wh_a = '0;
+`endif
     wire [1:0] p_fire_a = {run && p_ptr[1] < n_pq[1] && ph1[20:5] == now, run && p_ptr[0] < n_pq[0] && ph0[20:5] == now};
     wire t_fire = run && t_ptr < n_tq && th[16:1] == now;
     wire c_fire_a = run && c_ptr < n_cq && chd_a[32:17] == now;
@@ -209,9 +238,17 @@ module qb_top #(parameter int DIST = 1, parameter int AP = 1, parameter bit R3B 
         assign tgo[c]      = R3B ? s_tgo[c] : t_fire && th[0] == c[0];
         // load permission: first table entry whose position is beyond the loader's (one step per cycle)
         wire [9:0]  pos = c ? l_pos1 : l_pos0;
+`ifndef QB_TECH
         wire [41:0] e0 = lt[lptr[c]];
+`else
+        wire [41:0] e0 = '0;
+`endif
         wire [9:0]  cur = (lptr[c] < lend[c] && e0[9:0] <= pos) ? lptr[c] + 10'd1 : lptr[c];
+`ifndef QB_TECH
         wire [41:0] e1 = lt[cur];
+`else
+        wire [41:0] e1 = '0;
+`endif
         wire        i8 = pt_i8(pt[cpi[c]]);
         wire [3:0]  cf = pt_cfg(pt[cpi[c]]);
         assign l_ok[c] = R3B ? s_lok[c] : cval[c] && !start[c] && cur < lend[c] && e1[9:0] > pos && now >= e1[25:10] &&
@@ -300,7 +337,11 @@ module qb_top #(parameter int DIST = 1, parameter int AP = 1, parameter bit R3B 
     always_ff @(posedge clk) begin                       // T2 at ctl + 2
         cev_t c1_;
         c1_ = cdl[D + 1];
+`ifndef QB_TECH
         t2_q <= prm[pt_pb(pt[c1_.pi]) + 10'(c1_.ct)][1087:0];
+`else
+        t2_q <= '0;
+`endif
     end
 
     // ================================================================ PPU step streams
@@ -363,8 +404,13 @@ module qb_top #(parameter int DIST = 1, parameter int AP = 1, parameter bit R3B 
     always_ff @(posedge clk) begin                        // parameter sets registered at step + D + 1
         stp_t a, b;
         a = fdl[D + 1]; b = wdl[D + 1];
+`ifndef QB_TECH
         pf_q <= prm[pt_pb(pt[a.pi]) + (a.hm ? 10'd0 : 10'(a.ct))];
         pw_q <= prm[pt_pb(pt[b.pi]) + 10'(b.ct)][5058:0];
+`else
+        pf_q <= '0;
+        pw_q <= '0;
+`endif
     end
 
     // ================================================================ S: rf_2p 256 x 128 x 32
@@ -376,7 +422,11 @@ module qb_top #(parameter int DIST = 1, parameter int AP = 1, parameter bit R3B 
     for (genvar l = 0; l < 32; l++) begin : g_s
         qbt_rf2p #(128, 256) u_m (.clk, .ren(s_mren[l]), .ra(s_mra[l]), .we(s_we[l]), .wa(s_wa[l]), .wd(s_wd[l]),
                                   .wm(s_wm[l]), .q(s_mq[l]), .conf(s_rwc[l]));
+`ifndef QB_TECH
         assign dbg_sq[128 * l +: 128] = u_m.mem[dbg_sa];
+`else
+        assign dbg_sq[128 * l +: 128] = '0;
+`endif
     end
     // ---- reader requests (registered boundary) for drains / hm / wide r, macro at request + 1, data at + 3
     logic [31:0]  rd_en, rd_en_q;
@@ -494,7 +544,7 @@ module qb_top #(parameter int DIST = 1, parameter int AP = 1, parameter bit R3B 
             m_q[128 * m +: 128] = m_src_q == 2'd2 ? i_q[m] : b_q[m_src_q[0]][(m + m_f_q) & 3];
 
     // ================================================================ core
-    logic [16*8*36*8-1:0] act_c;
+    logic [16*36*8-1:0]   act_c;                      // R4: was 16*8*36*8 (zero-extended into the 4608-b port; DC LINK-3)
     logic [1023:0]        b2;
     logic                 b2_vld, f_vld_o, w_vld_o;
     logic [NLF*17-1:0]    f_y;
@@ -502,6 +552,7 @@ module qb_top #(parameter int DIST = 1, parameter int AP = 1, parameter bit R3B 
     logic [NLW*19-1:0]    w_y;
     logic [NLW-1:0]       w_b;
     assign act_c = actd[DIST];
+    logic [1087:0] t2_c;  logic [5188:0] pf_c;  logic [5058:0] pw_c;
     qb_core #(.CREG(1), .WTP(1), .FTP(1), .PPOP(1), .BRG(2)) u_core (
         .clk, .rst_n, .cd(cdp[D - 4]), .ctl, .act(act_c), .t2(t2_c), .b2, .b2_vld, .f_vld, .f_src, .f_sh, .p_ld,
         .pf(pf_c), .s_rd, .f_vld_o, .f_y, .f_b, .w_vld, .w_sh, .w_ld, .pw(pw_c), .w_r, .w_vld_o, .w_y, .w_b);
@@ -793,13 +844,13 @@ module qb_top #(parameter int DIST = 1, parameter int AP = 1, parameter bit R3B 
     end
 
     // ================================================================ R3b: sequencer + params path (hook, R3B = 1)
-    logic [1087:0] t2_c;  logic [5188:0] pf_c;  logic [5058:0] pw_c;
+    // (t2_c / pf_c / pw_c declared before the core instance: R4, DC needs declaration before use)
     logic          seq_err, prm_err;
     if (R3B) begin : g_r3b
         logic [5183:0] pf_s;  logic [5055:0] pw_s;  logic [1087:0] t2_s;
         stp_t fe_, we_;  cev_t ce_, cu_;
         assign fe_ = fdl[D];  assign we_ = wdl[D];  assign ce_ = cdl[D];  assign cu_ = cdl[D + 2];
-        qb_seq u_seq (
+        qb_seq #(.NT(`QB_SEQ_NT), .NLT(`QB_SEQ_NLT), .DSCM(`QB_SEQ_DSCM)) u_seq (
             .clk, .rst_n, .go, .run, .now, .h_we, .h_sel, .h_addr, .h_d(h_data[95:0]), .pt, .done, .p_fire(s_pfire),
             .p_pi(s_ppi), .tgo(s_tgo), .l_pos0, .l_pos1, .fl_quiet, .l_ok(s_lok), .l_seq0(s_lseq0), .l_seq1(s_lseq1),
             .d_vld, .d_eot, .fs_hq, .fs_hqd, .fs_z, .c_fire(s_cfire), .c_cmp(s_ccmp), .c_pi(s_cpi), .c_tp(s_ctp),
@@ -831,20 +882,22 @@ module qb_top #(parameter int DIST = 1, parameter int AP = 1, parameter bit R3B 
                    (fo.v && !f_vld_o) | (wo.v && !w_vld_o);
 
     // ================================================================ bench taps
-    assign dbg_ftp = fo.tp;  assign dbg_fct = fo.ct;  assign dbg_fk = fo.k[1:0];
-    assign dbg_fv = f_vld_o;  assign dbg_fpi = fo.pi;  assign dbg_fy = f_y;  assign dbg_fb = f_b;
+    assign dbg_ftp = fo.tp;  assign wb_fct = fo.ct;  assign wb_fk = fo.k[1:0];
+    assign wb_fv = f_vld_o;  assign wb_fpi = fo.pi;  assign wb_fy = f_y;  assign dbg_fb = f_b;
     assign dbg_wv = w_vld_o;  assign dbg_wpi = wo.pi;  assign dbg_wy = w_y;  assign dbg_wb = w_b;
     assign dbg_bv = b2_vld;   assign dbg_bpi = bo.pi;  assign dbg_b2 = b2;
-    assign {dbg_av, dbg_actx, dbg_aeot, dbg_af, dbg_aneg, dbg_astem, dbg_ag3n} = {a_vld, a_ctx, a_eot, a_first, a_neg, a_stem, a_g3n};
+    assign {dbg_av, ae_ctx, ae_eot, dbg_af, dbg_aneg, dbg_astem, dbg_ag3n} = {a_vld, a_ctx, a_eot, a_first, a_neg, a_stem, a_g3n};
     assign dbg_apl = a_plane;  assign dbg_act_ct = a_ct;  assign dbg_ach = a_chunk;  assign dbg_atile = a_tile;
-    assign dbg_act = a_act;  assign dbg_apic0 = cpi[0];  assign dbg_apic1 = cpi[1];
+    assign dbg_act = a_act;  assign ae_pic0 = cpi[0];  assign ae_pic1 = cpi[1];
 endmodule
 
 // ================================================================================================ helpers
+// (QB_TECH: qbt_rf2p / qbt_rfsp come from hw/tech/qb_mem_tech.sv)
 module qbt_dreg #(parameter int W = 1) (input logic clk, input logic [W-1:0] d, output logic [W-1:0] q);
     always_ff @(posedge clk) q <= d;
 endmodule
 
+`ifndef QB_TECH
 // behavioural rf_2p (1R + 1W, bit-write mask): ren / ra / we / wa / wd / wm are the (registered) macro inputs of this
 // cycle; q = read data from the cycle after a read.  Read and write of one address in one cycle -> q = X (rf_2p_adv).
 module qbt_rf2p #(parameter int W = 128, parameter int N = 256) (
@@ -875,3 +928,4 @@ module qbt_rfsp #(parameter int W = 128, parameter int N = 128) (
         else if (ren) q <= mem[a];
     end
 endmodule
+`endif

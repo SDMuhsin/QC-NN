@@ -62,6 +62,8 @@ eval [qc_env QC_COMPILE "compile_ultra -no_autoungroup -gate_clock"]
 
 # ---- outputs
 change_names -rules verilog -hierarchy
+set post [qc_env QC_POST_HOOK]                 ;# optional design-specific steps after compile + change_names (e.g. saif_map -write_map)
+if {$post ne ""} { source $post }
 set design [get_object_name [current_design]]
 write -format ddc -hierarchy -output $out/$top.ddc
 write -format verilog -hierarchy -output $out/$top.v

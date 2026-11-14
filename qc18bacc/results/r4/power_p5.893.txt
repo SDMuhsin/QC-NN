@@ -1,0 +1,43 @@
+# window 3788 cycles at 5.893 ns (169.7 MHz) = 22.323 us; ops/image 239746048
+PT netlist total W 0.9450 (int 0.6350 sw 0.2570 leak 0.0528)
+PT group io_pad         W 0.0000
+PT group memory         W 0.0822
+PT group black_box      W 0.0000
+PT group clock_network  W 0.3820
+PT group register       W 0.1190
+PT group sequential     W 0.0000
+PT group combinational  W 0.3614
+macro datatable dyn W 0.1806 leak W 0.0125
+  macro qb_w_204x144m2   n  48 reads/cyc  12.33 writes/cyc   0.00 E_r 26.28 E_w 38.20 pJ  dyn W 0.0550 leak W 0.0062  uJ/img 1.365
+  macro qb_s_256x128m1   n  32 reads/cyc  11.66 writes/cyc  15.81 E_r 19.19 E_w 24.36 pJ  dyn W 0.1033 leak W 0.0020  uJ/img 2.352
+  macro qb_b_128x128m1   n   8 reads/cyc   1.18 writes/cyc   1.20 E_r 16.16 E_w 15.83 pJ  dyn W 0.0065 leak W 0.0003  uJ/img 0.152
+  macro qb_i_128x128m1   n   4 reads/cyc   0.14 writes/cyc   0.14 E_r 15.93 E_w 30.53 pJ  dyn W 0.0011 leak W 0.0003  uJ/img 0.031
+  macro qb_p_240x144m2   n   9 reads/cyc   1.96 writes/cyc   0.00 E_r 26.37 E_w 39.32 pJ  dyn W 0.0088 leak W 0.0013  uJ/img 0.225
+  macro qb_f_408x64m4    n  16 reads/cyc   1.70 writes/cyc   0.00 E_r 17.12 E_w 22.64 pJ  dyn W 0.0049 leak W 0.0017  uJ/img 0.149
+  macro qb_d_624x80m8    n   2 reads/cyc   0.32 writes/cyc   0.00 E_r 18.14 E_w 26.85 pJ  dyn W 0.0010 leak W 0.0006  uJ/img 0.035
+TOTAL W 1.1381  energy/image uJ 25.405  TOPS/W 9.44  (images/s 44797)
+# breakdown (W, uJ/image, %); macros = datatable access + standby + PT wrapper (pins, ICG); clock = PT clock_network (ICGs incl. DC clock gates, pre-CTS: no tree), counted inside the blocks below
+  macros                                           W 0.2755  uJ/img 6.150   24.2 %
+  PE array                                         W 0.2574  uJ/img 5.747   22.6 %
+  lanes (fused, wide, param banks)                 W 0.0779  uJ/img 1.740    6.8 %
+  act supply                                       W 0.0241  uJ/img 0.538    2.1 %
+  sequencer + params path                          W 0.0087  uJ/img 0.194    0.8 %
+  head                                             W 0.0047  uJ/img 0.105    0.4 %
+  other (core BR/dec/ctl, qb_top glue, chip glue)  W 0.1078  uJ/img 2.405    9.5 %
+  clock network (ICGs; separate)                   W 0.3820  uJ/img 8.527   33.6 %
+# PT report_power (gate-level SAIF, VCS zero delay, window [go 1, go 2) of E6_s0 val 0/1/2):
+Power Group             Power     Power      Power      Power   (     %)  Attrs
+--------------------------------------------------------------------------------
+clock_network              0.3724 9.439e-03 1.719e-04    0.3820 (40.44%)  i
+register                   0.0502    0.0553    0.0135    0.1190 (12.59%)  
+combinational              0.1452    0.1878    0.0285    0.3614 (38.26%)  
+sequential                 0.0000    0.0000    0.0000    0.0000 ( 0.00%)  
+memory                     0.0672 4.368e-03    0.0107    0.0822 ( 8.71%)  
+io_pad                     0.0000    0.0000    0.0000    0.0000 ( 0.00%)  
+black_box                  0.0000    0.0000    0.0000    0.0000 ( 0.00%)  
+
+  Net Switching Power  =    0.2569   (27.19%)
+  Cell Internal Power  =    0.6349   (67.22%)
+  Cell Leakage Power   =    0.0528   ( 5.59%)
+                         ---------
+Total Power            =    0.9446  (100.00%)

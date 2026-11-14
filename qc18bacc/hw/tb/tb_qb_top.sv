@@ -24,13 +24,13 @@ module tb_qb_top;
     logic [5188:0] h_data = 0;
     logic [15:0] now;
     logic err;
-    logic dbg_fv, dbg_wv, dbg_bv, dbg_av, dbg_actx, dbg_aeot, dbg_af, dbg_aneg, dbg_astem, dbg_ag3n;
-    logic [4:0] dbg_fpi, dbg_wpi, dbg_bpi, dbg_apic0, dbg_apic1;
+    logic wb_fv, dbg_wv, dbg_bv, dbg_av, ae_ctx, ae_eot, dbg_af, dbg_aneg, dbg_astem, dbg_ag3n;
+    logic [4:0] wb_fpi, dbg_wpi, dbg_bpi, ae_pic0, ae_pic1;
     logic [6:0] dbg_ftp;
-    logic [3:0] dbg_fct;
-    logic [1:0] dbg_fk;
+    logic [3:0] wb_fct;
+    logic [1:0] wb_fk;
     int hm_pi, hm_l0;
-    logic [4351:0] dbg_fy;
+    logic [4351:0] wb_fy;
     logic [255:0] dbg_fb;
     logic [607:0] dbg_wy;
     logic [31:0] dbg_wb;
@@ -143,9 +143,9 @@ module tb_qb_top;
         for (cyc = 0; cyc < M + 200; cyc++) begin
             #1;
             if (int'(now) != cyc) $fatal(1, "time base %0d != %0d", now, cyc);
-            if (dbg_fv === 1'b1) begin
+            if (wb_fv === 1'b1) begin
                 int p, i;
-                p = dbg_fpi;
+                p = wb_fpi;
                 i = nextidx(xfpi, fptr[p] + 1, p, nxf);
                 fptr[p] = i;
                 if (p == hm_pi) begin
@@ -154,23 +154,23 @@ module tb_qb_top;
                     for (int q = 0; q < 4; q++)
                         for (int ch = 0; ch < 64; ch++) begin
                             int px, l, ln;
-                            px = 16 * dbg_ftp + 4 * dbg_fk + q;
+                            px = 16 * dbg_ftp + 4 * wb_fk + q;
                             l  = 64 * q + ch;
                             ln = hm_l0 + px;
-                            if (dbg_fy[17 * l +: 17] !== xfy[ln][17 * (64 * dbg_fct + ch) +: 17] || dbg_fb[l] !== 1'b0) begin
+                            if (wb_fy[17 * l +: 17] !== xfy[ln][17 * (64 * wb_fct + ch) +: 17] || dbg_fb[l] !== 1'b0) begin
                                 ef[p]++;
                                 if (ef[p] <= 3) $display("MISMATCH hm cycle %0d px %0d ch %0d: y %h exp %h", cyc, px,
-                                                         64 * dbg_fct + ch, dbg_fy[17 * l +: 17], xfy[ln][17 * (64 * dbg_fct + ch) +: 17]);
+                                                         64 * wb_fct + ch, wb_fy[17 * l +: 17], xfy[ln][17 * (64 * wb_fct + ch) +: 17]);
                             end
                         end
                 end else if (i >= nxf) begin ef[p]++; $display("MISMATCH extra fused word pass %0d cycle %0d", p, cyc); end
                 else begin
                     cf[p] += 256;
                     for (int l = 0; l < 256; l++)
-                        if (dbg_fy[17 * l +: 17] !== xfy[i][17 * l +: 17] || dbg_fb[l] !== xfb[i][l]) begin
+                        if (wb_fy[17 * l +: 17] !== xfy[i][17 * l +: 17] || dbg_fb[l] !== xfb[i][l]) begin
                             ef[p]++;
                             if (ef[p] <= 3) $display("MISMATCH fused pass %0d cycle %0d lane %0d: y %h b %b exp %h %b", p, cyc, l,
-                                                     dbg_fy[17 * l +: 17], dbg_fb[l], xfy[i][17 * l +: 17], xfb[i][l]);
+                                                     wb_fy[17 * l +: 17], dbg_fb[l], xfy[i][17 * l +: 17], xfb[i][l]);
                         end
                 end
             end
@@ -206,9 +206,9 @@ module tb_qb_top;
                     eb[p] += e;
                 end
             end
-            if (dbg_av === 1'b1 || dbg_aeot === 1'b1) begin
+            if (dbg_av === 1'b1 || ae_eot === 1'b1) begin
                 int p;
-                p = dbg_actx ? dbg_apic1 : dbg_apic0;
+                p = ae_ctx ? ae_pic1 : ae_pic0;
                 if (dbg_av === 1'b1) begin
                     rc = $fscanf(fe[p], "%s", tag);
                     if (rc != 1 || tag != "I") begin ei[p]++; if (ei[p] <= 3) $display("MISMATCH pass %0d cycle %0d: unexpected item", p, cyc); end
@@ -224,7 +224,7 @@ module tb_qb_top;
                         end
                     end
                 end
-                if (dbg_aeot === 1'b1) begin
+                if (ae_eot === 1'b1) begin
                     rc = $fscanf(fe[p], "%s", tag);
                     if (rc != 1 || tag != "E") begin ei[p]++; if (ei[p] <= 3) $display("MISMATCH pass %0d cycle %0d: unexpected eot", p, cyc); end
                     else begin

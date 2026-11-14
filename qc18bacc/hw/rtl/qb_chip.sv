@@ -46,10 +46,10 @@ module qb_chip #(parameter int DIST = 1, parameter int AP = 1) (
         endcase
 
     // ---------------------------------------------------------------- engine
-    logic t_err, dbg_fv, dbg_wv, dbg_bv, dbg_av, dbg_actx, dbg_aeot, dbg_af, dbg_aneg, dbg_astem, dbg_ag3n;
-    logic [4:0] dbg_fpi, dbg_wpi, dbg_bpi, dbg_apic0, dbg_apic1;
-    logic [6:0] dbg_ftp;  logic [3:0] dbg_fct;  logic [1:0] dbg_fk;
-    logic [4351:0] dbg_fy;  logic [255:0] dbg_fb;  logic [607:0] dbg_wy;  logic [31:0] dbg_wb;  logic [1023:0] dbg_b2;
+    logic t_err, wb_fv, dbg_wv, dbg_bv, dbg_av, ae_ctx, ae_eot, dbg_af, dbg_aneg, dbg_astem, dbg_ag3n;
+    logic [4:0] wb_fpi, dbg_wpi, dbg_bpi, ae_pic0, ae_pic1;
+    logic [6:0] dbg_ftp;  logic [3:0] wb_fct;  logic [1:0] wb_fk;
+    logic [4351:0] wb_fy;  logic [255:0] dbg_fb;  logic [607:0] dbg_wy;  logic [31:0] dbg_wb;  logic [1023:0] dbg_b2;
     logic [2:0] dbg_apl, dbg_act_ct;  logic [3:0] dbg_ach;  logic [5:0] dbg_atile;  logic [4607:0] dbg_act;
     logic [4095:0] dbg_sq;
 `ifdef QBC_MUT_HSEL
@@ -59,15 +59,15 @@ module qb_chip #(parameter int DIST = 1, parameter int AP = 1) (
 `endif
     qb_top #(.DIST(DIST), .AP(AP), .R3B(1), .HSEL(HS)) u_top (
         .clk, .rst_n, .go(h_go), .h_we(h_we && !h_sel[4]), .h_sel(h_sel[3:0]), .h_addr(h_addr[9:0]), .h_data, .now,
-        .err(t_err), .dbg_fv, .dbg_wv, .dbg_bv, .dbg_fpi, .dbg_wpi, .dbg_bpi, .dbg_ftp, .dbg_fct, .dbg_fk, .dbg_fy,
-        .dbg_fb, .dbg_wy, .dbg_wb, .dbg_b2, .dbg_av, .dbg_actx, .dbg_aeot, .dbg_af, .dbg_aneg, .dbg_astem, .dbg_ag3n,
-        .dbg_apl, .dbg_act_ct, .dbg_ach, .dbg_atile, .dbg_act, .dbg_apic0, .dbg_apic1, .dbg_sa(8'd0), .dbg_sq);
+        .err(t_err), .wb_fv, .dbg_wv, .dbg_bv, .wb_fpi, .dbg_wpi, .dbg_bpi, .dbg_ftp, .wb_fct, .wb_fk, .wb_fy,
+        .dbg_fb, .dbg_wy, .dbg_wb, .dbg_b2, .dbg_av, .ae_ctx, .ae_eot, .dbg_af, .dbg_aneg, .dbg_astem, .dbg_ag3n,
+        .dbg_apl, .dbg_act_ct, .dbg_ach, .dbg_atile, .dbg_act, .ae_pic0, .ae_pic1, .dbg_sa(8'd0), .dbg_sq);
 
     // image in flight: from h_go to the last fused write-back of the last pass (c_nfo of them)
     logic       busy, img_free;
     logic [7:0] nfo, nst;
-    wire        last_fo = dbg_fv && dbg_fpi == c_last;
-    wire        stem_eot = dbg_aeot && (dbg_actx ? dbg_apic1 : dbg_apic0) == c_stem;
+    wire        last_fo = wb_fv && wb_fpi == c_last;
+    wire        stem_eot = ae_eot && (ae_ctx ? ae_pic1 : ae_pic0) == c_stem;
     always_ff @(posedge clk or negedge rst_n)
         if (!rst_n) begin busy <= 1'b0; img_free <= 1'b1; nfo <= '0; nst <= '0; end
         else if (h_go) begin busy <= 1'b1; img_free <= 1'b0; nfo <= '0; nst <= '0; end
@@ -91,7 +91,7 @@ module qb_chip #(parameter int DIST = 1, parameter int AP = 1) (
     logic h_err, pool_done, fc_busy;
     qb_head u_head (
         .clk, .rst_n, .fc_we(h_we && h_sel == 5'd16), .h_addr, .h_d(h_data[255:0]), .c_m0, .c_sh, .c_last, .c_ncls,
-        .c_nrows, .f_v(dbg_fv), .f_pi(dbg_fpi), .f_ct(dbg_fct), .f_k(dbg_fk), .f_y(dbg_fy), .lo_vld, .lo_idx, .lo_val,
+        .c_nrows, .f_v(wb_fv), .f_pi(wb_fpi), .f_ct(wb_fct), .f_k(wb_fk), .f_y(wb_fy), .lo_vld, .lo_idx, .lo_val,
         .pool_done, .fc_busy, .busy(st_head_busy), .err(h_err));
 
     always_ff @(posedge clk or negedge rst_n)

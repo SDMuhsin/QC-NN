@@ -1,0 +1,10 @@
+# R4: ARM memory-compiler macros of qb_chip (flow/tsmc65/sram/mc_gen.sh gen qc18bacc/impl/r4/macros.txt).
+# Shapes = results/mem.md + r3b.md choices (behavioural models qbt_rfsp / qbt_rf2p in hw/rtl, mapped by hw/tech/qb_mem_tech.sv).
+# <instance> <compiler> <words> <bits> <mux> [options]
+qb_w_204x144m2  rf_sp_adv 204 144 2                              # weights 16 lanes x 3 deep (48)
+qb_s_256x128m1  rf_2p_adv 256 128 1 write_mask=on wp_size=1      # stream S, 32 lanes, 1R + 1W, bit-write mask (32)
+qb_b_128x128m1  rf_2p_adv 128 128 1 write_mask=on wp_size=1      # binary maps B1 / B2, 4 lanes each (8)
+qb_i_128x128m1  rf_sp_adv 128 128 1                              # image IMG, 4 lanes (4)
+qb_p_240x144m2  rf_sp_adv 240 144 2                              # params bank (9)
+qb_f_408x64m4   rf_sp_adv 408 64 4                               # FC 4 lanes x 4 deep (16)
+qb_d_624x80m8   sram_sp_adv 624 80 8                             # qb_seq descriptors, DSCM = 1: end + start port copies (2)

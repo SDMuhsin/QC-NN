@@ -19,6 +19,22 @@ module tb_qb_chip;
     logic [31:0] lo_val;
     logic [15:0] now;
     qb_chip dut (.*);
+`ifdef QBT_VSAIF
+    // R4 gate-level power hook (VCS, +define+QBT_GLS+QBT_VSAIF): toggle counts of the whole DUT over the steady-state
+    // interval [go of image 1, go of image 2) -> SAIF +vsaif=<file> (impl/r4/gls.sh).
+    string vsaif_fn;
+    int vsaif_c0;
+    initial if (!$value$plusargs("vsaif=%s", vsaif_fn)) vsaif_fn = "qb_chip_gls.saif";
+`endif
+`ifdef QBT_SAIF
+    // R4 power hook: SAIF of the whole run from time 0 (Verilator --trace-saif), stopped ($finish) at the go of image
+    // +saif_stop=<k>; the steady-state window [go k-1, go k) = difference of two runs (impl/r4/saif_window.py).
+    int saif_stop;
+    initial begin
+        if (!$value$plusargs("saif_stop=%d", saif_stop)) saif_stop = -1;
+        if ($test$plusargs("saif")) begin $dumpfile("qb_chip.saif"); $dumpvars(0, dut); end
+    end
+`endif
 
     string pdir, dir [MAXI], tag, otag;
     int fp, rc, n, N, cnt, cyc;
@@ -90,6 +106,7 @@ module tb_qb_chip;
             // image end (engine idle again)
             if (cur > 0 && end_c[cur - 1] < 0 && st_idle) begin
                 end_c[cur - 1] = cyc; end_now[cur - 1] = int'(now);
+`ifndef QBT_GLS                                                          // GLS: no tile-end taps
                 for (int i = 0; i < nX[cur - 1]; i++)
                     if (ce_rtl[X_pi[cur - 1][i]][X_tp[cur - 1][i]][X_ct[cur - 1][i]] != X_ce[cur - 1][i]) begin
                         cyc_err[cur - 1]++;
@@ -97,9 +114,29 @@ module tb_qb_chip;
                             cur - 1, X_pi[cur - 1][i], X_tp[cur - 1][i], X_ct[cur - 1][i],
                             ce_rtl[X_pi[cur - 1][i]][X_tp[cur - 1][i]][X_ct[cur - 1][i]], X_ce[cur - 1][i]);
                     end
+`endif
             end
+`ifndef QBT_GLS
             if (cur > 0 && free_c[cur - 1] < 0 && dut.img_free) free_c[cur - 1] = cyc;
+`else
+            if (cur > 0 && free_c[cur - 1] < 0 && st_img_free) free_c[cur - 1] = cyc;
+`endif
             // host: go for the next image, else load the next image's lines
+`ifdef QBT_SAIF
+            if (cur < N && st_idle && ld_img > cur && cur == saif_stop) begin
+                $display("QB_CHIP_SAIF stop at the go of img %0d cycle %0d go_prev %0d time %0t", cur, cyc, cur > 0 ? go_c[cur - 1] : -1, $time);
+                $finish;
+            end
+`endif
+`ifdef QBT_VSAIF
+            if (cur < N && st_idle && ld_img > cur && cur == 1) begin
+                $set_toggle_region(tb_qb_chip.dut); $toggle_start; vsaif_c0 = cyc;
+            end
+            if (cur < N && st_idle && ld_img > cur && cur == 2) begin
+                $toggle_stop; $toggle_report(vsaif_fn, 1.0e-12, "tb_qb_chip.dut");
+                $display("QB_CHIP_VSAIF %0s cycles %0d..%0d (%0d)", vsaif_fn, vsaif_c0, cyc, cyc - vsaif_c0);
+            end
+`endif
             if (cur < N && st_idle && ld_img > cur) begin
                 h_go = 1; go_c[cur] = cyc;
                 for (int p = 0; p < NP; p++) for (int t = 0; t < 64; t++) for (int u = 0; u < 8; u++) ce_rtl[p][t][u] = -1;
@@ -109,8 +146,9 @@ module tb_qb_chip;
                 ld_line++;
                 if (ld_line == 128) begin ld_line = 0; ld_img++; end
             end
+`ifndef QBT_GLS
             // tile ends of the running image (time base: now of that image)
-            if (dut.dbg_aeot === 1'b1) ce_rtl[dut.dbg_actx ? dut.dbg_apic1 : dut.dbg_apic0][dut.dbg_atile][dut.dbg_act_ct] = int'(now) - 2 - AP;
+            if (dut.ae_eot === 1'b1) ce_rtl[dut.ae_ctx ? dut.ae_pic1 : dut.ae_pic0][dut.dbg_atile][dut.dbg_act_ct] = int'(now) - 2 - AP;
             // IMG must not be read while the host may write it
             if (dut.u_top.m_ren && dut.u_top.m_src == 2'd2 && dut.st_img_free && !h_go) begin
                 img_rd_err++;
@@ -119,6 +157,7 @@ module tb_qb_chip;
             // head overlap: first pq write of each image, FC done of each image
             if (cur > 0 && pq0_c[cur - 1] < 0 && free_c[cur - 1] >= 0 && dut.u_head.pq_wr) pq0_c[cur - 1] = cyc;   // after its stem: not the previous pool tail
             if (dut.u_head.f_done && nfcd < N) begin fcd_c[nfcd] = cyc; nfcd++; end
+`endif
             // logits
             if (lo_vld === 1'b1) begin
                 if (lo_img >= N) $display("MISMATCH extra logit at cycle %0d", cyc);
@@ -146,6 +185,9 @@ module tb_qb_chip;
                 fp = $fopen({dir[i], "/logits_rtl", otag, ".txt"}, "w");
                 for (int j = 0; j < ncls; j++) $fwrite(fp, "%0d ", rlg[i][j]);
                 $fwrite(fp, "\n"); $fclose(fp);
+`ifdef QBT_GLS
+                cyc_err[i] = 0;                                  // GLS: no internal taps (tile ends not checked)
+`endif
                 ok = (lg_err[i] == 0 && nlg[i] == ncls && cyc_err[i] == 0);
                 pass_all &= ok;
                 $display("QB_CHIP img %0d %s go %0d img_free +%0d end +%0d (rtl_end %0d model %0d delta %0d) interval %0s logits %0d/%0d err %0d tiles %0d cycle_mismatch %0d last_logit +%0d (after end +%0d) %s",
@@ -156,8 +198,13 @@ module tb_qb_chip;
             for (int i = 0; i + 1 < N; i++)
                 $display("QB_CHIP_OVERLAP img %0d FC done %0d, img %0d first pq write %0d: slack %0d cycles", i, fcd_c[i], i + 1,
                          pq0_c[i + 1], pq0_c[i + 1] - fcd_c[i]);
+`ifndef QBT_GLS
             $display("QB_CHIP_TB images %0d err %0d img_read_err %0d timeout %0d head_err %0d %s", N, err, img_rd_err, timeout,
                      dut.h_err, pass_all ? "PASS" : "FAIL");
+`else
+            $display("QB_CHIP_TB GLS images %0d err %0d timeout %0d (logits, intervals; no internal taps) %s", N, err, timeout,
+                     pass_all ? "PASS" : "FAIL");
+`endif
         end
         $finish;
     end

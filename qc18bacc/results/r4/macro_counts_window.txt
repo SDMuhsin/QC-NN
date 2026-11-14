@@ -1,0 +1,8 @@
+# window cycles 3788.0 (duration 9470000, period 2500.0)
+qb_w_204x144m2 n 48 reads 46720.0 writes 0.0
+qb_s_256x128m1 n 32 reads 44160.0 writes 59904.0
+qb_b_128x128m1 n 8 reads 4480.0 writes 4544.0
+qb_i_128x128m1 n 4 reads 512.0 writes 512.0
+qb_p_240x144m2 n 9 reads 7434.0 writes 0.0
+qb_f_408x64m4 n 16 reads 6452.0 writes 0.0
+qb_d_624x80m8 n 2 reads 1217.0 writes 0.0

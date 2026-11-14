@@ -16,7 +16,17 @@
 //     load permissions per pass from static entries (pos, rasdep, raslat, seq): binary pos = virtual rows, int8 pos =
 //     (j + 1) x executed S words per channel tile (from the flags); l_ok = entry beyond the loader + stamp ready.
 // All times are the model's (compile/cycles.list_schedule with the `order` hook): the RTL is cycle-exact against it.
-module qb_seq #(parameter int NT = 1024, parameter int OVH = 12) (
+// R4: NLT = load-permission table depth (default 1024 as R3b); the R4 synthesis build sizes NT / NLT to the program
+// capacity (qb_top QB_SEQ_NT / QB_SEQ_NLT defines; the s0 / s1 programs have 616 tiles and 286 entries).
+// R4: DSCM = 1 (default 0) keeps the descriptor program in two single-port macros instead of the flop array
+// (qbt_rfsp 80 x NDM = sram_sp_adv 624 x 80 under QB_TECH, hw/tech/qb_mem_tech.sv), same cycle behaviour:
+//   end port (ke): read at the next ke (ke_n: go -> 0, commit -> ke + 1) in the cycle ke changes -> q = dsc[ke];
+//   start port (ks): the token order is static (chain ks0 -> nxa -> ...), so a 4-entry FIFO prefetches the chain one
+//   read per cycle (wrapping to ks0 after the last tile, i.e. ready for the next image) and a = its head = dsc[ks];
+//   a token pops it (tokens can come in consecutive cycles; the FIFO never runs dry: 1 push / cycle vs <= 1 pop,
+//   asserted in simulation).  A host write of the descriptors / ks0 restarts the chain.  Writes go to both copies.
+module qb_seq #(parameter int NT = 1024, parameter int OVH = 12, parameter int NLT = 1024, parameter int DSCM = 0,
+                parameter int NDM = 624) (
     input  logic         clk, rst_n, go, run,
     input  logic [15:0]  now,
     input  logic         h_we,
@@ -50,7 +60,7 @@ module qb_seq #(parameter int NT = 1024, parameter int OVH = 12) (
 );
     // ---------------------------------------------------------------- program memories
     logic [79:0] dsc [NT];
-    logic [41:0] lt [1024];
+    logic [41:0] lt [NLT];
     logic [4:0]  pq [2][32];
     logic [5:0]  n_pq [2];
     logic [9:0]  nt, ks0;
@@ -59,7 +69,7 @@ module qb_seq #(parameter int NT = 1024, parameter int OVH = 12) (
             4'd4:  pq[0][h_addr[4:0]] <= h_d[4:0];
             4'd5:  pq[1][h_addr[4:0]] <= h_d[4:0];
             4'd10: lt[h_addr] <= h_d[41:0];
-            4'd11: dsc[h_addr] <= h_d[79:0];
+            4'd11: if (DSCM == 0) dsc[h_addr] <= h_d[79:0];
             4'd15: unique case (h_addr[3:0])
                        4'd0: n_pq[0] <= h_d[5:0];
                        4'd1: n_pq[1] <= h_d[5:0];
@@ -95,9 +105,54 @@ module qb_seq #(parameter int NT = 1024, parameter int OVH = 12) (
     logic [31:0] fq [FD];  logic [5:0] fq_w, fq_r;                      // {ds, job}
     logic [31:0] wq [WD];  logic [3:0] wq_w, wq_r;
 
+    // ---------------------------------------------------------------- descriptor read ports (R4 DSCM)
+    logic [79:0] dq_e, dq_s;
+    logic        s_fire;
+    dsc_t        a;
+    logic        p_arr, p_ppu;
+    if (DSCM == 0) begin : g_dff
+        assign dq_e = dsc[ke];
+        assign dq_s = dsc[ks];
+    end else begin : g_dmac
+        localparam int DAW = $clog2(NDM);
+        wire         wh = h_we && h_sel == 4'd11;                       // host descriptor write (both copies)
+        wire         wk0 = h_we && h_sel == 4'd15 && h_addr[3:0] == 4'd6;   // host write of ks0
+        wire  [9:0]  ke_n = go ? 10'd0 : (p_arr || p_ppu) ? ke + 10'd1 : ke;
+        logic [79:0] qa, qs;
+        // end port: read at the next ke when ke changes (or at go)
+        qbt_rfsp #(80, NDM) u_de (.clk, .ren(go || p_arr || p_ppu), .we(wh), .a(wh ? DAW'(h_addr) : DAW'(ke_n)),
+                                  .wd(h_d[79:0]), .q(qa));
+        // start port: prefetch FIFO along the static token chain (ks0 -> nxa -> ... -> last, then ks0 again for the
+        // next image); a = FIFO head = dsc[ks]; a token pops it.  One chain read per cycle, address from the returned
+        // descriptor (q.nxa, or ks0 after the last) or from fa when the FIFO was full.
+        localparam int FQD = 4;
+        logic [79:0] fq [FQD];
+        logic [2:0]  fc;  logic [1:0] fr, fw;
+        logic        inf, pv;  logic [9:0] fa;
+        wire  [9:0]  na = inf ? (qs[73] ? qs[72:63] : ks0) : fa;
+        wire         issue = pv && !wh && !wk0 && (32'(fc) + 32'(inf) < FQD);
+        qbt_rfsp #(80, NDM) u_ds (.clk, .ren(issue), .we(wh), .a(wh ? DAW'(h_addr) : DAW'(na)), .wd(h_d[79:0]), .q(qs));
+        always_ff @(posedge clk or negedge rst_n)
+            if (!rst_n) begin fc <= '0; fr <= '0; fw <= '0; inf <= 1'b0; pv <= 1'b0; fa <= '0; end
+            else if (wh || wk0) begin                                    // program (re)load: restart the chain at ks0
+                fc <= '0; fr <= '0; fw <= '0; inf <= 1'b0; pv <= 1'b1; fa <= wk0 ? h_d[9:0] : ks0;
+            end else begin
+                inf <= issue;
+                if (inf) begin fq[fw] <= qs; fw <= fw + 2'd1; end
+                if (!issue) fa <= na;
+                if (s_fire) fr <= fr + 2'd1;
+                fc <= fc + 3'(inf) - 3'(s_fire);
+            end
+        assign dq_e = qa;
+        assign dq_s = fq[fr];
+`ifndef SYNTHESIS
+        always @(posedge clk) if (rst_n && s_fire && fc == '0) $error("qb_seq DSCM: token with an empty descriptor FIFO (now %0d ks %0d)", now, ks);
+`endif
+    end
+
     // ---------------------------------------------------------------- end phase (comb)
     dsc_t        e;
-    logic        ce_ev, p_arr, p_ppu;
+    logic        ce_ev;
     logic [15:0] ce, rw, cap, ds, de, lane_u, ln;
     logic [15:0] t_arr_n, t_sh_n, lane_f_n, lane_w_n;
     logic        last_v_n, lbc2_n;
@@ -105,7 +160,7 @@ module qb_seq #(parameter int NT = 1024, parameter int OVH = 12) (
     logic        e_err;
     assign ce_ev = d_vld && d_eot;
     always_comb begin
-        e = dget(dsc[ke]);
+        e = dget(dq_e);
         p_arr = run && ke < nt && e.arr && (ce_p || ce_ev);
         p_ppu = run && ke < nt && !e.arr;
         ce = ce_p ? ce_q : now;
@@ -139,12 +194,11 @@ module qb_seq #(parameter int NT = 1024, parameter int OVH = 12) (
     end
 
     // ---------------------------------------------------------------- start phase (comb): tile token of ks
-    dsc_t        a;
-    logic        s_fire, prev_end, dep_ok;
+    logic        prev_end, dep_ok;
     logic [15:0] ra, ra2;
     logic [7:0]  Cn;
     always_comb begin
-        a = dget(dsc[ks]);
+        a = dget(dq_s);
         prev_end = !kpv || ke > kprev || (p_arr && ke == kprev);
         dep_ok = !a.rav || sv[a.rak];
         ra = a.rav ? stamp[a.rak] + 16'(a.ral) : 16'd0;

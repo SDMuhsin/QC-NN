@@ -9,6 +9,7 @@
 #   QC_IO_PCT   IO delay, % of the period                    (20)
 #   QC_PARAMS   top-level parameters, DC syntax "W=8,N=4"
 #   QC_HOOK     Tcl file sourced after link, before compile (design-specific DC settings)
+#   QC_POST_HOOK Tcl file sourced after compile + change_names, before the outputs (optional)
 #   QC_COMPILE  compile command  ("compile_ultra -no_autoungroup -gate_clock")
 #   QC_EXTRA_DB_SS / _TT / _FF   extra link libraries (.db) per corner, e.g. SRAM macros (black boxes)
 #   QC_CORES    max cores (8)     QC_BUILD  output root (<repo>/build/tsmc65)

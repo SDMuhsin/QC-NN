@@ -1,0 +1,7 @@
+# R4 program-memory alternatives for qb_seq (macro vs flops decision): descriptors 616 x 74 b (2 read ports: ke, ks),
+# load-permission table 286 x 42 b (2 read ports per context).  mc_gen.sh sweep (datatable: area, ss timing).
+d_s8_624x80   sram_sp_adv 624 80 8
+d_r2_208x80   rf_sp_adv   208 80 2
+d_r1_128x80   rf_sp_adv   128 80 1
+l_r4_288x42   rf_sp_adv   288 42 4
+l_s8_288x42   sram_sp_adv 288 42 8
