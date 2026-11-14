@@ -1,0 +1,366 @@
+# R3b raw bench lines (Verilator 5.050), qb_top R3B = 1, vectors hw/tb/export_top2.py; one program per seed (+prog=<seed>/prog)
+## E6_s0 r3b_s0/img0
+QB_TOP pass 0 items 128 eot 64 act_err 0 b2_bits 0 err 0 fused_words 65536 err 0 wide_words 0 err 0
+QB_TOP pass 1 items 128 eot 64 act_err 0 b2_bits 65536 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 2 items 128 eot 64 act_err 0 b2_bits 0 err 0 fused_words 65536 err 0 wide_words 0 err 0
+QB_TOP pass 3 items 128 eot 64 act_err 0 b2_bits 65536 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 4 items 128 eot 64 act_err 0 b2_bits 0 err 0 fused_words 65536 err 0 wide_words 0 err 0
+QB_TOP pass 5 items 64 eot 32 act_err 0 b2_bits 32768 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 6 items 32 eot 32 act_err 0 b2_bits 0 err 0 fused_words 32768 err 0 wide_words 0 err 0
+QB_TOP pass 7 items 128 eot 32 act_err 0 b2_bits 0 err 0 fused_words 32768 err 0 wide_words 0 err 0
+QB_TOP pass 8 items 128 eot 32 act_err 0 b2_bits 32768 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 9 items 128 eot 32 act_err 0 b2_bits 0 err 0 fused_words 32768 err 0 wide_words 0 err 0
+QB_TOP pass 10 items 64 eot 16 act_err 0 b2_bits 16384 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 11 items 16 eot 16 act_err 0 b2_bits 0 err 0 fused_words 16384 err 0 wide_words 0 err 0
+QB_TOP pass 12 items 128 eot 16 act_err 0 b2_bits 0 err 0 fused_words 16384 err 0 wide_words 0 err 0
+QB_TOP pass 13 items 128 eot 16 act_err 0 b2_bits 16384 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 14 items 128 eot 16 act_err 0 b2_bits 0 err 0 fused_words 16384 err 0 wide_words 0 err 0
+QB_TOP pass 15 items 0 eot 0 act_err 0 b2_bits 0 err 0 fused_words 16384 err 0 wide_words 0 err 0
+QB_TOP pass 16 items 336 eot 8 act_err 0 b2_bits 0 err 0 fused_words 0 err 0 wide_words 8192 err 0
+QB_TOP pass 17 items 48 eot 8 act_err 0 b2_bits 0 err 0 fused_words 0 err 0 wide_words 8192 err 0
+QB_TOP pass 18 items 656 eot 8 act_err 0 b2_bits 0 err 0 fused_words 0 err 0 wide_words 8192 err 0
+QB_TOP pass 19 items 128 eot 8 act_err 0 b2_bits 8192 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 20 items 128 eot 8 act_err 0 b2_bits 0 err 0 fused_words 8192 err 0 wide_words 0 err 0
+QB_TOP_CYC rtl_end 3748 (last macro write 3747 + 1) model 3747 (config C without lat 3747) delta_vs_model 1 delta_vs_configC 1
+QB_TOP_TB /tmp/root/qc18bacc/r3b_s0/img0 checked 633664 final_S_words 1024 err 0 tiles 600 cycle_mismatch 0 errors 0 PASS
+## E6_s0 r3b_s0/img1
+QB_TOP pass 0 items 128 eot 64 act_err 0 b2_bits 0 err 0 fused_words 65536 err 0 wide_words 0 err 0
+QB_TOP pass 1 items 128 eot 64 act_err 0 b2_bits 65536 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 2 items 128 eot 64 act_err 0 b2_bits 0 err 0 fused_words 65536 err 0 wide_words 0 err 0
+QB_TOP pass 3 items 128 eot 64 act_err 0 b2_bits 65536 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 4 items 128 eot 64 act_err 0 b2_bits 0 err 0 fused_words 65536 err 0 wide_words 0 err 0
+QB_TOP pass 5 items 64 eot 32 act_err 0 b2_bits 32768 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 6 items 32 eot 32 act_err 0 b2_bits 0 err 0 fused_words 32768 err 0 wide_words 0 err 0
+QB_TOP pass 7 items 128 eot 32 act_err 0 b2_bits 0 err 0 fused_words 32768 err 0 wide_words 0 err 0
+QB_TOP pass 8 items 128 eot 32 act_err 0 b2_bits 32768 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 9 items 128 eot 32 act_err 0 b2_bits 0 err 0 fused_words 32768 err 0 wide_words 0 err 0
+QB_TOP pass 10 items 64 eot 16 act_err 0 b2_bits 16384 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 11 items 16 eot 16 act_err 0 b2_bits 0 err 0 fused_words 16384 err 0 wide_words 0 err 0
+QB_TOP pass 12 items 128 eot 16 act_err 0 b2_bits 0 err 0 fused_words 16384 err 0 wide_words 0 err 0
+QB_TOP pass 13 items 128 eot 16 act_err 0 b2_bits 16384 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 14 items 128 eot 16 act_err 0 b2_bits 0 err 0 fused_words 16384 err 0 wide_words 0 err 0
+QB_TOP pass 15 items 0 eot 0 act_err 0 b2_bits 0 err 0 fused_words 16384 err 0 wide_words 0 err 0
+QB_TOP pass 16 items 368 eot 8 act_err 0 b2_bits 0 err 0 fused_words 0 err 0 wide_words 8192 err 0
+QB_TOP pass 17 items 48 eot 8 act_err 0 b2_bits 0 err 0 fused_words 0 err 0 wide_words 8192 err 0
+QB_TOP pass 18 items 664 eot 8 act_err 0 b2_bits 0 err 0 fused_words 0 err 0 wide_words 8192 err 0
+QB_TOP pass 19 items 128 eot 8 act_err 0 b2_bits 8192 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 20 items 128 eot 8 act_err 0 b2_bits 0 err 0 fused_words 8192 err 0 wide_words 0 err 0
+QB_TOP_CYC rtl_end 3788 (last macro write 3787 + 1) model 3787 (config C without lat 3787) delta_vs_model 1 delta_vs_configC 1
+QB_TOP_TB /tmp/root/qc18bacc/r3b_s0/img1 checked 633704 final_S_words 1024 err 0 tiles 600 cycle_mismatch 0 errors 0 PASS
+## E6_s0 r3b_s0x/img2
+QB_TOP pass 0 items 128 eot 64 act_err 0 b2_bits 0 err 0 fused_words 65536 err 0 wide_words 0 err 0
+QB_TOP pass 1 items 128 eot 64 act_err 0 b2_bits 65536 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 2 items 128 eot 64 act_err 0 b2_bits 0 err 0 fused_words 65536 err 0 wide_words 0 err 0
+QB_TOP pass 3 items 128 eot 64 act_err 0 b2_bits 65536 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 4 items 128 eot 64 act_err 0 b2_bits 0 err 0 fused_words 65536 err 0 wide_words 0 err 0
+QB_TOP pass 5 items 64 eot 32 act_err 0 b2_bits 32768 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 6 items 32 eot 32 act_err 0 b2_bits 0 err 0 fused_words 32768 err 0 wide_words 0 err 0
+QB_TOP pass 7 items 128 eot 32 act_err 0 b2_bits 0 err 0 fused_words 32768 err 0 wide_words 0 err 0
+QB_TOP pass 8 items 128 eot 32 act_err 0 b2_bits 32768 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 9 items 128 eot 32 act_err 0 b2_bits 0 err 0 fused_words 32768 err 0 wide_words 0 err 0
+QB_TOP pass 10 items 64 eot 16 act_err 0 b2_bits 16384 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 11 items 16 eot 16 act_err 0 b2_bits 0 err 0 fused_words 16384 err 0 wide_words 0 err 0
+QB_TOP pass 12 items 128 eot 16 act_err 0 b2_bits 0 err 0 fused_words 16384 err 0 wide_words 0 err 0
+QB_TOP pass 13 items 128 eot 16 act_err 0 b2_bits 16384 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 14 items 128 eot 16 act_err 0 b2_bits 0 err 0 fused_words 16384 err 0 wide_words 0 err 0
+QB_TOP pass 15 items 0 eot 0 act_err 0 b2_bits 0 err 0 fused_words 16384 err 0 wide_words 0 err 0
+QB_TOP pass 16 items 360 eot 8 act_err 0 b2_bits 0 err 0 fused_words 0 err 0 wide_words 8192 err 0
+QB_TOP pass 17 items 48 eot 8 act_err 0 b2_bits 0 err 0 fused_words 0 err 0 wide_words 8192 err 0
+QB_TOP pass 18 items 696 eot 8 act_err 0 b2_bits 0 err 0 fused_words 0 err 0 wide_words 8192 err 0
+QB_TOP pass 19 items 128 eot 8 act_err 0 b2_bits 8192 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 20 items 128 eot 8 act_err 0 b2_bits 0 err 0 fused_words 8192 err 0 wide_words 0 err 0
+QB_TOP_CYC rtl_end 3812 (last macro write 3811 + 1) model 3811 (config C without lat 3811) delta_vs_model 1 delta_vs_configC 1
+QB_TOP_TB /tmp/root/qc18bacc/r3b_s0x/img2 checked 633728 final_S_words 1024 err 0 tiles 600 cycle_mismatch 0 errors 0 PASS
+## E6_s0 r3b_s0x/img3
+QB_TOP pass 0 items 128 eot 64 act_err 0 b2_bits 0 err 0 fused_words 65536 err 0 wide_words 0 err 0
+QB_TOP pass 1 items 128 eot 64 act_err 0 b2_bits 65536 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 2 items 128 eot 64 act_err 0 b2_bits 0 err 0 fused_words 65536 err 0 wide_words 0 err 0
+QB_TOP pass 3 items 128 eot 64 act_err 0 b2_bits 65536 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 4 items 128 eot 64 act_err 0 b2_bits 0 err 0 fused_words 65536 err 0 wide_words 0 err 0
+QB_TOP pass 5 items 64 eot 32 act_err 0 b2_bits 32768 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 6 items 32 eot 32 act_err 0 b2_bits 0 err 0 fused_words 32768 err 0 wide_words 0 err 0
+QB_TOP pass 7 items 128 eot 32 act_err 0 b2_bits 0 err 0 fused_words 32768 err 0 wide_words 0 err 0
+QB_TOP pass 8 items 128 eot 32 act_err 0 b2_bits 32768 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 9 items 128 eot 32 act_err 0 b2_bits 0 err 0 fused_words 32768 err 0 wide_words 0 err 0
+QB_TOP pass 10 items 64 eot 16 act_err 0 b2_bits 16384 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 11 items 16 eot 16 act_err 0 b2_bits 0 err 0 fused_words 16384 err 0 wide_words 0 err 0
+QB_TOP pass 12 items 128 eot 16 act_err 0 b2_bits 0 err 0 fused_words 16384 err 0 wide_words 0 err 0
+QB_TOP pass 13 items 128 eot 16 act_err 0 b2_bits 16384 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 14 items 128 eot 16 act_err 0 b2_bits 0 err 0 fused_words 16384 err 0 wide_words 0 err 0
+QB_TOP pass 15 items 0 eot 0 act_err 0 b2_bits 0 err 0 fused_words 16384 err 0 wide_words 0 err 0
+QB_TOP pass 16 items 368 eot 8 act_err 0 b2_bits 0 err 0 fused_words 0 err 0 wide_words 8192 err 0
+QB_TOP pass 17 items 48 eot 8 act_err 0 b2_bits 0 err 0 fused_words 0 err 0 wide_words 8192 err 0
+QB_TOP pass 18 items 680 eot 8 act_err 0 b2_bits 0 err 0 fused_words 0 err 0 wide_words 8192 err 0
+QB_TOP pass 19 items 128 eot 8 act_err 0 b2_bits 8192 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 20 items 128 eot 8 act_err 0 b2_bits 0 err 0 fused_words 8192 err 0 wide_words 0 err 0
+QB_TOP_CYC rtl_end 3804 (last macro write 3803 + 1) model 3803 (config C without lat 3803) delta_vs_model 1 delta_vs_configC 1
+QB_TOP_TB /tmp/root/qc18bacc/r3b_s0x/img3 checked 633720 final_S_words 1024 err 0 tiles 600 cycle_mismatch 0 errors 0 PASS
+## E6_s0 r3b_s0x/img4
+QB_TOP pass 0 items 128 eot 64 act_err 0 b2_bits 0 err 0 fused_words 65536 err 0 wide_words 0 err 0
+QB_TOP pass 1 items 128 eot 64 act_err 0 b2_bits 65536 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 2 items 128 eot 64 act_err 0 b2_bits 0 err 0 fused_words 65536 err 0 wide_words 0 err 0
+QB_TOP pass 3 items 128 eot 64 act_err 0 b2_bits 65536 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 4 items 128 eot 64 act_err 0 b2_bits 0 err 0 fused_words 65536 err 0 wide_words 0 err 0
+QB_TOP pass 5 items 64 eot 32 act_err 0 b2_bits 32768 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 6 items 32 eot 32 act_err 0 b2_bits 0 err 0 fused_words 32768 err 0 wide_words 0 err 0
+QB_TOP pass 7 items 128 eot 32 act_err 0 b2_bits 0 err 0 fused_words 32768 err 0 wide_words 0 err 0
+QB_TOP pass 8 items 128 eot 32 act_err 0 b2_bits 32768 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 9 items 128 eot 32 act_err 0 b2_bits 0 err 0 fused_words 32768 err 0 wide_words 0 err 0
+QB_TOP pass 10 items 64 eot 16 act_err 0 b2_bits 16384 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 11 items 16 eot 16 act_err 0 b2_bits 0 err 0 fused_words 16384 err 0 wide_words 0 err 0
+QB_TOP pass 12 items 128 eot 16 act_err 0 b2_bits 0 err 0 fused_words 16384 err 0 wide_words 0 err 0
+QB_TOP pass 13 items 128 eot 16 act_err 0 b2_bits 16384 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 14 items 128 eot 16 act_err 0 b2_bits 0 err 0 fused_words 16384 err 0 wide_words 0 err 0
+QB_TOP pass 15 items 0 eot 0 act_err 0 b2_bits 0 err 0 fused_words 16384 err 0 wide_words 0 err 0
+QB_TOP pass 16 items 336 eot 8 act_err 0 b2_bits 0 err 0 fused_words 0 err 0 wide_words 8192 err 0
+QB_TOP pass 17 items 48 eot 8 act_err 0 b2_bits 0 err 0 fused_words 0 err 0 wide_words 8192 err 0
+QB_TOP pass 18 items 672 eot 8 act_err 0 b2_bits 0 err 0 fused_words 0 err 0 wide_words 8192 err 0
+QB_TOP pass 19 items 128 eot 8 act_err 0 b2_bits 8192 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 20 items 128 eot 8 act_err 0 b2_bits 0 err 0 fused_words 8192 err 0 wide_words 0 err 0
+QB_TOP_CYC rtl_end 3764 (last macro write 3763 + 1) model 3763 (config C without lat 3763) delta_vs_model 1 delta_vs_configC 1
+QB_TOP_TB /tmp/root/qc18bacc/r3b_s0x/img4 checked 633680 final_S_words 1024 err 0 tiles 600 cycle_mismatch 0 errors 0 PASS
+## E6_s0 r3b_s0x/img5
+QB_TOP pass 0 items 128 eot 64 act_err 0 b2_bits 0 err 0 fused_words 65536 err 0 wide_words 0 err 0
+QB_TOP pass 1 items 128 eot 64 act_err 0 b2_bits 65536 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 2 items 128 eot 64 act_err 0 b2_bits 0 err 0 fused_words 65536 err 0 wide_words 0 err 0
+QB_TOP pass 3 items 128 eot 64 act_err 0 b2_bits 65536 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 4 items 128 eot 64 act_err 0 b2_bits 0 err 0 fused_words 65536 err 0 wide_words 0 err 0
+QB_TOP pass 5 items 64 eot 32 act_err 0 b2_bits 32768 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 6 items 32 eot 32 act_err 0 b2_bits 0 err 0 fused_words 32768 err 0 wide_words 0 err 0
+QB_TOP pass 7 items 128 eot 32 act_err 0 b2_bits 0 err 0 fused_words 32768 err 0 wide_words 0 err 0
+QB_TOP pass 8 items 128 eot 32 act_err 0 b2_bits 32768 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 9 items 128 eot 32 act_err 0 b2_bits 0 err 0 fused_words 32768 err 0 wide_words 0 err 0
+QB_TOP pass 10 items 64 eot 16 act_err 0 b2_bits 16384 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 11 items 16 eot 16 act_err 0 b2_bits 0 err 0 fused_words 16384 err 0 wide_words 0 err 0
+QB_TOP pass 12 items 128 eot 16 act_err 0 b2_bits 0 err 0 fused_words 16384 err 0 wide_words 0 err 0
+QB_TOP pass 13 items 128 eot 16 act_err 0 b2_bits 16384 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 14 items 128 eot 16 act_err 0 b2_bits 0 err 0 fused_words 16384 err 0 wide_words 0 err 0
+QB_TOP pass 15 items 0 eot 0 act_err 0 b2_bits 0 err 0 fused_words 16384 err 0 wide_words 0 err 0
+QB_TOP pass 16 items 352 eot 8 act_err 0 b2_bits 0 err 0 fused_words 0 err 0 wide_words 8192 err 0
+QB_TOP pass 17 items 48 eot 8 act_err 0 b2_bits 0 err 0 fused_words 0 err 0 wide_words 8192 err 0
+QB_TOP pass 18 items 680 eot 8 act_err 0 b2_bits 0 err 0 fused_words 0 err 0 wide_words 8192 err 0
+QB_TOP pass 19 items 128 eot 8 act_err 0 b2_bits 8192 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 20 items 128 eot 8 act_err 0 b2_bits 0 err 0 fused_words 8192 err 0 wide_words 0 err 0
+QB_TOP_CYC rtl_end 3788 (last macro write 3787 + 1) model 3787 (config C without lat 3787) delta_vs_model 1 delta_vs_configC 1
+QB_TOP_TB /tmp/root/qc18bacc/r3b_s0x/img5 checked 633704 final_S_words 1024 err 0 tiles 600 cycle_mismatch 0 errors 0 PASS
+## E6_s0 r3b_s0x/img6
+QB_TOP pass 0 items 128 eot 64 act_err 0 b2_bits 0 err 0 fused_words 65536 err 0 wide_words 0 err 0
+QB_TOP pass 1 items 128 eot 64 act_err 0 b2_bits 65536 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 2 items 128 eot 64 act_err 0 b2_bits 0 err 0 fused_words 65536 err 0 wide_words 0 err 0
+QB_TOP pass 3 items 128 eot 64 act_err 0 b2_bits 65536 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 4 items 128 eot 64 act_err 0 b2_bits 0 err 0 fused_words 65536 err 0 wide_words 0 err 0
+QB_TOP pass 5 items 64 eot 32 act_err 0 b2_bits 32768 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 6 items 32 eot 32 act_err 0 b2_bits 0 err 0 fused_words 32768 err 0 wide_words 0 err 0
+QB_TOP pass 7 items 128 eot 32 act_err 0 b2_bits 0 err 0 fused_words 32768 err 0 wide_words 0 err 0
+QB_TOP pass 8 items 128 eot 32 act_err 0 b2_bits 32768 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 9 items 128 eot 32 act_err 0 b2_bits 0 err 0 fused_words 32768 err 0 wide_words 0 err 0
+QB_TOP pass 10 items 64 eot 16 act_err 0 b2_bits 16384 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 11 items 16 eot 16 act_err 0 b2_bits 0 err 0 fused_words 16384 err 0 wide_words 0 err 0
+QB_TOP pass 12 items 128 eot 16 act_err 0 b2_bits 0 err 0 fused_words 16384 err 0 wide_words 0 err 0
+QB_TOP pass 13 items 128 eot 16 act_err 0 b2_bits 16384 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 14 items 128 eot 16 act_err 0 b2_bits 0 err 0 fused_words 16384 err 0 wide_words 0 err 0
+QB_TOP pass 15 items 0 eot 0 act_err 0 b2_bits 0 err 0 fused_words 16384 err 0 wide_words 0 err 0
+QB_TOP pass 16 items 328 eot 8 act_err 0 b2_bits 0 err 0 fused_words 0 err 0 wide_words 8192 err 0
+QB_TOP pass 17 items 48 eot 8 act_err 0 b2_bits 0 err 0 fused_words 0 err 0 wide_words 8192 err 0
+QB_TOP pass 18 items 648 eot 8 act_err 0 b2_bits 0 err 0 fused_words 0 err 0 wide_words 8192 err 0
+QB_TOP pass 19 items 128 eot 8 act_err 0 b2_bits 8192 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 20 items 128 eot 8 act_err 0 b2_bits 0 err 0 fused_words 8192 err 0 wide_words 0 err 0
+QB_TOP_CYC rtl_end 3732 (last macro write 3731 + 1) model 3731 (config C without lat 3731) delta_vs_model 1 delta_vs_configC 1
+QB_TOP_TB /tmp/root/qc18bacc/r3b_s0x/img6 checked 633648 final_S_words 1024 err 0 tiles 600 cycle_mismatch 0 errors 0 PASS
+## E6_s0 r3b_s0x/img7
+QB_TOP pass 0 items 128 eot 64 act_err 0 b2_bits 0 err 0 fused_words 65536 err 0 wide_words 0 err 0
+QB_TOP pass 1 items 128 eot 64 act_err 0 b2_bits 65536 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 2 items 128 eot 64 act_err 0 b2_bits 0 err 0 fused_words 65536 err 0 wide_words 0 err 0
+QB_TOP pass 3 items 128 eot 64 act_err 0 b2_bits 65536 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 4 items 128 eot 64 act_err 0 b2_bits 0 err 0 fused_words 65536 err 0 wide_words 0 err 0
+QB_TOP pass 5 items 64 eot 32 act_err 0 b2_bits 32768 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 6 items 32 eot 32 act_err 0 b2_bits 0 err 0 fused_words 32768 err 0 wide_words 0 err 0
+QB_TOP pass 7 items 128 eot 32 act_err 0 b2_bits 0 err 0 fused_words 32768 err 0 wide_words 0 err 0
+QB_TOP pass 8 items 128 eot 32 act_err 0 b2_bits 32768 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 9 items 128 eot 32 act_err 0 b2_bits 0 err 0 fused_words 32768 err 0 wide_words 0 err 0
+QB_TOP pass 10 items 64 eot 16 act_err 0 b2_bits 16384 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 11 items 16 eot 16 act_err 0 b2_bits 0 err 0 fused_words 16384 err 0 wide_words 0 err 0
+QB_TOP pass 12 items 128 eot 16 act_err 0 b2_bits 0 err 0 fused_words 16384 err 0 wide_words 0 err 0
+QB_TOP pass 13 items 128 eot 16 act_err 0 b2_bits 16384 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 14 items 128 eot 16 act_err 0 b2_bits 0 err 0 fused_words 16384 err 0 wide_words 0 err 0
+QB_TOP pass 15 items 0 eot 0 act_err 0 b2_bits 0 err 0 fused_words 16384 err 0 wide_words 0 err 0
+QB_TOP pass 16 items 328 eot 8 act_err 0 b2_bits 0 err 0 fused_words 0 err 0 wide_words 8192 err 0
+QB_TOP pass 17 items 48 eot 8 act_err 0 b2_bits 0 err 0 fused_words 0 err 0 wide_words 8192 err 0
+QB_TOP pass 18 items 680 eot 8 act_err 0 b2_bits 0 err 0 fused_words 0 err 0 wide_words 8192 err 0
+QB_TOP pass 19 items 128 eot 8 act_err 0 b2_bits 8192 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 20 items 128 eot 8 act_err 0 b2_bits 0 err 0 fused_words 8192 err 0 wide_words 0 err 0
+QB_TOP_CYC rtl_end 3764 (last macro write 3763 + 1) model 3763 (config C without lat 3763) delta_vs_model 1 delta_vs_configC 1
+QB_TOP_TB /tmp/root/qc18bacc/r3b_s0x/img7 checked 633680 final_S_words 1024 err 0 tiles 600 cycle_mismatch 0 errors 0 PASS
+## E6_s0 r3b_s0x/img8
+QB_TOP pass 0 items 128 eot 64 act_err 0 b2_bits 0 err 0 fused_words 65536 err 0 wide_words 0 err 0
+QB_TOP pass 1 items 128 eot 64 act_err 0 b2_bits 65536 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 2 items 128 eot 64 act_err 0 b2_bits 0 err 0 fused_words 65536 err 0 wide_words 0 err 0
+QB_TOP pass 3 items 128 eot 64 act_err 0 b2_bits 65536 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 4 items 128 eot 64 act_err 0 b2_bits 0 err 0 fused_words 65536 err 0 wide_words 0 err 0
+QB_TOP pass 5 items 64 eot 32 act_err 0 b2_bits 32768 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 6 items 32 eot 32 act_err 0 b2_bits 0 err 0 fused_words 32768 err 0 wide_words 0 err 0
+QB_TOP pass 7 items 128 eot 32 act_err 0 b2_bits 0 err 0 fused_words 32768 err 0 wide_words 0 err 0
+QB_TOP pass 8 items 128 eot 32 act_err 0 b2_bits 32768 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 9 items 128 eot 32 act_err 0 b2_bits 0 err 0 fused_words 32768 err 0 wide_words 0 err 0
+QB_TOP pass 10 items 64 eot 16 act_err 0 b2_bits 16384 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 11 items 16 eot 16 act_err 0 b2_bits 0 err 0 fused_words 16384 err 0 wide_words 0 err 0
+QB_TOP pass 12 items 128 eot 16 act_err 0 b2_bits 0 err 0 fused_words 16384 err 0 wide_words 0 err 0
+QB_TOP pass 13 items 128 eot 16 act_err 0 b2_bits 16384 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 14 items 128 eot 16 act_err 0 b2_bits 0 err 0 fused_words 16384 err 0 wide_words 0 err 0
+QB_TOP pass 15 items 0 eot 0 act_err 0 b2_bits 0 err 0 fused_words 16384 err 0 wide_words 0 err 0
+QB_TOP pass 16 items 328 eot 8 act_err 0 b2_bits 0 err 0 fused_words 0 err 0 wide_words 8192 err 0
+QB_TOP pass 17 items 40 eot 8 act_err 0 b2_bits 0 err 0 fused_words 0 err 0 wide_words 8192 err 0
+QB_TOP pass 18 items 664 eot 8 act_err 0 b2_bits 0 err 0 fused_words 0 err 0 wide_words 8192 err 0
+QB_TOP pass 19 items 128 eot 8 act_err 0 b2_bits 8192 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 20 items 128 eot 8 act_err 0 b2_bits 0 err 0 fused_words 8192 err 0 wide_words 0 err 0
+QB_TOP_CYC rtl_end 3740 (last macro write 3739 + 1) model 3739 (config C without lat 3739) delta_vs_model 1 delta_vs_configC 1
+QB_TOP_TB /tmp/root/qc18bacc/r3b_s0x/img8 checked 633656 final_S_words 1024 err 0 tiles 600 cycle_mismatch 0 errors 0 PASS
+## E6_s0 r3b_s0x/img9
+QB_TOP pass 0 items 128 eot 64 act_err 0 b2_bits 0 err 0 fused_words 65536 err 0 wide_words 0 err 0
+QB_TOP pass 1 items 128 eot 64 act_err 0 b2_bits 65536 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 2 items 128 eot 64 act_err 0 b2_bits 0 err 0 fused_words 65536 err 0 wide_words 0 err 0
+QB_TOP pass 3 items 128 eot 64 act_err 0 b2_bits 65536 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 4 items 128 eot 64 act_err 0 b2_bits 0 err 0 fused_words 65536 err 0 wide_words 0 err 0
+QB_TOP pass 5 items 64 eot 32 act_err 0 b2_bits 32768 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 6 items 32 eot 32 act_err 0 b2_bits 0 err 0 fused_words 32768 err 0 wide_words 0 err 0
+QB_TOP pass 7 items 128 eot 32 act_err 0 b2_bits 0 err 0 fused_words 32768 err 0 wide_words 0 err 0
+QB_TOP pass 8 items 128 eot 32 act_err 0 b2_bits 32768 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 9 items 128 eot 32 act_err 0 b2_bits 0 err 0 fused_words 32768 err 0 wide_words 0 err 0
+QB_TOP pass 10 items 64 eot 16 act_err 0 b2_bits 16384 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 11 items 16 eot 16 act_err 0 b2_bits 0 err 0 fused_words 16384 err 0 wide_words 0 err 0
+QB_TOP pass 12 items 128 eot 16 act_err 0 b2_bits 0 err 0 fused_words 16384 err 0 wide_words 0 err 0
+QB_TOP pass 13 items 128 eot 16 act_err 0 b2_bits 16384 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 14 items 128 eot 16 act_err 0 b2_bits 0 err 0 fused_words 16384 err 0 wide_words 0 err 0
+QB_TOP pass 15 items 0 eot 0 act_err 0 b2_bits 0 err 0 fused_words 16384 err 0 wide_words 0 err 0
+QB_TOP pass 16 items 320 eot 8 act_err 0 b2_bits 0 err 0 fused_words 0 err 0 wide_words 8192 err 0
+QB_TOP pass 17 items 40 eot 8 act_err 0 b2_bits 0 err 0 fused_words 0 err 0 wide_words 8192 err 0
+QB_TOP pass 18 items 632 eot 8 act_err 0 b2_bits 0 err 0 fused_words 0 err 0 wide_words 8192 err 0
+QB_TOP pass 19 items 128 eot 8 act_err 0 b2_bits 8192 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 20 items 128 eot 8 act_err 0 b2_bits 0 err 0 fused_words 8192 err 0 wide_words 0 err 0
+QB_TOP_CYC rtl_end 3700 (last macro write 3699 + 1) model 3699 (config C without lat 3699) delta_vs_model 1 delta_vs_configC 1
+QB_TOP_TB /tmp/root/qc18bacc/r3b_s0x/img9 checked 633616 final_S_words 1024 err 0 tiles 600 cycle_mismatch 0 errors 0 PASS
+## E6_s1 img7
+QB_TOP pass 0 items 128 eot 64 act_err 0 b2_bits 0 err 0 fused_words 65536 err 0 wide_words 0 err 0
+QB_TOP pass 1 items 128 eot 64 act_err 0 b2_bits 65536 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 2 items 128 eot 64 act_err 0 b2_bits 0 err 0 fused_words 65536 err 0 wide_words 0 err 0
+QB_TOP pass 3 items 128 eot 64 act_err 0 b2_bits 65536 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 4 items 128 eot 64 act_err 0 b2_bits 0 err 0 fused_words 65536 err 0 wide_words 0 err 0
+QB_TOP pass 5 items 64 eot 32 act_err 0 b2_bits 32768 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 6 items 32 eot 32 act_err 0 b2_bits 0 err 0 fused_words 32768 err 0 wide_words 0 err 0
+QB_TOP pass 7 items 128 eot 32 act_err 0 b2_bits 0 err 0 fused_words 32768 err 0 wide_words 0 err 0
+QB_TOP pass 8 items 128 eot 32 act_err 0 b2_bits 32768 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 9 items 128 eot 32 act_err 0 b2_bits 0 err 0 fused_words 32768 err 0 wide_words 0 err 0
+QB_TOP pass 10 items 64 eot 16 act_err 0 b2_bits 16384 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 11 items 16 eot 16 act_err 0 b2_bits 0 err 0 fused_words 16384 err 0 wide_words 0 err 0
+QB_TOP pass 12 items 128 eot 16 act_err 0 b2_bits 0 err 0 fused_words 16384 err 0 wide_words 0 err 0
+QB_TOP pass 13 items 128 eot 16 act_err 0 b2_bits 16384 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 14 items 128 eot 16 act_err 0 b2_bits 0 err 0 fused_words 16384 err 0 wide_words 0 err 0
+QB_TOP pass 15 items 0 eot 0 act_err 0 b2_bits 0 err 0 fused_words 16384 err 0 wide_words 0 err 0
+QB_TOP pass 16 items 368 eot 8 act_err 0 b2_bits 0 err 0 fused_words 0 err 0 wide_words 8192 err 0
+QB_TOP pass 17 items 48 eot 8 act_err 0 b2_bits 0 err 0 fused_words 0 err 0 wide_words 8192 err 0
+QB_TOP pass 18 items 608 eot 8 act_err 0 b2_bits 0 err 0 fused_words 0 err 0 wide_words 8192 err 0
+QB_TOP pass 19 items 128 eot 8 act_err 0 b2_bits 8192 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 20 items 128 eot 8 act_err 0 b2_bits 0 err 0 fused_words 8192 err 0 wide_words 0 err 0
+QB_TOP_CYC rtl_end 3732 (last macro write 3731 + 1) model 3731 (config C without lat 3731) delta_vs_model 1 delta_vs_configC 1
+QB_TOP_TB /tmp/root/qc18bacc/r3b_s1/img7 checked 633648 final_S_words 1024 err 0 tiles 600 cycle_mismatch 0 errors 0 PASS
+## E6_s1 img42
+QB_TOP pass 0 items 128 eot 64 act_err 0 b2_bits 0 err 0 fused_words 65536 err 0 wide_words 0 err 0
+QB_TOP pass 1 items 128 eot 64 act_err 0 b2_bits 65536 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 2 items 128 eot 64 act_err 0 b2_bits 0 err 0 fused_words 65536 err 0 wide_words 0 err 0
+QB_TOP pass 3 items 128 eot 64 act_err 0 b2_bits 65536 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 4 items 128 eot 64 act_err 0 b2_bits 0 err 0 fused_words 65536 err 0 wide_words 0 err 0
+QB_TOP pass 5 items 64 eot 32 act_err 0 b2_bits 32768 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 6 items 32 eot 32 act_err 0 b2_bits 0 err 0 fused_words 32768 err 0 wide_words 0 err 0
+QB_TOP pass 7 items 128 eot 32 act_err 0 b2_bits 0 err 0 fused_words 32768 err 0 wide_words 0 err 0
+QB_TOP pass 8 items 128 eot 32 act_err 0 b2_bits 32768 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 9 items 128 eot 32 act_err 0 b2_bits 0 err 0 fused_words 32768 err 0 wide_words 0 err 0
+QB_TOP pass 10 items 64 eot 16 act_err 0 b2_bits 16384 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 11 items 16 eot 16 act_err 0 b2_bits 0 err 0 fused_words 16384 err 0 wide_words 0 err 0
+QB_TOP pass 12 items 128 eot 16 act_err 0 b2_bits 0 err 0 fused_words 16384 err 0 wide_words 0 err 0
+QB_TOP pass 13 items 128 eot 16 act_err 0 b2_bits 16384 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 14 items 128 eot 16 act_err 0 b2_bits 0 err 0 fused_words 16384 err 0 wide_words 0 err 0
+QB_TOP pass 15 items 0 eot 0 act_err 0 b2_bits 0 err 0 fused_words 16384 err 0 wide_words 0 err 0
+QB_TOP pass 16 items 384 eot 8 act_err 0 b2_bits 0 err 0 fused_words 0 err 0 wide_words 8192 err 0
+QB_TOP pass 17 items 48 eot 8 act_err 0 b2_bits 0 err 0 fused_words 0 err 0 wide_words 8192 err 0
+QB_TOP pass 18 items 656 eot 8 act_err 0 b2_bits 0 err 0 fused_words 0 err 0 wide_words 8192 err 0
+QB_TOP pass 19 items 128 eot 8 act_err 0 b2_bits 8192 err 0 fused_words 0 err 0 wide_words 0 err 0
+QB_TOP pass 20 items 128 eot 8 act_err 0 b2_bits 0 err 0 fused_words 8192 err 0 wide_words 0 err 0
+QB_TOP_CYC rtl_end 3796 (last macro write 3795 + 1) model 3795 (config C without lat 3795) delta_vs_model 1 delta_vs_configC 1
+QB_TOP_TB /tmp/root/qc18bacc/r3b_s1/img42 checked 633712 final_S_words 1024 err 0 tiles 600 cycle_mismatch 0 errors 0 PASS
+## mutant QBT_MUT_SB, E6_s0 img0
+MISMATCH act pass 16 item 1 cycle 2027: ch 0 ct 0 t 0 pl 0 (exp 0 0 0 0) act bits 824
+MISMATCH pass 16 cycle 2027: unexpected eot
+MISMATCH qb_top err flag set
+QB_TOP_CYC rtl_end 3682 (last macro write 3681 + 1) model 3747 (config C without lat 3747) delta_vs_model -65 delta_vs_configC -65
+QB_TOP_TB /tmp/root/qc18bacc/r3b_s0/img0 checked 633448 final_S_words 1024 err 1024 tiles 600 cycle_mismatch 40 errors 24012 FAIL
+## mutant QBT_MUT_LOK, E6_s0 img0
+MISMATCH act pass 1 item 1 cycle 66: ch 0 ct 0 t 0 pl 0 (exp 0 0 0 0) act bits 167
+MISMATCH act pass 1 item 3 cycle 70: ch 0 ct 0 t 1 pl 0 (exp 0 0 1 0) act bits 671
+MISMATCH qb_top err flag set
+QB_TOP_CYC rtl_end 3834 (last macro write 3833 + 1) model 3747 (config C without lat 3747) delta_vs_model 87 delta_vs_configC 87
+QB_TOP_TB /tmp/root/qc18bacc/r3b_s0/img0 checked 633597 final_S_words 1024 err 1024 tiles 600 cycle_mismatch 478 errors 341241 FAIL
+## mutant QBT_MUT_RDS, E6_s0 img0
+MISMATCH fused pass 7 cycle 956 lane 0: y 00447 b 1 exp 0013f 1
+MISMATCH fused pass 7 cycle 956 lane 1: y 00166 b 1 exp 000d9 1
+QB_TOP_CYC rtl_end 3658 (last macro write 3657 + 1) model 3747 (config C without lat 3747) delta_vs_model -89 delta_vs_configC -89
+QB_TOP_TB /tmp/root/qc18bacc/r3b_s0/img0 checked 633559 final_S_words 1024 err 1024 tiles 600 cycle_mismatch 228 errors 136626 FAIL
+## mutant QBT_MUT_PRMR, E6_s0 img0
+MISMATCH fused pass 0 cycle 30 lane 0: y 1f7d6 b 0 exp 1fb4e 1
+MISMATCH fused pass 0 cycle 30 lane 1: y 1ef43 b 0 exp 02536 1
+QB_TOP_CYC rtl_end 3636 (last macro write 3635 + 1) model 3747 (config C without lat 3747) delta_vs_model -111 delta_vs_configC -111
+QB_TOP_TB /tmp/root/qc18bacc/r3b_s0/img0 checked 633368 final_S_words 1024 err 1024 tiles 600 cycle_mismatch 40 errors 445371 FAIL
+## mutant QBT_MUT_PRM1, E6_s0 img0
+MISMATCH fused pass 6 cycle 877 lane 48: y 1fed6 b 0 exp 00332 0
+MISMATCH fused pass 6 cycle 877 lane 49: y 1fe0e b 0 exp 1fc94 0
+MISMATCH qb_top err flag set
+QB_TOP_CYC rtl_end 3748 (last macro write 3747 + 1) model 3747 (config C without lat 3747) delta_vs_model 1 delta_vs_configC 1
+QB_TOP_TB /tmp/root/qc18bacc/r3b_s0/img0 checked 633575 final_S_words 1024 err 1024 tiles 600 cycle_mismatch 23 errors 120878 FAIL
+## regression: qb_top default (R3B = 0) on the R3a vectors
+QB_TOP_CYC rtl_end 3748 (last macro write 3747 + 1) model 3747 (config C without lat 3622) delta_vs_model 1 delta_vs_configC 126
+QB_TOP_TB /tmp/root/qc18bacc/r3a/img0 checked 633664 final_S_words 1024 err 0 tiles 600 cycle_mismatch 0 errors 0 PASS
+## regressions: run_tb_core.sh / run_tb_act2.sh
+QB_CORE_TB /tmp/root/qc18bacc/exp2/core/img0 cycles 3644 checked 630784 errors 0 PASS
+QB_CORE_TB /tmp/root/qc18bacc/exp2/core/img1 cycles 3684 checked 630784 errors 0 PASS
+QB_ACT2_TB /tmp/root/qc18bacc/exp2/act2/img0 items 2880 act_bytes 1658880 tiles 600 cycle_mismatch 0 last_cycle 3610 errors 0 PASS
+## export logs
+E6_s1: static order from 1 distinct commit order(s) on val[:100]; free 3758.04 static 3758.04 delta mean 0.00 min 0 max 0; engine emulation 0 mismatches
+img7: static-order model cycles 3731 (free list schedule 3731), 2864 items
+img42: static-order model cycles 3795 (free list schedule 3795), 2928 items
+program: 616 tiles, 286 load-permission entries, fetch lists f/w/t 156/24/106, params rows 238 / 240; descriptor bits {'ds': 49280, 'lt': 12012, 'fl': 7150, 'pl': 100} total 68542
+E6_s0: static order from 1 distinct commit order(s) on val[:100]; free 3776.44 static 3776.44 delta mean 0.00 min 0 max 0; engine emulation 0 mismatches
+img2: static-order model cycles 3811 (free list schedule 3811), 2944 items
+img3: static-order model cycles 3803 (free list schedule 3803), 2936 items
+img4: static-order model cycles 3763 (free list schedule 3763), 2896 items
+img5: static-order model cycles 3787 (free list schedule 3787), 2920 items
+img6: static-order model cycles 3731 (free list schedule 3731), 2864 items
+img7: static-order model cycles 3763 (free list schedule 3763), 2896 items
+img8: static-order model cycles 3739 (free list schedule 3739), 2872 items
+img9: static-order model cycles 3699 (free list schedule 3699), 2832 items
+program: 616 tiles, 286 load-permission entries, fetch lists f/w/t 156/24/106, params rows 238 / 240; descriptor bits {'ds': 49280, 'lt': 12012, 'fl': 7150, 'pl': 100} total 68542
+## compile/static_seq.py (val[:100], GPU 0)
+E6_s0: free 3776.44 static 3776.44 delta mean 0.00 min 0 max 0 nonzero 0 / 100; distinct commit orders 1
+E6_s0: hardware engine emulation vs forced-order model: 0 time mismatches, 0 late events over 100 images x 616 tiles
+E6_s1: free 3758.04 static 3758.04 delta mean 0.00 min 0 max 0 nonzero 0 / 100; distinct commit orders 1
+E6_s1: hardware engine emulation vs forced-order model: 0 time mismatches, 0 late events over 100 images x 616 tiles
+## params macros (impl/mem/mc_sweep.sh on tau-02, ARM rf_sp_adv; numbers only)
+MS p_r2_240x144 rf_sp_adv 240 144 2  | w_um 439.8 h_um 135.5 area_um2 59602 | tt dat_ta_tcyc 0.788 0.690 lib_ta 0.787 | ss dat_ta_tcyc 1.288 1.115 lib_ta 1.283
+MS p_r2_184x144 rf_sp_adv 184 144 2  | w_um 439.8 h_um 121.5 area_um2 53444 | tt dat_ta_tcyc 0.768 0.670 lib_ta 0.767 | ss dat_ta_tcyc 1.252 1.081 lib_ta 1.248
+MS p_r2_240x136 rf_sp_adv 240 136 2  | w_um 420.0 h_um 135.5 area_um2 56913 | tt dat_ta_tcyc 0.775 0.678 lib_ta 0.774 | ss dat_ta_tcyc 1.267 1.097 lib_ta 1.262
+MS p_r2_184x110 rf_sp_adv 184 110 2  | w_um 351.2 h_um 121.5 area_um2 42675 | tt dat_ta_tcyc 0.711 0.622 lib_ta 0.710 | ss dat_ta_tcyc 1.162 1.005 lib_ta 1.158
+MS_DONE
+## compile/test_compile.py --n 100 (both seeds)
+codes: 129 states, encode/decode round trip, illegal codes rejected: PASS
+E6_s0: program build (all bound / exactness / buffer asserts): PASS
+E6_s0: dataflow logits == IntBin2 logits (torch.equal) on val[:100]: PASS; acc 56.00 %
+E6_s1: program build (all bound / exactness / buffer asserts): PASS
+E6_s1: dataflow logits == IntBin2 logits (torch.equal) on val[:100]: PASS; acc 59.00 %
+sensitivity: b0.c2 sel + 1 detected, b3.c1 one block code detected, stem plane 7 positive detected: PASS
+p2 sensitivity: b0.c2 idm j 0 -> -1 detected, b1.c2 idm j -1 -> 0 detected, b3.c2 idm j 0 -> -1 detected, b5.c2 idm j 0 -> -1 detected, b7.c2 idm j 0 -> -1 detected, idm j = -1 floor instead of round half up detected: PASS
+E6_s0: v1.1 program build (fused-lane fit / exactness asserts): PASS
+E6_s0: dataflow logits == IntBin2 logits (torch.equal) on val[:100]: PASS; acc 56.00 %
+E6_s0 v1.1 schedule NL 256: 6888 hazard pairs hold on val[:100], tile replay of val[:4] == golden; scheduler without WAR / drain RAW hazards detected by both: PASS (3807.3 cycles / image)
+E6_s1: v1.1 program build (fused-lane fit / exactness asserts): PASS
+E6_s1: dataflow logits == IntBin2 logits (torch.equal) on val[:100]: PASS; acc 59.00 %
+E6_s1 v1.1 schedule NL 256: 6888 hazard pairs hold on val[:100], tile replay of val[:4] == golden; scheduler without WAR / drain RAW hazards detected by both: PASS (3758.4 cycles / image)
+v1.1 sensitivity: packed stem groups 0/1 swapped detected, b6.hm pre-clamp lo + 64 detected: PASS
+ALL PASS

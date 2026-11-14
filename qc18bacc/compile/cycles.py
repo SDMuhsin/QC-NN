@@ -214,6 +214,7 @@ class Sched:
         self.sh_pass = None
         self.attr = [0] * npass
         self.sup = None                          # supply-model state (compile/supply.py), None without a supply hook
+        self.seq = []                            # commit order (tile indices)
 
     def copy(self):
         c = Sched.__new__(Sched)
@@ -222,11 +223,12 @@ class Sched:
         c.t_arr, c.t_sh, c.lane, c.last_arr, c.sh_pass, c.attr = (self.t_arr, self.t_sh, dict(self.lane), self.last_arr,
                                                                   self.sh_pass, list(self.attr))
         c.sup = None if self.sup is None else self.sup.copy()
+        c.seq = list(self.seq)
         return c
 
 
 def list_schedule(prog, st, NL, nw=NW, ovh=OVH, fl=FL_ALL, check=False, win=None, ctx=None, sup=None, lat=None,
-                  bub=None):
+                  bub=None, order=None, rec=None):
     """v1.1 event-driven list scheduler over tiles (per image):
     resources: array (one tile at a time, compute = executed chunk items), shadow (one per PE: a drained tile captures
     only when the previous drain has finished; the array stalls holding its accumulators otherwise), fused lanes (NL
@@ -243,7 +245,10 @@ def list_schedule(prog, st, NL, nw=NW, ovh=OVH, fl=FL_ALL, check=False, win=None
     field 'ras' / 'rds' / 'ws', consumer tile) -> extra cycles added to the producer's write-done time ('wd') in that
     hazard (the RTL write-back pipeline after the drain / capture).  bub (R3a, default None = unchanged): function (previous tile on the unit or None, tile) -> idle cycles
     between two PPU-only jobs / drains on one lane unit (qb_core: an hm job reads s_rd early, so it cannot directly
-    follow a drain that reads s_rd late).  check: verify the hazard pairs on the scheduled times of every image
+    follow a drain that reads s_rd late).  order (R3b, default None = unchanged): static issue order (sequence of all tile
+    indices, e.g. one image's commit order); the scheduler commits tiles in exactly that order (an image-independent
+    hardware sequencer) instead of picking the earliest candidate; times follow the same rules.  rec (R3b, default
+    None): dict filled with {image: commit order}.  check: verify the hazard pairs on the scheduled times of every image
     (every read sees the program-order version) and return the time arrays."""
     key = (id(prog), "tiles")
     if key not in BASE:
@@ -319,6 +324,13 @@ def list_schedule(prog, st, NL, nw=NW, ovh=OVH, fl=FL_ALL, check=False, win=None
         return max(ln, rw) + (ovh if (t == first[d["pi"]] and rw > ln) else 0)
 
     def step(S, img, stop_var=False):
+        if order is not None:                            # R3b hook: static issue order
+            t = order[len(S.seq)]
+            pi = T[t]["pi"]
+            assert t == first[pi] + S.heads[pi] and all(S.done[a] for a, _, _ in T[t]["deps"]), "order violates deps"
+            if stop_var and var[t]:
+                return None
+            return est(S, t, int(dur[img, t])), t
         lo = min(pi for pi in range(npass) if S.heads[pi] < nt[pi])
         best = None
         narr = 0
@@ -377,6 +389,7 @@ def list_schedule(prog, st, NL, nw=NW, ovh=OVH, fl=FL_ALL, check=False, win=None
         S.t["st"][t], S.t["ce"][t], S.t["ds"][t], S.t["de"][t] = s, ce, ds, de
         S.done[t] = True
         S.heads[pi] += 1
+        S.seq.append(t)
 
     def run(S, img, stop_var):
         while not all(S.heads[pi] >= nt[pi] for pi in range(npass)):
@@ -404,6 +417,8 @@ def list_schedule(prog, st, NL, nw=NW, ovh=OVH, fl=FL_ALL, check=False, win=None
         S.attr[T[last]["pi"]] += tail
         per[img] = end + ovh
         attr[img] = S.attr
+        if rec is not None:
+            rec[img] = list(S.seq)
         assert sum(S.attr) == per[img]
         if complete:
             S.attr[T[last]["pi"]] -= tail

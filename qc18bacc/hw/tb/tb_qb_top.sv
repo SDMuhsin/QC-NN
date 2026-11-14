@@ -8,6 +8,9 @@
 //   * every tile end (last issue + 1) vs the model (sched.txt X, cycle-exact);
 //   * S after the image: block 7's output stream vs s_final.txt (physical layout);
 //   * err (port conflicts, R/W same address, latency / tag mismatches, FIFO overflow) never set.
+// R3b hook (+define+QBT_R3B): qb_top R3B = 1 (image-independent sequencer + params bank); the network program
+// (weights, params bank rows, pass table, context pass lists, load-permission entries, descriptors, fetch lists) is
+// read from +prog=<dir> (export_top2.py, one per seed), the image and the expected values from +dir=<image dir>.
 // Cycles: RTL image end = cycle after the last macro write; reported against the model (sched.txt M: with / without
 // the write-back latency hook).
 module tb_qb_top;
@@ -39,9 +42,13 @@ module tb_qb_top;
     logic [7:0] dbg_sa = 0;
     logic [4095:0] dbg_sq;
 
+`ifdef QBT_R3B
+    qb_top #(.DIST(DIST), .AP(AP), .R3B(1)) dut (.*);
+`else
     qb_top #(.DIST(DIST), .AP(AP)) dut (.*);
+`endif
 
-    string dir, tag, nm;
+    string dir, pdir, tag, nm;
     int fp, rc, a, b, c, d, n, k, cyc;
     logic [5188:0] w;
     // expected core outputs, per pass in order
@@ -61,7 +68,7 @@ module tb_qb_top;
     endtask
     task automatic load_q(string f, int sel, int cid);
         int cnt;
-        fp = $fopen({dir, "/", f}, "r");
+        fp = $fopen({pdir, "/", f}, "r");
         if (fp == 0) $fatal(1, "cannot open %s", f);
         rc = $fscanf(fp, "%d\n", cnt);
         for (int i = 0; i < cnt; i++) begin rc = $fscanf(fp, "%h\n", w); hw(sel, i, w); end
@@ -75,19 +82,34 @@ module tb_qb_top;
 
     initial begin
         if (!$value$plusargs("dir=%s", dir)) $fatal(1, "need +dir=");
+`ifdef QBT_R3B
+        if (!$value$plusargs("prog=%s", pdir)) $fatal(1, "need +prog=");
+`else
+        pdir = dir;
+`endif
         tick(); tick(); rst_n = 1; tick();
         // ---- host load
-        fp = $fopen({dir, "/w_rows.txt"}, "r"); n = 0;
+        fp = $fopen({pdir, "/w_rows.txt"}, "r"); n = 0;
         while ($fscanf(fp, "%h\n", w) == 1) begin hw(0, n, w); n++; end
         $fclose(fp);
+`ifdef QBT_R3B
+        fp = $fopen({pdir, "/p_rows.txt"}, "r"); n = 0;
+`else
         fp = $fopen({dir, "/p_sets.txt"}, "r"); n = 0;
+`endif
         while ($fscanf(fp, "%h\n", w) == 1) begin hw(1, n, w); n++; end
         $fclose(fp);
         fp = $fopen({dir, "/img.txt"}, "r"); n = 0;
         while ($fscanf(fp, "%h\n", w) == 1) begin hw(2, n, w); n++; end
         $fclose(fp);
+`ifdef QBT_R3B
+        load_q("d_pt.txt", 3, -1); load_q("d_p0.txt", 4, 0); load_q("d_p1.txt", 5, 1); load_q("d_lt.txt", 10, -1);
+        load_q("d_ds.txt", 11, 7); hw(15, 6, 0);
+        load_q("d_ff.txt", 12, 8); load_q("d_fw.txt", 13, 9); load_q("d_ft.txt", 14, 10);
+`else
         load_q("d_pt.txt", 3, -1); load_q("d_p0.txt", 4, 0); load_q("d_p1.txt", 5, 1); load_q("d_tq.txt", 6, 2);
         load_q("d_cq.txt", 7, 3); load_q("d_fq.txt", 8, 4); load_q("d_wq.txt", 9, 5); load_q("d_lt.txt", 10, -1);
+`endif
         // ---- expected
         nxf = 0; fp = $fopen({dir, "/core/exp_f.txt"}, "r");
         while ($fscanf(fp, "%d %h %h\n", xfpi[nxf], xfy[nxf], xfb[nxf]) == 3) nxf++;

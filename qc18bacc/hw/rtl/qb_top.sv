@@ -27,7 +27,11 @@
 //            2 (col & 3) + {lo, hi}.  No read-port conflicts by construction (asserted: err).
 // Map layout: compile/layout.py lines; physical macro (m + f(line)) & 3, f = (line ^ line >> 1) & 1 for B1 / B2 (the
 //            two chunk words of a fused drain cycle hit distinct macros), IMG unswizzled.
-module qb_top #(parameter int DIST = 1, parameter int AP = 1) (
+// R3b hook (parameter R3B, default 0 = R3a as above): R3B = 1 replaces the per-image time-triggered queues by the
+// image-independent sequencer qb_seq (hw/rtl/qb_seq.sv: static issue order + stamp scoreboard + runtime gating; pass
+// starts on done, tile tokens, load permissions, capture / PPU job events) and the one-set-per-word params model by
+// qb_prm (9 x rf_sp 240 x 144 bank, staged per consumer; per-pass common pf / pw bits in the pass table [93:89]).
+module qb_top #(parameter int DIST = 1, parameter int AP = 1, parameter bit R3B = 0) (
     input  logic          clk, rst_n,
     input  logic          go,                      // start of an image (descriptors / macros loaded)
     // host load port (descriptor memories, weights, params, image)
@@ -62,7 +66,7 @@ module qb_top #(parameter int DIST = 1, parameter int AP = 1) (
     initial if (D < 4) $fatal(1, "qb_top: AP + DIST must be >= 2");
 
     // ================================================================ descriptor memories (host-loaded)
-    logic [88:0] pt [32];
+    logic [95:0] pt [32];
     logic [20:0] pq [2][32];
     logic [16:0] tq [1024];
     logic [32:0] cq [1024];
@@ -74,7 +78,7 @@ module qb_top #(parameter int DIST = 1, parameter int AP = 1) (
     always_ff @(posedge clk)
         if (h_we) unique case (h_sel)
             4'd1:  prm[h_addr[6:0]] <= h_data;
-            4'd3:  pt[h_addr[4:0]] <= h_data[88:0];
+            4'd3:  pt[h_addr[4:0]] <= h_data[95:0];
             4'd4:  pq[0][h_addr[4:0]] <= h_data[20:0];
             4'd5:  pq[1][h_addr[4:0]] <= h_data[20:0];
             4'd6:  tq[h_addr] <= h_data[16:0];
@@ -125,13 +129,25 @@ module qb_top #(parameter int DIST = 1, parameter int AP = 1) (
     logic [10:0] p_ptr [2], t_ptr, c_ptr, f_ptr, w_ptr;
     wire [20:0] ph0 = pq[0][p_ptr[0][4:0]], ph1 = pq[1][p_ptr[1][4:0]];
     wire [16:0] th = tq[t_ptr[9:0]];
-    wire [32:0] chd = cq[c_ptr[9:0]];
-    wire [31:0] fh = fq[f_ptr[9:0]], wh = wq[w_ptr[5:0]];
-    wire [1:0] p_fire = {run && p_ptr[1] < n_pq[1] && ph1[20:5] == now, run && p_ptr[0] < n_pq[0] && ph0[20:5] == now};
+    wire [32:0] chd_a = cq[c_ptr[9:0]];
+    wire [31:0] fh_a = fq[f_ptr[9:0]], wh_a = wq[w_ptr[5:0]];
+    wire [1:0] p_fire_a = {run && p_ptr[1] < n_pq[1] && ph1[20:5] == now, run && p_ptr[0] < n_pq[0] && ph0[20:5] == now};
     wire t_fire = run && t_ptr < n_tq && th[16:1] == now;
-    wire c_fire = run && c_ptr < n_cq && chd[32:17] == now;
-    wire f_fire = run && f_ptr < n_fq && fh[31:16] == now;
-    wire w_fire = run && w_ptr < n_wq && wh[31:16] == now;
+    wire c_fire_a = run && c_ptr < n_cq && chd_a[32:17] == now;
+    wire f_fire_a = run && f_ptr < n_fq && fh_a[31:16] == now;
+    wire w_fire_a = run && w_ptr < n_wq && wh_a[31:16] == now;
+    // R3B: the same events from qb_seq (g_r3b below)
+    logic [1:0]  s_pfire, s_tgo, s_lok;
+    logic [4:0]  s_ppi [2];
+    logic [15:0] s_lseq0, s_lseq1, s_fjob, s_wjob;
+    logic        s_cfire, s_ccmp, s_ffire, s_wfire;
+    logic [4:0]  s_cpi;  logic [6:0] s_ctp;  logic [3:0] s_cct;
+    wire [1:0]  p_fire = R3B ? s_pfire : p_fire_a;
+    wire        c_fire = R3B ? s_cfire : c_fire_a;
+    wire        f_fire = R3B ? s_ffire : f_fire_a;
+    wire        w_fire = R3B ? s_wfire : w_fire_a;
+    wire [32:0] chd = R3B ? {16'd0, s_cct, s_ctp, s_cpi, s_ccmp} : chd_a;
+    wire [31:0] fh = R3B ? {16'd0, s_fjob} : fh_a, wh = R3B ? {16'd0, s_wjob} : wh_a;
     always_ff @(posedge clk or negedge rst_n)
         if (!rst_n) begin p_ptr[0] <= '0; p_ptr[1] <= '0; t_ptr <= '0; c_ptr <= '0; f_ptr <= '0; w_ptr <= '0; end
         else if (go) begin p_ptr[0] <= '0; p_ptr[1] <= '0; t_ptr <= '0; c_ptr <= '0; f_ptr <= '0; w_ptr <= '0; end
@@ -176,7 +192,8 @@ module qb_top #(parameter int DIST = 1, parameter int AP = 1) (
     logic [9:0] lptr [2], lend [2];
     logic [2:0] fl_quiet;                                // per flag bank: queue empty for >= 2 cycles
     for (genvar c = 0; c < 2; c++) begin : g_cx
-        wire [20:0] ph = c ? ph1 : ph0;
+        wire [20:0] ph_a = c ? ph1 : ph0;
+        wire [4:0]  ph = R3B ? s_ppi[c] : ph_a[4:0];
         wire [88:0] pw_ = pt[ph[4:0]];
         assign start[c]    = p_fire[c];
         assign c_cfg[c]    = pt_cfg(pw_);
@@ -186,7 +203,7 @@ module qb_top #(parameter int DIST = 1, parameter int AP = 1) (
         assign c_int8[c]   = pt_i8(pw_);
         assign c_stem[c]   = pt_stem(pw_);
         assign c_base[c]   = pt_sb(pw_);
-        assign tgo[c]      = t_fire && th[0] == c[0];
+        assign tgo[c]      = R3B ? s_tgo[c] : t_fire && th[0] == c[0];
         // load permission: first table entry whose position is beyond the loader's (one step per cycle)
         wire [9:0]  pos = c ? l_pos1 : l_pos0;
         wire [41:0] e0 = lt[lptr[c]];
@@ -194,9 +211,9 @@ module qb_top #(parameter int DIST = 1, parameter int AP = 1) (
         wire [41:0] e1 = lt[cur];
         wire        i8 = pt_i8(pt[cpi[c]]);
         wire [3:0]  cf = pt_cfg(pt[cpi[c]]);
-        assign l_ok[c] = cval[c] && !start[c] && cur < lend[c] && e1[9:0] > pos && now >= e1[25:10] &&
+        assign l_ok[c] = R3B ? s_lok[c] : cval[c] && !start[c] && cur < lend[c] && e1[9:0] > pos && now >= e1[25:10] &&
                          (!i8 || fl_quiet[cf == 4'd8 ? 0 : cf == 4'd9 ? 1 : 2]);
-        if (c == 0) assign l_seq0 = e1[41:26]; else assign l_seq1 = e1[41:26];
+        if (c == 0) assign l_seq0 = R3B ? s_lseq0 : e1[41:26]; else assign l_seq1 = R3B ? s_lseq1 : e1[41:26];
         always_ff @(posedge clk or negedge rst_n)
             if (!rst_n) begin cval[c] <= 1'b0; cpi[c] <= '0; lptr[c] <= '0; lend[c] <= '0; end
             else if (start[c]) begin
@@ -481,8 +498,8 @@ module qb_top #(parameter int DIST = 1, parameter int AP = 1) (
     logic [NLW-1:0]       w_b;
     assign act_c = actd[DIST];
     qb_core #(.CREG(1), .WTP(1), .FTP(1), .PPOP(1), .BRG(2)) u_core (
-        .clk, .rst_n, .cd(cdp[D - 4]), .ctl, .act(act_c), .t2(t2_q), .b2, .b2_vld, .f_vld, .f_src, .f_sh, .p_ld,
-        .pf(pf_q), .s_rd, .f_vld_o, .f_y, .f_b, .w_vld, .w_sh, .w_ld, .pw(pw_q), .w_r, .w_vld_o, .w_y, .w_b);
+        .clk, .rst_n, .cd(cdp[D - 4]), .ctl, .act(act_c), .t2(t2_c), .b2, .b2_vld, .f_vld, .f_src, .f_sh, .p_ld,
+        .pf(pf_c), .s_rd, .f_vld_o, .f_y, .f_b, .w_vld, .w_sh, .w_ld, .pw(pw_c), .w_r, .w_vld_o, .w_y, .w_b);
 
     // ================================================================ write-back
     stp_t fo, wo;
@@ -770,10 +787,41 @@ module qb_top #(parameter int DIST = 1, parameter int AP = 1) (
         assign fl_quiet[bk] = quiet[bk] >= 2'd2;
     end
 
+    // ================================================================ R3b: sequencer + params path (hook, R3B = 1)
+    logic [1087:0] t2_c;  logic [5188:0] pf_c;  logic [5058:0] pw_c;
+    logic          seq_err, prm_err;
+    if (R3B) begin : g_r3b
+        logic [5183:0] pf_s;  logic [5055:0] pw_s;  logic [1087:0] t2_s;
+        stp_t fe_, we_;  cev_t ce_, cu_;
+        assign fe_ = fdl[D];  assign we_ = wdl[D];  assign ce_ = cdl[D];  assign cu_ = cdl[D + 2];
+        qb_seq u_seq (
+            .clk, .rst_n, .go, .run, .now, .h_we, .h_sel, .h_addr, .h_d(h_data[95:0]), .pt, .done, .p_fire(s_pfire),
+            .p_pi(s_ppi), .tgo(s_tgo), .l_pos0, .l_pos1, .fl_quiet, .l_ok(s_lok), .l_seq0(s_lseq0), .l_seq1(s_lseq1),
+            .d_vld, .d_eot, .fs_hq, .fs_hqd, .fs_z, .c_fire(s_cfire), .c_cmp(s_ccmp), .c_pi(s_cpi), .c_tp(s_ctp),
+            .c_ct(s_cct), .f_fire(s_ffire), .f_job(s_fjob), .w_fire(s_wfire), .w_job(s_wjob), .err(seq_err));
+        qb_prm u_prm (
+            .clk, .rst_n, .go, .h_we, .h_sel, .h_addr, .h_d(h_data[1295:0]),
+            .u_early({ce_.v && ce_.cmp, we_.v && we_.k == 5'd0, fe_.v && (fe_.hm ? fe_.k == 5'd3 : fe_.k == 5'd0)}),
+            .u_use({cu_.v && cu_.cmp, wp.v && wp.k == 5'd0, fp.v && (fp.hm ? fp.k == 5'd3 : fp.k == 5'd0)}),
+            .tag_f({fp.hm ? 4'd0 : fp.ct, fp.pi}), .tag_w({wp.ct, wp.pi}), .tag_t({cu_.ct, cu_.pi}),
+            .pf(pf_s), .pw(pw_s), .t2(t2_s), .err(prm_err));
+        wire [95:0] ptf = pt[fp.pi], ptw = pt[wp.pi];
+        assign pf_c = {ptf[93:89], pf_s};
+        assign pw_c = {ptw[91:89], pw_s};
+        assign t2_c = t2_s;
+    end else begin : g_r3a
+        assign pf_c = pf_q;  assign pw_c = pw_q;  assign t2_c = t2_q;
+        assign seq_err = 1'b0;  assign prm_err = 1'b0;
+        assign s_pfire = '0; assign s_tgo = '0; assign s_lok = '0; assign s_ppi[0] = '0; assign s_ppi[1] = '0;
+        assign s_lseq0 = '0; assign s_lseq1 = '0; assign s_fjob = '0; assign s_wjob = '0; assign s_cfire = 1'b0;
+        assign s_ccmp = 1'b0; assign s_ffire = 1'b0; assign s_wfire = 1'b0; assign s_cpi = '0; assign s_ctp = '0;
+        assign s_cct = '0;
+    end
+
     // ================================================================ checks (sticky error)
     always_ff @(posedge clk or negedge rst_n)
         if (!rst_n) err <= 1'b0;
-        else err <= err | a_err | s_conf | rd_conf | f_rconf | (|s_rwc) | (|b_rwc) | sw_conf | bw_conf | b2_ovf | f_ovl | w_ovl |
+        else err <= err | seq_err | prm_err | a_err | s_conf | rd_conf | f_rconf | (|s_rwc) | (|b_rwc) | sw_conf | bw_conf | b2_ovf | f_ovl | w_ovl |
                    (b2_vld && !(bo.v && bo.cmp)) | (f_vld_o && !fo.v) | (w_vld_o && !wo.v) |
                    (fo.v && !f_vld_o) | (wo.v && !w_vld_o);
 

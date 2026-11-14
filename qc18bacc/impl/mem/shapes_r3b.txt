@@ -1,0 +1,5 @@
+# R3b params bank candidates (impl/mem/mc_sweep.sh on tau-02; results in results/r3b_tb.txt). <inst> <compiler> <words> <bits> <mux>
+p_r2_240x144 rf_sp_adv 240 144 2
+p_r2_184x144 rf_sp_adv 184 144 2
+p_r2_240x136 rf_sp_adv 240 136 2
+p_r2_184x110 rf_sp_adv 184 110 2
