@@ -31,7 +31,10 @@
 // image-independent sequencer qb_seq (hw/rtl/qb_seq.sv: static issue order + stamp scoreboard + runtime gating; pass
 // starts on done, tile tokens, load permissions, capture / PPU job events) and the one-set-per-word params model by
 // qb_prm (9 x rf_sp 240 x 144 bank, staged per consumer; per-pass common pf / pw bits in the pass table [93:89]).
-module qb_top #(parameter int DIST = 1, parameter int AP = 1, parameter bit R3B = 0) (
+// R3c hook (parameter HSEL, default 0 = as above): HSEL = 1 switches a macro's address mux to the host address only
+// on a host write of that macro (h_we && h_sel == its select) instead of on any h_we, so the host can load the next
+// image into IMG while the image runs (qb_chip, hw/rtl/qb_chip.sv) without disturbing the weight / params reads.
+module qb_top #(parameter int DIST = 1, parameter int AP = 1, parameter bit R3B = 0, parameter bit HSEL = 0) (
     input  logic          clk, rst_n,
     input  logic          go,                      // start of an image (descriptors / macros loaded)
     // host load port (descriptor memories, weights, params, image)
@@ -253,12 +256,14 @@ module qb_top #(parameter int DIST = 1, parameter int AP = 1, parameter bit R3B 
         w_d_q   <= 2'(w_row / 10'd204);
         w_d_m   <= w_d_q;
     end
+    wire hw_w = HSEL ? (h_we && h_sel == 4'd0) : h_we;      // host owns the weight-macro address
+    wire hw_i = HSEL ? (h_we && h_sel == 4'd2) : h_we;      // host owns the IMG address
     logic [143:0] wqm [16][3];
     logic [2303:0] cd_m, cd_r;
     for (genvar l = 0; l < 16; l++) begin : g_wl
         for (genvar dd = 0; dd < 3; dd++) begin : g_wd
             qbt_rfsp #(144, 204) u_m (.clk, .ren(w_ren_q && w_d_q == dd), .we(h_we && h_sel == 4'd0 && h_addr / 10'd204 == dd),
-                                      .a(h_we ? 8'(h_addr % 10'd204) : w_a_q), .wd(h_data[144*l +: 144]), .q(wqm[l][dd]));
+                                      .a(hw_w ? 8'(h_addr % 10'd204) : w_a_q), .wd(h_data[144*l +: 144]), .q(wqm[l][dd]));
         end
         assign cd_m[144*l +: 144] = wqm[l][w_d_m];
     end
@@ -481,7 +486,7 @@ module qb_top #(parameter int DIST = 1, parameter int AP = 1, parameter bit R3B 
     end
     for (genvar m = 0; m < 4; m++) begin : g_img
         qbt_rfsp #(128, 128) u_m (.clk, .ren(m_ren && m_src == 2'd2), .we(h_we && h_sel == 4'd2),
-                                  .a(h_we ? h_addr[6:0] : m_ra[6:0]), .wd(h_data[128*m +: 128]), .q(i_q[m]));
+                                  .a(hw_i ? h_addr[6:0] : m_ra[6:0]), .wd(h_data[128*m +: 128]), .q(i_q[m]));
     end
     always_ff @(posedge clk) begin m_src_q <= m_src; m_f_q <= fsw(m_ra[6:0]); end
     always_comb
@@ -799,7 +804,7 @@ module qb_top #(parameter int DIST = 1, parameter int AP = 1, parameter bit R3B 
             .p_pi(s_ppi), .tgo(s_tgo), .l_pos0, .l_pos1, .fl_quiet, .l_ok(s_lok), .l_seq0(s_lseq0), .l_seq1(s_lseq1),
             .d_vld, .d_eot, .fs_hq, .fs_hqd, .fs_z, .c_fire(s_cfire), .c_cmp(s_ccmp), .c_pi(s_cpi), .c_tp(s_ctp),
             .c_ct(s_cct), .f_fire(s_ffire), .f_job(s_fjob), .w_fire(s_wfire), .w_job(s_wjob), .err(seq_err));
-        qb_prm u_prm (
+        qb_prm #(.HSEL(HSEL)) u_prm (
             .clk, .rst_n, .go, .h_we, .h_sel, .h_addr, .h_d(h_data[1295:0]),
             .u_early({ce_.v && ce_.cmp, we_.v && we_.k == 5'd0, fe_.v && (fe_.hm ? fe_.k == 5'd3 : fe_.k == 5'd0)}),
             .u_use({cu_.v && cu_.cmp, wp.v && wp.k == 5'd0, fp.v && (fp.hm ? fp.k == 5'd3 : fp.k == 5'd0)}),

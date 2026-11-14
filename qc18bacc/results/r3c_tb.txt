@@ -1,0 +1,137 @@
+# R3c raw bench lines (Verilator 5.050): qb_chip image-to-logits streaming bench (tb_qb_chip.sv, vectors export_top3.py), one program load per seed
+## E6_s0 val 0 1 2 3 4 back to back
+QB_CHIP img 0 /tmp/root/qc18bacc/r3c/s0/img0 go 0 img_free +275 end +3748 (rtl_end 3748 model 3747 delta 1) interval 3748 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +5386 (after end +1638) PASS
+QB_CHIP img 1 /tmp/root/qc18bacc/r3c/s0/img1 go 3748 img_free +275 end +3788 (rtl_end 3788 model 3787 delta 1) interval 3788 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +5426 (after end +1638) PASS
+QB_CHIP img 2 /tmp/root/qc18bacc/r3c/s0/img2 go 7536 img_free +275 end +3812 (rtl_end 3812 model 3811 delta 1) interval 3812 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +5450 (after end +1638) PASS
+QB_CHIP img 3 /tmp/root/qc18bacc/r3c/s0/img3 go 11348 img_free +275 end +3804 (rtl_end 3804 model 3803 delta 1) interval 3804 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +5442 (after end +1638) PASS
+QB_CHIP img 4 /tmp/root/qc18bacc/r3c/s0/img4 go 15152 img_free +275 end +3764 (rtl_end 3764 model 3763 delta 1) interval - logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +5402 (after end +1638) PASS
+QB_CHIP_OVERLAP img 0 FC done 5386, img 1 first pq write 7428: slack 2042 cycles
+QB_CHIP_OVERLAP img 1 FC done 9174, img 2 first pq write 11240: slack 2066 cycles
+QB_CHIP_OVERLAP img 2 FC done 12986, img 3 first pq write 15044: slack 2058 cycles
+QB_CHIP_OVERLAP img 3 FC done 16790, img 4 first pq write 18808: slack 2018 cycles
+QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 0 head_err 0 PASS
+R3C_CHECK E6_s0 val 0: rtl logits x fscale == IntBin2 logits (torch.equal): PASS; argmax 37
+R3C_CHECK E6_s0 val 1: rtl logits x fscale == IntBin2 logits (torch.equal): PASS; argmax 98
+R3C_CHECK E6_s0 val 2: rtl logits x fscale == IntBin2 logits (torch.equal): PASS; argmax 54
+R3C_CHECK E6_s0 val 3: rtl logits x fscale == IntBin2 logits (torch.equal): PASS; argmax 8
+R3C_CHECK E6_s0 val 4: rtl logits x fscale == IntBin2 logits (torch.equal): PASS; argmax 17
+## E6_s1 val 7 42 88 back to back
+QB_CHIP img 0 /tmp/root/qc18bacc/r3c/s1/img7 go 0 img_free +275 end +3732 (rtl_end 3732 model 3731 delta 1) interval 3732 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +5370 (after end +1638) PASS
+QB_CHIP img 1 /tmp/root/qc18bacc/r3c/s1/img42 go 3732 img_free +275 end +3796 (rtl_end 3796 model 3795 delta 1) interval 3796 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +5434 (after end +1638) PASS
+QB_CHIP img 2 /tmp/root/qc18bacc/r3c/s1/img88 go 7528 img_free +275 end +3700 (rtl_end 3700 model 3699 delta 1) interval - logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +5338 (after end +1638) PASS
+QB_CHIP_OVERLAP img 0 FC done 5370, img 1 first pq write 7420: slack 2050 cycles
+QB_CHIP_OVERLAP img 1 FC done 9166, img 2 first pq write 11120: slack 1954 cycles
+QB_CHIP_TB images 3 err 0 img_read_err 0 timeout 0 head_err 0 PASS
+R3C_CHECK E6_s1 val 7: rtl logits x fscale == IntBin2 logits (torch.equal): PASS; argmax 59
+R3C_CHECK E6_s1 val 42: rtl logits x fscale == IntBin2 logits (torch.equal): PASS; argmax 50
+R3C_CHECK E6_s1 val 88: rtl logits x fscale == IntBin2 logits (torch.equal): PASS; argmax 54
+## mutant QBH_MUT_RELU (E6_s0 val 0 1 2)
+MISMATCH img 0 class 0 logit -29633 exp -222
+MISMATCH img 0 class 1 logit 33528 exp -155
+MISMATCH img 0 class 2 logit 8716 exp 449
+MISMATCH img 1 class 0 logit -21746 exp -1278
+MISMATCH img 1 class 1 logit 47404 exp -1453
+MISMATCH img 1 class 2 logit -17081 exp 10460
+MISMATCH img 2 class 0 logit -6609 exp -2285
+MISMATCH img 2 class 1 logit 39377 exp -33
+MISMATCH img 2 class 2 logit 19772 exp 621
+QB_CHIP img 0 /tmp/root/qc18bacc/r3c/s0/img0 go 0 img_free +275 end +3748 (rtl_end 3748 model 3747 delta 1) interval 3748 logits 100/100 err 100 tiles 600 cycle_mismatch 0 last_logit +5386 (after end +1638) FAIL
+QB_CHIP img 1 /tmp/root/qc18bacc/r3c/s0/img1 go 3748 img_free +275 end +3788 (rtl_end 3788 model 3787 delta 1) interval 3788 logits 100/100 err 100 tiles 600 cycle_mismatch 0 last_logit +5426 (after end +1638) FAIL
+QB_CHIP img 2 /tmp/root/qc18bacc/r3c/s0/img2 go 7536 img_free +275 end +3812 (rtl_end 3812 model 3811 delta 1) interval - logits 100/100 err 100 tiles 600 cycle_mismatch 0 last_logit +5450 (after end +1638) FAIL
+## mutant QBH_MUT_FCK (E6_s0 val 0 1 2)
+MISMATCH img 0 class 0 logit -1701 exp -222
+MISMATCH img 0 class 1 logit -927 exp -155
+MISMATCH img 0 class 2 logit -744 exp 449
+MISMATCH img 1 class 0 logit -3148 exp -1278
+MISMATCH img 1 class 1 logit -2006 exp -1453
+MISMATCH img 1 class 2 logit -1689 exp 10460
+MISMATCH img 2 class 0 logit 225 exp -2285
+MISMATCH img 2 class 1 logit -844 exp -33
+MISMATCH img 2 class 2 logit -746 exp 621
+QB_CHIP img 0 /tmp/root/qc18bacc/r3c/s0/img0 go 0 img_free +275 end +3748 (rtl_end 3748 model 3747 delta 1) interval 3748 logits 100/100 err 100 tiles 600 cycle_mismatch 0 last_logit +5386 (after end +1638) FAIL
+QB_CHIP img 1 /tmp/root/qc18bacc/r3c/s0/img1 go 3748 img_free +275 end +3788 (rtl_end 3788 model 3787 delta 1) interval 3788 logits 100/100 err 100 tiles 600 cycle_mismatch 0 last_logit +5426 (after end +1638) FAIL
+QB_CHIP img 2 /tmp/root/qc18bacc/r3c/s0/img2 go 7536 img_free +275 end +3812 (rtl_end 3812 model 3811 delta 1) interval - logits 100/100 err 100 tiles 600 cycle_mismatch 0 last_logit +5450 (after end +1638) FAIL
+## mutant QBC_MUT_HSEL (E6_s0 val 0 1 2)
+CYCLE_MISMATCH img 0 pass 16 tile 0 ct 0: rtl ce 2146 model 2149
+CYCLE_MISMATCH img 0 pass 16 tile 0 ct 1: rtl ce 2185 model 2191
+CYCLE_MISMATCH img 0 pass 16 tile 0 ct 2: rtl ce 2224 model 2233
+MISMATCH img 0 class 0 logit 434 exp -222
+MISMATCH img 0 class 1 logit -787 exp -155
+MISMATCH img 0 class 2 logit 62 exp 449
+CYCLE_MISMATCH img 1 pass 16 tile 0 ct 0: rtl ce 2145 model 2153
+CYCLE_MISMATCH img 1 pass 16 tile 0 ct 1: rtl ce 2183 model 2199
+CYCLE_MISMATCH img 1 pass 16 tile 0 ct 2: rtl ce 2221 model 2245
+MISMATCH img 1 class 0 logit 174 exp -1278
+MISMATCH img 1 class 1 logit -631 exp -1453
+MISMATCH img 1 class 2 logit -147 exp 10460
+## mutant QBC_MUT_IMGF (E6_s0 val 0 1 2)
+MISMATCH IMG read at cycle 7 while st_img_free
+MISMATCH IMG read at cycle 8 while st_img_free
+MISMATCH IMG read at cycle 9 while st_img_free
+CYCLE_MISMATCH img 0 pass 17 tile 0 ct 0: rtl ce 2477 model 2478
+CYCLE_MISMATCH img 0 pass 17 tile 0 ct 1: rtl ce 2511 model 2513
+CYCLE_MISMATCH img 0 pass 18 tile 0 ct 0: rtl ce 2594 model 2595
+MISMATCH img 0 class 0 logit 855 exp -222
+MISMATCH img 0 class 1 logit -958 exp -155
+MISMATCH img 0 class 2 logit 2165 exp 449
+CYCLE_MISMATCH img 1 pass 16 tile 0 ct 0: rtl ce 2148 model 2153
+CYCLE_MISMATCH img 1 pass 16 tile 0 ct 1: rtl ce 2189 model 2199
+CYCLE_MISMATCH img 1 pass 16 tile 0 ct 2: rtl ce 2230 model 2245
+## regressions
+## R3a default
+QB_TOP_CYC rtl_end 3748 (last macro write 3747 + 1) model 3747 (config C without lat 3622) delta_vs_model 1 delta_vs_configC 126
+QB_TOP_TB /tmp/root/qc18bacc/r3a/img0 checked 633664 final_S_words 1024 err 0 tiles 600 cycle_mismatch 0 errors 0 PASS
+## R3b
+QB_TOP_CYC rtl_end 3748 (last macro write 3747 + 1) model 3747 (config C without lat 3747) delta_vs_model 1 delta_vs_configC 1
+QB_TOP_TB /tmp/root/qc18bacc/r3b_s0/img0 checked 633664 final_S_words 1024 err 0 tiles 600 cycle_mismatch 0 errors 0 PASS
+QB_TOP_CYC rtl_end 3788 (last macro write 3787 + 1) model 3787 (config C without lat 3787) delta_vs_model 1 delta_vs_configC 1
+QB_TOP_TB /tmp/root/qc18bacc/r3b_s0/img1 checked 633704 final_S_words 1024 err 0 tiles 600 cycle_mismatch 0 errors 0 PASS
+QB_TOP_CYC rtl_end 3732 (last macro write 3731 + 1) model 3731 (config C without lat 3731) delta_vs_model 1 delta_vs_configC 1
+QB_TOP_TB /tmp/root/qc18bacc/r3b_s1/img7 checked 633648 final_S_words 1024 err 0 tiles 600 cycle_mismatch 0 errors 0 PASS
+## core / act2
+QB_CORE_TB /tmp/root/qc18bacc/exp2/core/img0 cycles 3644 checked 630784 errors 0 PASS
+QB_CORE_TB /tmp/root/qc18bacc/exp2/core/img1 cycles 3684 checked 630784 errors 0 PASS
+QB_ACT2_TB /tmp/root/qc18bacc/exp2/act2/img0 items 2880 act_bytes 1658880 tiles 600 cycle_mismatch 0 last_cycle 3610 errors 0 PASS
+## compile/test_compile.py --n 100
+ALL PASS
+## export logs
+E6_s0: static order from 1 distinct commit order(s) on val[:100]; free 3776.44 static 3776.44 delta mean 0.00 min 0 max 0; engine emulation 0 mismatches
+img0: static-order model cycles 3747 (free list schedule 3747), 2880 items
+img1: static-order model cycles 3787 (free list schedule 3787), 2920 items
+img2: static-order model cycles 3811 (free list schedule 3811), 2944 items
+img3: static-order model cycles 3803 (free list schedule 3803), 2936 items
+img4: static-order model cycles 3763 (free list schedule 3763), 2896 items
+program: 616 tiles, 286 load-permission entries, fetch lists f/w/t 156/24/106, params rows 238 / 240; descriptor bits {'ds': 49280, 'lt': 12012, 'fl': 7150, 'pl': 100} total 68542
+head: pool m0 1102399872 sh 40, last pass 20 (b7.c2), stem pass 0, FC rows 1613, |fbq| max 951
+E6_s1: static order from 1 distinct commit order(s) on val[:100]; free 3758.04 static 3758.04 delta mean 0.00 min 0 max 0; engine emulation 0 mismatches
+img7: static-order model cycles 3731 (free list schedule 3731), 2864 items
+img42: static-order model cycles 3795 (free list schedule 3795), 2928 items
+img88: static-order model cycles 3699 (free list schedule 3699), 2832 items
+program: 616 tiles, 286 load-permission entries, fetch lists f/w/t 156/24/106, params rows 238 / 240; descriptor bits {'ds': 49280, 'lt': 12012, 'fl': 7150, 'pl': 100} total 68542
+head: pool m0 1680250368 sh 40, last pass 20 (b7.c2), stem pass 0, FC rows 1613, |fbq| max 1347
+## yosys 0.68 generic synth of qb_head (FC macros black boxes)
+       28   $_SDFF_PP0_
+     2570   $_XNOR_
+    15632   $_XOR_
+       16   qbt_rfsp
+    66897 cells
+     8846   $_ANDNOT_
+     2489   $_AOI3_
+      429   $_AOI4_
+       37   $_DFFE_PN0P_
+     6366   $_DFFE_PP_
+       62   $_DFF_PN0_
+      617   $_DFF_P_
+     5310   $_MUX_
+    13325   $_NAND_
+     1949   $_NOR_
+     2496   $_NOT_
+     2037   $_OAI3_
+     1363   $_OAI4_
+     3386   $_ORNOT_
+        8   $_SDFF_PN0_
+       72   $_SDFF_PN1_
+       28   $_SDFF_PP0_
+     8326   $_XNOR_
+     9735   $_XOR_
+       16   qbt_rfsp

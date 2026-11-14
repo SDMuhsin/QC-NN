@@ -290,7 +290,8 @@ endmodule
 // as a staging register is free (its previous set's last use 2 cycles ahead, seen at stage D of the step delay line),
 // one row per cycle, priority T2 > fused > wide.  Request in x -> address register -> macro -> staging register valid
 // in x + 3.  Uses (stage D + 2) check the staging register is valid and holds the job's (pass, ct) (err otherwise).
-module qb_prm #(parameter int NM = 9, parameter int MW = 144, parameter int DEP = 240) (
+// HSEL (R3c hook, default 0): 1 = the bank address follows the host only on a bank write (h_sel 1), see qb_top.
+module qb_prm #(parameter int NM = 9, parameter int MW = 144, parameter int DEP = 240, parameter bit HSEL = 0) (
     input  logic         clk, rst_n, go,
     input  logic         h_we,
     input  logic [3:0]   h_sel,                   // 1 bank row, 12 / 13 / 14 fetch list f / w / t, 15 counts (8..10)
@@ -324,7 +325,7 @@ module qb_prm #(parameter int NM = 9, parameter int MW = 144, parameter int DEP 
     // ---- bank
     logic        b_ren;  logic [7:0] b_a;  logic [RW-1:0] b_q;
     for (genvar m = 0; m < NM; m++) begin : g_pm
-        qbt_rfsp #(MW, DEP) u_m (.clk, .ren(b_ren), .we(h_we && h_sel == 4'd1), .a(h_we ? h_addr[7:0] : b_a),
+        qbt_rfsp #(MW, DEP) u_m (.clk, .ren(b_ren), .we(h_we && h_sel == 4'd1), .a((HSEL ? (h_we && h_sel == 4'd1) : h_we) ? h_addr[7:0] : b_a),
                                  .wd(h_d[MW*m +: MW]), .q(b_q[MW*m +: MW]));
     end
     // ---- per consumer state
