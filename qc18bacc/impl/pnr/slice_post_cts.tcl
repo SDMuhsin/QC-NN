@@ -28,8 +28,14 @@ foreach b [[ord::get_db_block] getBTerms] {
     if {$n in {clk rst_n} || [$b getSigType] ne "SIGNAL"} { continue }
     if {[$b getIoType] eq "INPUT"} { lappend ins $n } elseif {[$b getIoType] eq "OUTPUT"} { lappend outs $n }
 }
+if {[info exists ::env(QB_IO_BUDGET)]} {
+    # results/r5a.md: per-class IO budget (impl/r5a/budget.tcl), shifted by L
+    source $::env(QB_IO_BUDGET)
+    qb5_io_apply $per $L
+} else {
 set_input_delay [expr {$io_d + $L}] -clock qb_clk [get_ports $ins]
 set_output_delay [expr {$io_d - $L}] -clock qb_clk [get_ports $outs]
+}
 qc_log "post_cts: IO delays shifted by $L ns ([llength $ins] inputs, [llength $outs] outputs)"
 qc_to $::OUT/rpt/pc0_skew.rpt { report_clock_skew -setup; report_clock_skew -hold }
 qc_to $::OUT/rpt/pc0_setup.rpt { report_checks -path_delay max -format full_clock_expanded -fields {input_pins slew cap fanout} -digits 3 }

@@ -1,0 +1,126 @@
+== summary.txt
+init init_tt setup_wns_ns 0.092 setup_tns_ns 0.000 hold_wns_ns 0.017 hold_tns_ns 0.000
+floorplan die_um 390.00 x 3110.00 core_um2 1177848.0 cell_um2 774573.8 macro_um2 0.0 utilisation 0.658
+pdn VDD check_power_grid true
+pdn VSS check_power_grid true
+slice3_gpl rows_in_order 0 inversions 1 max_y10_90_um 626 min_in_band 0.103
+slice3_incpost rows_in_order 0 inversions 1 max_y10_90_um 643 min_in_band 0.067
+slice3_dpl rows_in_order 0 inversions 1 max_y10_90_um 643 min_in_band 0.065
+slice3_dpl_class_wns dec_br=-0.270 lane_f=-0.560 pe01=-0.100 pe02=-0.160 pe08=-0.080 pe09=-0.190 pe12=-0.080 port=-0.030
+place die_um 390.00 x 3110.00 core_um2 1177848.0 cell_um2 841588.6 macro_um2 0.0 utilisation 0.715
+place place_tt setup_wns_ns -0.557 setup_tns_ns -44.727 hold_wns_ns 0.020 hold_tns_ns 0.000
+repin repin_tt setup_wns_ns -0.550 setup_tns_ns -101.305 hold_wns_ns 0.019 hold_tns_ns 0.000
+cts die_um 390.00 x 3110.00 core_um2 1177848.0 cell_um2 867512.5 macro_um2 0.0 utilisation 0.737
+cts cts_tt setup_wns_ns -0.528 setup_tns_ns -119.525 hold_wns_ns -1.000 hold_tns_ns -5726.321
+postcts_pre_repair tt setup_wns_ns -0.595 setup_viol_endpoints 3470 hold_wns_ns -0.150 hold_viol_endpoints 178 die_um 390.00 x 3110.00 core_um2 1177848.0 cell_um2 867512.5 macro_um2 0.0 utilisation 0.737
+postcts_setup_repair tt setup_wns_ns -0.134 setup_viol_endpoints 2006 hold_wns_ns -0.150 hold_viol_endpoints 178 die_um 390.00 x 3110.00 core_um2 1177848.0 cell_um2 884943.4 macro_um2 0.0 utilisation 0.751
+postcts_setup_legal tt setup_wns_ns -0.313 setup_viol_endpoints 2131 hold_wns_ns -0.150 hold_viol_endpoints 178 die_um 390.00 x 3110.00 core_um2 1177848.0 cell_um2 884943.4 macro_um2 0.0 utilisation 0.751
+postcts_hold_repair_unlegal tt setup_wns_ns -0.313 setup_viol_endpoints 2131 hold_wns_ns 0.020 hold_viol_endpoints 0 die_um 390.00 x 3110.00 core_um2 1177848.0 cell_um2 886268.2 macro_um2 0.0 utilisation 0.752
+postcts_hold_legal tt setup_wns_ns -0.313 setup_viol_endpoints 2131 hold_wns_ns 0.020 hold_viol_endpoints 0 die_um 390.00 x 3110.00 core_um2 1177848.0 cell_um2 886268.2 macro_um2 0.0 utilisation 0.752
+groute groute_tt setup_wns_ns -0.401 setup_tns_ns -50.647 hold_wns_ns 0.006 hold_tns_ns 0.000
+grt_r2r grt_r2r_tt setup_wns_ns -0.401 setup_tns_ns -19.416 hold_wns_ns 0.016 hold_tns_ns 0.000
+slice3_grt_class_wns dec_br=-0.150 lane_f=-0.070 lane_w=-0.050 pe00=-0.030 pe01=-0.180 pe02=-0.220 pe03=-0.250 pe05=0.000 pe07=-0.190 pe08=-0.140 pe09=-0.250 pe10=-0.060 pe12=-0.130 pe13=-0.400 pe15=-0.230
+final die_um 390.00 x 3110.00 core_um2 1177848.0 cell_um2 886268.2 macro_um2 0.0 utilisation 0.752
+post_route_tt setup_wns_ns 0.469 setup_tns_ns 0.000 hold_wns_ns 0.006 hold_tns_ns 0.000
+drc_violations 9039 antenna_net_violations NA antenna_pin_violations NA
+pnr_wall_s 7442 wall 2:01:51 peak_rss_mb 14355
+== pt_blk_tt.txt
+design qb_col_blk corner tt period 2.440000 lib tcbn65gplustc_ccs spef_nets total 265985 rc_network 258480 not_annotated 7505
+insertion_delay_L_ns 0.910 (latencies 0.97 0.85)
+reg2reg slack_ns 0.003 fmax_mhz 410.3 arrival 3.090 path u_core/g_r_13__g_c_0__u_pe/g_pop2_stem_p_reg/CP -> u_core/g_r_13__g_c_0__u_pe/g_pop2_u_acc/acc_reg_119_/D
+act2reg slack_ns 0.672 arrival 2.350 path act[329] -> u_core/g_r_1__g_c_0__u_pe/g_s0cr_u_ina/q_reg_41_/D
+act2act_o slack_ns -0.038 arrival 2.461 path act[4323] -> act_o[4323]
+north2reg slack_ns 0.724 arrival 2.316 path t2[33] -> u_core/g_col_0__g_grp_0__u_br/t2_q_reg_33_/D
+south2reg slack_ns 0.253 arrival 2.797 path s_rd[377] -> u_core/g_fq_2__g_fc_0__g_fi_6__u_lf/u_rin/q_reg_41_/D
+reg2south slack_ns 0.916 arrival 1.574 path u_core/g_r_12__g_c_0__u_pe/u_cmp/b2_reg_7_/CP -> b2[103]
+all slack_ns -0.038 fmax_mhz 403.6 arrival 2.461 path act[4323] -> act_o[4323]
+hold_reg2reg slack_ns -0.009 arrival 0.970 path u_core/u_pbf/p0_reg_370_/CP -> u_core/u_pbf/late_reg_145_/D
+hold_in2reg slack_ns 0.051 arrival 1.034 path ctl[4] -> u_core/ctlr_reg_4_/D
+hold_act2act_o slack_ns 0.182 arrival 1.142 path act[1772] -> act_o[1772]
+feedthrough_delay_ns max 0.209 min 0.110 (budget 0.171 = 0.07 P)
+hold_violating_endpoints 3
+setup_violating_endpoints 383
+pt_wall_s 55
+== pt_blk_ss.txt
+design qb_col_blk corner ss period 4.110000 lib tcbn65gpluswc_ccs spef_nets total 265985 rc_network 258480 not_annotated 7505
+insertion_delay_L_ns 1.370 (latencies 1.47 1.27)
+reg2reg slack_ns -0.000 fmax_mhz 243.3 arrival 5.218 path u_core/g_r_13__g_c_0__u_pe/g_pop2_stem_p_reg/CP -> u_core/g_r_13__g_c_0__u_pe/g_pop2_u_acc/acc_reg_119_/D
+act2reg slack_ns 1.300 arrival 3.794 path act[329] -> u_core/g_r_1__g_c_0__u_pe/g_s0cr_u_ina/q_reg_41_/D
+act2act_o slack_ns -0.044 arrival 3.962 path act[4323] -> act_o[4323]
+north2reg slack_ns 1.496 arrival 3.652 path t2[33] -> u_core/g_col_0__g_grp_0__u_br/t2_q_reg_33_/D
+south2reg slack_ns 0.528 arrival 4.643 path s_rd[411] -> u_core/g_fq_3__g_fc_0__g_fi_0__u_lf/u_rin/q_reg_41_/D
+reg2south slack_ns 1.871 arrival 2.332 path u_core/g_r_12__g_c_0__u_pe/u_cmp/b2_reg_7_/CP -> b2[103]
+all slack_ns -0.044 fmax_mhz 240.8 arrival 3.962 path act[4323] -> act_o[4323]
+hold_reg2reg slack_ns 0.023 arrival 1.483 path u_core/u_pbf/p0_reg_363_/CP -> u_core/g_fq_1__g_fc_0__g_fi_4__u_lf/u_rin/q_reg_22_/D
+hold_in2reg slack_ns 0.117 arrival 1.579 path ctl[4] -> u_core/ctlr_reg_4_/D
+hold_act2act_o slack_ns 0.331 arrival 1.751 path act[1759] -> act_o[1759]
+feedthrough_delay_ns max 0.331 min 0.175 (budget 0.288 = 0.07 P)
+hold_violating_endpoints 0
+setup_violating_endpoints 185
+pt_wall_s 56
+== p2/pt_blk_tt_2.0.txt
+design qb_col_blk corner tt period 2.000000 lib tcbn65gplustc_ccs spef_nets total 265985 rc_network 258480 not_annotated 7505
+insertion_delay_L_ns 0.910 (latencies 0.97 0.85)
+reg2reg slack_ns -0.437 fmax_mhz 410.3 arrival 3.090 path u_core/g_r_13__g_c_0__u_pe/g_pop2_stem_p_reg/CP -> u_core/g_r_13__g_c_0__u_pe/g_pop2_u_acc/acc_reg_119_/D
+act2reg slack_ns 0.474 arrival 2.108 path act[329] -> u_core/g_r_1__g_c_0__u_pe/g_s0cr_u_ina/q_reg_41_/D
+act2act_o slack_ns -0.069 arrival 2.219 path act[4323] -> act_o[4323]
+north2reg slack_ns 0.416 arrival 2.184 path t2[33] -> u_core/g_col_0__g_grp_0__u_br/t2_q_reg_33_/D
+south2reg slack_ns -0.099 arrival 2.709 path s_rd[377] -> u_core/g_fq_2__g_fc_0__g_fi_6__u_lf/u_rin/q_reg_41_/D
+reg2south slack_ns 0.586 arrival 1.574 path u_core/g_r_12__g_c_0__u_pe/u_cmp/b2_reg_7_/CP -> b2[103]
+all slack_ns -0.437 fmax_mhz 410.3 arrival 3.090 path u_core/g_r_13__g_c_0__u_pe/g_pop2_stem_p_reg/CP -> u_core/g_r_13__g_c_0__u_pe/g_pop2_u_acc/acc_reg_119_/D
+hold_reg2reg slack_ns -0.009 arrival 0.970 path u_core/u_pbf/p0_reg_370_/CP -> u_core/u_pbf/late_reg_145_/D
+hold_in2reg slack_ns 0.029 arrival 1.012 path ctl[4] -> u_core/ctlr_reg_4_/D
+hold_act2act_o slack_ns 0.160 arrival 1.120 path act[1772] -> act_o[1772]
+feedthrough_delay_ns max 0.209 min 0.110 (budget 0.140 = 0.07 P)
+hold_violating_endpoints 3
+setup_violating_endpoints 3267
+pt_wall_s 42
+== p2/pt_blk_ss_2.0.txt
+design qb_col_blk corner ss period 2.000000 lib tcbn65gpluswc_ccs spef_nets total 265985 rc_network 258480 not_annotated 7505
+insertion_delay_L_ns 1.370 (latencies 1.47 1.27)
+reg2reg slack_ns -2.110 fmax_mhz 243.3 arrival 5.218 path u_core/g_r_13__g_c_0__u_pe/g_pop2_stem_p_reg/CP -> u_core/g_r_13__g_c_0__u_pe/g_pop2_u_acc/acc_reg_119_/D
+act2reg slack_ns 0.351 arrival 2.633 path act[329] -> u_core/g_r_1__g_c_0__u_pe/g_s0cr_u_ina/q_reg_41_/D
+act2act_o slack_ns -0.191 arrival 2.801 path act[4323] -> act_o[4323]
+north2reg slack_ns 0.019 arrival 3.019 path t2[33] -> u_core/g_col_0__g_grp_0__u_br/t2_q_reg_33_/D
+south2reg slack_ns -1.160 arrival 4.221 path s_rd[411] -> u_core/g_fq_3__g_fc_0__g_fi_0__u_lf/u_rin/q_reg_41_/D
+reg2south slack_ns 0.288 arrival 2.332 path u_core/g_r_12__g_c_0__u_pe/u_cmp/b2_reg_7_/CP -> b2[103]
+all slack_ns -2.110 fmax_mhz 243.3 arrival 5.218 path u_core/g_r_13__g_c_0__u_pe/g_pop2_stem_p_reg/CP -> u_core/g_r_13__g_c_0__u_pe/g_pop2_u_acc/acc_reg_119_/D
+hold_reg2reg slack_ns 0.023 arrival 1.483 path u_core/u_pbf/p0_reg_363_/CP -> u_core/g_fq_1__g_fc_0__g_fi_4__u_lf/u_rin/q_reg_22_/D
+hold_in2reg slack_ns 0.012 arrival 1.474 path ctl[4] -> u_core/ctlr_reg_4_/D
+hold_act2act_o slack_ns 0.225 arrival 1.645 path act[1759] -> act_o[1759]
+feedthrough_delay_ns max 0.331 min 0.175 (budget 0.140 = 0.07 P)
+hold_violating_endpoints 0
+setup_violating_endpoints 11782
+pt_wall_s 47
+== drc_hist
+markers 9039
+type x layer: Short/M2 4711, Short/M3 1224, Cut Spacing/VIA1 1026, Metal Spacing/M2 955, Short/M4 302, Short/M5 186, Metal Spacing/M3 183, Metal Spacing/M1 170, Short/M6 99, Metal Spacing/M4 54, Short/M7 27, Metal Spacing/M5 21
+top y bins (um): 1350 2060, 1500 1142, 1750 977, 1550 737, 2000 660, 1950 638, 1700 495, 2850 392, 1300 282, 2700 266, 2050 164, 2500 112
+x bins (25 um): 0 252, 25 173, 50 65, 75 38, 100 55, 125 59, 150 101, 175 1522, 200 2625, 225 460, 250 179, 275 38, 300 64, 325 1232, 350 2063, 375 113
+net classes: other 3819, pe01 2030, pe03 1017, pe02 857, pe06 721, pe05 706, pe04 701, top_buf 631, pe07 603, lane/pbank 442, pe00 353, pe13 304, port:act_o 292, br 278
+== corr
+markers 9039, south-edge bin row 2
+util quintile 0: util 0.00-0.65 pe_frac 0.27 markers 169 (1.8 per bin)
+util quintile 1: util 0.66-0.79 pe_frac 0.41 markers 2499 (26.0 per bin)
+util quintile 2: util 0.79-0.82 pe_frac 0.51 markers 1392 (14.4 per bin)
+util quintile 3: util 0.82-0.83 pe_frac 0.60 markers 2911 (30.3 per bin)
+util quintile 4: util 0.83-0.96 pe_frac 0.61 markers 2066 (21.3 per bin)
+== DR iterations C
+[INFO DRT-0199]   Number of violations = 297935.
+[INFO DRT-0199]   Number of violations = 149192.
+[INFO DRT-0199]   Number of violations = 137999.
+[INFO DRT-0199]   Number of violations = 50533.
+[INFO DRT-0199]   Number of violations = 22953.
+[INFO DRT-0199]   Number of violations = 12420.
+[INFO DRT-0199]   Number of violations = 9039.
+QB5_ABUT act pairs ok 4608 bad 0 die 390.0 x 3110.0 um
+[INFO ANT-0002] Found 0 net violations.
+[INFO ANT-0001] Found 0 pin violations.
+design qb_col_blk top qb_col_blk corner tt period_ns 1.65 topo 1 wire_load topo
+cell_area_um2 774573.843860 gate_eq_kGE 537.90 cells 229218 regs 25823
+setup_wns_ns 3.93391e-06 setup_tns_ns 0.000 setup_viol_endpoints 0
+setup_worst_path u_core/g_r_2__g_c_0__u_pe/u_shd/shd_reg_140_/CP -> u_core/g_wq_2__g_wc_0__u_lw/x0_reg_11_/D
+hold_wns_ns -0.000846706 hold_tns_ns -0.007 hold_viol_endpoints 36
+hold_worst_path u_core/u_pbf/p0_reg_545_/CP -> u_core/u_pbf/late_reg_230_/D
+dc_wall_s 859
+wall 14:24.81 peak_rss_mb 3544
