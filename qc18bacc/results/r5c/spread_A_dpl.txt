@@ -1,0 +1,18 @@
+QC_PNR r5c_spread_tile max_bbox_w_um 320.0 max_bbox_h_um 113.4 max_y10_90_um 88.2 max_bbox_area_um2 36288
+QC_PNR r5c spread dpl row  0 cells  8229 bbox x   5.0-326.6 y 1225.8-1348.2 (321.6 x 122.4 um) x10-90  54.2-298.0 y10-90 1246.5-1332.9 (  86 um)
+QC_PNR r5c spread dpl row  1 cells  8254 bbox x   5.0-327.8 y 1330.2-1465.2 (322.8 x 135.0 um) x10-90  53.1-296.0 y10-90 1359.9-1448.1 (  88 um)
+QC_PNR r5c spread dpl row  2 cells  8300 bbox x   5.0-328.8 y 1456.2-1591.2 (323.8 x 135.0 um) x10-90  50.9-297.2 y10-90 1480.5-1566.9 (  86 um)
+QC_PNR r5c spread dpl row  3 cells  8249 bbox x   5.0-328.0 y 1576.8-1704.6 (323.0 x 127.8 um) x10-90  51.8-296.6 y10-90 1595.7-1682.1 (  86 um)
+QC_PNR r5c spread dpl row  4 cells  8213 bbox x   5.0-328.0 y 1695.6-1825.2 (323.0 x 129.6 um) x10-90  53.8-297.5 y10-90 1714.5-1800.9 (  86 um)
+QC_PNR r5c spread dpl row  5 cells  8171 bbox x   5.0-327.4 y 1814.4-1945.8 (322.4 x 131.4 um) x10-90  53.5-298.1 y10-90 1833.3-1919.7 (  86 um)
+QC_PNR r5c spread dpl row  6 cells  8372 bbox x   5.0-330.2 y 1931.4-2053.8 (325.2 x 122.4 um) x10-90  52.4-296.1 y10-90 1948.5-2034.9 (  86 um)
+QC_PNR r5c spread dpl row  7 cells  8379 bbox x   5.0-332.4 y 2048.4-2181.6 (327.4 x 133.2 um) x10-90  51.1-298.1 y10-90 2067.3-2153.7 (  86 um)
+QC_PNR r5c spread dpl row  8 cells  8236 bbox x   5.0-327.6 y 2161.8-2291.4 (322.6 x 129.6 um) x10-90  52.1-295.7 y10-90 2182.5-2268.9 (  86 um)
+QC_PNR r5c spread dpl row  9 cells  8206 bbox x   5.0-327.0 y 2284.2-2412.0 (322.0 x 127.8 um) x10-90  51.4-298.1 y10-90 2301.3-2387.7 (  86 um)
+QC_PNR r5c spread dpl row 10 cells  8330 bbox x   5.0-329.8 y 2401.2-2527.2 (324.8 x 126.0 um) x10-90  52.4-297.0 y10-90 2416.5-2502.9 (  86 um)
+QC_PNR r5c spread dpl row 11 cells  8348 bbox x   5.0-328.4 y 2520.0-2644.2 (323.4 x 124.2 um) x10-90  49.7-296.4 y10-90 2535.3-2625.3 (  90 um)
+QC_PNR r5c spread dpl row 12 cells  8297 bbox x   5.0-328.0 y 2628.0-2757.6 (323.0 x 129.6 um) x10-90  51.9-296.8 y10-90 2650.5-2733.3 (  83 um)
+QC_PNR r5c spread dpl row 13 cells  8240 bbox x   5.0-328.2 y 2752.2-2878.2 (323.2 x 126.0 um) x10-90  53.5-298.4 y10-90 2769.3-2852.1 (  83 um)
+QC_PNR r5c spread dpl row 14 cells  8234 bbox x   5.0-329.0 y 2869.2-2991.6 (324.0 x 122.4 um) x10-90  53.3-297.2 y10-90 2884.5-2967.3 (  83 um)
+QC_PNR r5c spread dpl row 15 cells  8293 bbox x   5.0-330.2 y 2986.2-3105.0 (325.2 x 118.8 um) x10-90  52.6-295.8 y10-90 3003.3-3086.1 (  83 um)
+QC_PNR r5c_spread_dpl max_bbox_w_um 327.4 max_bbox_h_um 135.0 max_y10_90_um 90.0 max_bbox_area_um2 43713

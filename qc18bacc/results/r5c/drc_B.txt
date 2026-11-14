@@ -1,0 +1,5 @@
+markers 10830
+type x layer: Short/M2 5690, Short/M3 1730, Cut Spacing/VIA1 998, Metal Spacing/M2 957, Short/M4 477, Short/M5 299, Metal Spacing/M3 225, Short/M6 141, Metal Spacing/M1 113, Short/M7 65, Metal Spacing/M4 60, Cut Spacing/VIA2 23
+top y bins (um): 2000 1285, 2050 1155, 1600 1058, 2200 931, 2300 861, 1800 809, 1850 619, 1650 537, 2100 509, 2350 323, 1750 292, 1400 280
+x bins (25 um): 0 7, 25 69, 50 169, 75 173, 100 222, 125 274, 150 1640, 175 4831, 200 3250, 225 33, 250 18, 275 12, 300 15, 325 6, 350 18, 375 93
+net classes: other 3131, pe06 1681, pe07 1636, pe03 1602, pe05 1566, pe08 1123, pe09 1073, br 975, pe04 880, top_buf 858, pe01 598, pe02 429, clk 352, pe10 345
