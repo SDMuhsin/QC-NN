@@ -1,0 +1,106 @@
+# from -> to | bus (driver sub -> sink subs; blk.<pin> = block port) | edge | bits | src registered bits | dst registered bits (all sinks seq / macro / block)
+BLK -> S   | blk.f_y                                                                | S  |   2431 |   2431 |      0
+BLK -> S   | blk.b2                                                                 | S  |   1024 |   1024 |      0
+BLK -> S   | blk.w_y                                                                | S  |    608 |    608 |      0
+BLK -> S   | blk.f_b                                                                | S  |    256 |    256 |      0
+BLK -> S   | blk.w_b                                                                | S  |     32 |     32 |      0
+BLK -> S   | blk.w_vld_o                                                            | S  |      1 |      1 |      0
+BLK -> S   | blk.b2_vld                                                             | S  |      1 |      1 |      0
+BLK -> W   | blk.f_y                                                                | S  |   1678 |   1678 |      0
+BLK -> W   | blk.f_vld_o                                                            | S  |      1 |      1 |      0
+BLK -> W   | blk.b2_vld                                                             | S  |      1 |      1 |      0
+IO  -> BLK | ->blk.clk from port                                                    | N  |      1 |      1 |      1 | cols 8
+IO  -> N   | port clk -> glue                                                       |    |      1 |      1 |      1
+IO  -> S   | port clk -> glue,head,prm                                              |    |      1 |      1 |      1
+IO  -> W   | port h_data -> chip                                                    |    |    144 |    144 |    144
+IO  -> W   | port h_addr -> chip                                                    |    |     11 |     11 |     11
+IO  -> W   | port h_sel -> chip                                                     |    |      5 |      5 |      0
+IO  -> W   | port h_lane -> chip                                                    |    |      4 |      4 |      4
+IO  -> W   | port clk -> chip,glue,seq                                              |    |      1 |      1 |      1
+IO  -> W   | port h_go -> chip                                                      |    |      1 |      1 |      0
+IO  -> W   | port h_we -> chip                                                      |    |      1 |      1 |      0
+IO  -> W   | port rst_n -> chip                                                     |    |      1 |      1 |      0
+IO  -> WA  | port clk -> act,dist                                                   |    |      1 |      1 |      1
+N   -> BLK | ->blk.cd from glue                                                     | N  |   2304 |   2285 |   2304 | cols 8
+N   -> BLK | ->blk.ctl from glue                                                    | N  |     24 |      0 |     24 | cols 8
+N   -> S   | glue -> glue                                                           |    |      1 |      0 |      1
+S   -> BLK | ->blk.pf from prm                                                      | S  |   5059 |      0 |   5059 | cols 8
+S   -> BLK | ->blk.pw from prm                                                      | S  |   5028 |   5021 |   5028 | cols 8
+S   -> BLK | ->blk.s_rd from glue                                                   | S  |   4144 |      0 |   4144 | cols 8
+S   -> BLK | ->blk.t2 from prm                                                      | N  |   1088 |   1088 |   1088 | cols 8
+S   -> BLK | ->blk.w_r from glue                                                    | S  |    608 |      0 |    608 | cols 8
+S   -> BLK | ->blk.pf from glue                                                     | S  |    136 |      0 |    136 | cols 8
+S   -> BLK | ->blk.pw from glue                                                     | S  |     40 |      0 |     40 | cols 8
+S   -> BLK | ->blk.f_src from glue                                                  | S  |      8 |      0 |      8 | cols 8
+S   -> BLK | ->blk.f_sh from glue                                                   | S  |      7 |      0 |      7 | cols 8
+S   -> BLK | ->blk.ctl from glue                                                    | N  |      6 |      0 |      6 | cols 8
+S   -> BLK | ->blk.w_ld from glue                                                   | S  |      4 |      0 |      4 | cols 8
+S   -> BLK | ->blk.p_ld from glue                                                   | S  |      3 |      0 |      3 | cols 8
+S   -> BLK | ->blk.f_vld from glue                                                  | S  |      2 |      0 |      2 | cols 8
+S   -> BLK | ->blk.w_vld from glue                                                  | S  |      2 |      0 |      2 | cols 8
+S   -> BLK | ->blk.w_sh from glue                                                   | S  |      2 |      0 |      2 | cols 8
+S   -> BLK | ->blk.rst_n from glue                                                  | N  |      1 |      0 |      1 | cols 1
+S   -> IO  | head -> port                                                           |    |     41 |     40 |     41
+S   -> N   | glue -> glue                                                           |    |     51 |      0 |     49
+S   -> W   | glue -> glue                                                           |    |    467 |    110 |      4
+S   -> W   | glue -> seq                                                            |    |    201 |    200 |      0
+S   -> W   | glue -> chip                                                           |    |      8 |      8 |      0
+S   -> W   | head -> chip                                                           |    |      1 |      1 |      0
+S   -> WA  | glue -> glue                                                           |    |   3191 |    209 |      0
+S   -> WA  | qb_s -> glue                                                           |    |   1152 |   1152 |      0
+S   -> WA  | qb_b -> glue                                                           |    |   1024 |   1024 |      0
+S   -> WA  | qb_i -> glue                                                           |    |    512 |    512 |      0
+W   -> BLK | ->blk.rst_n from glue                                                  | N  |      3 |      0 |      3 | cols 7
+W   -> IO  | glue -> port                                                           |    |     16 |     16 |     16
+W   -> IO  | chip -> port                                                           |    |      3 |      1 |      3
+W   -> N   | glue -> glue                                                           |    |    608 |    522 |     84
+W   -> N   | chip -> glue                                                           |    |     26 |     19 |     23
+W   -> S   | chip -> glue,head                                                      |    |   1595 |      0 |      0
+W   -> S   | glue -> glue                                                           |    |    475 |    426 |      5
+W   -> S   | chip -> head                                                           |    |    176 |     63 |     37
+W   -> S   | chip -> glue                                                           |    |    139 |      4 |      7
+W   -> S   | chip -> glue,qb_f                                                      |    |     75 |      0 |     40
+W   -> S   | chip -> qb_f                                                           |    |     47 |      0 |     47
+W   -> S   | glue -> prm                                                            |    |     46 |      0 |     44
+W   -> S   | seq -> glue                                                            |    |     44 |      0 |     15
+W   -> S   | chip -> prm                                                            |    |     37 |     20 |     23
+W   -> S   | chip -> glue,prm                                                       |    |     31 |      3 |      1
+W   -> S   | glue -> glue,prm                                                       |    |     14 |      0 |     14
+W   -> WA  | glue -> glue                                                           |    |    970 |    960 |      0
+W   -> WA  | seq -> act                                                             |    |     26 |      2 |      0
+W   -> WA  | glue -> act                                                            |    |      3 |      0 |      1
+W   -> WA  | chip -> act,glue                                                       |    |      1 |      0 |      0
+WA  -> BLK | ->blk.act from dist                                                    | W  |   4597 |   4511 |   4597 | cols 1
+WA  -> BLK | ->blk.act from glue                                                    | W  |     11 |      0 |     11 | cols 1
+WA  -> N   | act -> glue                                                            |    |     16 |      2 |      8
+WA  -> N   | glue -> glue                                                           |    |      2 |      0 |      0
+WA  -> S   | act -> glue                                                            |    |     18 |     18 |      0
+WA  -> S   | glue -> glue                                                           |    |     15 |      0 |      0
+WA  -> W   | act -> seq                                                             |    |     22 |      1 |      0
+WA  -> W   | glue -> glue                                                           |    |      5 |      0 |      0
+WA  -> W   | act -> chip                                                            |    |      2 |      2 |      0
+WA  -> W   | act -> glue                                                            |    |      2 |      0 |      0
+# totals per group pair: bits, src registered, dst registered, neither
+TOTAL BLK -> S      4353    4353       0
+TOTAL BLK -> W      1680    1680       0
+TOTAL IO  -> BLK       1       1       1
+TOTAL IO  -> N         1       1       1
+TOTAL IO  -> S         1       1       1
+TOTAL IO  -> W       168     168     160
+TOTAL IO  -> WA        1       1       1
+TOTAL N   -> BLK    2328    2285    2328
+TOTAL N   -> S         1       0       1
+TOTAL S   -> BLK   16138    6109   16138
+TOTAL S   -> IO       41      40      41
+TOTAL S   -> N        51       0      49
+TOTAL S   -> W       677     319       4
+TOTAL S   -> WA     5879    2897       0
+TOTAL W   -> BLK       3       0       3
+TOTAL W   -> IO       19      17      19
+TOTAL W   -> N       634     541     107
+TOTAL W   -> S      2679     516     233
+TOTAL W   -> WA     1000     962       1
+TOTAL WA  -> BLK    4608    4511    4608
+TOTAL WA  -> N        18       2       8
+TOTAL WA  -> S        33      18       0
+TOTAL WA  -> W        31       3       0

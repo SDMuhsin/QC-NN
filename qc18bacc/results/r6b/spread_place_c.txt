@@ -1,0 +1,21 @@
+SPREAD S  cells 188183 outside_rect 279 disp_um mean 7.0 p99 78.4 max 298.8 bbox_um 66 153 3983 1624
+SPREAD WA cells 256685 outside_rect 1981 disp_um mean 5.3 p99 75.4 max 332.2 bbox_um 5 1406 999 3503
+SPREAD W  cells 169812 outside_rect 293 disp_um mean 3.3 p99 48.0 max 344.4 bbox_um 5 3301 860 5666
+SPREAD N  cells 8502 outside_rect 225 disp_um mean 7.8 p99 144.8 max 293.1 bbox_um 305 4630 3961 5695
+REPAIR fanout@S                 n     236 area_mm2 0.0022
+REPAIR fanout@W                 n     319 area_mm2 0.0033
+REPAIR fanout@WA                n      94 area_mm2 0.0008
+REPAIR load_slew@N              n    1079 area_mm2 0.0113
+REPAIR load_slew@S              n     300 area_mm2 0.0031
+REPAIR load_slew@W              n     116 area_mm2 0.0012
+REPAIR load_slew@WA             n      43 area_mm2 0.0004
+REPAIR max_cap@S                n      24 area_mm2 0.0002
+REPAIR max_cap@WA               n       4 area_mm2 0.0000
+REPAIR max_length@N             n     349 area_mm2 0.0036
+REPAIR max_length@S             n    1123 area_mm2 0.0117
+REPAIR max_length@W             n     564 area_mm2 0.0059
+REPAIR max_length@WA            n     331 area_mm2 0.0035
+REPAIR wire@N                   n    3840 area_mm2 0.0401
+REPAIR wire@S                   n   45087 area_mm2 0.4705
+REPAIR wire@W                   n    8078 area_mm2 0.0840
+REPAIR wire@WA                  n   18856 area_mm2 0.1964

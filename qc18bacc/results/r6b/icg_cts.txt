@@ -1,0 +1,36 @@
+# impl/r6b/icg_probe.tcl + icg_geom.tcl on r6b_b db/cts.odb (tt, placement parasitics, propagated clock): ICG output slew histogram (ns), worst ICGs, ICG output-net HPWL histogram (um), locations (um) along the worst path
+ICG db cts n 4006 slew_hist <=0.15 489 0.15-0.3 806 0.3-0.5 865 0.5-1.0 1071 >1.0 775
+ICG_WORST u_head/clk_gate_tacc_reg_43_/latch/Q CKLNQD1 slew 3.307 fanout 1
+ICG_WORST u_top/g_r3b_u_prm/clk_gate_stg_f_reg_1__98/latch/Q CKLNQD1 slew 3.017 fanout 1
+ICG_WORST u_top/g_r3b_u_prm/clk_gate_stg_f_reg_0__98/latch/Q CKLNQD1 slew 2.974 fanout 1
+ICG_WORST u_top/g_r3b_u_prm/clk_gate_stg_w_reg_96/latch/Q CKLNQD1 slew 2.884 fanout 1
+ICG_WORST u_top/g_r3b_u_prm/clk_gate_stg_f_reg_0__91/latch/Q CKLNQD1 slew 2.873 fanout 1
+ICG_WORST u_top/g_r3b_u_prm/clk_gate_stg_f_reg_1__92/latch/Q CKLNQD1 slew 2.861 fanout 1
+ICG_WORST u_top/g_r3b_u_prm/clk_gate_stg_w_reg_97/latch/Q CKLNQD1 slew 2.861 fanout 1
+ICG_WORST u_top/g_r3b_u_prm/clk_gate_stg_w_reg_98/latch/Q CKLNQD1 slew 2.861 fanout 1
+ICG_WORST u_top/g_r3b_u_prm/clk_gate_stg_f_reg_0__90/latch/Q CKLNQD1 slew 2.853 fanout 1
+ICG_WORST u_top/g_r3b_u_prm/clk_gate_stg_f_reg_1__89/latch/Q CKLNQD1 slew 2.849 fanout 1
+ICG_WORST u_top/g_r3b_u_prm/clk_gate_stg_f_reg_1__91/latch/Q CKLNQD1 slew 2.845 fanout 1
+ICG_WORST u_top/g_r3b_u_prm/clk_gate_stg_f_reg_1__90/latch/Q CKLNQD1 slew 2.829 fanout 1
+ICG_WORST u_top/g_r3b_u_prm/clk_gate_stg_f_reg_1__100/latch/Q CKLNQD1 slew 2.742 fanout 1
+ICG_WORST u_top/g_r3b_u_prm/clk_gate_stg_f_reg_0__84/latch/Q CKLNQD1 slew 2.736 fanout 1
+ICG_WORST u_top/g_r3b_u_prm/clk_gate_stg_f_reg_1__93/latch/Q CKLNQD1 slew 2.725 fanout 1
+ICG masters CKLNQD1 4006
+WNS tt -10.778 viol 88165
+ICG_PROBE done 143 s
+ICGNET hpwl_um_hist <=50 317 50-200 923 200-500 1334 500-1000 985 >1000 447
+ICGNET_WORST u_head/clk_gate_tacc_reg_43_/latch hpwl_um 2918
+ICGNET_WORST u_top/g_r3b_u_prm/clk_gate_stg_f_reg_1__98/latch hpwl_um 2594
+ICGNET_WORST u_top/g_r3b_u_prm/clk_gate_stg_f_reg_0__98/latch hpwl_um 2549
+ICGNET_WORST u_top/g_r3b_u_prm/clk_gate_stg_w_reg_96/latch hpwl_um 2483
+ICGNET_WORST u_top/g_r3b_u_prm/clk_gate_stg_w_reg_97/latch hpwl_um 2466
+LOC u_top/g_r3b_u_prm/clk_gate_stg_t_reg_19/latch x 2386 y 1543 (bbox 2386 1543 2389 1544)
+LOC clkbuf_0_u_top/g_r3b_u_prm/net134827 not_found
+LOC clkbuf_2_1__f_u_top/g_r3b_u_prm/net134827 not_found
+LOC u_top/g_r3b_u_prm/stg_t_reg_441_ x 2286 y 1566 (bbox 2286 1566 2291 1568)
+LOC clkbuf_leaf_2571_clk x 2400 y 1539 (bbox 2400 1539 2402 1541)
+LOC clkbuf_level_1_2_242711934_clk x 794 y 1208 (bbox 794 1208 796 1210)
+LOC wire43304 x 2479 y 337 (bbox 2479 337 2485 338)
+LOC wire43303 x 710 y 3280 (bbox 710 3280 716 3281)
+LOC wire43302 x 2171 y 4702 (bbox 2171 4702 2177 4703)
+LOC u_top/u_core/u_arr/g_c_3__u_col x 2030 y 1582 (bbox 2030 1582 2420 4692)

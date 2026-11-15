@@ -1,0 +1,30 @@
+# group sub area_mm2 (placed cell sizes, rsz buffers excluded) n_seq
+BLK  col0       1.2129 0
+BLK  col1       1.2129 0
+BLK  col2       1.2129 0
+BLK  col3       1.2129 0
+BLK  col4       1.2129 0
+BLK  col5       1.2129 0
+BLK  col6       1.2129 0
+BLK  col7       1.2129 0
+N    glue       0.0457 3701
+N    qb_w       2.6709 0
+S    glue       0.3483 13055
+S    head       0.1659 7419
+S    prm        0.2392 25689
+S    qb_b       0.4061 0
+S    qb_f       0.4663 0
+S    qb_i       0.1354 0
+S    qb_p       0.5364 0
+S    qb_s       2.4973 0
+W    chip       0.0136 288
+W    glue       0.0223 2789
+W    qb_d       0.2358 0
+W    seq        0.5474 26787
+WA   act        0.8310 53218
+WA   dist       0.0357 4608
+WA   glue       0.0607 0
+GROUP W std_mm2 0.5833 macro_mm2 0.2358
+GROUP WA std_mm2 0.9274 macro_mm2 0.0000
+GROUP S std_mm2 0.7533 macro_mm2 4.0416
+GROUP N std_mm2 0.0457 macro_mm2 2.6709

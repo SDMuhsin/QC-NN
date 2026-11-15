@@ -8,7 +8,8 @@ band (weight macros, code register cd_r, weight address registers), BLK = the 8 
 Seeds: hierarchy (u_act, u_seq, u_head, g_dist, chip -> W; u_prm -> S), macros by type, blocks, and the u_top
 registers with a fixed home (NAMED below); every other u_top glue cell (comb + remaining registers) by label
 propagation over its nets (majority of already-labelled neighbours, nets with fanout > 64 ignored), iterated.
-Outputs: OUT_area.txt (std-cell area per group, placed sizes, rsz buffers excluded), OUT_cuts.txt (bus table)."""
+Outputs: OUT_area.txt (std-cell area per group, placed sizes, rsz buffers excluded), OUT_cuts.txt (bus table);
+--groups FILE (R6b): one line per std cell 'inst group sub'."""
 import re
 import sys
 from collections import Counter, defaultdict
@@ -134,6 +135,12 @@ def main():
     for v in inst.values():
         if v[3] is None and v[2] in ("seq", "comb"):
             v[3], v[4] = "W", "glue?"
+
+    if "--groups" in sys.argv:              # R6b: per-instance group of every std cell (impl/r6b/grp_place.tcl)
+        with open(sys.argv[sys.argv.index("--groups") + 1], "w") as fh:
+            for n, v in inst.items():
+                if v[2] in ("seq", "comb"):
+                    fh.write(f"{n} {v[3]} {v[4]}\n")
 
     # areas
     ar = defaultdict(float)

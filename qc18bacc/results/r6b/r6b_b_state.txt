@@ -1,0 +1,15 @@
+# r6b_b (tau3 pnr/r6b_b) flow state: summary.txt tail + post-CTS repair log lines; job exited 19:41 UTC Nov 15 (RSZ-0025), last checkpoint db/cts.odb
+place place_tt setup_wns_ns -10.664 setup_tns_ns -71631.679 hold_wns_ns -4.419 hold_tns_ns -73.787
+cts die_um 3990.00 x 5706.60 core_um2 22666896.0 cell_um2 3678584.0 macro_um2 16651520.7 utilisation 0.897
+cts cts_tt setup_wns_ns -10.778 setup_tns_ns -140240.474 hold_wns_ns -7.269 hold_tns_ns -42266.929
+postcts_pre_repair tt setup_wns_ns -10.778 setup_viol_endpoints 88148 hold_wns_ns -7.269 hold_viol_endpoints 57542 die_um 3990.00 x 5706.60 core_um2 22666896.0 cell_um2 3678584.0 macro_um2 16651520.7 utilisation 0.897
+drc_violations NA antenna_net_violations NA antenna_pin_violations NA
+pnr_wall_s 3037 wall 50:37.16 peak_rss_mb 8219
+[INFO RSZ-0094] Found 88148 endpoints with setup violations.
+[INFO RSZ-0045] Inserted 2642 buffers, 1 to split loads.
+[INFO RSZ-0041] Resized 74862 instances.
+[INFO RSZ-0043] Swapped pins on 2391 instances.
+[INFO RSZ-0049] Cloned 596 instances.
+[WARNING RSZ-0062] Unable to repair all setup violations.
+[ERROR RSZ-0025] max utilization reached.
+Error: slice_post_cts.tcl, 106 RSZ-0025

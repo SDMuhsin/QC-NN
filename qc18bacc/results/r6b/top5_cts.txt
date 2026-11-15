@@ -1,0 +1,7 @@
+# 5 worst setup paths, r6b_b db/cts.odb, tt, placement parasitics, 1.65 ns, IO delays not shifted (impl/r6b/icg_probe.tcl QB_TOP5=1)
+# slack_ns  start -> end  | launch CP latency ns | ICG stage delay ns | largest wire-buffer stage ns | capture block clk (ideal) ns
+-10.778  u_top/g_r3b_u_prm/stg_t_reg_441_ -> g_c_3__u_col/t2[33]  | 6.568 | 1.637 (clk_gate_stg_t_reg_19, CKLNQD1) | 3.277 | 0.750
+-10.023  u_top/g_r3b_u_prm/stg_t_reg_410_ -> g_c_3__u_col/t2[2]   | 6.823 | 1.554 (clk_gate_stg_t_reg_20) | 3.207 | 0.750
+-10.017  u_top/g_r3b_u_prm/stg_t_reg_411_ -> g_c_3__u_col         | 6.822 | 1.554 (clk_gate_stg_t_reg_20) | n/a   | 0.750
+ -9.995  u_top/g_r3b_u_prm/stg_t_reg_509_ -> g_c_3__u_col/t2[101] | 5.909 | 1.607 (clk_gate_stg_t_reg_17) | 3.091 | 0.750
+ -9.991  u_top/g_r3b_u_prm/stg_t_reg_409_ -> g_c_3__u_col         | 6.854 | 1.554 (clk_gate_stg_t_reg_20) | n/a   | 0.750

@@ -1,0 +1,10 @@
+# impl/r6b/icg_probe.tcl area split of r6b_b db/cts.odb (mm2): dc = DC netlist cells, icg = CKLN*, rbuf = OpenROAD repair buffers by name, cts = clkbuf*/clkload*; white = die - instances
+AREA db cts die_mm2 22.769 (3990.0 x 5706.6 um)
+AREA blk_mm2 9.703 n 8
+AREA mac_mm2 6.948 n 104
+AREA dc_mm2 2.590 n 623795
+AREA icg_mm2 0.026 n 4006
+AREA rbuf_mm2 0.849 n 81515
+AREA cts_mm2 0.213 n 32431
+AREA phys_mm2 0.000 n 0
+AREA white_mm2 2.439 (die - all instances, incl. halos / channels)

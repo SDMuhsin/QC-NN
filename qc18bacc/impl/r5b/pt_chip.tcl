@@ -58,6 +58,8 @@ redirect $dir/rpt/pt_chip_${corner}_min.rpt { report_timing -delay_type min -max
 redirect $dir/rpt/pt_chip_${corner}_viol.rpt { report_constraint -max_delay -all_violators -nosplit }
 redirect -variable lat { report_clock_timing -type summary -clock qb_clk -nosplit }
 puts $fh "clock_summary [string map {"\n" " | "} [regsub -all {[ \t]+} $lat " "]]"
+# R6b: QB_PT_EXTRA = a Tcl file sourced here (fh, per, io, blk, mac, bp, mp, bi, bo, mi, mo set), e.g. impl/r6b/pt_extra.tcl
+if {[info exists ::env(QB_PT_EXTRA)] && $::env(QB_PT_EXTRA) ne ""} { source $::env(QB_PT_EXTRA) }
 puts $fh "pt_wall_s [expr {[clock seconds] - $t0}]"
 close $fh
 exit
