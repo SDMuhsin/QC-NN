@@ -1,0 +1,30 @@
+# rpt/area.rpt: top qb_chip, total cell area 14822735 um2, macros 6948321, logic 7874414
+core: PE array (16x8 PEs)                               logic_um2      3262910 mm2 3.263  (n 128)
+core: fused lanes (256)                                 logic_um2      1621851 mm2 1.622  (n 256)
+core: wide lanes (32)                                   logic_um2       304830 mm2 0.305  (n 32)
+core: lane param banks                                  logic_um2       105597 mm2 0.106  (n 2)
+core: decoders + BR                                     logic_um2       305841 mm2 0.306  (n 72)
+core: other (port regs, cmp, ctl)                       logic_um2       109011 mm2 0.109
+core: total                                             logic_um2      5710041 mm2 5.710
+act supply (qb_act2)                                    logic_um2       786340 mm2 0.786
+sequencer (qb_seq)                                      logic_um2       529245 mm2 0.529
+params path (qb_prm)                                    logic_um2       228059 mm2 0.228
+head (qb_head)                                          logic_um2       176764 mm2 0.177
+u_top macro wrappers                                    logic_um2         2754 mm2 0.003  (n 92)
+top glue in qb_top (write-back, delay lines, dist)      logic_um2       438880 mm2 0.439
+qb_chip glue (host port, head cfg)                      logic_um2         2331 mm2 0.002
+logic total                                             logic_um2      7874414 mm2 7.874
+macro qb_b_128x128m1       n   8 um2     406136 mm2 0.406
+macro qb_d_624x80m8        n   2 um2     235847 mm2 0.236
+macro qb_f_3232x128m8      n   1 um2     466267 mm2 0.466
+macro qb_i_128x128m1       n   4 um2     135424 mm2 0.135
+macro qb_p_240x144m2       n   9 um2     536415 mm2 0.536
+macro qb_s_256x128m1       n  32 um2    2497343 mm2 2.497
+macro qb_w_204x144m2       n  48 um2    2670888 mm2 2.671
+macro total n 104 mm2 6.948
+chip total (logic + macros) mm2 14.823
+set hook [qc_env QC_HOOK]
+eval [qc_env QC_COMPILE "compile_ultra -no_autoungroup -gate_clock"]
+set post [qc_env QC_POST_HOOK]                 ;# optional design-specific steps after compile + change_names (e.g. saif_map -write_map)
+if {$::env(QC_TOPO)} { catch {write_parasitics -output $out/$top.spef} }
+set nand [get_attribute [get_lib_cells $::QC_LIB($corner)/$::QC_NAND2] area]

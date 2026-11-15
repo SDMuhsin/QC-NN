@@ -20,6 +20,12 @@
 `ifndef QB_HEAD_HP
 `define QB_HEAD_HP 0
 `endif
+// R5e: define QB_HEAD_FW (default 256) = qb_head FC weight port FW.  128 (results/r5e_fc.md): FC rows 0..2047 are
+// written with h_sel 16 at h_addr, rows 2048.. with h_sel 18 at h_addr (row = {h_sel == 18, h_addr}); head
+// configuration word 7 (FC rows) is 12 b.
+`ifndef QB_HEAD_FW
+`define QB_HEAD_FW 256
+`endif
 module qb_chip #(parameter int DIST = 1, parameter int AP = 1) (
     input  logic          clk, rst_n,
     input  logic          h_we,
@@ -36,7 +42,8 @@ module qb_chip #(parameter int DIST = 1, parameter int AP = 1) (
 );
     // ---------------------------------------------------------------- head configuration
     logic [30:0] c_m0;  logic [5:0] c_sh;  logic [4:0] c_last, c_stem;  logic [7:0] c_nfo, c_nst;
-    logic [6:0]  c_ncls;  logic [10:0] c_nrows;
+    localparam int FW = `QB_HEAD_FW, FAW = FW == 128 ? 12 : 11;
+    logic [6:0]  c_ncls;  logic [FAW-1:0] c_nrows;
     always_ff @(posedge clk)
         if (h_we && h_sel == 5'd17) unique case (h_addr[2:0])
             3'd0: c_m0 <= h_data[30:0];
@@ -46,7 +53,7 @@ module qb_chip #(parameter int DIST = 1, parameter int AP = 1) (
             3'd4: c_stem <= h_data[4:0];
             3'd5: c_nst <= h_data[7:0];
             3'd6: c_ncls <= h_data[6:0];
-            default: c_nrows <= h_data[10:0];
+            default: c_nrows <= h_data[FAW-1:0];
         endcase
 
     // ---------------------------------------------------------------- engine
@@ -93,8 +100,21 @@ module qb_chip #(parameter int DIST = 1, parameter int AP = 1) (
 
     // ---------------------------------------------------------------- head
     logic h_err, pool_done, fc_busy;
-    qb_head #(.HP(`QB_HEAD_HP)) u_head (
-        .clk, .rst_n, .fc_we(h_we && h_sel == 5'd16), .h_addr, .h_d(h_data[255:0]), .c_m0, .c_sh, .c_last, .c_ncls,
+    logic          fc_we;
+    logic [FAW-1:0] fc_a;
+    if (FW == 128) begin : g_fc128                                       // rows 2048.. via h_sel 18
+        assign fc_we = h_we && (h_sel == 5'd16 || h_sel == 5'd18);
+`ifdef QBC_MUT_FHI
+        assign fc_a  = {1'b0, h_addr};                                   // mutant: upper FC rows overwrite rows 0..
+`else
+        assign fc_a  = {h_sel == 5'd18, h_addr};
+`endif
+    end else begin : g_fc256
+        assign fc_we = h_we && h_sel == 5'd16;
+        assign fc_a  = h_addr;
+    end
+    qb_head #(.HP(`QB_HEAD_HP), .FW(FW)) u_head (
+        .clk, .rst_n, .fc_we, .h_addr(fc_a), .h_d(h_data[FW-1:0]), .c_m0, .c_sh, .c_last, .c_ncls,
         .c_nrows, .f_v(wb_fv), .f_pi(wb_fpi), .f_ct(wb_fct), .f_k(wb_fk), .f_y(wb_fy), .lo_vld, .lo_idx, .lo_val,
         .pool_done, .fc_busy, .busy(st_head_busy), .err(h_err));
 

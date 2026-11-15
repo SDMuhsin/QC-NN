@@ -60,7 +60,11 @@ module tb_qb_chip;
             for (int i = 0; i < cnt; i++) begin rc = $fscanf(fp, "%h\n", w); hw(sel, i, w); end
             c = cnt;
         end else
-            while ($fscanf(fp, "%h\n", w) == 1) begin hw(sel, c, w); c++; end
+            while ($fscanf(fp, "%h\n", w) == 1) begin
+                if (sel == 16 && c >= 2048) hw(18, c - 2048, w);          // R5e (QB_HEAD_FW 128): FC rows 2048.. via h_sel 18
+                else hw(sel, c, w);
+                c++;
+            end
         $fclose(fp);
         if (cid >= 0) hw(15, cid, 5189'(c));
     endtask

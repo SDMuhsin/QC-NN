@@ -1,0 +1,12 @@
+MS e8_3232x128 sram_sp_adv 3232 128 8  | w_um 1184.1 h_um 393.8 area_um2 466267 | tt dat_ta_tcyc 0.886 1.136 lib_ta 0.917 | ss dat_ta_tcyc 1.391 1.861 lib_ta 1.439
+MS e8_3232x64 sram_sp_adv 3232 64 8  | w_um 646.5 h_um 393.8 area_um2 254579 | tt dat_ta_tcyc 0.747 0.989 lib_ta 0.777 | ss dat_ta_tcyc 1.171 1.617 lib_ta 1.219
+MS e16_3232x64 sram_sp_adv 3232 64 16  | w_um 1184.1 h_um 240.9 area_um2 285285 | tt dat_ta_tcyc 0.880 1.125 lib_ta 0.911 | ss dat_ta_tcyc 1.383 1.865 lib_ta 1.431
+MS e8_3232x32 sram_sp_adv 3232 32 8  | w_um 377.7 h_um 393.8 area_um2 148735 | tt dat_ta_tcyc 0.689 0.938 lib_ta 0.719 | ss dat_ta_tcyc 1.082 1.535 lib_ta 1.131
+MS e16_3232x32 sram_sp_adv 3232 32 16  | w_um 646.5 h_um 240.9 area_um2 155764 | tt dat_ta_tcyc 0.739 1.017 lib_ta 0.770 | ss dat_ta_tcyc 1.160 1.665 lib_ta 1.208
+MS e32_3264x32 sram_sp_adv 3264 32 32  | w_um 1184.1 h_um 164.6 area_um2 194913 | tt dat_ta_tcyc 0.905 1.117 lib_ta 0.935 | ss dat_ta_tcyc 1.423 1.858 lib_ta 1.471
+MS e8_1616x128 sram_sp_adv 1616 128 8  | w_um 1184.1 h_um 240.9 area_um2 285285 | tt dat_ta_tcyc 0.863 1.101 lib_ta 0.894 | ss dat_ta_tcyc 1.354 1.807 lib_ta 1.402
+MS e16_1632x64 sram_sp_adv 1632 64 16  | w_um 1184.1 h_um 164.6 area_um2 194913 | tt dat_ta_tcyc 0.869 1.094 lib_ta 0.899 | ss dat_ta_tcyc 1.363 1.816 lib_ta 1.412
+MS e8_1088x128 sram_sp_adv 1088 128 8  | w_um 1184.1 h_um 203.9 area_um2 241473 | tt dat_ta_tcyc 0.856 1.090 lib_ta 0.886 | ss dat_ta_tcyc 1.341 1.789 lib_ta 1.389
+MS r4_464x64 rf_sp_adv 464 64 4  | w_um 398.0 h_um 127.3 area_um2 50658 | tt dat_ta_tcyc 0.746 0.663 lib_ta 0.744 | ss dat_ta_tcyc 1.221 1.079 lib_ta 1.215
+MS r4_408x64 rf_sp_adv 408 64 4  | w_um 398.0 h_um 120.3 area_um2 47872 | tt dat_ta_tcyc 0.736 0.653 lib_ta 0.734 | ss dat_ta_tcyc 1.203 1.055 lib_ta 1.197
+MS_DONE

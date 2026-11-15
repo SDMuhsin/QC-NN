@@ -6,6 +6,7 @@
 //   qbt_rfsp 128 x 128 -> qb_i_128x128m1  rf_sp_adv mux 1   image IMG                         (4)
 //   qbt_rfsp  64 x 408 -> qb_f_408x64m4   rf_sp_adv mux 4   FC (qb_head), 4 lanes x 4 deep    (16)
 //   qbt_rfsp  80 x 624 -> qb_d_624x80m8   sram_sp_adv mux 8 qb_seq descriptors, DSCM = 1 only  (2)
+//   qbt_rfsp 128 x 3232 -> qb_f_3232x128m8 sram_sp_adv mux 8 FC (qb_head FW = 128, R5e; impl/r5e/macros.txt) (1)
 //   qbt_rf2p 128 x 256 -> qb_s_256x128m1  rf_2p_adv mux 1   stream S, bit-write mask          (32)
 //   qbt_rf2p 128 x 128 -> qb_b_128x128m1  rf_2p_adv mux 1   binary maps B1 / B2, bit mask     (8)
 //   other              -> the behavioural model (none in qb_chip; a simulation message flags it)
@@ -24,8 +25,9 @@ module qbt_rfsp #(parameter int W = 128, parameter int N = 128) (
     output logic [W-1:0]         q
 );
     localparam bit IsW = W == 144 && N == 204, IsP = W == 144 && N == 240, IsI = W == 128 && N == 128,
-                   IsF = W == 64 && N == 408, IsD = W == 80 && N == 624;
-    if (IsW || IsP || IsI || IsF || IsD) begin : g_mac
+                   IsF = W == 64 && N == 408, IsD = W == 80 && N == 624,
+                   IsF2 = W == 128 && N == 3232;
+    if (IsW || IsP || IsI || IsF || IsD || IsF2) begin : g_mac
         logic gclk;
         wire  cen = ~(ren | we), wen = ~we;
         CKLNQD1 u_cg (.TE(1'b0), .E(ren | we), .CP(clk), .Q(gclk));
@@ -33,6 +35,7 @@ module qbt_rfsp #(parameter int W = 128, parameter int N = 128) (
         else if (IsP) begin : g_p qb_p_240x144m2 u_mac (.Q(q), .CLK(gclk), .CEN(cen), .WEN(wen), .A(a), .D(wd), .EMA(3'b000), .RETN(1'b1)); end
         else if (IsI) begin : g_i qb_i_128x128m1 u_mac (.Q(q), .CLK(gclk), .CEN(cen), .WEN(wen), .A(a), .D(wd), .EMA(3'b000), .RETN(1'b1)); end
         else if (IsF) begin : g_f qb_f_408x64m4  u_mac (.Q(q), .CLK(gclk), .CEN(cen), .WEN(wen), .A(a), .D(wd), .EMA(3'b000), .RETN(1'b1)); end
+        else if (IsF2) begin : g_f2 qb_f_3232x128m8 u_mac (.Q(q), .CLK(gclk), .CEN(cen), .WEN(wen), .A(a), .D(wd), .EMA(3'b000), .RETN(1'b1)); end
         else          begin : g_d qb_d_624x80m8  u_mac (.Q(q), .CLK(gclk), .CEN(cen), .WEN(wen), .A(a), .D(wd), .EMA(3'b000), .RETN(1'b1)); end
     end else begin : g_beh
         logic [W-1:0] mem [N];

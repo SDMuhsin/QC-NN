@@ -1,0 +1,8 @@
+E6_s0: val[:300] 1 commit order(s); interval M+1 min 3652 mean 3776.0 max 3900 (argmin val 16); FC rows 256 b 1613 / 128 b 3225; head from go(i+1) 256 b 1638 / 128 b 3250
+E6_s0: (a) head 128 b vs interval: min slack 402 (fits 300/300)
+E6_s0: T7 (b7.c2 first drain start, model) min 3523 mean 3647.0 max 3771 (argmin val 16); M - T7 min 128 max 128
+E6_s0: (b) RTL overlap 128 b: FC done go+3250, first pq write go+T7+21: slack min 294 mean 418.0 max 542 (fits 300/300); 256 b slack min 1906
+E6_s1: val[:300] 1 commit order(s); interval M+1 min 3604 mean 3754.1 max 3884 (argmin val 246); FC rows 256 b 1613 / 128 b 3225; head from go(i+1) 256 b 1638 / 128 b 3250
+E6_s1: (a) head 128 b vs interval: min slack 354 (fits 300/300)
+E6_s1: T7 (b7.c2 first drain start, model) min 3475 mean 3625.1 max 3755 (argmin val 246); M - T7 min 128 max 128
+E6_s1: (b) RTL overlap 128 b: FC done go+3250, first pq write go+T7+21: slack min 246 mean 396.1 max 526 (fits 300/300); 256 b slack min 1858

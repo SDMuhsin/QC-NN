@@ -1,0 +1,3 @@
+# R5e: FC weight macro of qb_head FW = 128 (hw/tech/qb_mem_tech.sv IsF2; results/r5e_fc.md; sweep impl/r5e/sweep_fc128_raw.txt)
+# generate: flow/tsmc65/sram/mc_gen.sh gen qc18bacc/impl/r5e/macros.txt; link: QB_MACROS_EXTRA=<this file> impl/r4/run.sh
+qb_f_3232x128m8 sram_sp_adv 3232 128 8                           # FC, 1 macro (128 b / cycle, 3 225 rows)

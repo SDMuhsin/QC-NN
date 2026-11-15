@@ -33,6 +33,7 @@ endmodule
 `QB_ARM_SP(qb_i_128x128m1, 128, 128, 7)
 `QB_ARM_SP(qb_f_408x64m4, 64, 408, 9)
 `QB_ARM_SP(qb_d_624x80m8, 80, 624, 10)
+`QB_ARM_SP(qb_f_3232x128m8, 128, 3232, 12)
 `QB_ARM_2P(qb_s_256x128m1, 128, 256, 8)
 `QB_ARM_2P(qb_b_128x128m1, 128, 128, 7)
 module CKLNQD1 (input logic TE, E, CP, output logic Q);

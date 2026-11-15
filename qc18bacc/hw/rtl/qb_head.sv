@@ -21,18 +21,25 @@
 // R4b hook HP (default 0 = as above): the FC adder tree in two stages at the same cycles: the pq chunk of a row is
 //   selected one stage early (from fm[2]; pq is stable while the FC runs: a pq write during the FC is err) into xs, and
 //   the 32 products form two 16-product partial sums (registered) that the accumulate stage adds (3-input add).
-module qb_head #(parameter int NQ = 4, parameter int NK = 512, parameter int NFR = 1632, parameter bit HP = 0) (
+// R5e parameter FW (FC weight port, b / cycle; default 256 = everything above unchanged).  FW = 128 (results/r5e_fc.md):
+//   16 int8 MACs / cycle over 32 chunk rows per class; rows of 128 b: per group of G = 4 classes one bias row
+//   (4 x int32) then 4 x 32 weight rows (3 225 rows); FC macro = ONE behavioural rf_sp 3232 x 128 (the ARM
+//   sram_sp_adv 3232 x 128 mux 8, qb_f_3232x128m8), same registered boundaries (row in x + 3); 12-b row address
+//   (qb_chip: h_sel 16 rows 0..2047, h_sel 18 rows 2048..).  HP: two partial sums of NMAC / 2 products.
+module qb_head #(parameter int NQ = 4, parameter int NK = 512, parameter int FW = 256,
+                 parameter int NFR = (FW == 128 ? 3232 : 1632), parameter bit HP = 0,
+                 parameter int AW = (FW == 128 ? 12 : 11)) (
     input  logic          clk, rst_n,
     // host: FC macro rows (fc_we) at h_addr
     input  logic          fc_we,
-    input  logic [10:0]   h_addr,
-    input  logic [255:0]  h_d,
+    input  logic [AW-1:0] h_addr,
+    input  logic [FW-1:0] h_d,
     // configuration (qb_chip registers)
     input  logic [30:0]   c_m0,
     input  logic [5:0]    c_sh,
     input  logic [4:0]    c_last,
     input  logic [6:0]    c_ncls,
-    input  logic [10:0]   c_nrows,
+    input  logic [AW-1:0] c_nrows,
     // fused write-back bus of qb_top (qb_top dbg_f* taps: f_y / tags at the S write request)
     input  logic          f_v,
     input  logic [4:0]    f_pi,
@@ -106,37 +113,51 @@ module qb_head #(parameter int NQ = 4, parameter int NK = 512, parameter int NFR
             end
         end
 
-    // ================================================================ FC macro: rf_sp 408 x 64, 4 lanes x 4 deep
-    localparam int FD = 408;
-    logic        f_req;
-    logic [10:0] f_row;
-    logic        f_ren_q;
-    logic [8:0]  f_a_q;
-    logic [1:0]  f_d_q, f_d_m;
-    always_ff @(posedge clk) begin                                      // boundary: address registers
-        f_ren_q <= f_req;
-        f_a_q   <= 9'(f_row % 11'(FD));
-        f_d_q   <= 2'(f_row / 11'(FD));
-        f_d_m   <= f_d_q;
-    end
-    logic [63:0]  fqm [4][4];
-    logic [255:0] fr_m, fr_r;
-    for (genvar l = 0; l < 4; l++) begin : g_fl
-        for (genvar dd = 0; dd < 4; dd++) begin : g_fd
-            wire hw = fc_we && h_addr / 11'(FD) == 11'(dd);
-            qbt_rfsp #(64, FD) u_m (.clk, .ren(f_ren_q && f_d_q == 2'(dd)), .we(hw), .a(fc_we ? 9'(h_addr % 11'(FD)) : f_a_q),
-                                    .wd(h_d[64 * l +: 64]), .q(fqm[l][dd]));
+    // ================================================================ FC macro
+    localparam int NMAC = FW / 8, NM = NK / NMAC, MW = $clog2(NM), G = FW / 32;   // MACs / row, rows / class, classes / bias row
+    logic          f_req;
+    logic [AW-1:0] f_row;
+    logic [FW-1:0] fr_r;
+    if (FW == 256) begin : g_f256                                        // rf_sp 408 x 64, 4 lanes x 4 deep
+        localparam int FD = 408;
+        logic        f_ren_q;
+        logic [8:0]  f_a_q;
+        logic [1:0]  f_d_q, f_d_m;
+        always_ff @(posedge clk) begin                                  // boundary: address registers
+            f_ren_q <= f_req;
+            f_a_q   <= 9'(f_row % 11'(FD));
+            f_d_q   <= 2'(f_row / 11'(FD));
+            f_d_m   <= f_d_q;
         end
-        assign fr_m[64 * l +: 64] = fqm[l][f_d_m];
+        logic [63:0]  fqm [4][4];
+        logic [255:0] fr_m;
+        for (genvar l = 0; l < 4; l++) begin : g_fl
+            for (genvar dd = 0; dd < 4; dd++) begin : g_fd
+                wire hw = fc_we && h_addr / 11'(FD) == 11'(dd);
+                qbt_rfsp #(64, FD) u_m (.clk, .ren(f_ren_q && f_d_q == 2'(dd)), .we(hw), .a(fc_we ? 9'(h_addr % 11'(FD)) : f_a_q),
+                                        .wd(h_d[64 * l +: 64]), .q(fqm[l][dd]));
+            end
+            assign fr_m[64 * l +: 64] = fqm[l][f_d_m];
+        end
+        always_ff @(posedge clk) fr_r <= fr_m;                          // boundary: output register (row in x + 3)
+    end else begin : g_f128                                             // one rf_sp NFR x 128 (sram_sp_adv 3232 x 128 m8)
+        logic          f_ren_q;
+        logic [AW-1:0] f_a_q;
+        logic [FW-1:0] fr_m;
+        always_ff @(posedge clk) begin                                  // boundary: address register
+            f_ren_q <= f_req;
+            f_a_q   <= f_row;
+        end
+        qbt_rfsp #(FW, NFR) u_m (.clk, .ren(f_ren_q), .we(fc_we), .a(fc_we ? h_addr : f_a_q), .wd(h_d), .q(fr_m));
+        always_ff @(posedge clk) fr_r <= fr_m;                          // boundary: output register (row in x + 3)
     end
-    always_ff @(posedge clk) fr_r <= fr_m;                              // boundary: output register (row in x + 3)
 
     // ================================================================ FC sequencer (one row per cycle)
-    typedef struct packed { logic v; logic b; logic last; logic [6:0] j; logic [3:0] m; } fm_t;
+    typedef struct packed { logic v; logic b; logic last; logic [6:0] j; logic [MW-1:0] m; } fm_t;
     logic       f_run;
-    logic [10:0] rr;
+    logic [AW-1:0] rr;
     logic [6:0] jj;
-    logic [3:0] mm;
+    logic [MW-1:0] mm;
     logic       isb;
     fm_t        fm [4];
     always_comb begin
@@ -145,21 +166,21 @@ module qb_head #(parameter int NQ = 4, parameter int NK = 512, parameter int NFR
         fm[0] = '0;
         if (f_run) begin
             fm[0].v = 1'b1; fm[0].b = isb; fm[0].j = jj; fm[0].m = mm;
-            fm[0].last = !isb && mm == 4'd15 && jj == c_ncls - 7'd1;
+            fm[0].last = !isb && mm == MW'(NM - 1) && jj == c_ncls - 7'd1;
         end
     end
     always_ff @(posedge clk or negedge rst_n)
         if (!rst_n) begin f_run <= 1'b0; rr <= '0; jj <= '0; mm <= '0; isb <= 1'b0; end
         else if (pool_done && !f_run) begin f_run <= 1'b1; rr <= '0; jj <= '0; mm <= '0; isb <= 1'b1; end
         else if (f_run) begin
-            rr <= rr + 11'd1;
+            rr <= rr + AW'(1);
             if (isb) isb <= 1'b0;
             else begin
-                mm <= mm + 4'd1;
-                if (mm == 4'd15) begin
+                mm <= mm + MW'(1);
+                if (mm == MW'(NM - 1)) begin
                     jj <= jj + 7'd1;
                     if (jj == c_ncls - 7'd1) f_run <= 1'b0;
-                    else if (jj[2:0] == 3'd7) isb <= 1'b1;
+                    else if (jj % 7'(G) == 7'(G - 1)) isb <= 1'b1;
                 end
             end
         end
@@ -168,24 +189,24 @@ module qb_head #(parameter int NQ = 4, parameter int NK = 512, parameter int NFR
     end
     // ================================================================ MAC: stage x + 3 (products, tree), x + 4 (accumulate)
     fm_t               m3, m4;
-    logic [255:0]      breg;
+    logic [FW-1:0]     breg;
     logic signed [19:0] psum;
     assign m3 = fm[3];
     always_ff @(posedge clk or negedge rst_n)
         if (!rst_n) m4 <= '0;
         else begin
             logic signed [19:0] s;
-            logic [3:0] mc;
+            logic [MW-1:0] mc;
 `ifdef QBH_MUT_FCK
-            mc = m3.m ^ 4'd1;                                            // mutant: pq chunk of the neighbouring row
+            mc = m3.m ^ MW'(1);                                            // mutant: pq chunk of the neighbouring row
 `else
             mc = m3.m;
 `endif
             s = '0;
-            for (int n = 0; n < 32; n++) begin
+            for (int n = 0; n < NMAC; n++) begin
                 logic signed [19:0] wv, xv;
                 wv = $signed({{12{fr_r[8 * n + 7]}}, fr_r[8 * n +: 8]});
-                xv = $signed({13'd0, pq[32 * int'(mc) + n]});
+                xv = $signed({13'd0, pq[NMAC * int'(mc) + n]});
                 s = s + wv * xv;
             end
             m4 <= m3;
@@ -194,20 +215,21 @@ module qb_head #(parameter int NQ = 4, parameter int NK = 512, parameter int NFR
         end
     logic signed [19:0] psa, psb;                                        // HP: partial sums (products 0..15, 16..31)
     if (HP) begin : g_hp
-        logic [6:0] xs [32];
+        localparam int NH = NMAC / 2;
+        logic [6:0] xs [NMAC];
         always_ff @(posedge clk) begin
-            logic [3:0] mc2;
+            logic [MW-1:0] mc2;
             logic signed [19:0] sa, sb;
 `ifdef QBH_MUT_FCK
-            mc2 = fm[2].m ^ 4'd1;
+            mc2 = fm[2].m ^ MW'(1);
 `else
             mc2 = fm[2].m;
 `endif
-            for (int n = 0; n < 32; n++) xs[n] <= pq[32 * int'(mc2) + n];
+            for (int n = 0; n < NMAC; n++) xs[n] <= pq[NMAC * int'(mc2) + n];
             sa = '0; sb = '0;
-            for (int n = 0; n < 16; n++) begin
+            for (int n = 0; n < NH; n++) begin
                 sa = sa + $signed({{12{fr_r[8 * n + 7]}}, fr_r[8 * n +: 8]}) * $signed({13'd0, xs[n]});
-                sb = sb + $signed({{12{fr_r[8 * (n + 16) + 7]}}, fr_r[8 * (n + 16) +: 8]}) * $signed({13'd0, xs[n + 16]});
+                sb = sb + $signed({{12{fr_r[8 * (n + NH) + 7]}}, fr_r[8 * (n + NH) +: 8]}) * $signed({13'd0, xs[n + NH]});
             end
             psa <= sa; psb <= sb;
         end
@@ -220,8 +242,8 @@ module qb_head #(parameter int NQ = 4, parameter int NK = 512, parameter int NFR
         if (!rst_n) begin lo_vld <= 1'b0; f_done <= 1'b0; end
         else begin
             logic signed [31:0] a;
-            a = (m4.m == 4'd0 ? $signed(breg[32 * m4.j[2:0] +: 32]) : acc) + (HP ? 32'(psa) + 32'(psb) : 32'(psum));
-            lo_vld <= m4.v && !m4.b && m4.m == 4'd15;
+            a = (m4.m == MW'(0) ? $signed(breg[32 * (m4.j % 7'(G)) +: 32]) : acc) + (HP ? 32'(psa) + 32'(psb) : 32'(psum));
+            lo_vld <= m4.v && !m4.b && m4.m == MW'(NM - 1);
             f_done <= m4.v && m4.last;
             if (m4.v && !m4.b) acc <= a;
             lo_val <= a; lo_idx <= m4.j;
@@ -235,5 +257,5 @@ module qb_head #(parameter int NQ = 4, parameter int NK = 512, parameter int NFR
     // ================================================================ checks: pq / FC conflicts (overlap), overruns
     always_ff @(posedge clk or negedge rst_n)
         if (!rst_n) err <= 1'b0;
-        else err <= err | rq_ovr | (pq_wr && fc_busy) | (pool_done && fc_busy) | (c_nrows > 11'(NFR));
+        else err <= err | rq_ovr | (pq_wr && fc_busy) | (pool_done && fc_busy) | (c_nrows > AW'(NFR));
 endmodule

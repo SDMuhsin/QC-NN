@@ -1,0 +1,19 @@
+design qb_head_FW128_HP1 top qb_head corner tt period_ns 1.65 topo 1 wire_load topo
+cell_area_um2 643556.890415 gate_eq_kGE 446.91 cells 51366 regs 7202
+setup_wns_ns 0.00165987 setup_tns_ns 0.000 setup_viol_endpoints 0
+setup_worst_path g_hp_xs_reg_4__5_/CP -> psa_reg_17_/D
+hold_wns_ns -0.0667687 hold_tns_ns -0.789 hold_viol_endpoints 25
+hold_worst_path g_f128_f_ren_q_reg/CP -> g_f128_u_m/g_mac_g_f2_u_mac/CEN
+dc_wall_s 240
+wall 4:07.38 peak_rss_mb 2579
+# macro_cells.rpt
+g_f128.u_m/g_mac.g_f2.u_mac qb_f_3232x128m8 466266.968750
+# PT (impl/r4/run.sh pt, DC topo parasitics)
+design qb_head corner tt lib tcbn65gplustc_ccs period_ns 1.65 parasitics dc_topo_estimate
+setup_wns_ns 0.207889 setup_tns_ns 0.000 setup_viol_endpoints 0
+hold_wns_ns 0.023825 hold_tns_ns 0.000 hold_viol_endpoints 0
+clock qb_clk period_ns 1.650 wns_ns 0.208 fmax_mhz 693.4 path m0_reg_19_/CP -> p1_reg_47_/D
+design qb_head corner ss lib tcbn65gpluswc_ccs period_ns 1.65 parasitics dc_topo_estimate
+setup_wns_ns -0.581078 setup_tns_ns -25.244 setup_viol_endpoints 60
+hold_wns_ns 0.066177 hold_tns_ns 0.000 hold_viol_endpoints 0
+clock qb_clk period_ns 1.650 wns_ns -0.581 fmax_mhz 448.2 path m0_reg_19_/CP -> p1_reg_47_/D

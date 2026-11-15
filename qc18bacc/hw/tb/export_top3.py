@@ -15,6 +15,9 @@ Export: runs export_top2.main (network program in OUTDIR/prog, per-image img.txt
                     exactly these x fscale (asserted)
 --check: reads img<i>/logits_rtl.txt (written by tb_qb_chip) and asserts torch.equal(rtl.double() * fscale,
   IntBin2(x)) per image.  Imports export_top2 / supply (nothing copied).
+R5e: --fc 128 (default 256) writes the rows of qb_head FW = 128 (qb_chip QB_HEAD_FW 128): 128-b rows, per group of 4
+  classes one bias row (4 x int32) then per class 32 weight rows (chunk m: W8[j, 16 m + n] at bits [8 n +: 8]); 3 225
+  rows (macro 3 232 deep).
 """
 import argparse
 import os
@@ -29,21 +32,23 @@ from qc18bacc.compile import supply as SU  # noqa: E402
 import export_top2 as ET2  # noqa: E402
 
 LANES, DEPTH, NDEEP, ROWB = 4, 408, 4, 256          # FC macro: rf_sp 408 x 64 mux 4, 4 lanes x 4 deep
+CAP = {256: DEPTH * NDEEP, 128: 3232}               # FC rows: 256 b as above; 128 b: sram_sp_adv 3232 x 128 mux 8 (R5e)
 
 
-def fc_rows(net):
+def fc_rows(net, bits=ROWB):
     W = net.fW8.long().cpu()
     b = net.fbq.long().cpu()
     nc, nk = W.shape
-    assert nk % 32 == 0 and (W.abs() <= 127).all()
+    G, NM = bits // 32, bits // 8                    # classes per bias row, int8 weights per row
+    assert nk % NM == 0 and (W.abs() <= 127).all()
     assert (b.abs() + 512 * 127 * 127 < 2 ** 31).all(), "logit may overflow int32"
     rows = []
-    for g in range(0, nc, 8):
-        rows.append(sum((int(b[j]) & 0xFFFFFFFF) << (32 * (j - g)) for j in range(g, min(g + 8, nc))))
-        for j in range(g, min(g + 8, nc)):
-            for m in range(nk // 32):
-                rows.append(sum((int(W[j, 32 * m + n]) & 0xFF) << (8 * n) for n in range(32)))
-    assert len(rows) <= DEPTH * NDEEP
+    for g in range(0, nc, G):
+        rows.append(sum((int(b[j]) & 0xFFFFFFFF) << (32 * (j - g)) for j in range(g, min(g + G, nc))))
+        for j in range(g, min(g + G, nc)):
+            for m in range(nk // NM):
+                rows.append(sum((int(W[j, NM * m + n]) & 0xFF) << (8 * n) for n in range(NM)))
+    assert len(rows) <= CAP[bits]
     return rows
 
 
@@ -64,6 +69,7 @@ def main():
     ap.add_argument("--n", type=int, default=100)
     ap.add_argument("--cache", required=True)
     ap.add_argument("--check", action="store_true")
+    ap.add_argument("--fc", type=int, default=ROWB, choices=sorted(CAP), help="FC weight port b / cycle (qb_head FW)")
     a = ap.parse_args()
     if not a.check:
         sys.argv = [sys.argv[0], a.ckpt, a.out, "--cache", a.cache, "--n", str(a.n), "--images", *map(str, a.images)]
@@ -82,9 +88,9 @@ def main():
                   f"{'PASS' if eq else 'FAIL'}; argmax {int(ref.argmax())}", flush=True)
         return 0 if ok else 1
     pd = os.path.join(a.out, "prog")
-    rows = fc_rows(net)
+    rows = fc_rows(net, a.fc)
     with open(os.path.join(pd, "fc_rows.txt"), "w") as fh:
-        fh.writelines(format(r, "064x") + "\n" for r in rows)
+        fh.writelines(format(r, f"0{a.fc // 4}x") + "\n" for r in rows)
     m0, sh = int(net.pool_m[0][0]), int(net.pool_m[1][0])
     assert net.pool_m[0].numel() == 1 and 0 < m0 < 2 ** 31 and 1 <= sh < 64
     last = len(prog.passes) - 1

@@ -1,0 +1,34 @@
+design qb_head_HP1 top qb_head corner tt period_ns 1.65 topo 1 wire_load topo
+cell_area_um2 959067.761807 gate_eq_kGE 666.02 cells 55302 regs 7582
+setup_wns_ns 0.000396252 setup_tns_ns 0.000 setup_viol_endpoints 0
+setup_worst_path g_hp_xs_reg_31__5_/CP -> psb_reg_18_/D
+hold_wns_ns -0.00190891 hold_tns_ns -0.020 hold_viol_endpoints 28
+hold_worst_path m4_reg_j__1_/CP -> lo_idx_reg_1_/D
+dc_wall_s 266
+wall 4:33.33 peak_rss_mb 2596
+# macro_cells.rpt
+g_f256.g_fl[0].g_fd[0].u_m/g_mac.g_f.u_mac qb_f_408x64m4 47871.812500
+g_f256.g_fl[0].g_fd[1].u_m/g_mac.g_f.u_mac qb_f_408x64m4 47871.812500
+g_f256.g_fl[0].g_fd[2].u_m/g_mac.g_f.u_mac qb_f_408x64m4 47871.812500
+g_f256.g_fl[0].g_fd[3].u_m/g_mac.g_f.u_mac qb_f_408x64m4 47871.812500
+g_f256.g_fl[1].g_fd[0].u_m/g_mac.g_f.u_mac qb_f_408x64m4 47871.812500
+g_f256.g_fl[1].g_fd[1].u_m/g_mac.g_f.u_mac qb_f_408x64m4 47871.812500
+g_f256.g_fl[1].g_fd[2].u_m/g_mac.g_f.u_mac qb_f_408x64m4 47871.812500
+g_f256.g_fl[1].g_fd[3].u_m/g_mac.g_f.u_mac qb_f_408x64m4 47871.812500
+g_f256.g_fl[2].g_fd[0].u_m/g_mac.g_f.u_mac qb_f_408x64m4 47871.812500
+g_f256.g_fl[2].g_fd[1].u_m/g_mac.g_f.u_mac qb_f_408x64m4 47871.812500
+g_f256.g_fl[2].g_fd[2].u_m/g_mac.g_f.u_mac qb_f_408x64m4 47871.812500
+g_f256.g_fl[2].g_fd[3].u_m/g_mac.g_f.u_mac qb_f_408x64m4 47871.812500
+g_f256.g_fl[3].g_fd[0].u_m/g_mac.g_f.u_mac qb_f_408x64m4 47871.812500
+g_f256.g_fl[3].g_fd[1].u_m/g_mac.g_f.u_mac qb_f_408x64m4 47871.812500
+g_f256.g_fl[3].g_fd[2].u_m/g_mac.g_f.u_mac qb_f_408x64m4 47871.812500
+g_f256.g_fl[3].g_fd[3].u_m/g_mac.g_f.u_mac qb_f_408x64m4 47871.812500
+# PT (impl/r4/run.sh pt, DC topo parasitics)
+design qb_head corner tt lib tcbn65gplustc_ccs period_ns 1.65 parasitics dc_topo_estimate
+setup_wns_ns 0.207093 setup_tns_ns 0.000 setup_viol_endpoints 0
+hold_wns_ns 0.023694 hold_tns_ns 0.000 hold_viol_endpoints 0
+clock qb_clk period_ns 1.650 wns_ns 0.207 fmax_mhz 693.0 path m0_reg_7_/CP -> p1_reg_50_/D
+design qb_head corner ss lib tcbn65gpluswc_ccs period_ns 1.65 parasitics dc_topo_estimate
+setup_wns_ns -0.573130 setup_tns_ns -23.602 setup_viol_endpoints 59
+hold_wns_ns 0.066177 hold_tns_ns 0.000 hold_viol_endpoints 0
+clock qb_clk period_ns 1.650 wns_ns -0.573 fmax_mhz 449.8 path m0_reg_21_/CP -> p1_reg_50_/D

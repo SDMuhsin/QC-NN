@@ -6,7 +6,7 @@
 #   qc18bacc/impl/r4/run.sh syn  <top> <period> [tag] DC (QC_TOPO default 1, QC_CORNER default tt)
 #   qc18bacc/impl/r4/run.sh pt   <tag> [corner..]     PrimeTime (pt_hook: fmax + pt_class.tcl classes)
 # Tops: qb_chip (whole chip); per-hierarchy fallbacks: qb_head, qb_act2 (top-level params as in qb_top).
-# QB_FL: other file list.  QC_BUILD (default /tmp/$USER/qc18bacc/build), QC_CORES (default 16).
+# QB_FL: other file list.  QB_MACROS_EXTRA: more macro lists to link (R5e: impl/r5e/macros.txt).  QC_BUILD (default /tmp/$USER/qc18bacc/build), QC_CORES (default 16).
 set -u
 HERE=$(cd "$(dirname "$0")" && pwd)
 ROOT=$(cd "$HERE/../../.." && pwd)
@@ -18,7 +18,7 @@ export QC_SDC=${QB_SDC:-$HERE/../constraints.sdc} QC_HOOK=$HERE/dc_hook.tcl QC_P
 export QC_CORES=${QC_CORES:-16} QC_CORNER=${QC_CORNER:-tt} QC_TOPO=${QC_TOPO:-1}
 FL=${QB_FL:-$ROOT/qc18bacc/hw/tech/qb_chip_tech.f}
 IFS=, read -r C_SS C_TT C_FF _ <<< "$QC_MC_CORNERS"
-dbs() { sed 's/#.*//' "$HERE/macros.txt" | awk 'NF >= 5 { print $1 }' |
+dbs() { sed 's/#.*//' "$HERE/macros.txt" ${QB_MACROS_EXTRA:-} | awk 'NF >= 5 { print $1 }' |
         while read -r i; do printf '%s ' "$MC/$i/${i}_$1_syn.db"; done; }
 export QC_EXTRA_DB_SS="$(dbs "$C_SS")" QC_EXTRA_DB_TT="$(dbs "$C_TT")" QC_EXTRA_DB_FF="$(dbs "$C_FF")"
 for f in $QC_EXTRA_DB_SS $QC_EXTRA_DB_TT $QC_EXTRA_DB_FF; do [ -f "$f" ] || { echo "missing macro view $f"; exit 1; }; done
