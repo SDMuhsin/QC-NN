@@ -1,0 +1,58 @@
+# est_place (pre-CTS, ideal clock, block clk latency -0.9, placement parasitics, 2.0 ns)
+step place period 2.000000 blocks 8 macros 104 worst_slack -0.000
+top2top slack_ns -7.714 fmax_mhz 102.9 u_top/g_r3b_g_rt_u_seq/g_ps_0__pf_r_reg/Q -> u_top/g_r3b_g_rt_u_seq/g_lp_0__RdB_reg/D
+top2blk slack_ns -4.697 fmax_mhz 149.3 u_top/g_r3b_u_prm/ruse_reg_0__0_/Q -> u_top/u_core/u_arr/g_c_1__u_col/pf[526]
+blk2top slack_ns -4.186 fmax_mhz 161.7 u_top/u_core/u_arr/g_c_0__u_col/w_vld_o -> u_top/s_wd_reg_20__4_/D
+top2blk_x slack_ns -1.079 fmax_mhz 324.7 u_top/fv_p_reg_2_/Q -> u_top/u_core/u_arr/g_c_7__u_col/s_rd[170]
+act slack_ns -0.535 fmax_mhz 394.5 u_top/g_dist_0__u_d/q_reg_1664_/Q -> u_top/u_core/u_arr/g_c_7__u_col/act[1664]
+any slack_ns -7.714 fmax_mhz 102.9 u_top/g_r3b_g_rt_u_seq/g_ps_0__pf_r_reg/Q -> u_top/g_r3b_g_rt_u_seq/g_lp_0__RdB_reg/D
+# est_cts (TritonCTS without -insertion_delay, propagated clock)
+step cts period 2.000000 blocks 8 macros 104 worst_slack -0.000
+top2top slack_ns -11.692 fmax_mhz 73.0 u_top/b2f_ct_reg_0__1_/Q -> u_top/b_wa_reg_1__1__6_/D
+top2blk slack_ns -8.558 fmax_mhz 94.7 u_top/g_r3b_u_prm/ruse_reg_0__0_/Q -> u_top/u_core/u_arr/g_c_1__u_col/pf[526]
+blk2top slack_ns -0.832 fmax_mhz 353.1 u_top/u_core/u_arr/g_c_0__u_col/w_vld_o -> u_top/s_wd_reg_20__4_/D
+top2blk_x slack_ns -6.825 fmax_mhz 113.3 u_top/g_r3b_u_prm/stg_t_reg_155_/Q -> u_top/u_core/u_arr/g_c_1__u_col/t2[19]
+act slack_ns -4.118 fmax_mhz 163.5 u_top/g_dist_0__u_d/q_reg_1664_/Q -> u_top/u_core/u_arr/g_c_7__u_col/act[1664]
+any slack_ns -11.692 fmax_mhz 73.0 u_top/b2f_ct_reg_0__1_/Q -> u_top/b_wa_reg_1__1__6_/D
+# cts skew
+Clock qb_clk
+Latency      CRPR       Skew
+u_top/g_r3b_u_prm/stg_t_reg_155_/CP ^
+   6.18
+u_top/u_core/u_arr/g_c_1__u_col/clk ^
+   3.51      0.00       2.68
+
+# summary.txt
+init init_tt setup_wns_ns -6.130 setup_tns_ns -218.166 hold_wns_ns -4.807 hold_tns_ns -88.683
+drc_violations NA antenna_net_violations NA antenna_pin_violations NA
+pnr_wall_s 96 wall 1:36.74 peak_rss_mb 2309
+floorplan die_um 4040.00 x 5933.40 core_um2 23865660.0 cell_um2 2511137.2 macro_um2 16651520.7 utilisation 0.803
+pdn VDD check_power_grid error: PSM-0069
+pdn VSS check_power_grid error: PSM-0069
+drc_violations NA antenna_net_violations NA antenna_pin_violations NA
+pnr_wall_s 2109 wall 35:08.49 peak_rss_mb 7398
+place die_um 4040.00 x 5933.40 core_um2 23865660.0 cell_um2 4641578.6 macro_um2 16651520.7 utilisation 0.892
+place place_tt setup_wns_ns -998.875 setup_tns_ns -583770.860 hold_wns_ns -28.453 hold_tns_ns -65.013
+cts die_um 4040.00 x 5933.40 core_um2 23865660.0 cell_um2 4655749.3 macro_um2 16651520.7 utilisation 0.893
+cts cts_tt setup_wns_ns 1000000015047466219876688855040000000000.000 setup_tns_ns 0.000 hold_wns_ns 1000000015047466219876688855040000000000.000 hold_tns_ns 0.000
+drc_violations NA antenna_net_violations NA antenna_pin_violations NA
+pnr_wall_s 1940 wall 32:20.46 peak_rss_mb 7724
+cts die_um 4040.00 x 5933.40 core_um2 23865660.0 cell_um2 4884696.7 macro_um2 16651520.7 utilisation 0.902
+cts cts_tt setup_wns_ns -11.692 setup_tns_ns -158862.254 hold_wns_ns -25.318 hold_tns_ns -85890.737
+drc_violations NA antenna_net_violations NA antenna_pin_violations NA
+pnr_wall_s 657 wall 10:57.22 peak_rss_mb 6511
+# CTS with -insertion_delay (first attempt, db/cts_insdelay.odb)
+[INFO CTS-0011]  Clock net "clk" for macros has 8 sinks.
+[INFO CTS-0011]  Clock net "clk_regs" for registers has 40793 sinks.
+[INFO CTS-0008] TritonCTS found 2 clock nets.
+QC_PNR cts die_um 4040.00 x 5933.40 core_um2 23865660.0 cell_um2 4655749.3 macro_um2 16651520.7 utilisation 0.893
+QC_PNR cts cts_tt setup_wns_ns 1000000015047466219876688855040000000000.000 setup_tns_ns 0.000 hold_wns_ns 1000000015047466219876688855040000000000.000 hold_tns_ns 0.000
+# post-CTS DRV repair (cts_drv.tcl, stopped in detailed placement)
+QC_PNR cts_drv: drv violations before 48743
+QC_PNR repair_design on 19070 nets with DRV violations (806131 nets kept)
+[INFO RSZ-0034] Found 6053 slew violations.
+[INFO RSZ-0035] Found 39 fanout violations.
+[INFO RSZ-0036] Found 1370 capacitance violations.
+[INFO RSZ-0037] Found 4344 long wires.
+[INFO RSZ-0038] Inserted 11202 buffers in 6502 nets.
+[INFO RSZ-0039] Resized 11164 instances.

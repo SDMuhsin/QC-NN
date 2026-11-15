@@ -1,0 +1,64 @@
+# r5b_t
+init init_tt setup_wns_ns -6.480 setup_tns_ns -1891.231 hold_wns_ns -4.807 hold_tns_ns -88.683
+drc_violations NA antenna_net_violations NA antenna_pin_violations NA
+pnr_wall_s 99 wall 1:38.79 peak_rss_mb 2310
+floorplan die_um 3790.00 x 5704.80 core_um2 21521052.0 cell_um2 2511137.2 macro_um2 16651520.7 utilisation 0.890
+pdn VDD check_power_grid error: PSM-0069
+pdn VSS check_power_grid error: PSM-0069
+drc_violations NA antenna_net_violations NA antenna_pin_violations NA
+pnr_wall_s 4427 wall 1:13:46 peak_rss_mb 24133
+QC_PNR macros: 112 (112 fixed by MACRO_PLACE)
+QC_PNR step floorplan done (62 s)
+QC_PNR step pdn done (296 s)
+QC_PNR drv violations after global placement: 1385931
+QC_PNR repair_design on 337451 nets with DRV violations (389746 nets kept)
+[INFO RSZ-0037] Found 87330 long wires.
+[INFO RSZ-0038] Inserted 406656 buffers in 224408 nets.
+[INFO RSZ-0039] Resized 326950 instances.
+# r5b_u
+init init_tt setup_wns_ns -6.130 setup_tns_ns -218.166 hold_wns_ns -4.807 hold_tns_ns -88.683
+drc_violations NA antenna_net_violations NA antenna_pin_violations NA
+pnr_wall_s 98 wall 1:37.49 peak_rss_mb 2308
+floorplan die_um 3790.00 x 5704.80 core_um2 21521052.0 cell_um2 2511137.2 macro_um2 16651520.7 utilisation 0.890
+pdn VDD check_power_grid error: PSM-0069
+pdn VSS check_power_grid error: PSM-0069
+drc_violations NA antenna_net_violations NA antenna_pin_violations NA
+pnr_wall_s 1365 wall 22:44.27 peak_rss_mb 7430
+drc_violations NA antenna_net_violations NA antenna_pin_violations NA
+pnr_wall_s 549 wall 9:09.33 peak_rss_mb 5783
+QC_PNR pre_place: remove_buffers 94905 instances removed
+QC_PNR drv violations after global placement: 1453633
+QC_PNR repair_design on 357880 nets with DRV violations (278352 nets kept)
+[INFO RSZ-0037] Found 30337 long wires.
+[INFO RSZ-0038] Inserted 219377 buffers in 334501 nets.
+[INFO RSZ-0039] Resized 377957 instances.
+QC_PNR gpl_incr: incremental global placement after the DRV repair, density 0.76 die_um 3790.00 x 5704.80 core_um2 21521052.0 cell_um2 5207778.7 macro_um2 16651520.7 utilisation 1.016
+[ERROR GPL-0301] Utilization exceeds 100%.
+Error: place.tcl, 20 GPL-0301
+# r5b_v
+init init_tt setup_wns_ns -6.130 setup_tns_ns -218.166 hold_wns_ns -4.807 hold_tns_ns -88.683
+drc_violations NA antenna_net_violations NA antenna_pin_violations NA
+pnr_wall_s 96 wall 1:36.74 peak_rss_mb 2309
+floorplan die_um 4040.00 x 5933.40 core_um2 23865660.0 cell_um2 2511137.2 macro_um2 16651520.7 utilisation 0.803
+pdn VDD check_power_grid error: PSM-0069
+pdn VSS check_power_grid error: PSM-0069
+drc_violations NA antenna_net_violations NA antenna_pin_violations NA
+pnr_wall_s 2109 wall 35:08.49 peak_rss_mb 7398
+place die_um 4040.00 x 5933.40 core_um2 23865660.0 cell_um2 4641578.6 macro_um2 16651520.7 utilisation 0.892
+place place_tt setup_wns_ns -998.875 setup_tns_ns -583770.860 hold_wns_ns -28.453 hold_tns_ns -65.013
+cts die_um 4040.00 x 5933.40 core_um2 23865660.0 cell_um2 4655749.3 macro_um2 16651520.7 utilisation 0.893
+cts cts_tt setup_wns_ns 1000000015047466219876688855040000000000.000 setup_tns_ns 0.000 hold_wns_ns 1000000015047466219876688855040000000000.000 hold_tns_ns 0.000
+drc_violations NA antenna_net_violations NA antenna_pin_violations NA
+pnr_wall_s 1940 wall 32:20.46 peak_rss_mb 7724
+# r5b_h
+init init_tt setup_wns_ns -6.480 setup_tns_ns -1891.231 hold_wns_ns -4.807 hold_tns_ns -88.683
+drc_violations NA antenna_net_violations NA antenna_pin_violations NA
+pnr_wall_s 211 wall 3:30.81 peak_rss_mb 2308
+floorplan die_um 3790.00 x 5704.80 core_um2 21521052.0 cell_um2 2511137.2 macro_um2 16651520.7 utilisation 0.890
+pdn VDD check_power_grid error: PSM-0069
+pdn VSS check_power_grid error: PSM-0069
+drc_violations NA antenna_net_violations NA antenna_pin_violations NA
+pnr_wall_s 3160 wall 52:40.12 peak_rss_mb 7420
+drc_violations NA antenna_net_violations NA antenna_pin_violations NA
+pnr_wall_s 595 wall 9:54.55 peak_rss_mb 2615
+QC_PNR pre_place: remove_buffers 94905 instances removed
