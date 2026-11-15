@@ -275,7 +275,7 @@ This section uses only the tagged numbers above.
    - DIANA on silicon: 70.86 % (min-cost) to 74.10 % [V].
    - Kim JSTS (simulated): 77.4 % [V].
    - PACiM (simulated): 72.36 % [V].
-   - That is a **~7.3-point accuracy deficit against the only same-task silicon** [D: 70.86 - 63.5 = 7.4]. A reviewer will pair any throughput or µJ claim with this. The comparison must be iso-accuracy or must state the gap.
+   - That is a **~7.4-point accuracy deficit against the only same-task silicon** [D: 70.86 - 63.5 = 7.4]. A reviewer will pair any throughput or µJ claim with this. The comparison must be iso-accuracy or must state the gap.
 3. **Raw macro-level area efficiency.** Lee/Verma reach 111.8 1b-normalised TOPS/mm² [A]. TSMC-style digital CIM macros (not ResNet-18, not tabulated here) are in the same range. A macro-vs-macro comparison is lost; only the system-level, weights-included comparison is won.
 4. **Node.** Every competitor except Valavi, STICKER-IM and the 65 nm simulation papers is at 12-40 nm. Without normalisation, our absolute TOPS/W and the competitors' µJ at 22 nm look closer than they are. With normalisation, the rules above are rough. Both views should be shown.
 
