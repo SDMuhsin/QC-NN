@@ -45,6 +45,13 @@
 // QB_SEQ_LSW = stored load-permission age width (qb_seq_rt), QB_PRM_NFF / NFW / NFT = qb_prm fetch-list depths,
 // QB_TOP_SROT = 1: the act-port S read rotation (s_q) as a group mux + log rotator (same function, less area),
 // QB_TOP_WBR = 1: the S write requests (stream / HQ / HQD / Z / r / b6.c2) as lane-group selects + log rotators.
+// R6a hook (parameter HPW, default 0 = the wide host port above): HPW > 0 (qb_chip define QB_HPW, results/r6a.md) =
+// narrow host port: one macro word per write, h_data[HPW-1:0] = data, h_data[HPW +: 5] = lane (all other h_data bits
+// unused).  Weights (h_sel 0): lane 0..15 = weight lane l (144 b), through a registered daisy chain of 8 stages along
+// the weight-macro row (stage s = lanes 2s, 2s + 1; write lands s + 1 cycles after this port); IMG (h_sel 2): lane
+// 0..3 = IMG macro m (128 b), one register stage (lands + 1); params bank (h_sel 1): lane 0..8 = bank macro m, chain in
+// qb_prm (3 stages of 3 macros).  Other selects: unchanged (data <= 96 b in h_data[95:0]).  Requires HSEL = 1.  A host
+// IMG write landing in a cycle the stem reads IMG sets err (single-port macro).
 `ifndef QB_SEQ_NT
 `define QB_SEQ_NT 1024
 `endif
@@ -75,7 +82,8 @@
 `ifndef QB_PRM_NFT
 `define QB_PRM_NFT 256
 `endif
-module qb_top #(parameter int DIST = 1, parameter int AP = 1, parameter bit R3B = 0, parameter bit HSEL = 0) (
+module qb_top #(parameter int DIST = 1, parameter int AP = 1, parameter bit R3B = 0, parameter bit HSEL = 0,
+              parameter int HPW = 0) (
     input  logic          clk, rst_n,
     input  logic          go,                      // start of an image (descriptors / macros loaded)
     // host load port (descriptor memories, weights, params, image)
@@ -323,10 +331,47 @@ module qb_top #(parameter int DIST = 1, parameter int AP = 1, parameter bit R3B 
     wire hw_i = HSEL ? (h_we && h_sel == 4'd2) : h_we;      // host owns the IMG address
     logic [143:0] wqm [16][3];
     logic [2303:0] cd_m, cd_r;
+    // per-lane host write (wide port: all lanes at once from h_data; R6a narrow port: daisy-chain stage l / 2)
+    logic        hw_wl [16], we_wl [16];
+    logic [9:0]  ha_wl [16];
+    logic [143:0] hd_wl [16];
+    if (HPW == 0) begin : g_hww
+        for (genvar l = 0; l < 16; l++) begin : g_l
+            assign hw_wl[l] = hw_w;  assign we_wl[l] = h_we && h_sel == 4'd0;  assign ha_wl[l] = h_addr;
+            assign hd_wl[l] = h_data[144*l +: 144];
+        end
+    end else begin : g_hwn
+        initial if (HPW < 144 || !HSEL) $fatal(1, "qb_top: HPW >= 144 and HSEL = 1 required");
+        localparam int NWS = 8;                            // chain stages, 2 lanes each
+        logic         wc_v [NWS];
+        logic [3:0]   wc_l [NWS];
+        logic [9:0]   wc_a [NWS];
+        logic [143:0] wc_d [NWS];
+        always_ff @(posedge clk or negedge rst_n)
+            if (!rst_n) for (int s = 0; s < NWS; s++) wc_v[s] <= 1'b0;
+            else begin
+                wc_v[0] <= h_we && h_sel == 4'd0;
+                for (int s = 1; s < NWS; s++) wc_v[s] <= wc_v[s - 1];
+            end
+        always_ff @(posedge clk) begin
+            if (h_we && h_sel == 4'd0) begin wc_l[0] <= h_data[HPW +: 4]; wc_a[0] <= h_addr; wc_d[0] <= h_data[143:0]; end
+            for (int s = 1; s < NWS; s++)
+                if (wc_v[s - 1]) begin wc_l[s] <= wc_l[s - 1]; wc_a[s] <= wc_a[s - 1]; wc_d[s] <= wc_d[s - 1]; end
+        end
+        for (genvar l = 0; l < 16; l++) begin : g_l
+`ifdef QBT_MUT_HPW
+            wire sel_l = wc_l[l / 2][3:1] == 3'(l / 2);  // mutant: lane LSB ignored (both lanes of a stage written)
+`else
+            wire sel_l = wc_l[l / 2] == 4'(l);
+`endif
+            assign hw_wl[l] = wc_v[l / 2] && sel_l;  assign we_wl[l] = hw_wl[l];  assign ha_wl[l] = wc_a[l / 2];
+            assign hd_wl[l] = wc_d[l / 2];
+        end
+    end
     for (genvar l = 0; l < 16; l++) begin : g_wl
         for (genvar dd = 0; dd < 3; dd++) begin : g_wd
-            qbt_rfsp #(144, 204) u_m (.clk, .ren(w_ren_q && w_d_q == dd), .we(h_we && h_sel == 4'd0 && h_addr / 10'd204 == dd),
-                                      .a(hw_w ? 8'(h_addr % 10'd204) : w_a_q), .wd(h_data[144*l +: 144]), .q(wqm[l][dd]));
+            qbt_rfsp #(144, 204) u_m (.clk, .ren(w_ren_q && w_d_q == dd), .we(we_wl[l] && ha_wl[l] / 10'd204 == dd),
+                                      .a(hw_wl[l] ? 8'(ha_wl[l] % 10'd204) : w_a_q), .wd(hd_wl[l]), .q(wqm[l][dd]));
         end
         assign cd_m[144*l +: 144] = wqm[l][w_d_m];
     end
@@ -572,9 +617,29 @@ module qb_top #(parameter int DIST = 1, parameter int AP = 1, parameter bit R3B 
                                       .wd(b_wd[mp][m]), .wm(b_wm[mp][m]), .q(b_q[mp][m]), .conf(b_rwc[4 * mp + m]));
         end
     end
+    logic hw_im [4], we_im [4], img_wr;
+    logic [6:0] ha_im [4];
+    logic [127:0] hd_im [4];
+    if (HPW == 0) begin : g_hiw
+        for (genvar m = 0; m < 4; m++) begin : g_m
+            assign hw_im[m] = hw_i;  assign we_im[m] = h_we && h_sel == 4'd2;  assign ha_im[m] = h_addr[6:0];
+            assign hd_im[m] = h_data[128*m +: 128];
+        end
+        assign img_wr = 1'b0;
+    end else begin : g_hin                                  // R6a: one register stage next to the IMG macros
+        logic ic_v;  logic [1:0] ic_l;  logic [6:0] ic_a;  logic [127:0] ic_d;
+        always_ff @(posedge clk or negedge rst_n) if (!rst_n) ic_v <= 1'b0; else ic_v <= h_we && h_sel == 4'd2;
+        always_ff @(posedge clk)
+            if (h_we && h_sel == 4'd2) begin ic_l <= h_data[HPW +: 2]; ic_a <= h_addr[6:0]; ic_d <= h_data[127:0]; end
+        for (genvar m = 0; m < 4; m++) begin : g_m
+            assign hw_im[m] = ic_v && ic_l == 2'(m);  assign we_im[m] = hw_im[m];  assign ha_im[m] = ic_a;
+            assign hd_im[m] = ic_d;
+        end
+        assign img_wr = ic_v;
+    end
     for (genvar m = 0; m < 4; m++) begin : g_img
-        qbt_rfsp #(128, 128) u_m (.clk, .ren(m_ren && m_src == 2'd2), .we(h_we && h_sel == 4'd2),
-                                  .a(hw_i ? h_addr[6:0] : m_ra[6:0]), .wd(h_data[128*m +: 128]), .q(i_q[m]));
+        qbt_rfsp #(128, 128) u_m (.clk, .ren(m_ren && m_src == 2'd2), .we(we_im[m]),
+                                  .a(hw_im[m] ? ha_im[m] : m_ra[6:0]), .wd(hd_im[m]), .q(i_q[m]));
     end
     always_ff @(posedge clk) begin m_src_q <= m_src; m_f_q <= fsw(m_ra[6:0]); end
     always_comb
@@ -1094,7 +1159,7 @@ module qb_top #(parameter int DIST = 1, parameter int AP = 1, parameter bit R3B 
 `endif
         assign seq_err = seq_err_rt | lk_err;
         end
-        qb_prm #(.HSEL(HSEL), .NFF(`QB_PRM_NFF), .NFW(`QB_PRM_NFW), .NFT(`QB_PRM_NFT)) u_prm (
+        qb_prm #(.HSEL(HSEL), .NFF(`QB_PRM_NFF), .NFW(`QB_PRM_NFW), .NFT(`QB_PRM_NFT), .HPW(HPW)) u_prm (
             .clk, .rst_n, .go, .h_we, .h_sel, .h_addr, .h_d(h_data[1295:0]),
             .u_early({ce_.v && ce_.cmp, we_.v && we_.k == 5'd0, fe_.v && (fe_.hm ? fe_.k == 5'd3 : fe_.k == 5'd0)}),
             .u_use({cu_.v && cu_.cmp, wp.v && wp.k == 5'd0, fp.v && (fp.hm ? fp.k == 5'd3 : fp.k == 5'd0)}),
@@ -1116,7 +1181,7 @@ module qb_top #(parameter int DIST = 1, parameter int AP = 1, parameter bit R3B 
     // ================================================================ checks (sticky error)
     always_ff @(posedge clk or negedge rst_n)
         if (!rst_n) err <= 1'b0;
-        else err <= err | seq_err | prm_err | a_err | s_conf | rd_conf | f_rconf | (|s_rwc) | (|b_rwc) | u_conf | bw_conf | b2_ovf | f_ovl | w_ovl |
+        else err <= err | (img_wr && m_ren && m_src == 2'd2) | seq_err | prm_err | a_err | s_conf | rd_conf | f_rconf | (|s_rwc) | (|b_rwc) | u_conf | bw_conf | b2_ovf | f_ovl | w_ovl |
                    (b2_vld && !(bo.v && bo.cmp)) | (f_vld_o && !fo.v) | (w_vld_o && !wo.v) |
                    (fo.v && !f_vld_o) | (wo.v && !w_vld_o);
 

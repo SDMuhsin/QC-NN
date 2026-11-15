@@ -8,12 +8,22 @@
 //   * every array tile end of every image cycle-exact vs that image's static-order model (sched.txt X);
 //   * no IMG read while the host may write IMG; err never set.
 // Reports per image: go cycle, interval to the next go, image cycles (RTL end, model M), head latency.
+// R6a (+define+QB_HPW=W, qb_chip narrow host port): every wide word is written as macro words (weights 16 x 144 b,
+// params 9 x 144, IMG line 4 x 128, h_lane = index; other selects one write), the next image one 128-b word per
+// cycle; h_go of image 0 waits the port latency (10 cycles).  Reports the program / image load cycles (QB_CHIP_HPW).
 module tb_qb_chip;
     localparam int AP = 1, NP = 32, MAXI = 8;
     logic clk = 0, rst_n = 0, h_we = 0, h_go = 0;
     logic [4:0] h_sel = 0;
     logic [10:0] h_addr = 0;
+`ifdef QB_HPW
+    localparam int HPW = `QB_HPW;
+    logic [HPW-1:0] h_data = 0;
+    logic [4:0] h_lane = 0;
+    int nwr = 0, nwr_w = 0, ld_lane = 0, ldone_c [MAXI];
+`else
     logic [5188:0] h_data = 0;
+`endif
     logic st_idle, st_img_free, st_head_busy, lo_vld, err;
     logic [6:0] lo_idx;
     logic [31:0] lo_val;
@@ -47,9 +57,24 @@ module tb_qb_chip;
     int free_c [MAXI], pq0_c [MAXI], fcd_c [MAXI], nfcd;
 
     task automatic tick(); #5 clk = 1; #5 clk = 0; endtask
+`ifndef QB_HPW
     task automatic hw(int sel, int addr, logic [5188:0] data);
         h_we = 1; h_sel = 5'(sel); h_addr = 11'(addr); h_data = data; tick(); h_we = 0;
     endtask
+`else
+    task automatic hw(int sel, int addr, logic [5188:0] data);
+        int nl, lw;
+        nl = sel == 0 ? 16 : sel == 1 ? 9 : sel == 2 ? 4 : 1;
+        lw = sel == 2 ? 128 : sel <= 1 ? 144 : HPW;
+        if ((data >> (nl * lw)) != 0) $fatal(1, "hw: sel %0d word wider than %0d x %0d b", sel, nl, lw);
+        nwr_w++;
+        for (int l = 0; l < nl; l++) begin
+            h_we = 1; h_sel = 5'(sel); h_addr = 11'(addr); h_lane = 5'(l); h_data = HPW'((data >> (lw * l)) & ((5189'(1) << lw) - 1));
+            tick(); nwr++;
+        end
+        h_we = 0; h_lane = 0;
+    endtask
+`endif
     task automatic load_f(string f, int sel, int cid, bit counted);
         int c;
         fp = $fopen({pdir, "/", f}, "r");
@@ -101,6 +126,10 @@ module tb_qb_chip;
         load_f("fc_rows.txt", 16, -1, 0);
         load_f("head.txt", 17, -1, 1);
         for (int l = 0; l < 128; l++) hw(2, l, 5189'(img[0][l]));
+`ifdef QB_HPW
+        $display("QB_CHIP_HPW HPW %0d program + image 0 load: %0d host write cycles (wide port: %0d)", HPW, nwr, nwr_w);
+        repeat (10) tick();                                           // narrow port latency before the first h_go
+`endif
         // ---- stream
         nfcd = 0;
         cur = 0; ld_img = 1; ld_line = 0; lo_img = 0; img_rd_err = 0; timeout = 0;
@@ -146,9 +175,17 @@ module tb_qb_chip;
                 for (int p = 0; p < NP; p++) for (int t = 0; t < 64; t++) for (int u = 0; u < 8; u++) ce_rtl[p][t][u] = -1;
                 cur++;
             end else if (ld_img < N && ld_img == cur && st_img_free) begin
+`ifndef QB_HPW
                 h_we = 1; h_sel = 5'd2; h_addr = 11'(ld_line); h_data = 5189'(img[ld_img][ld_line]);
                 ld_line++;
                 if (ld_line == 128) begin ld_line = 0; ld_img++; end
+`else
+                h_we = 1; h_sel = 5'd2; h_addr = 11'(ld_line); h_lane = 5'(ld_lane);
+                h_data = HPW'(img[ld_img][ld_line][128 * ld_lane +: 128]);
+                ld_lane++;
+                if (ld_lane == 4) begin ld_lane = 0; ld_line++; end
+                if (ld_line == 128) begin ld_line = 0; ldone_c[ld_img] = cyc; ld_img++; end
+`endif
             end
 `ifndef QBT_GLS
             // tile ends of the running image (time base: now of that image)
@@ -199,6 +236,11 @@ module tb_qb_chip;
                          (i + 1 < N) ? $sformatf("%0d", go_c[i + 1] - go_c[i]) : "-", nlg[i], ncls, lg_err[i], nX[i], cyc_err[i],
                          lg_last[i] - go_c[i], lg_last[i] - end_c[i], ok ? "PASS" : "FAIL");
             end
+`ifdef QB_HPW
+            for (int i = 0; i + 1 < N; i++)
+                $display("QB_CHIP_HPW img %0d loaded (512 writes) from img_free of img %0d (+%0d) to +%0d after its go, %0d cycles before its end (go of img %0d)",
+                         i + 1, i, free_c[i] - go_c[i], ldone_c[i + 1] - go_c[i], end_c[i] - ldone_c[i + 1], i + 1);
+`endif
             for (int i = 0; i + 1 < N; i++)
                 $display("QB_CHIP_OVERLAP img %0d FC done %0d, img %0d first pq write %0d: slack %0d cycles", i, fcd_c[i], i + 1,
                          pq0_c[i + 1], pq0_c[i + 1] - fcd_c[i]);

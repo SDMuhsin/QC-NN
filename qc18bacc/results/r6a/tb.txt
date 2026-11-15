@@ -1,0 +1,39 @@
+## n144 s1
+QB_CHIP_HPW HPW 144 program + image 0 load: 16899 host write cycles (wide port: 5446)
+QB_CHIP img 0 /tmp/root/qc18bacc/r6a/s1/img13 go 0 img_free +275 end +3836 (rtl_end 3836 model 3835 delta 1) interval 3836 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7086 (after end +3250) PASS
+QB_CHIP img 1 /tmp/root/qc18bacc/r6a/s1/img55 go 3836 img_free +275 end +3764 (rtl_end 3764 model 3763 delta 1) interval - logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7014 (after end +3250) PASS
+QB_CHIP_HPW img 1 loaded (512 writes) from img_free of img 0 (+275) to +786 after its go, 3050 cycles before its end (go of img 1)
+QB_CHIP_OVERLAP img 0 FC done 7086, img 1 first pq write 7492: slack 406 cycles
+QB_CHIP_TB images 2 err 0 img_read_err 0 timeout 0 head_err 0 PASS
+## n144 s0
+QB_CHIP_HPW HPW 144 program + image 0 load: 16899 host write cycles (wide port: 5446)
+QB_CHIP img 0 /tmp/root/qc18bacc/r6a/s0/img0 go 0 img_free +275 end +3748 (rtl_end 3748 model 3747 delta 1) interval 3748 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +6998 (after end +3250) PASS
+QB_CHIP img 1 /tmp/root/qc18bacc/r6a/s0/img1 go 3748 img_free +275 end +3788 (rtl_end 3788 model 3787 delta 1) interval - logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7038 (after end +3250) PASS
+QB_CHIP_HPW img 1 loaded (512 writes) from img_free of img 0 (+275) to +786 after its go, 2962 cycles before its end (go of img 1)
+QB_CHIP_OVERLAP img 0 FC done 6998, img 1 first pq write 7428: slack 430 cycles
+QB_CHIP_TB images 2 err 0 img_read_err 0 timeout 0 head_err 0 PASS
+## mhpw s1
+QB_CHIP_HPW HPW 144 program + image 0 load: 16899 host write cycles (wide port: 5446)
+CYCLE_MISMATCH img 0 pass 16 tile 0 ct 0: rtl ce 2145 model 2156
+CYCLE_MISMATCH img 0 pass 16 tile 0 ct 1: rtl ce 2183 model 2205
+CYCLE_MISMATCH img 0 pass 16 tile 0 ct 2: rtl ce 2221 model 2254
+MISMATCH img 0 class 0 logit -675 exp -1333
+MISMATCH img 0 class 1 logit -651 exp -1847
+MISMATCH img 0 class 2 logit 2981 exp 1500
+CYCLE_MISMATCH img 1 pass 16 tile 0 ct 0: rtl ce 2144 model 2154
+CYCLE_MISMATCH img 1 pass 16 tile 0 ct 1: rtl ce 2181 model 2201
+CYCLE_MISMATCH img 1 pass 16 tile 0 ct 2: rtl ce 2218 model 2248
+MISMATCH img 1 class 0 logit -516 exp 2668
+MISMATCH img 1 class 1 logit -936 exp -464
+MISMATCH img 1 class 2 logit 3083 exp -629
+QB_CHIP img 0 /tmp/root/qc18bacc/r6a/s1/img13 go 0 img_free +275 end +3508 (rtl_end 3508 model 3835 delta -327) interval 3508 logits 100/100 err 100 tiles 600 cycle_mismatch 40 last_logit +6758 (after end +3250) FAIL
+## def s1
+QB_CHIP img 0 /tmp/root/qc18bacc/r6a/s1/img13 go 0 img_free +275 end +3836 (rtl_end 3836 model 3835 delta 1) interval 3836 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7086 (after end +3250) PASS
+QB_CHIP img 1 /tmp/root/qc18bacc/r6a/s1/img55 go 3836 img_free +275 end +3764 (rtl_end 3764 model 3763 delta 1) interval - logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7014 (after end +3250) PASS
+QB_CHIP_OVERLAP img 0 FC done 7086, img 1 first pq write 7492: slack 406 cycles
+QB_CHIP_TB images 2 err 0 img_read_err 0 timeout 0 head_err 0 PASS
+## beh s1
+QB_CHIP img 0 /tmp/root/qc18bacc/r6a/s1/img13 go 0 img_free +275 end +3836 (rtl_end 3836 model 3835 delta 1) interval 3836 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7086 (after end +3250) PASS
+QB_CHIP img 1 /tmp/root/qc18bacc/r6a/s1/img55 go 3836 img_free +275 end +3764 (rtl_end 3764 model 3763 delta 1) interval - logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7014 (after end +3250) PASS
+QB_CHIP_OVERLAP img 0 FC done 7086, img 1 first pq write 7492: slack 406 cycles
+QB_CHIP_TB images 2 err 0 img_read_err 0 timeout 0 head_err 0 PASS

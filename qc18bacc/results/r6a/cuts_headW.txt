@@ -1,0 +1,103 @@
+# from -> to | bus (driver sub -> sink subs; blk.<pin> = block port) | edge | bits | src registered bits | dst registered bits (all sinks seq / macro / block)
+BLK -> S   | blk.f_y                                                                | S  |   4096 |   4096 |      0
+BLK -> S   | blk.b2                                                                 | S  |   1024 |   1024 |      0
+BLK -> S   | blk.w_y                                                                | S  |    608 |    608 |      0
+BLK -> S   | blk.f_b                                                                | S  |    256 |    256 |      0
+BLK -> S   | blk.w_b                                                                | S  |     32 |     32 |      0
+BLK -> S   | blk.f_vld_o                                                            | S  |      1 |      1 |      0
+BLK -> S   | blk.w_vld_o                                                            | S  |      1 |      1 |      0
+BLK -> S   | blk.b2_vld                                                             | S  |      1 |      1 |      0
+BLK -> W   | blk.f_y                                                                | S  |   4096 |   4096 |      0
+BLK -> W   | blk.act_o                                                              | E  |      7 |      7 |      0
+BLK -> W   | blk.f_vld_o                                                            | S  |      1 |      1 |      0
+BLK -> W   | blk.w_vld_o                                                            | S  |      1 |      1 |      0
+IO  -> BLK | ->blk.clk from port                                                    | N  |      1 |      1 |      1 | cols 8
+IO  -> BLK | ->blk.rst_n from port                                                  | N  |      1 |      1 |      1 | cols 8
+IO  -> N   | port h_data -> qb_w                                                    |    |   2304 |   2304 |   2304
+IO  -> N   | port h_addr -> glue                                                    |    |     10 |     10 |      0
+IO  -> N   | port h_sel -> glue                                                     |    |      4 |      4 |      0
+IO  -> N   | port clk -> glue                                                       |    |      1 |      1 |      1
+IO  -> N   | port rst_n -> glue                                                     |    |      1 |      1 |      1
+IO  -> S   | port h_data -> qb_p                                                    |    |    784 |    784 |    784
+IO  -> S   | port h_data -> qb_i,qb_p                                               |    |    487 |    487 |    487
+IO  -> S   | port h_data -> prm,qb_i,qb_p                                           |    |     25 |     25 |     25
+IO  -> S   | port h_addr -> glue,prm                                                |    |      7 |      7 |      0
+IO  -> S   | port h_sel -> glue,prm                                                 |    |      4 |      4 |      0
+IO  -> S   | port clk -> glue,prm                                                   |    |      1 |      1 |      1
+IO  -> S   | port h_addr -> prm                                                     |    |      1 |      1 |      0
+IO  -> S   | port h_go -> glue,prm                                                  |    |      1 |      1 |      0
+IO  -> S   | port rst_n -> glue,prm                                                 |    |      1 |      1 |      0
+IO  -> W   | port h_data -> qb_f                                                    |    |     34 |     34 |     34
+IO  -> W   | port h_data -> glue,qb_d,qb_f                                          |    |     34 |     34 |     34
+IO  -> W   | port h_data -> chip,glue,qb_d,qb_f,seq                                 |    |     30 |     30 |     20
+IO  -> W   | port h_data -> glue,qb_f                                               |    |     14 |     14 |     14
+IO  -> W   | port h_data -> qb_d,qb_f                                               |    |     10 |     10 |     10
+IO  -> W   | port h_addr -> glue,head,seq                                           |    |      5 |      5 |      0
+IO  -> W   | port h_data -> glue,qb_d,qb_f,seq                                      |    |      5 |      5 |      5
+IO  -> W   | port h_addr -> chip,glue,head,seq                                      |    |      3 |      3 |      0
+IO  -> W   | port h_sel -> chip,seq                                                 |    |      3 |      3 |      0
+IO  -> W   | port h_addr -> head,seq                                                |    |      2 |      2 |      0
+IO  -> W   | port clk -> act,chip,dist,glue,head,seq                                |    |      1 |      1 |      1
+IO  -> W   | port h_addr -> head                                                    |    |      1 |      1 |      0
+IO  -> W   | port h_data -> chip,qb_d,qb_f,seq                                      |    |      1 |      1 |      1
+IO  -> W   | port h_go -> chip,glue,seq                                             |    |      1 |      1 |      0
+IO  -> W   | port h_sel -> chip,glue,seq                                            |    |      1 |      1 |      0
+IO  -> W   | port h_sel -> chip                                                     |    |      1 |      1 |      0
+IO  -> W   | port h_we -> chip                                                      |    |      1 |      1 |      0
+IO  -> W   | port rst_n -> act,chip,glue,head,seq                                   |    |      1 |      1 |      0
+N   -> BLK | ->blk.cd from glue                                                     | N  |   2304 |   2304 |   2304 | cols 8
+N   -> BLK | ->blk.ctl from glue                                                    | N  |      8 |      8 |      8 | cols 8
+N   -> W   | glue -> glue                                                           |    |      1 |      0 |      0
+S   -> BLK | ->blk.pf from prm                                                      | S  |   5184 |      0 |   5184 | cols 8
+S   -> BLK | ->blk.pw from prm                                                      | S  |   5056 |   5056 |   5056 | cols 8
+S   -> BLK | ->blk.s_rd from glue                                                   | S  |   4096 |      0 |   4096 | cols 8
+S   -> BLK | ->blk.t2 from prm                                                      | N  |   1088 |   1088 |   1088 | cols 8
+S   -> BLK | ->blk.w_r from glue                                                    | S  |    608 |      0 |    608 | cols 8
+S   -> BLK | ->blk.f_src from glue                                                  | S  |      8 |      0 |      8 | cols 8
+S   -> BLK | ->blk.pf from glue                                                     | S  |      5 |      0 |      5 | cols 8
+S   -> BLK | ->blk.pw from glue                                                     | S  |      3 |      0 |      3 | cols 8
+S   -> BLK | ->blk.ctl from glue                                                    | N  |      2 |      0 |      2 | cols 8
+S   -> BLK | ->blk.f_sh from glue                                                   | S  |      1 |      0 |      1 | cols 8
+S   -> BLK | ->blk.f_vld from glue                                                  | S  |      1 |      1 |      1 | cols 8
+S   -> BLK | ->blk.w_ld from glue                                                   | S  |      1 |      0 |      1 | cols 8
+S   -> BLK | ->blk.p_ld from glue                                                   | S  |      1 |      0 |      1 | cols 8
+S   -> BLK | ->blk.w_sh from glue                                                   | S  |      1 |      0 |      1 | cols 8
+S   -> BLK | ->blk.w_vld from glue                                                  | S  |      1 |      1 |      1 | cols 8
+S   -> W   | qb_s -> glue                                                           |    |   4096 |   4096 |      0
+S   -> W   | qb_b -> glue                                                           |    |   1024 |   1024 |      0
+S   -> W   | glue -> glue                                                           |    |    640 |    407 |      0
+S   -> W   | qb_i -> glue                                                           |    |    512 |    512 |      0
+S   -> W   | glue -> seq                                                            |    |    200 |    200 |      0
+S   -> W   | glue -> head                                                           |    |      5 |      5 |      3
+S   -> W   | glue -> chip,head                                                      |    |      5 |      5 |      0
+S   -> W   | prm -> glue                                                            |    |      1 |      1 |      0
+W   -> BLK | ->blk.act from dist                                                    | W  |   4608 |   4607 |   4608 | cols 1
+W   -> BLK | ->blk.act from glue?                                                   | W  |      7 |      0 |      7 | cols 1
+W   -> IO  | head -> port                                                           |    |     41 |     40 |     41
+W   -> IO  | glue -> port                                                           |    |     16 |     16 |     16
+W   -> IO  | chip -> port                                                           |    |      3 |      1 |      3
+W   -> N   | glue -> glue                                                           |    |    527 |    522 |      0
+W   -> N   | act -> glue                                                            |    |     16 |      2 |      8
+W   -> N   | chip -> glue                                                           |    |      1 |      0 |      0
+W   -> S   | glue -> glue                                                           |    |    473 |    426 |      0
+W   -> S   | seq -> glue                                                            |    |     44 |      0 |     15
+W   -> S   | chip -> glue                                                           |    |     37 |      0 |      0
+W   -> S   | act -> glue                                                            |    |     11 |     11 |      0
+W   -> S   | act -> glue,qb_b                                                       |    |      7 |      7 |      0
+W   -> S   | glue -> prm                                                            |    |      5 |      0 |      0
+W   -> S   | chip -> glue,prm                                                       |    |      1 |      0 |      0
+# totals per group pair: bits, src registered, dst registered, neither
+TOTAL BLK -> S      6019    6019       0
+TOTAL BLK -> W      4105    4105       0
+TOTAL IO  -> BLK       2       2       2
+TOTAL IO  -> N      2320    2320    2306
+TOTAL IO  -> S      1311    1311    1297
+TOTAL IO  -> W       148     148     119
+TOTAL N   -> BLK    2312    2312    2312
+TOTAL N   -> W         1       0       0
+TOTAL S   -> BLK   16056    6146   16056
+TOTAL S   -> W      6483    6250       3
+TOTAL W   -> BLK    4615    4607    4615
+TOTAL W   -> IO       60      57      60
+TOTAL W   -> N       544     524       8
+TOTAL W   -> S       578     444      15

@@ -1,0 +1,29 @@
+design qb_chip top qb_chip corner tt period_ns 1.65 topo 1 wire_load topo
+cell_area_um2 16243579.708220 gate_eq_kGE 11280.26 cells 623589 regs 133660
+setup_wns_ns -5.21876 setup_tns_ns -24524.825 setup_viol_endpoints 45391
+setup_worst_path u_top/g_dist_0__u_d/q_reg_4071_/CP -> u_top/u_core/u_arr/g_c_7__u_col/act[4071]
+hold_wns_ns -0.6097 hold_tns_ns -4893.758 hold_viol_endpoints 18680
+hold_worst_path u_top/u_core/u_arr/g_c_2__u_col/clk -> u_top/s_wd_reg_2__41_/D
+dc_wall_s 2961
+wall 49:33.19 peak_rss_mb 9450
+
+# r6a_hpw144/rpt/area.rpt: top qb_chip, total cell area 16243580 um2, macros 13933919, logic 2309661
+core: other (port regs, cmp, ctl)                       logic_um2         2521 mm2 0.003
+core: total                                             logic_um2         2521 mm2 0.003
+act supply (qb_act2)                                    logic_um2       830984 mm2 0.831
+sequencer (qb_seq)                                      logic_um2       547413 mm2 0.547
+params path (qb_prm)                                    logic_um2       239190 mm2 0.239
+head (qb_head)                                          logic_um2       165850 mm2 0.166
+u_top macro wrappers                                    logic_um2        11321 mm2 0.011  (n 92)
+top glue in qb_top (write-back, delay lines, dist)      logic_um2       498824 mm2 0.499
+qb_chip glue (host port, head cfg)                      logic_um2        13557 mm2 0.014
+logic total                                             logic_um2      2309661 mm2 2.310
+macro qb_b_128x128m1       n   8 um2     406136 mm2 0.406
+macro qb_d_624x80m8        n   2 um2     235847 mm2 0.236
+macro qb_f_3232x128m8      n   1 um2     466267 mm2 0.466
+macro qb_i_128x128m1       n   4 um2     135424 mm2 0.135
+macro qb_p_240x144m2       n   9 um2     536415 mm2 0.536
+macro qb_s_256x128m1       n  32 um2    2497343 mm2 2.497
+macro qb_w_204x144m2       n  48 um2    2670888 mm2 2.671
+macro total n 104 mm2 6.948
+chip total (logic + macros) mm2 16.244

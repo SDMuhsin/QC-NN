@@ -347,8 +347,11 @@ endmodule
 // HSEL (R3c hook, default 0): 1 = the bank address follows the host only on a bank write (h_sel 1), see qb_top.
 // R4b: NFF / NFW / NFT = fetch-list depths of the fused / wide / T2 consumers (default 256 = R3b); the R4b chip sizes
 // them to the program capacity (s0 / s1: 156 / 24 / 106 sets; a host write beyond the depth is an error in simulation).
+// R6a: HPW > 0 (qb_top narrow host port): a bank write (h_sel 1) carries one macro word, h_d[MW-1:0] = data,
+// h_d[HPW +: 4] = macro index m, through a registered chain of NM / 3 stages along the bank (stage s = macros 3s ..
+// 3s + 2; the write lands s + 1 cycles after this port).  Fetch lists / counts unchanged.
 module qb_prm #(parameter int NM = 9, parameter int MW = 144, parameter int DEP = 240, parameter bit HSEL = 0,
-                parameter int NFF = 256, parameter int NFW = 256, parameter int NFT = 256) (
+                parameter int NFF = 256, parameter int NFW = 256, parameter int NFT = 256, parameter int HPW = 0) (
     input  logic         clk, rst_n, go,
     input  logic         h_we,
     input  logic [3:0]   h_sel,                   // 1 bank row, 12 / 13 / 14 fetch list f / w / t, 15 counts (8..10)
@@ -389,9 +392,33 @@ module qb_prm #(parameter int NM = 9, parameter int MW = 144, parameter int DEP 
     endfunction
     // ---- bank
     logic        b_ren;  logic [7:0] b_a;  logic [RW-1:0] b_q;
-    for (genvar m = 0; m < NM; m++) begin : g_pm
-        qbt_rfsp #(MW, DEP) u_m (.clk, .ren(b_ren), .we(h_we && h_sel == 4'd1), .a((HSEL ? (h_we && h_sel == 4'd1) : h_we) ? h_addr[7:0] : b_a),
-                                 .wd(h_d[MW*m +: MW]), .q(b_q[MW*m +: MW]));
+    if (HPW == 0) begin : g_bw
+        for (genvar m = 0; m < NM; m++) begin : g_pm
+            qbt_rfsp #(MW, DEP) u_m (.clk, .ren(b_ren), .we(h_we && h_sel == 4'd1), .a((HSEL ? (h_we && h_sel == 4'd1) : h_we) ? h_addr[7:0] : b_a),
+                                     .wd(h_d[MW*m +: MW]), .q(b_q[MW*m +: MW]));
+        end
+    end else begin : g_bn
+        localparam int NPS = (NM + 2) / 3;
+        initial if (HPW < MW || !HSEL) $fatal(1, "qb_prm: HPW >= MW and HSEL = 1 required");
+        logic          pc_v [NPS];
+        logic [3:0]    pc_l [NPS];
+        logic [7:0]    pc_a [NPS];
+        logic [MW-1:0] pc_d [NPS];
+        always_ff @(posedge clk or negedge rst_n)
+            if (!rst_n) for (int s = 0; s < NPS; s++) pc_v[s] <= 1'b0;
+            else begin
+                pc_v[0] <= h_we && h_sel == 4'd1;
+                for (int s = 1; s < NPS; s++) pc_v[s] <= pc_v[s - 1];
+            end
+        always_ff @(posedge clk) begin
+            if (h_we && h_sel == 4'd1) begin pc_l[0] <= h_d[HPW +: 4]; pc_a[0] <= h_addr[7:0]; pc_d[0] <= h_d[MW-1:0]; end
+            for (int s = 1; s < NPS; s++)
+                if (pc_v[s - 1]) begin pc_l[s] <= pc_l[s - 1]; pc_a[s] <= pc_a[s - 1]; pc_d[s] <= pc_d[s - 1]; end
+        end
+        for (genvar m = 0; m < NM; m++) begin : g_pm
+            wire hwm = pc_v[m / 3] && pc_l[m / 3] == 4'(m);
+            qbt_rfsp #(MW, DEP) u_m (.clk, .ren(b_ren), .we(hwm), .a(hwm ? pc_a[m / 3] : b_a), .wd(pc_d[m / 3]), .q(b_q[MW*m +: MW]));
+        end
     end
     // ---- per consumer state
     logic [7:0] rf [3], rfree [3], ruse [3], uf [3], uu [3];

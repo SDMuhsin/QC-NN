@@ -1,0 +1,99 @@
+TOTAL roots(listed) 132788 buf/inv 274014 rsz-inserted 191340 area_mm2 2.102 long>1mm 51122 long>2mm 16622
+class (driver -> leaf groups)                                                                roots    bufs     rsz   %rsz    mm2   >1mm  %>1mm   >2mm
+u_top -> u_top                                                                               15051   42601   30174   15.8  0.337   4144    8.1   1100
+u_top/g_rNb_g_rt_u_seq -> u_top/g_rNb_g_rt_u_seq                                              8702   35021   29660   15.5  0.308   2784    5.4   1133
+host:h_data                                                                                   2104   26038   26028   13.6  0.258   1397    2.7   1296
+u_top/u_act/u_sN -> u_top/u_act                                                              13108   25985   22453   11.7  0.244   5360   10.5   1558
+u_top/g_rNb_u_prm/g_pm_N__u_m -> u_top/g_rNb_u_prm                                            1296   13139   13139    6.9  0.135   1296    2.5   1296
+u_top/u_act/g_ctx_N__u_ctx/u_lb -> u_top/u_act                                               45327   55652   10589    5.5  0.177    406    0.8    187
+u_top/u_act -> u_top/u_act                                                                    2240   12431   10495    5.5  0.118   1293    2.5    314
+u_top/u_core/u_arr -> u_head,u_top                                                            4096   14993    8995    4.7  0.102   4096    8.0   3119
+u_top/g_s_N__u_m -> u_top                                                                     3996    6747    6745    3.5  0.070   2956    5.8    528
+u_top/g_rNb_u_prm -> BLK                                                                     11328    6216    6212    3.2  0.065  11328   22.2    598
+u_top/u_core/u_arr -> u_top                                                                   1922    6136    5131    2.7  0.054   1922    3.8   1356
+u_top/g_map_N__g_mm_N__u_m -> u_top                                                            773    3825    3604    1.9  0.037    772    1.5    257
+u_top -> u_top/u_act                                                                          1165    3526    3521    1.8  0.036    111    0.2     24
+u_top -> BLK                                                                                  7363    4120    3415    1.8  0.038   7363   14.4   3172
+u_head -> u_head                                                                              2823    4197    2217    1.2  0.026    546    1.1    177
+u_top/g_dist_N__u_d -> BLK                                                                    3958    1419    1417    0.7  0.015   3320    6.5     64
+u_top/g_rNb_u_prm -> u_top/g_rNb_u_prm                                                         604    1689    1139    0.6  0.012     13    0.0      9
+u_head/g_q_N__u_lq -> u_head/g_q_N__u_lq                                                       923    1573     669    0.3  0.005     24    0.0     21
+u_top -> MAC:qb_s_NxNmN                                                                        647     892     668    0.3  0.008    147    0.3    144
+u_head/g_q_N__u_lq -> u_head                                                                    28     610     417    0.2  0.005      6    0.0      0
+u_top -> MAC:qb_s_NxNmN,u_top/g_s_N__u_m,u_top/g_s_N__u_m,u_top/g_s_N__u_m,u_top/g_s_N__u_      51     443     405    0.2  0.004     51    0.1     51
+host:rst_n                                                                                       1     379     369    0.2  0.003      1    0.0      1
+u_head -> PORT_OUT                                                                              36     337     337    0.2  0.003      0    0.0      0
+u_top -> BLK,u_top                                                                              37     865     315    0.2  0.005     37    0.1     35
+host:h_addr                                                                                     11     364     302    0.2  0.003     11    0.0     11
+u_top/u_act/g_ctx_N__u_ctx -> u_top/u_act                                                     1099    1414     263    0.1  0.004     29    0.1      2
+u_top -> MAC:qb_w_NxNmN                                                                          8     261     261    0.1  0.003      8    0.0      8
+u_top -> PORT_OUT,u_top,u_top/g_rNb_g_rt_u_seq                                                  16     246     218    0.1  0.002     16    0.0     16
+u_top -> MAC:qb_s_NxNmN,u_top/g_s_N__u_m                                                        83     249     205    0.1  0.002     60    0.1     33
+u_head/g_fN_u_m -> u_head                                                                      128     198     198    0.1  0.002      0    0.0      0
+u_head -> u_head/g_q_N__u_lq                                                                    85     189     171    0.1  0.002     15    0.0      0
+host:h_go                                                                                        1     170     135    0.1  0.001      1    0.0      1
+u_top -> MAC:qb_s_NxNmN,u_top/g_s_N__u_m,u_top/g_s_N__u_m                                       22     121     119    0.1  0.001     22    0.0     19
+host:h_sel                                                                                       5      89      84    0.0  0.001      5    0.0      5
+u_top/u_act -> MAC:qb_b_NxNmN,u_top,u_top/g_map_N__g_mm_N__u_m,u_top/g_map_N__g_mm_N__u_m,       7      86      79    0.0  0.001      7    0.0      7
+u_top -> MAC:qb_w_NxNmN,u_top/g_wl_N__g_wd_N__u_m,u_top/g_wl_N__g_wd_N__u_m,u_top/g_wl_N__       3      87      78    0.0  0.001      3    0.0      3
+u_top/u_act/g_pipe_N__u_ap -> u_top/g_dist_N__u_d                                               73      73      73    0.0  0.001     31    0.1      0
+u_top/g_rNb_g_rt_u_seq/u_ds -> u_top/g_rNb_g_rt_u_seq                                           43     116      73    0.0  0.001     43    0.1      0
+u_top -> u_head,u_top                                                                            5      83      71    0.0  0.001      5    0.0      1
+u_top/g_img_N__u_m -> u_top                                                                    263     199      71    0.0  0.001      0    0.0      0
+u_top/u_core/u_arr -> BLK                                                                        7      82      68    0.0  0.001      0    0.0      0
+u_top/g_rNb_u_prm -> MAC:qb_p_NxNmN                                                              8      59      59    0.0  0.001      8    0.0      8
+u_top -> MAC:qb_s_NxNmN,u_top/g_s_N__u_m,u_top/g_s_N__u_m,u_top/g_s_N__u_m,u_top/g_s_N__u_       8      58      49    0.0  0.001      8    0.0      8
+u_top -> MAC:qb_b_NxNmN                                                                        121      76      44    0.0  0.001      1    0.0      0
+u_top -> u_top,u_top/u_act                                                                      11      47      39    0.0  0.000      0    0.0      0
+by long nets:
+u_top/g_rNb_u_prm -> BLK                                                                     11328  11328   22.2
+u_top -> BLK                                                                                  7363   7363   14.4
+u_top/u_act/u_sN -> u_top/u_act                                                              13108   5360   10.5
+u_top -> u_top                                                                               15051   4144    8.1
+u_top/u_core/u_arr -> u_head,u_top                                                            4096   4096    8.0
+u_top/g_dist_N__u_d -> BLK                                                                    3958   3320    6.5
+u_top/g_s_N__u_m -> u_top                                                                     3996   2956    5.8
+u_top/g_rNb_g_rt_u_seq -> u_top/g_rNb_g_rt_u_seq                                              8702   2784    5.4
+u_top/u_core/u_arr -> u_top                                                                   1922   1922    3.8
+host:h_data                                                                                   2104   1397    2.7
+u_top/g_rNb_u_prm/g_pm_N__u_m -> u_top/g_rNb_u_prm                                            1296   1296    2.5
+u_top/u_act -> u_top/u_act                                                                    2240   1293    2.5
+u_top/u_act/g_ctx_N__u_ctx/u_lb/clk_gate_lb -> u_top/u_act                                    1024   1024    2.0
+u_top/g_map_N__g_mm_N__u_m -> u_top                                                            773    772    1.5
+u_head -> u_head                                                                              2823    546    1.1
+u_top/u_act/g_ctx_N__u_ctx/u_lb -> u_top/u_act                                               45327    406    0.8
+u_top/g_rNb_g_rt_u_seq/clk_gate_stb -> u_top/g_rNb_g_rt_u_seq                                  640    320    0.6
+u_top -> MAC:qb_s_NxNmN                                                                        647    147    0.3
+u_top -> u_top/u_act                                                                          1165    111    0.2
+u_top -> MAC:qb_s_NxNmN,u_top/g_s_N__u_m                                                        83     60    0.1
+u_top -> MAC:qb_s_NxNmN,u_top/g_s_N__u_m,u_top/g_s_N__u_m,u_top/g_s_N__u_m,u_top/g_s_N__u_      51     51    0.1
+u_top/g_rNb_g_rt_u_seq/u_ds -> u_top/g_rNb_g_rt_u_seq                                           43     43    0.1
+u_top -> BLK,u_top                                                                              37     37    0.1
+u_top/u_act/g_pipe_N__u_ap -> u_top/g_dist_N__u_d                                               73     31    0.1
+u_top/u_act/g_ctx_N__u_ctx -> u_top/u_act                                                     1099     29    0.1
+u_top/clk_gate_bNf_d -> u_top                                                                   64     25    0.0
+u_head/g_q_N__u_lq -> u_head/g_q_N__u_lq                                                       923     24    0.0
+u_top -> MAC:qb_s_NxNmN,u_top/g_s_N__u_m,u_top/g_s_N__u_m                                       22     22    0.0
+u_top -> PORT_OUT,u_top,u_top/g_rNb_g_rt_u_seq                                                  16     16    0.0
+u_head -> u_head/g_q_N__u_lq                                                                    85     15    0.0
+u_top/g_rNb_u_prm -> u_top/g_rNb_u_prm                                                         604     13    0.0
+host:h_addr                                                                                     11     11    0.0
+u_top/g_rNb_g_rt_u_seq -> MAC:qb_d_NxNmN                                                        20     10    0.0
+u_top/g_rNb_u_prm/clk_gate_stg_t -> u_top/g_rNb_u_prm                                           21     10    0.0
+u_top -> MAC:qb_b_NxNmN,u_top/g_map_N__g_mm_N__u_m                                              42      9    0.0
+u_top -> MAC:qb_w_NxNmN                                                                          8      8    0.0
+u_top -> MAC:qb_s_NxNmN,u_top/g_s_N__u_m,u_top/g_s_N__u_m,u_top/g_s_N__u_m,u_top/g_s_N__u_       8      8    0.0
+u_top/g_rNb_g_rt_u_seq/clk_gate_g_lp_N__nx_w -> u_top/g_rNb_g_rt_u_seq                          10      8    0.0
+u_top/g_rNb_u_prm -> MAC:qb_p_NxNmN                                                              8      8    0.0
+u_top/u_act -> MAC:qb_b_NxNmN,u_top,u_top/g_map_N__g_mm_N__u_m,u_top/g_map_N__g_mm_N__u_m,       7      7    0.0
+u_head/g_q_N__u_lq -> u_head                                                                    28      6    0.0
+host:h_sel                                                                                       5      5    0.0
+u_top -> u_head,u_top                                                                            5      5    0.0
+u_top/g_wl_N__g_wd_N__u_m -> MAC:qb_w_NxNmN,u_top/g_wl_N__g_wd_N__u_m                           48      5    0.0
+u_top/g_rNb_g_rt_u_seq/clk_gate_lt -> u_top/g_rNb_g_rt_u_seq                                   639      4    0.0
+H load_slewN 1675
+H max_lengthN 4412
+H wireN 142049
+H max_capN 70
+H fanoutN 41055
+H UN 59694

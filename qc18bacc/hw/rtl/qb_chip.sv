@@ -26,12 +26,28 @@
 `ifndef QB_HEAD_FW
 `define QB_HEAD_FW 256
 `endif
-module qb_chip #(parameter int DIST = 1, parameter int AP = 1) (
+// R6a: define QB_HPW = W (undefined by default: the wide port above) = narrow host port (results/r6a.md): h_data[W-1:0]
+// + h_lane[4:0], one macro word per write: h_sel 0 weight row h_addr, lane 0..15 (144 b each; 16 writes per row),
+// h_sel 1 params bank row, lane 0..8 (144 b; 9 writes), h_sel 2 IMG line, lane 0..3 (128 b; 4 writes), every other
+// select one write as before (<= 128 b, lane 0).  W >= 144, QB_HEAD_FW = 128.  The write inputs pass one IO register
+// stage here (h_go does not: h_go / st_* / image timing are unchanged); weights / IMG / params then go through
+// registered per-group stages in qb_top / qb_prm (qb_top header).  A write lands at most HL = 10 cycles after it is
+// given; h_go within HL cycles of a host write sets err.  The IMG contract (write only while st_img_free) is unchanged;
+// an IMG write landing in a stem IMG read cycle sets err (qb_top).
+`ifdef QB_HPW
+`define QB_HPW_V `QB_HPW
+`else
+`define QB_HPW_V 0
+`endif
+module qb_chip #(parameter int DIST = 1, parameter int AP = 1, parameter int HPW = `QB_HPW_V) (
     input  logic          clk, rst_n,
     input  logic          h_we,
     input  logic [4:0]    h_sel,
     input  logic [10:0]   h_addr,
-    input  logic [5188:0] h_data,
+    input  logic [(HPW > 0 ? HPW : 5189) - 1:0] h_data,
+`ifdef QB_HPW
+    input  logic [4:0]    h_lane,
+`endif
     input  logic          h_go,
     output logic          st_idle, st_img_free, st_head_busy,
     output logic          lo_vld,
@@ -40,20 +56,47 @@ module qb_chip #(parameter int DIST = 1, parameter int AP = 1) (
     output logic          err,
     output logic [15:0]   now
 );
+    // ---------------------------------------------------------------- host port (R6a: narrow port IO register)
+    logic          i_we, hp_err;
+    logic [4:0]    i_sel;
+    logic [10:0]   i_addr;
+    logic [5188:0] i_data;
+    if (HPW == 0) begin : g_hpw
+        assign i_we = h_we;  assign i_sel = h_sel;  assign i_addr = h_addr;  assign i_data = h_data;  assign hp_err = 1'b0;
+    end else begin : g_hpn
+        localparam int HL = 10;                                          // IO register + weight chain (8) + macro
+        logic [HPW-1:0] q_d;  logic [4:0] q_l;  logic [3:0] hcnt;
+`ifdef QB_HPW
+        wire [4:0] lane = h_lane;
+`else
+        wire [4:0] lane = 5'd0;
+`endif
+        always_ff @(posedge clk or negedge rst_n)
+            if (!rst_n) begin i_we <= 1'b0; hcnt <= 4'(HL); end
+            else begin
+                i_we <= h_we;
+                hcnt <= h_we ? 4'd0 : (hcnt == 4'(HL) ? hcnt : hcnt + 4'd1);
+            end
+        always_ff @(posedge clk) if (h_we) begin i_sel <= h_sel; i_addr <= h_addr; q_d <= h_data; q_l <= lane; end
+        assign i_data = 5189'({q_l, q_d});
+        always_ff @(posedge clk or negedge rst_n)
+            if (!rst_n) hp_err <= 1'b0; else hp_err <= hp_err | (h_go && (h_we || hcnt < 4'(HL - 1)));
+    end
     // ---------------------------------------------------------------- head configuration
     logic [30:0] c_m0;  logic [5:0] c_sh;  logic [4:0] c_last, c_stem;  logic [7:0] c_nfo, c_nst;
     localparam int FW = `QB_HEAD_FW, FAW = FW == 128 ? 12 : 11;
+    initial if (HPW > 0 && (HPW < FW || HPW < 144)) $fatal(1, "qb_chip: QB_HPW must be >= 144 and >= QB_HEAD_FW");
     logic [6:0]  c_ncls;  logic [FAW-1:0] c_nrows;
     always_ff @(posedge clk)
-        if (h_we && h_sel == 5'd17) unique case (h_addr[2:0])
-            3'd0: c_m0 <= h_data[30:0];
-            3'd1: c_sh <= h_data[5:0];
-            3'd2: c_last <= h_data[4:0];
-            3'd3: c_nfo <= h_data[7:0];
-            3'd4: c_stem <= h_data[4:0];
-            3'd5: c_nst <= h_data[7:0];
-            3'd6: c_ncls <= h_data[6:0];
-            default: c_nrows <= h_data[FAW-1:0];
+        if (i_we && i_sel == 5'd17) unique case (i_addr[2:0])
+            3'd0: c_m0 <= i_data[30:0];
+            3'd1: c_sh <= i_data[5:0];
+            3'd2: c_last <= i_data[4:0];
+            3'd3: c_nfo <= i_data[7:0];
+            3'd4: c_stem <= i_data[4:0];
+            3'd5: c_nst <= i_data[7:0];
+            3'd6: c_ncls <= i_data[6:0];
+            default: c_nrows <= i_data[FAW-1:0];
         endcase
 
     // ---------------------------------------------------------------- engine
@@ -68,8 +111,8 @@ module qb_chip #(parameter int DIST = 1, parameter int AP = 1) (
 `else
     localparam bit HS = 1'b1;
 `endif
-    qb_top #(.DIST(DIST), .AP(AP), .R3B(1), .HSEL(HS)) u_top (
-        .clk, .rst_n, .go(h_go), .h_we(h_we && !h_sel[4]), .h_sel(h_sel[3:0]), .h_addr(h_addr[9:0]), .h_data, .now,
+    qb_top #(.DIST(DIST), .AP(AP), .R3B(1), .HSEL(HS), .HPW(HPW)) u_top (
+        .clk, .rst_n, .go(h_go), .h_we(i_we && !i_sel[4]), .h_sel(i_sel[3:0]), .h_addr(i_addr[9:0]), .h_data(i_data), .now,
         .err(t_err), .wb_fv, .dbg_wv, .dbg_bv, .wb_fpi, .dbg_wpi, .dbg_bpi, .dbg_ftp, .wb_fct, .wb_fk, .wb_fy,
         .dbg_fb, .dbg_wy, .dbg_wb, .dbg_b2, .dbg_av, .ae_ctx, .ae_eot, .dbg_af, .dbg_aneg, .dbg_astem, .dbg_ag3n,
         .dbg_apl, .dbg_act_ct, .dbg_ach, .dbg_atile, .dbg_act, .ae_pic0, .ae_pic1, .dbg_sa(8'd0), .dbg_sq);
@@ -103,22 +146,22 @@ module qb_chip #(parameter int DIST = 1, parameter int AP = 1) (
     logic          fc_we;
     logic [FAW-1:0] fc_a;
     if (FW == 128) begin : g_fc128                                       // rows 2048.. via h_sel 18
-        assign fc_we = h_we && (h_sel == 5'd16 || h_sel == 5'd18);
+        assign fc_we = i_we && (i_sel == 5'd16 || i_sel == 5'd18);
 `ifdef QBC_MUT_FHI
-        assign fc_a  = {1'b0, h_addr};                                   // mutant: upper FC rows overwrite rows 0..
+        assign fc_a  = {1'b0, i_addr};                                   // mutant: upper FC rows overwrite rows 0..
 `else
-        assign fc_a  = {h_sel == 5'd18, h_addr};
+        assign fc_a  = {i_sel == 5'd18, i_addr};
 `endif
     end else begin : g_fc256
-        assign fc_we = h_we && h_sel == 5'd16;
-        assign fc_a  = h_addr;
+        assign fc_we = i_we && i_sel == 5'd16;
+        assign fc_a  = i_addr;
     end
     qb_head #(.HP(`QB_HEAD_HP), .FW(FW)) u_head (
-        .clk, .rst_n, .fc_we, .h_addr(fc_a), .h_d(h_data[FW-1:0]), .c_m0, .c_sh, .c_last, .c_ncls,
+        .clk, .rst_n, .fc_we, .h_addr(fc_a), .h_d(i_data[FW-1:0]), .c_m0, .c_sh, .c_last, .c_ncls,
         .c_nrows, .f_v(wb_fv), .f_pi(wb_fpi), .f_ct(wb_fct), .f_k(wb_fk), .f_y(wb_fy), .lo_vld, .lo_idx, .lo_val,
         .pool_done, .fc_busy, .busy(st_head_busy), .err(h_err));
 
     always_ff @(posedge clk or negedge rst_n)
         if (!rst_n) err <= 1'b0;
-        else err <= err | t_err | h_err | (h_go && busy) | (h_we && h_sel == 5'd2 && !st_img_free);
+        else err <= err | t_err | h_err | hp_err | (h_go && busy) | (h_we && h_sel == 5'd2 && !st_img_free);
 endmodule
