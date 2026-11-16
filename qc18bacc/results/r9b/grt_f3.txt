@@ -1,0 +1,49 @@
+gcell 3.0 um; overflowed gcells 140147 of 752780 = 18.62 %; records H 134580 V 50049; total overflow H 1214540 V 348083 tracks
+REGION west  overflowed gcells      3 =   0.0 % of region; overflow H      3 V      0 tracks
+REGION col0  overflowed gcells  11908 =  16.2 % of region; overflow H  30071 V   4153 tracks
+REGION col1  overflowed gcells  22983 =  31.2 % of region; overflow H 181600 V  36633 tracks
+REGION col2  overflowed gcells  25070 =  34.1 % of region; overflow H 315459 V  94443 tracks
+REGION col3  overflowed gcells  28840 =  39.2 % of region; overflow H 353815 V 138225 tracks
+REGION col4  overflowed gcells  24847 =  33.8 % of region; overflow H 197827 V  57414 tracks
+REGION col5  overflowed gcells  19757 =  26.9 % of region; overflow H 115714 V  15904 tracks
+REGION col6  overflowed gcells   6739 =   9.2 % of region; overflow H  20051 V   1311 tracks
+REGION col7  overflowed gcells      0 =   0.0 % of region; overflow H      0 V      0 tracks
+# class: share of net-tracks in overflowed gcells | overflow left if the class's tracks vanished (of 1562623)
+CLASS glue:fy-reg>s-in        16.5 % | overflow left 824573 ( 52.8 % of base)
+CLASS MACRO:qb_p Q            14.1 % | overflow left 1122013 ( 71.8 % of base)
+CLASS fyreg>s-in              14.1 % | overflow left 956428 ( 61.2 % of base)
+CLASS glue:s-Q>act-out        12.6 % | overflow left 949852 ( 60.8 % of base)
+CLASS MACRO:qb_s Q            11.9 % | overflow left 987917 ( 63.2 % of base)
+CLASS glue regs                5.6 % | overflow left 1233856 ( 79.0 % of base)
+CLASS glue:reg>s-in            4.9 % | overflow left 1278270 ( 81.8 % of base)
+CLASS port in                  4.4 % | overflow left 1316455 ( 84.2 % of base)
+CLASS glue:reg>col-out         4.2 % | overflow left 1349233 ( 86.3 % of base)
+CLASS pcol                     2.7 % | overflow left 1412017 ( 90.4 % of base)
+CLASS f_y path                 1.5 % | overflow left 1480531 ( 94.7 % of base)
+CLASS glue:reg>act-out         1.4 % | overflow left 1478145 ( 94.6 % of base)
+CLASS glue:reg>top-out         1.2 % | overflow left 1483960 ( 95.0 % of base)
+CLASS prm                      1.2 % | overflow left 1492750 ( 95.5 % of base)
+FAMILY write-back (f_y regs -> rotators -> S/B write)   share  37.0 % | overflow left 543121 ( 34.8 %), overflowed records left 74205 of 184629
+FAMILY S-read -> act port (S Q + rotator)               share  24.5 % | overflow left 641560 ( 41.1 %), overflowed records left 94676 of 184629
+FAMILY params Q -> pf / pw                              share  14.1 % | overflow left 1122013 ( 71.8 %), overflowed records left 143180 of 184629
+FAMILY write-back + S-read                              share  61.6 % | overflow left 283942 ( 18.2 %), overflowed records left 32059 of 184629
+FAMILY all three                                        share  75.7 % | overflow left   6411 (  0.4 %), overflowed records left 2004 of 184629
+
+# demand / nominal capacity in % per layer and region (guides; M1 / macro OBS not subtracted)
+layer dir pitch   west   col0   col1   col2   col3   col4   col5   col6   col7  total
+M1    H 0.20   11.1    5.7    8.9   13.9   14.6    9.7    7.7    6.0    5.3    9.4
+M2    V 0.20   34.4   24.1   28.8   32.9   35.3   30.4   27.8   23.7   18.5   29.1
+M3    H 0.20   28.5   31.5   41.3   47.7   49.2   42.2   37.8   29.8   18.8   35.4
+M4    V 0.20   25.5   37.5   42.9   49.2   54.6   48.6   44.4   39.0   34.0   39.8
+M5    H 0.20   23.8   44.3   55.6   64.3   67.6   62.5   53.1   38.5   15.5   44.4
+M6    V 0.20   17.2   25.7   29.4   36.4   38.9   35.2   29.9   23.4    9.7   26.1
+M7    H 0.20    6.5   16.2   20.7   24.4   24.8   22.4   18.6   13.1    4.9   15.6
+M8    V 0.80    5.0   12.1   14.4   20.8   21.6   20.4   13.9    9.1    1.8   12.2
+M9    H 0.80    6.0   15.9   20.6   26.2   27.1   23.4   19.2   13.9    4.0   16.0
+
+groute groute_tt setup_wns_ns -3.730 setup_tns_ns -27707.611 hold_wns_ns -1.674 hold_tns_ns -31151.470
+r9b grt tt setup_wns_ns -3.730 fmax_est_mhz 179.2
+YREGION S rows y 361-1300 H 253002
+YREGION S rows y 361-1300 V 214970
+YREGION band y>1300 H 961538
+YREGION band y>1300 V 133113

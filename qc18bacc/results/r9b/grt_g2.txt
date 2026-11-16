@@ -1,0 +1,51 @@
+gcell 3.0 um; overflowed gcells 145481 of 752780 = 19.33 %; records H 145020 V 57085; total overflow H 2092602 V 371187 tracks
+REGION west  overflowed gcells      5 =   0.0 % of region; overflow H      3 V      2 tracks
+REGION col0  overflowed gcells  16977 =  23.1 % of region; overflow H  73496 V   5884 tracks
+REGION col1  overflowed gcells  23057 =  31.3 % of region; overflow H 360652 V  73728 tracks
+REGION col2  overflowed gcells  23119 =  31.4 % of region; overflow H 468274 V  88067 tracks
+REGION col3  overflowed gcells  23942 =  32.5 % of region; overflow H 459169 V  95547 tracks
+REGION col4  overflowed gcells  22759 =  30.9 % of region; overflow H 382715 V  81902 tracks
+REGION col5  overflowed gcells  22586 =  30.7 % of region; overflow H 286436 V  24232 tracks
+REGION col6  overflowed gcells  13036 =  17.7 % of region; overflow H  61857 V   1825 tracks
+REGION col7  overflowed gcells      0 =   0.0 % of region; overflow H      0 V      0 tracks
+# class: share of net-tracks in overflowed gcells | overflow left if the class's tracks vanished (of 2463789)
+CLASS glue:fy-reg>s-in        20.6 % | overflow left 1238622 ( 50.3 % of base)
+CLASS MACRO:qb_p Q            12.7 % | overflow left 1795459 ( 72.9 % of base)
+CLASS fyreg>s-in              11.7 % | overflow left 1707255 ( 69.3 % of base)
+CLASS glue:s-Q>act-out        11.6 % | overflow left 1678247 ( 68.1 % of base)
+CLASS MACRO:qb_s Q            11.1 % | overflow left 1725304 ( 70.0 % of base)
+CLASS glue regs                6.6 % | overflow left 1976227 ( 80.2 % of base)
+CLASS glue:reg>s-in            4.4 % | overflow left 2139567 ( 86.8 % of base)
+CLASS pcol                     4.0 % | overflow left 2190617 ( 88.9 % of base)
+CLASS port in                  3.9 % | overflow left 2164394 ( 87.8 % of base)
+CLASS glue:reg>col-out         3.4 % | overflow left 2216993 ( 90.0 % of base)
+CLASS prm                      2.6 % | overflow left 2285514 ( 92.8 % of base)
+CLASS glue:reg>reg             1.3 % | overflow left 2371467 ( 96.3 % of base)
+CLASS f_y path                 1.2 % | overflow left 2384962 ( 96.8 % of base)
+CLASS glue:reg>top-out         1.1 % | overflow left 2377752 ( 96.5 % of base)
+FAMILY write-back (f_y regs -> rotators -> S/B write)   share  37.9 % | overflow left 878497 ( 35.7 %), overflowed records left 74337 of 202105
+FAMILY S-read -> act port (S Q + rotator)               share  22.7 % | overflow left 1097997 ( 44.6 %), overflowed records left 123749 of 202105
+FAMILY params Q -> pf / pw                              share  12.7 % | overflow left 1795459 ( 72.9 %), overflowed records left 165414 of 202105
+FAMILY write-back + S-read                              share  60.6 % | overflow left 487017 ( 19.8 %), overflowed records left 39442 of 202105
+FAMILY all three                                        share  73.3 % | overflow left  28638 (  1.2 %), overflowed records left 6739 of 202105
+
+# demand / nominal capacity in % per layer and region (guides; M1 / macro OBS not subtracted)
+layer dir pitch   west   col0   col1   col2   col3   col4   col5   col6   col7  total
+M1    H 0.20   12.1    6.6   13.4   17.5   17.0   14.6   10.7    6.3    5.0   11.5
+M2    V 0.20   37.7   26.0   32.3   32.6   33.3   33.1   30.4   24.5   17.9   30.7
+M3    H 0.20   29.7   34.7   49.0   52.7   52.0   48.6   45.2   31.2   16.9   38.7
+M4    V 0.20   28.0   38.9   42.7   43.8   44.9   43.4   41.5   33.2   32.3   37.5
+M5    H 0.20   25.9   50.0   58.1   59.3   59.4   54.5   47.2   34.8   14.7   42.6
+M6    V 0.20   20.5   28.5   31.4   31.9   33.8   33.6   31.2   28.0   13.6   27.1
+M7    H 0.20    7.0   18.6   21.4   21.8   20.8   19.2   17.4   13.3    5.2   15.0
+M8    V 0.80    7.0   14.0   18.3   17.5   17.7   18.9   17.2   11.9    3.0   13.1
+M9    H 0.80    6.2   18.3   20.3   22.3   22.7   20.0   19.0   15.3    4.6   15.3
+
+summary.txt:cts die_um 3990.00 x 1700.60 core_um2 6726996.0 cell_um2 1844370.7 macro_um2 4041585.7 utilisation 0.875
+summary.txt:cts cts_tt setup_wns_ns -3.474 setup_tns_ns -22387.605 hold_wns_ns -1.501 hold_tns_ns -26790.374
+summary.txt:groute groute_tt setup_wns_ns -5.485 setup_tns_ns -30421.474 hold_wns_ns -1.684 hold_tns_ns -32031.181
+summary.txt:r9b grt tt setup_wns_ns -5.485 fmax_est_mhz 136.3
+../r9b_g/summary.txt:place die_um 3990.00 x 1700.60 core_um2 6726996.0 cell_um2 1759488.1 macro_um2 4041585.7 utilisation 0.862
+../r9b_g/summary.txt:place place_tt setup_wns_ns -1.886 setup_tns_ns -5141.908 hold_wns_ns -0.073 hold_tns_ns -5.016
+QC_PNR r9b: incremental gpl after the last DRV repair, density 0.8 die_um 3990.00 x 1700.60 core_um2 6726996.0 cell_um2 1605795.5 macro_um2 4041585.7 utilisatio
+QC_PNR r9b dmap: 3429 over-full bins (west_strip 1520, band 26368, macro_channel/halo 46875, north_edge 438 um2 excess)
