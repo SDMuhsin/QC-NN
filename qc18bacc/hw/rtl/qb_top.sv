@@ -575,13 +575,19 @@ module qb_top #(parameter int DIST = 1, parameter int AP = 1, parameter bit R3B 
     // R7e QB_TOP_RSH: shared rotator (HQ write | S read); inputs rsh_hq / rsh_xw / rsh_l0 from the write-back below
     logic rsh_hq;  logic [3:0] rsh_l0;  logic [2047:0] rsh_xw, rsh_o;
     if (`QB_TOP_RSH) begin : g_rsh
+        // QB_TOP_RSH = 2 (R7h): select from a register (S-read data cycle = s_ren one cycle earlier, S-read priority)
+        // instead of rsh_hq (from the column's f_vld_o, a late block output); equal while HQ and S read are exclusive
+        // (checked by rsh_err).  QB_TOP_RSH = 1: select rsh_hq (R7e).
+        logic rsh_sr, rsh_sel;
+        always_ff @(posedge clk or negedge rst_n) if (!rst_n) rsh_sr <= 1'b0; else rsh_sr <= s_ren;
+        assign rsh_sel = (`QB_TOP_RSH == 2) ? !rsh_sr : rsh_hq;
         always_comb begin
             logic [2047:0] x;  logic [3:0] s;
-            for (int l = 0; l < 16; l++) x[128 * l +: 128] = rsh_hq ? rsh_xw[128 * l +: 128] : s_grp_q ? s_mq[16 + l] : s_mq[l];
+            for (int l = 0; l < 16; l++) x[128 * l +: 128] = rsh_sel ? rsh_xw[128 * l +: 128] : s_grp_q ? s_mq[16 + l] : s_mq[l];
 `ifdef QBT_MUT_RSH
             s = 4'(5'd16 - 5'(rsh_l0));                       // mutant: no shift select (S read uses the HQ shift)
 `else
-            s = rsh_hq ? 4'(5'd16 - 5'(rsh_l0)) : s_rot_q;    // HQ: up by l0 = down by 16 - l0
+            s = rsh_sel ? 4'(5'd16 - 5'(rsh_l0)) : s_rot_q;   // HQ: up by l0 = down by 16 - l0
 `endif
             if (s[0]) x = {x[127:0], x[2047:128]};
             if (s[1]) x = {x[255:0], x[2047:256]};
