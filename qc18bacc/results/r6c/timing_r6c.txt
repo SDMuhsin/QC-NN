@@ -1,0 +1,10 @@
+# R6c timing ladder [OR est., tt, 1.65 ns P&R clock] ; die A
+r6b_b (ref)  A 22.769  place -10.664  CTS -10.778 / hold -7.269 (block clk ideal -0.9 latency)
+r6c_p2       A 22.769  place -10.237  CTS -10.591 / hold -7.810
+r6c_g        A 23.243  place  -7.306  CTS  -6.198 / hold -2.739 ; with block clk propagated -8.688 / -5.603 ; GRT -10.450 / -5.626
+r6c_h        A 23.243  place  -5.246  CTS  -4.994 / hold -3.609 ; with block clk propagated -6.760 / -5.586 ; GRT  -7.644 / -5.590
+post-CTS repair_timing (-repair_tns 3): r6c_h -6.760 -> -6.434, after legalisation/re-estimate -14.757 (OAI22D0 on 0.465 pF); r6c_gt -8.688 -> -8.104 -> -14.442 => skipped (QB_SKIP_RT)
+r6c_h worst at CTS: prm stg_t_reg_496_ -> col3 t2[88]: clk latency 3.34 ns (clk port -> 0.85 pF wire -> CTS root 1.86 ns), DFQD1 0.21 + wire stages 1.34 + 0.86 ns
+r6c_h worst pre-repair (propagated): col3 f_y[402] -> u_head tacc: ETM output 2.2 ns on 0.43 pF, data 7.5 ns
+hold: dominated by column act inputs with ETM hold arcs 5.9-8.2 ns (setup -7.0) = ETM artefact of the act feedthrough chain; top hold repair skipped (QB_NOHOLD)
+f needed >= 20.5 x 23.243 = 476.5 MHz (2.10 ns); GRT-estimate equivalent 1/(1.65+7.644) = 108 MHz [R, not sign-off]

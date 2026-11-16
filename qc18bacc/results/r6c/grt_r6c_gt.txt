@@ -1,0 +1,13 @@
+# r6c_gt global route (tau6; G floorplan 23.243 mm2, CTS without post-CTS repair; global_route -congestion_iterations 3
+# -allow_congestion, GR_ADJUST 0.25, M2-M9 with M8/M9 only over the blocks): FastRoute 2179 s, RSS ~29-31 GB
+grt wall_s 2179 [S]
+groute_tt (1.65 ns, GRT parasitics, propagated clock incl. block clk pins) setup WNS -10.450 TNS -69667.6, hold WNS -5.626 TNS -47592.7 [S, OR est.]
+congestion report (rpt/gr_congestion.rpt, 931 MB): overflowed gcell entries vertical 536589 (overflow sum 5789216 tracks), horizontal 522585 (5081612) [S]
+hotspots (entries per 500-um tile): west strip x 0-1000, y 2000-4500 (WA/W groups) 34-51 k each; south band x 1000-3500, y 1000-2000 (S group + reserved band) 25-50 k each; elsewhere < 9 k [S]
+(r6c_g first GRT attempt with 50 congestion iterations: still in maze routing after 80 min, stopped; r6c_h with 15: in maze routing after 84 min, stopped)
+# r6c_h global route (tau3; H floorplan 23.243 mm2 + 120-um buffer band, CTS without post-CTS repair, -congestion_iterations 3
+# -allow_congestion; GRT stopped to checkpoint db/grt.odb, QB_GRT_STOP): step 2053 s incl. load
+r6c_h groute_tt (1.65 ns, GRT parasitics) setup WNS -7.644 TNS -65182.4, hold WNS -5.590 TNS -58917.9 [S, OR est.]
+r6c_h congestion: vertical 609111 entries (overflow sum 6245203), horizontal 486681 (5467247) [S]; hotspots per 500-um tile: south band x 1000-1500 y 1500-2000 54 k, west strip x 0-1000 y 1500-4500 46-53 k each [S]
+r6c_gt first DR attempt in the same process as GRT: OOM-killed at track assignment (RSS 31.2 GB, VM 47.8 GB, 30-GB host) [S]
+r6c_h DR (fresh process from grt.odb, 2 iterations) started then stopped on PI instruction; no DR / SPEF / PT

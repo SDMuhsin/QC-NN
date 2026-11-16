@@ -1,0 +1,25 @@
+# R6c step measurements (OpenROAD, tt, placement parasitics [OR est.], P&R clock 1.65 ns as R6b).  Probes:
+# impl/r6c/probe_rows.tcl (row area / std area per R6b group; DETOUR = per repair buffer, driver->buffer->load-centroid
+# minus driver->load-centroid, um), probe_bins.tcl (100-um bin fill), impl/r6b/icg_probe.tcl + icg_geom.tcl.
+## baseline r6b_b (tau3; floorplan 22.769 mm2, spread2)
+r6b_b place  rows 5.111 mm2, std 3.454 (row util 0.676): N 0.183 S 0.774 W 0.614 WA 0.795
+r6b_b cts    std 3.679 (row util 0.720): N 0.196 S 0.814 W 0.672 WA 0.844; RSZ util (std+macro)/core 0.897 -> RSZ-0025 at MAX_UTIL 90
+r6b_b place  bins(100 um) by fill: <0.5 1.261 mm2 | 0.5-0.7 0.444 | 0.7-0.8 0.416 | 0.8-0.85 0.262 | 0.85-0.9 1.504 | 0.9-0.95 1.140 | >0.95 0.063
+r6b_b place  DETOUR 80384 repair bufs, mean 312 um: <20 35726, 20-100 10901, 100-300 12576, 300-1000 12441, >1000 8740
+r6b_b place  spread2: 64694 of 159240 movable cells moved, mean 5.0 100-um super-bins (random point); CTS spread2 24802 of 33503 clock cells, mean 4.2
+r6b_b place/cts  setup WNS -10.664 / -10.778, hold WNS -4.419 / -7.269
+## step 1 utilisation: U = r6b_c cts.odb (same placement as r6b_b, CTS WNS -9.490) + MAX_UTIL 99, route step
+U   post-CTS repair_timing (101 490 violating endpoints, QB_TNS 100) ran 67 min without RSZ-0025 (r6b_b aborted at 40 min); stopped by hand (no checkpoint)
+## step 2 ICG (icg.tcl: size by sink count, move to sink centroid)
+I   (r6b_b place.odb + ICG, CTS with spread2): 4006 ICGs -> D2 261 / D4 1347 / D8 2398, moved mean 214 um (max 1277)
+I   ICG output slew after CTS: <=0.15 3503 | 0.15-0.3 494 | 0.3-0.5 9 | 0.5-1.0 0 | >1.0 0 (r6b_b: 489 / 806 / 865 / 1071 / 775)
+I   ICG output-net HPWL: <=50 559 | 50-200 1180 | 200-500 1204 | 500-1000 574 | >1000 489 (r6b_b 317/923/1334/985/447): spread2 moved the resized ICGs again (mean 4.2 super-bins)
+I   CTS setup WNS -12.089 (r6b_b -10.778), hold -9.807
+## step 3 long-wire buffers
+P   (r6b floorplan, spread3 = nearest 20-um x row bin with room, ICG, MAX_UTIL 99): 34491 of 159240 cells no room within 400 um -> global fallback mean 1459 um
+P   place DETOUR mean 464 um, >1000 12201; place WNS -13.977; CTS WNS -11.899 (3770 clock cells fallback, mean 1134 um); ICG slew <=0.15 3606 | 0.15-0.3 391 | 0.3-0.5 9 | >0.5 0
+P2  (P + snap3 row-aware snap + QB_EST_RC 0.73/0.28): 33877 no room; DETOUR mean 482, >1000 11295; place WNS -10.237, CTS -10.591 / hold -7.810
+P2  failed cells by source (probe_fail.tcl): column-block output trees 15991 (mean loc 1687,2030 = array south edge), top glue U* 9794, prm U* 2424, S-macro outputs 1992, prm stg_t 1832, head 470
+G   (die 3990 x 5825.4 = 23.243 mm2: south band QB_SB 280 -> 400, WA/W split +150 um, group density 0.6; snap3, spread3, EST_RC, ICG): 22299 no room (fallback mean 1189 um)
+G   place rows 5.583, std 3.529 (0.632): N 0.178 S 0.612 W 0.705 WA 0.765; DETOUR mean 314, >1000 7083
+G   place WNS -7.306 / hold -4.481; CTS WNS -6.198, TNS -162396, hold -2.739; CTS worst stg_t_reg_528_ (DFQD1 on 0.396 pF, 1.18 ns) -> col 3
