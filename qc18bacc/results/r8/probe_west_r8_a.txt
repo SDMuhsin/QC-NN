@@ -1,0 +1,73 @@
+# probe_west grt: class nets HPWL_dx_m HPWL_dy_m dy_westbbox_m dx_westbbox_m (sorted by dy_west)
+total dy_west 52.10 m
+act -> act                                                    223791    7.122   14.765   14.765    7.122
+buf -> buf                                                     41417   16.498   16.861   12.033    3.617
+seq -> seq                                                    160444    3.518    7.710    7.710    3.518
+buf -> glue                                                    17021    6.818    5.450    3.502    0.919
+buf -> seq                                                      3239    0.662    2.238    2.238    0.662
+buf -> act                                                      3718    0.815    1.890    1.890    0.815
+glue -> glue                                                   93010    4.293    3.251    1.129    1.114
+buf -> blk.act                                                  1438    0.594    0.833    0.833    0.594
+seq -> buf,seq                                                  2514    0.493    0.700    0.700    0.493
+chip -> buf                                                     2086    0.709    0.642    0.642    0.709
+buf -> buf,glue                                                 5283    2.766    2.746    0.563    0.305
+dist -> blk.act                                                 3170    0.374    0.529    0.529    0.373
+glue -> buf                                                     8636    0.882    1.427    0.367    0.200
+glue -> act,glue                                                 622    0.313    0.367    0.367    0.230
+buf -> act,buf                                                   691    0.175    0.345    0.345    0.170
+head -> head                                                   46561    0.898    0.461    0.317    0.468
+act -> buf                                                      1558    0.090    0.316    0.316    0.090
+buf -> buf,seq                                                   489    0.137    0.288    0.288    0.137
+act -> act,buf                                                  1544    0.201    0.277    0.277    0.201
+buf -> prm                                                      2469    1.561    0.705    0.241    0.018
+dist -> buf                                                     1437    0.185    0.235    0.235    0.185
+buf -> chip                                                     1822    1.030    0.217    0.217    1.030
+buf -> blk.t2                                                   1088    0.185    0.216    0.202    0.045
+prm -> prm                                                     30355    0.430    0.257    0.193    0.294
+glue -> act,buf                                                 1057    0.315    0.189    0.189    0.288
+glue -> buf,glue                                                1920    0.527    0.498    0.120    0.040
+mac.i -> buf                                                     512    0.011    0.108    0.108    0.011
+mac.w -> glue                                                   6912    0.018    1.041    0.102    0.003
+buf -> glue,head                                                1544    0.836    0.440    0.097    0.024
+buf -> head                                                      795    0.510    0.113    0.090    0.034
+buf -> mac.s                                                    1241    0.768    0.336    0.083    0.007
+buf -> mac.w                                                    1074    0.010    0.599    0.081    0.007
+glue -> blk.s_rd                                                4098    0.468    1.009    0.074    0.031
+glue -> mac.i                                                    162    0.007    0.067    0.067    0.007
+seq -> buf                                                       414    0.019    0.057    0.057    0.019
+buf -> mac.d                                                      80    0.008    0.057    0.057    0.008
+blk.f_y -> buf,head                                             1095    0.510    0.182    0.053    0.028
+prm -> buf                                                      2362    0.160    0.413    0.047    0.009
+chip -> buf,chip                                                 167    0.054    0.046    0.046    0.054
+buf -> glue,mac.f2                                                59    0.009    0.046    0.046    0.009
+# y histogram (200-um bins, chip y): cells act/dist/seq west (x < XW) | east, connected column act pins
+y    0- 200 actw      0 acte      0 distw      0 diste      0 seqw      0 seqe      0 pin      0
+y  200- 400 actw      0 acte      0 distw      0 diste      0 seqw      0 seqe      0 pin      0
+y  400- 600 actw      0 acte      0 distw      0 diste      0 seqw      0 seqe      0 pin      0
+y  600- 800 actw      0 acte      0 distw      0 diste      0 seqw      0 seqe      0 pin      0
+y  800-1000 actw      0 acte      0 distw      0 diste      0 seqw      0 seqe      0 pin      0
+y 1000-1200 actw      0 acte      0 distw      0 diste      0 seqw      0 seqe      0 pin      0
+y 1200-1400 actw      0 acte      0 distw      0 diste      0 seqw      0 seqe      0 pin      0
+y 1400-1600 actw      0 acte      0 distw      0 diste      0 seqw      0 seqe      0 pin      0
+y 1600-1800 actw    425 acte      0 distw      0 diste      0 seqw      0 seqe      0 pin      0
+y 1800-2000 actw   9950 acte      0 distw      0 diste      0 seqw      0 seqe      0 pin      0
+y 2000-2200 actw  23525 acte      0 distw      0 diste      0 seqw      0 seqe      0 pin      0
+y 2200-2400 actw  29656 acte      0 distw      0 diste      0 seqw      0 seqe      0 pin      0
+y 2400-2600 actw  31262 acte      0 distw      0 diste      0 seqw      0 seqe      0 pin      0
+y 2600-2800 actw  32753 acte      0 distw      0 diste      0 seqw      0 seqe      0 pin      0
+y 2800-3000 actw  28085 acte      0 distw     81 diste      0 seqw      0 seqe      0 pin   1552
+y 3000-3200 actw  26301 acte      0 distw    564 diste      0 seqw      0 seqe      0 pin   3448
+y 3200-3400 actw  26369 acte      0 distw    572 diste      0 seqw      0 seqe      0 pin   4296
+y 3400-3600 actw  18670 acte      0 distw   2296 diste      0 seqw      0 seqe      0 pin   4248
+y 3600-3800 actw   5583 acte      0 distw   1151 diste      0 seqw   5547 seqe      0 pin   3848
+y 3800-4000 actw      0 acte      0 distw      0 diste      0 seqw  21883 seqe      0 pin   3824
+y 4000-4200 actw      0 acte      0 distw      0 diste      0 seqw  29772 seqe      0 pin   4032
+y 4200-4400 actw      0 acte      0 distw      0 diste      0 seqw  29955 seqe      0 pin   3984
+y 4400-4600 actw      0 acte      0 distw      0 diste      0 seqw  28185 seqe      0 pin   3848
+y 4600-4800 actw      0 acte      0 distw      0 diste      0 seqw   2250 seqe      0 pin   3784
+y 4800-5000 actw      0 acte      0 distw      0 diste      0 seqw   6206 seqe      0 pin      0
+y 5000-5200 actw      0 acte      0 distw      0 diste      0 seqw  13406 seqe      0 pin      0
+y 5200-5400 actw      0 acte      0 distw      0 diste      0 seqw  15127 seqe      0 pin      0
+y 5400-5600 actw      0 acte      0 distw      0 diste      0 seqw  12022 seqe      0 pin      0
+y 5600-5800 actw      0 acte      0 distw      0 diste      0 seqw      0 seqe      0 pin      0
+y 5800-6000 actw      0 acte      0 distw      0 diste      0 seqw      0 seqe      0 pin      0

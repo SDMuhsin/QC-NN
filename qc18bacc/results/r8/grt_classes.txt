@@ -1,0 +1,36 @@
+# r8_a GRT path classes (impl/r7b/classes.tcl at GRT parasitics, tt, 1.65 ns)
+# worst setup WNS -0.000 ns, hold -0.000 ns
+## setup: 5000 endpoints (of the worst 5000), by class: count worst_ns example
+blk.f_vld_o -> glue.s_wd                   2985   -7.127  u_top/u_core/u_arr/g_c_0__u_col/f_vld_o -> u_top/s_wd_reg_31__96_/D
+blk.f_y -> glue.quiet                         4   -6.771  u_top/u_core/u_arr/g_c_6__u_col/f_y[516] -> u_top/quiet_reg_0__1_/D
+blk.f_y -> head.tacc                        517   -6.673  u_top/u_core/u_arr/g_c_7__u_col/f_y[202] -> u_head/g_pcol_7__u_pc/tacc_reg_3__18_/D
+blk.f_y -> head.hold                        506   -6.634  u_top/u_core/u_arr/g_c_7__u_col/f_y[202] -> u_head/g_pcol_7__u_pc/hold_reg_3__18_/D
+blk.f_y -> glue.fs_hq                        56   -5.805  u_top/u_core/u_arr/g_c_6__u_col/f_y[516] -> u_top/fs_hq_reg_53_/D
+blk.f_vld_o -> glue.s_wa                     52   -5.772  u_top/u_core/u_arr/g_c_0__u_col/f_vld_o -> u_top/s_wa_reg_24__6_/D
+blk.f_y -> glue.fp_hq                        52   -5.760  u_top/u_core/u_arr/g_c_6__u_col/f_y[516] -> u_top/fp_hq_reg_53_/D
+blk.f_y -> glue.s_wd                        632   -5.396  u_top/u_core/u_arr/g_c_7__u_col/f_y[274] -> u_top/s_wd_reg_2__88_/D
+blk.f_y -> glue.fp_hqd                        8   -4.913  u_top/u_core/u_arr/g_c_6__u_col/f_y[364] -> u_top/fp_hqd_reg_7_/D
+blk.f_y -> glue.fs_hqd                        8   -4.913  u_top/u_core/u_arr/g_c_6__u_col/f_y[364] -> u_top/fs_hqd_reg_7_/D
+blk.f_y -> act                              151   -4.370  u_top/u_core/u_arr/g_c_7__u_col/f_y[139] -> u_top/u_act/sdq_reg_1336_/D
+blk.f_vld_o -> glue.b_wd                     28   -4.164  u_top/u_core/u_arr/g_c_0__u_col/f_vld_o -> u_top/b_wd_reg_0__0__14_/D
+glue.b_wa -> glue.err                         1   -3.984  u_top/b_wa_reg_1__2__1_/Q -> u_top/err_reg/D
+## hold: 5000 endpoints (of the worst 5000), by class: count worst_ns example
+chip -> glue                                198   -2.980  h_we -> g_hpn_hcnt_reg_1_/D
+chip -> seq                                1253   -2.815  h_go -> u_top/g_r3b_g_rt_u_seq/ke_reg_4_/D
+chip -> glue.run                              1   -2.417  h_go -> u_top/run_reg/D
+chip -> prm.ruse                             20   -2.338  h_go -> u_top/g_r3b_u_prm/ruse_reg_0__0_/D
+# r8_c (control, no P groups)
+# worst setup WNS -0.000 ns, hold -0.000 ns
+## setup: 5000 endpoints (of the worst 5000), by class: count worst_ns example
+blk.f_y -> head.hold                        533   -7.425  u_top/u_core/u_arr/g_c_4__u_col/f_y[134] -> u_head/g_pcol_4__u_pc/hold_reg_7__18_/D
+blk.f_y -> head.tacc                        573   -7.262  u_top/u_core/u_arr/g_c_4__u_col/f_y[134] -> u_head/g_pcol_4__u_pc/tacc_reg_7__18_/D
+blk.f_vld_o -> glue.s_wd                   2460   -7.036  u_top/u_core/u_arr/g_c_0__u_col/f_vld_o -> u_top/s_wd_reg_28__61_/D
+blk.f_y -> glue.s_wd                        884   -6.491  u_top/u_core/u_arr/g_c_3__u_col/f_y[72] -> u_top/s_wd_reg_26__92_/D
+blk.f_y -> glue.quiet                         4   -6.317  u_top/u_core/u_arr/g_c_3__u_col/f_y[72] -> u_top/quiet_reg_0__1_/D
+blk.f_y -> glue.fp_hq                        52   -5.535  u_top/u_core/u_arr/g_c_3__u_col/f_y[72] -> u_top/fp_hq_reg_58_/D
+blk.f_y -> glue.fs_hq                        52   -5.524  u_top/u_core/u_arr/g_c_3__u_col/f_y[72] -> u_top/fs_hq_reg_58_/D
+blk.f_y -> act                              340   -5.458  u_top/u_core/u_arr/g_c_3__u_col/f_y[223] -> u_top/u_act/sdq_reg_61_/D
+blk.f_vld_o -> glue.s_wa                     81   -5.413  u_top/u_core/u_arr/g_c_0__u_col/f_vld_o -> u_top/s_wa_reg_24__6_/D
+blk.f_y -> glue.fp_hqd                        6   -5.008  u_top/u_core/u_arr/g_c_3__u_col/f_y[72] -> u_top/fp_hqd_reg_4_/D
+blk.f_y -> glue.fs_hqd                        5   -4.940  u_top/u_core/u_arr/g_c_3__u_col/f_y[72] -> u_top/fs_hqd_reg_4_/D
+blk.f_vld_o -> head.clk_gate_hold             5   -4.877  u_top/u_core/u_arr/g_c_0__u_col/f_vld_o -> u_head/g_pcol_4__u_pc/clk_gate_hold_reg_0_/latch/

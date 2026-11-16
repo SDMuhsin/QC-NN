@@ -1,0 +1,64 @@
+# whole die: class | H mm | V mm | WL-weighted centroid x y (um) of H+V wire
+act supply internal                                 9774.2   17174.8     428    2754
+sequencer                                           8035.7   11859.0     337    4595
+write-back rotators (f_y/w_y/b2 -> S/map wr)        7557.5    8393.5    1542    1840
+blk f_y out                                         8674.4    6918.8    1340    2075
+glue other                                          4959.1    7638.1    1430    2986
+S-read rotator (s_q -> act)                         5854.0    4687.4    1585    1577
+clock                                               4399.1    5071.6     696    3587
+prm staging internal                                4575.7    3430.0    2131    1141
+S macro Q (s_mq)                                    2146.2    2687.9    1809    1363
+map/img Q                                           2008.0    2283.7    1332     884
+act supply out (dist -> col0 act)                   1076.7    1652.9     615    3936
+S write regs -> S macro (s_wd/wa/wm)                1231.4    1390.1    2191     964
+head                                                1045.8     751.2    1242    1284
+blk b2 out                                           978.9     786.3    2286    1318
+prm -> blk t2                                        663.4    1045.9    1853    2859
+glue blk-out consumers (flags, b2f, other)          1019.1     686.8    1639    1269
+prm -> blk pf                                        115.9    1411.1    2375    1550
+glue -> blk s_rd                                     435.7    1031.8    2326    1558
+prm -> blk pw                                         54.8    1109.9    2496    1588
+weight Q                                              23.6    1070.1    2246    5287
+map write regs -> map macro                          385.4     527.4    2091    1032
+blk other out (f_b,w_b,vld)                          379.0     445.2    2234     953
+blk w_y out                                          438.5     363.9    2394    1439
+glue -> blk w_r                                      491.0     236.9    2430    1619
+params Q -> prm                                       66.3     591.8    2260     618
+glue -> act supply (ctl)                             262.8     267.9     640    2143
+glue -> blk cd                                       160.6      92.4    2227    4853
+map mux (m_q -> act)                                 136.1      73.4     516    1728
+rq_r -> s_rd/w_r mux                                  99.8      79.9    2233    1445
+glue -> blk ctl/other                                 92.5      39.5    2056    2672
+seq desc Q                                            30.6      35.2     464    4460
+chip IO in (host port)                                 5.6      22.2      44    3749
+head FC Q                                             10.2      16.2     444     726
+# rotator H wire (mm) by comb depth from the source (S macro QA / block f_y,w_y,b2; -1 = not reached):
+DEPTH S-read rotator (s_q -> d1 all     3082.7
+DEPTH S-read rotator (s_q -> d1 south   2388.3
+DEPTH S-read rotator (s_q -> d2 all      585.9
+DEPTH S-read rotator (s_q -> d2 south    330.9
+DEPTH S-read rotator (s_q -> d3 all       90.3
+DEPTH S-read rotator (s_q -> d4 all     1449.5
+DEPTH S-read rotator (s_q -> d4 south    565.9
+DEPTH S-read rotator (s_q -> d5 all      495.2
+DEPTH S-read rotator (s_q -> d5 south    180.4
+DEPTH S-read rotator (s_q -> d6 all      125.4
+DEPTH S-read rotator (s_q -> d6 south     33.8
+DEPTH S-read rotator (s_q -> d7 all       25.0
+DEPTH S-read rotator (s_q -> d7 south      4.5
+DEPTH write-back rotators (f d1 all     4806.5
+DEPTH write-back rotators (f d1 south   2068.9
+DEPTH write-back rotators (f d2 all     1358.1
+DEPTH write-back rotators (f d2 south    950.5
+DEPTH write-back rotators (f d3 all      616.9
+DEPTH write-back rotators (f d3 south    502.3
+DEPTH write-back rotators (f d4 all      458.5
+DEPTH write-back rotators (f d4 south    449.2
+DEPTH write-back rotators (f d5 all      250.5
+DEPTH write-back rotators (f d5 south    215.9
+DEPTH write-back rotators (f d6 all       57.4
+DEPTH write-back rotators (f d6 south     46.3
+DEPTH write-back rotators (f d7 all        8.7
+DEPTH write-back rotators (f d7 south      8.1
+DEPTH write-back rotators (f d8 all        0.8
+DEPTH write-back rotators (f d8 south      0.8

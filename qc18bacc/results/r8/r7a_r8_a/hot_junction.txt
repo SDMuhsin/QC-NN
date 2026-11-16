@@ -1,0 +1,34 @@
+# hotspot junction x 0.0-860.0 y 1000.0-2300.0 um; capacity [E from GRT rule + OBS] H 10782 mm V 10369 mm (per layer: M2 3329 M3 3329 M4 3313 M5 3727 M6 3727 M7 3727)
+# GRT report [S] H: overflowed gcells 49971 of 124222, sum capacity 1451179 usage 1725027 overflow 273848 (mean cap 29.0, usage 34.5)
+# GRT report [S] V: overflowed gcells 55994 of 124222, sum capacity 1900705 usage 2461120 overflow 560415 (mean cap 33.9, usage 44.0)
+# class | bits in window | H mm | %capH | V mm | %capV | H ovf share % | V ovf share %
+act supply internal                              |   46289 |   1639.8 |  15.2 |   2730.9 |  26.3 |  17.3 |  43.7
+S-read rotator (s_q -> act)                      |   17790 |   1480.4 |  13.7 |   1634.3 |  15.8 |  27.4 |  14.3
+blk f_y out                                      |    2501 |   1110.3 |  10.3 |   1069.7 |  10.3 |  14.8 |   8.3
+glue other                                       |    5264 |    669.5 |   6.2 |   1317.2 |  12.7 |   6.7 |   8.5
+clock                                            |    4818 |    583.4 |   5.4 |    673.7 |   6.5 |   4.2 |   6.5
+map/img Q                                        |    1526 |    358.5 |   3.3 |    830.6 |   8.0 |   3.5 |   1.6
+write-back rotators (f_y/w_y/b2 -> S/map wr)     |    1524 |    405.3 |   3.8 |    651.2 |   6.3 |   7.1 |   7.4
+prm staging internal                             |   16238 |    364.6 |   3.4 |    322.4 |   3.1 |   1.4 |   0.5
+S macro Q (s_mq)                                 |    1882 |    167.5 |   1.6 |    340.8 |   3.3 |   4.3 |   3.3
+glue -> act supply (ctl)                         |    2982 |    219.7 |   2.0 |    221.6 |   2.1 |   4.4 |   2.5
+head                                             |    9575 |    185.3 |   1.7 |    179.1 |   1.7 |   0.1 |   0.3
+map mux (m_q -> act)                             |    1757 |    135.9 |   1.3 |     73.3 |   0.7 |   1.8 |   0.3
+S write regs -> S macro (s_wd/wa/wm)             |     181 |     78.8 |   0.7 |    114.7 |   1.1 |   0.8 |   0.5
+glue blk-out consumers (flags, b2f, other)       |    1623 |     70.0 |   0.6 |    102.1 |   1.0 |   0.8 |   0.8
+map write regs -> map macro                      |      60 |     48.7 |   0.5 |     65.6 |   0.6 |   0.5 |   0.3
+blk b2 out                                       |     249 |     47.5 |   0.4 |     46.9 |   0.5 |   2.6 |   0.4
+sequencer                                        |      44 |      7.9 |   0.1 |     31.6 |   0.3 |   0.1 |   0.3
+glue -> blk s_rd                                 |     448 |     30.2 |   0.3 |      8.2 |   0.1 |   1.3 |   0.1
+blk other out (f_b,w_b,vld)                      |      51 |      9.1 |   0.1 |     26.7 |   0.3 |   0.2 |   0.1
+params Q -> prm                                  |     146 |      4.8 |   0.0 |     29.4 |   0.3 |   0.0 |   0.0
+rq_r -> s_rd/w_r mux                             |    1413 |     10.7 |   0.1 |     10.1 |   0.1 |   0.3 |   0.1
+prm -> blk t2                                    |      51 |     11.3 |   0.1 |      0.6 |   0.0 |   0.1 |   0.0
+glue -> blk ctl/other                            |      17 |      4.8 |   0.0 |      6.3 |   0.1 |   0.1 |   0.1
+blk w_y out                                      |      18 |      4.1 |   0.0 |      5.3 |   0.1 |   0.1 |   0.0
+head FC Q                                        |      60 |      3.4 |   0.0 |      3.4 |   0.0 |   0.0 |   0.0
+glue -> blk w_r                                  |      69 |      3.3 |   0.0 |      2.5 |   0.0 |   0.2 |   0.0
+prm -> blk pf                                    |      75 |      1.4 |   0.0 |      1.4 |   0.0 |   0.1 |   0.0
+chip IO in (host port)                           |       1 |      0.1 |   0.0 |      0.7 |   0.0 |   0.0 |   0.0
+TOTAL                                            |         |   7656.1 |  71.0 |  10500.7 | 101.3
+# per layer mm: M2 3744 M3 3273 M4 3419 M5 3025 M6 3338 M7 1359

@@ -1,0 +1,42 @@
+# GRT overflow [S] r8_a: gcells 3 um; ovf gcells = unique overflowed gcells (H or V) and % of the region; entries / tracks per direction; unit = % of entries with a source net of that unit
+r8_a total   ovf_gcells   776457 (30.07 % of   2582594) H   507160 /   6079862  V   710880 /   7693338 | act 24 seq 18 prm 6 pcol 3 head 5 dist 0 clock 44
+r8_a Sband   ovf_gcells   151099 (25.55 % of    591431) H   145833 /   2492339  V   124009 /   1190625 | prm 23 pcol 12 head 21 clock 41
+r8_a SWc     ovf_gcells    16765 (10.32 % of    162502) H    15369 /    102156  V    12105 /     68508 | act 0 prm 39 head 9 clock 43
+r8_a Wstrip  ovf_gcells   272318 (91.63 % of    297178) H   194959 /   1740225  V   257295 /   4507787 | act 58 seq 35 dist 0 clock 76
+r8_a array   ovf_gcells   302020 (27.92 % of   1081589) H   127939 /   1607092  V   288521 /   1702715 | act 7 seq 1 pcol 1 head 0 clock 8
+r8_a north   ovf_gcells    34255 ( 7.61 % of    449895) H    23060 /    138050  V    28950 /    223703 | seq 100 clock 75
+# GRT overflow [S] r8_c: gcells 3 um; ovf gcells = unique overflowed gcells (H or V) and % of the region; entries / tracks per direction; unit = % of entries with a source net of that unit
+r8_c total   ovf_gcells   758001 (29.35 % of   2582594) H   500330 /   5615648  V   676210 /   7048787 | act 24 seq 18 prm 8 pcol 5 head 6 dist 0 clock 44
+r8_c Sband   ovf_gcells   151499 (25.62 % of    591431) H   149457 /   2239155  V   107957 /    739016 | prm 35 pcol 23 head 25 clock 44
+r8_c SWc     ovf_gcells    18050 (11.11 % of    162502) H    17105 /    135169  V    13740 /     90296 | act 0 prm 17 pcol 15 head 35 clock 34
+r8_c Wstrip  ovf_gcells   270317 (90.96 % of    297178) H   190103 /   1687545  V   253605 /   4420695 | act 59 seq 34 dist 0 clock 75
+r8_c array   ovf_gcells   280687 (25.95 % of   1081589) H   121184 /   1418570  V   266431 /   1503396 | act 7 seq 1 clock 6
+r8_c north   ovf_gcells    37448 ( 8.32 % of    449895) H    22481 /    135209  V    34477 /    295384 | seq 100 clock 77
+# GRT overflow [S] r8_w: gcells 3 um; ovf gcells = unique overflowed gcells (H or V) and % of the region; entries / tracks per direction; unit = % of entries with a source net of that unit
+r8_w total   ovf_gcells   780478 (27.47 % of   2841501) H   551140 /   5664461  V   663215 /   5651255 | act 26 seq 14 prm 17 pcol 3 head 5 dist 0 clock 39
+r8_w Sband   ovf_gcells   168209 (28.44 % of    591431) H   164874 /   2563130  V    99988 /    594648 | prm 35 pcol 14 head 17 clock 38
+r8_w SWc     ovf_gcells    21955 ( 9.22 % of    238084) H    20701 /    229048  V    18218 /    132761 | act 1 prm 45 head 1 clock 33
+r8_w Wstrip  ovf_gcells   303251 (69.65 % of    435400) H   217111 /   1529130  V   275084 /   3322596 | act 59 seq 32 prm 19 head 2 dist 0 clock 70
+r8_w array   ovf_gcells   278592 (25.76 % of   1081589) H   145566 /   1337694  V   264085 /   1580053 | act 6 seq 0 prm 1 head 0 clock 2
+r8_w north   ovf_gcells     8471 ( 1.71 % of    494997) H     2888 /      5459  V     5840 /     21197 | seq 100 prm 5 clock 66
+# GRT overflow [S] r8_ws: gcells 3 um; ovf gcells = unique overflowed gcells (H or V) and % of the region; entries / tracks per direction; unit = % of entries with a source net of that unit
+r8_ws total   ovf_gcells   710832 (23.79 % of   2988127) H   500963 /   3784962  V   611805 /   5292007 | act 29 seq 12 prm 7 pcol 2 head 4 dist 0 clock 36
+r8_ws Sband   ovf_gcells   148143 (21.29 % of    695973) H   140231 /   1331171  V    99508 /    629938 | act 0 prm 30 pcol 10 head 20 clock 36
+r8_ws SWc     ovf_gcells     7349 ( 2.62 % of    280168) H     6386 /     32575  V     5294 /     30547 | act 0 prm 6 head 4 clock 11
+r8_ws Wstrip  ovf_gcells   289696 (66.54 % of    435400) H   203658 /   1370388  V   261942 /   3215106 | act 63 seq 28 dist 0 clock 66
+r8_ws array   ovf_gcells   258494 (23.90 % of   1081589) H   148279 /   1046414  V   240189 /   1397280 | act 6 clock 1
+r8_ws north   ovf_gcells     7150 ( 1.44 % of    494997) H     2409 /      4414  V     4872 /     19136 | seq 99 clock 54
+# GRT overflow [S] r8_s: gcells 3 um; ovf gcells = unique overflowed gcells (H or V) and % of the region; entries / tracks per direction; unit = % of entries with a source net of that unit
+r8_s total   ovf_gcells   868930 (33.65 % of   2582594) H   594503 /   6732519  V   744356 /  12166817 | act 21 seq 18 prm 13 pcol 7 head 10 dist 0 clock 54
+r8_s Sband   ovf_gcells   298528 (50.48 % of    591431) H   263286 /   3347341  V   195227 /   2368842 | act 1 prm 35 pcol 17 head 26 clock 53
+r8_s SWc     ovf_gcells   105596 (64.98 % of    162502) H    87352 /    640879  V    94475 /   2404407 | act 85 seq 0 prm 3 pcol 1 head 1 clock 68
+r8_s Wstrip  ovf_gcells   271595 (91.39 % of    297178) H   142066 /   1419310  V   266591 /   5401362 | act 30 seq 55 prm 1 head 2 dist 0 clock 69
+r8_s array   ovf_gcells   189681 (17.54 % of   1081589) H   101798 /   1324988  V   184534 /   1972119 | act 1 seq 3 prm 0 pcol 4 head 2 clock 25
+r8_s north   ovf_gcells     3530 ( 0.78 % of    449895) H        1 /         1  V     3529 /     20087 | seq 100 clock 65
+# GRT overflow [S] r8_sb: gcells 3 um; ovf gcells = unique overflowed gcells (H or V) and % of the region; entries / tracks per direction; unit = % of entries with a source net of that unit
+r8_sb total   ovf_gcells   703785 (25.91 % of   2715860) H   382641 /   3365594  V   562698 /   8091992 | act 22 seq 23 prm 7 pcol 1 head 7 dist 0 clock 51
+r8_sb Sband   ovf_gcells   166564 (23.93 % of    695973) H   164626 /   1826390  V    42500 /    203849 | act 1 seq 0 prm 29 pcol 7 head 28 clock 43
+r8_sb SWc     ovf_gcells    75724 (39.60 % of    191226) H    28590 /    185536  V    75134 /   1457072 | act 90 seq 2 prm 0 head 1 clock 51
+r8_sb Wstrip  ovf_gcells   262945 (88.48 % of    297178) H   111328 /   1045464  V   254683 /   5210916 | act 31 seq 54 prm 2 head 2 dist 0 clock 68
+r8_sb array   ovf_gcells   195176 (18.05 % of   1081589) H    78085 /    308187  V   187017 /   1206456 | act 2 seq 7 prm 0 head 0 clock 33
+r8_sb north   ovf_gcells     3376 ( 0.75 % of    449895) H       12 /        17  V     3364 /     13699 | seq 100 clock 50

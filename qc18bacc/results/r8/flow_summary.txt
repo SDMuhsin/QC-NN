@@ -1,0 +1,40 @@
+r8_a pnr_wall_s 97 wall 1:36.25 peak_rss_mb 2242
+r8_a pnr_wall_s 402 wall 6:42.18 peak_rss_mb 2226
+r8_a place die_um 3990.00 x 5825.40 core_um2 23139720.0 cell_um2 3591181.1 macro_um2 16651520.7 utilisation 0.875
+r8_a place place_tt setup_wns_ns -5.525 setup_tns_ns -51609.306 hold_wns_ns -1.715 hold_tns_ns -23878.929
+r8_a cts die_um 3990.00 x 5825.40 core_um2 23139720.0 cell_um2 3821003.6 macro_um2 16651520.7 utilisation 0.885
+r8_a cts cts_tt setup_wns_ns -6.572 setup_tns_ns -68364.301 hold_wns_ns -3.944 hold_tns_ns -89628.600
+r8_a groute groute_tt setup_wns_ns -7.127 setup_tns_ns -63090.032 hold_wns_ns -2.980 hold_tns_ns -39120.667
+r8_a pnr_wall_s 2802 wall 46:41.85 peak_rss_mb 30574
+r8_c pnr_wall_s 94 wall 1:33.73 peak_rss_mb 2242
+r8_c pnr_wall_s 373 wall 6:13.05 peak_rss_mb 2227
+r8_c place die_um 3990.00 x 5825.40 core_um2 23139720.0 cell_um2 3569153.0 macro_um2 16651520.7 utilisation 0.874
+r8_c place place_tt setup_wns_ns -6.397 setup_tns_ns -52684.903 hold_wns_ns -1.563 hold_tns_ns -23988.501
+r8_c cts die_um 3990.00 x 5825.40 core_um2 23139720.0 cell_um2 3795345.0 macro_um2 16651520.7 utilisation 0.884
+r8_c cts cts_tt setup_wns_ns -7.580 setup_tns_ns -71756.876 hold_wns_ns -4.812 hold_tns_ns -93216.884
+r8_c groute groute_tt setup_wns_ns -7.425 setup_tns_ns -65241.642 hold_wns_ns -2.541 hold_tns_ns -42992.429
+r8_c pnr_wall_s 2832 wall 47:11.53 peak_rss_mb 30457
+r8_w pnr_wall_s 97 wall 1:36.77 peak_rss_mb 2240
+r8_w pnr_wall_s 479 wall 7:59.17 peak_rss_mb 2350
+r8_w place die_um 4390.00 x 5825.40 core_um2 25465320.0 cell_um2 3689197.2 macro_um2 16651520.7 utilisation 0.799
+r8_w place place_tt setup_wns_ns -6.056 setup_tns_ns -57682.577 hold_wns_ns -1.883 hold_tns_ns -23662.093
+r8_w cts die_um 4390.00 x 5825.40 core_um2 25465320.0 cell_um2 3937364.3 macro_um2 16651520.7 utilisation 0.809
+r8_w cts cts_tt setup_wns_ns -6.681 setup_tns_ns -79001.569 hold_wns_ns -3.932 hold_tns_ns -62458.952
+r8_w groute groute_tt setup_wns_ns -8.314 setup_tns_ns -98671.691 hold_wns_ns -3.515 hold_tns_ns -63290.398
+r8_w pnr_wall_s 3112 wall 51:51.86 peak_rss_mb 30678
+r8_ws pnr_wall_s 96 wall 1:36.51 peak_rss_mb 2241
+r8_ws pnr_wall_s 532 wall 8:51.84 peak_rss_mb 2446
+r8_ws place die_um 4390.00 x 6126.00 core_um2 26781948.0 cell_um2 3639002.4 macro_um2 16651520.7 utilisation 0.758
+r8_ws place place_tt setup_wns_ns -5.268 setup_tns_ns -46292.669 hold_wns_ns -1.620 hold_tns_ns -24158.526
+r8_ws cts die_um 4390.00 x 6126.00 core_um2 26781948.0 cell_um2 3869982.0 macro_um2 16651520.7 utilisation 0.766
+r8_ws cts cts_tt setup_wns_ns -6.241 setup_tns_ns -59196.085 hold_wns_ns -3.646 hold_tns_ns -57499.132
+r8_ws groute groute_tt setup_wns_ns -6.837 setup_tns_ns -80515.179 hold_wns_ns -2.510 hold_tns_ns -40810.944
+r8_ws pnr_wall_s 2776 wall 46:15.30 peak_rss_mb 30678
+r8_s cts die_um 3990.00 x 5825.40 core_um2 23139720.0 cell_um2 3790525.7 macro_um2 16651520.7 utilisation 0.883
+r8_s cts cts_tt setup_wns_ns -7.507 setup_tns_ns -124327.635 hold_wns_ns -6.432 hold_tns_ns -79536.963
+r8_s groute groute_tt setup_wns_ns -10.001 setup_tns_ns -109390.217 hold_wns_ns -7.154 hold_tns_ns -83539.941
+r8_s pnr_wall_s 3882 wall 1:04:41 peak_rss_mb 30718
+r8_sb cts die_um 3990.00 x 6126.00 core_um2 24336108.0 cell_um2 3804489.7 macro_um2 16651520.7 utilisation 0.841
+r8_sb cts cts_tt setup_wns_ns -9.462 setup_tns_ns -229742.320 hold_wns_ns -6.518 hold_tns_ns -114233.757
+r8_sb groute groute_tt setup_wns_ns -7.443 setup_tns_ns -169217.892 hold_wns_ns -3.650 hold_tns_ns -90155.641
+r8_sb pnr_wall_s 3986 wall 1:06:25 peak_rss_mb 30661

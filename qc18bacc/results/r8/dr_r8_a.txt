@@ -1,0 +1,49 @@
+# DR attempt 1 (r8_a grt.odb, impl/r6c/dr.tcl = fillers before DR, 8 threads): stopped by hand at 36.5 min in DRT-0178 'Init guide query' (RSS 31.4 GB, swap 16 GB full)
+# DR attempt 2 (impl/r8/dr.tcl QB8_DR_FILL 0: fillers after DR, 8 threads): guide init + track assignment passed, OOM-killed at the start of DR iteration 0
+      1 Number of components:     1300124
+      1 Number of components:     731651
+      2 Number of nets:           807771
+[INFO DRT-0267] cpu time = 01:03:38, elapsed time = 00:08:36, memory = 13081.86 (MB), peak = 13702.38 (MB)
+[INFO DRT-0184] Done with 5997201 vertical wires in 27 frboxes and 7281801 horizontal wires in 39 frboxes.
+[INFO DRT-0186] Done with 4151749 vertical wires in 27 frboxes and 3375590 horizontal wires in 39 frboxes.
+[INFO DRT-0267] cpu time = 01:44:16, elapsed time = 00:22:56, memory = 27133.99 (MB), peak = 30647.99 (MB)
+[INFO DRT-0267] cpu time = 00:00:40, elapsed time = 00:00:43, memory = 30389.35 (MB), peak = 30649.73 (MB)
+[INFO DRT-0195] Start 0th optimization iteration.
+kernel: Out of memory: Killed process (openroad) total-vm:47262532kB, anon-rss:31241912kB
+05:32:07 rss_mb 53 swap_mb 1308
+05:33:07 rss_mb 2092 swap_mb 1308
+05:34:07 rss_mb 8064 swap_mb 1308
+05:35:07 rss_mb 13037 swap_mb 1308
+05:36:07 rss_mb 13081 swap_mb 1308
+05:37:07 rss_mb 13081 swap_mb 1308
+05:38:07 rss_mb 13081 swap_mb 1308
+05:39:07 rss_mb 13081 swap_mb 1308
+05:40:07 rss_mb 13081 swap_mb 1308
+05:41:07 rss_mb 13081 swap_mb 1308
+05:42:07 rss_mb 13081 swap_mb 1308
+05:43:07 rss_mb 14968 swap_mb 1308
+05:44:07 rss_mb 21796 swap_mb 1308
+05:45:07 rss_mb 25263 swap_mb 1308
+05:46:07 rss_mb 26062 swap_mb 1308
+05:47:07 rss_mb 28540 swap_mb 1308
+05:48:07 rss_mb 28832 swap_mb 1308
+05:49:07 rss_mb 30572 swap_mb 2211
+05:50:07 rss_mb 30507 swap_mb 3340
+05:51:07 rss_mb 30444 swap_mb 3947
+05:52:07 rss_mb 30500 swap_mb 4155
+05:53:07 rss_mb 28643 swap_mb 6120
+05:54:07 rss_mb 28365 swap_mb 6457
+05:55:07 rss_mb 28260 swap_mb 6592
+05:56:07 rss_mb 27216 swap_mb 7639
+05:57:07 rss_mb 27216 swap_mb 7638
+05:58:07 rss_mb 27216 swap_mb 7638
+05:59:07 rss_mb 26466 swap_mb 7638
+06:00:07 rss_mb 27146 swap_mb 7638
+06:01:07 rss_mb 27409 swap_mb 7754
+06:02:07 rss_mb 26847 swap_mb 8411
+06:03:07 rss_mb 26787 swap_mb 8498
+06:04:07 rss_mb 26813 swap_mb 8498
+06:05:07 rss_mb 26828 swap_mb 8482
+06:06:07 rss_mb 27080 swap_mb 8229
+06:07:07 rss_mb 30530 swap_mb 12366
+route.guide lines 21746757

@@ -1,0 +1,76 @@
+# cut line | class | nets crossing | segments crossing (= tracks used) ; capacity = tracks across the line on the 3 perpendicular-crossing layers (10 per 3 um per layer, OBS-reduced) [E]
+CUT x=2000 (y 1000-1700.6, south band below array): capacity 6289 tracks, used 8006 (127 %)
+    write-back rotators (f_y/w_y/b2 -> S/map wr)        3182    3221
+    prm staging internal                                1198    1200
+    S-read rotator (s_q -> act)                          960     966
+    blk f_y out                                          739     760
+    S macro Q (s_mq)                                     546     564
+    glue blk-out consumers (flags, b2f, other)           349     366
+    glue other                                           231     233
+    blk w_y out                                          165     169
+    head                                                 157     159
+    glue -> blk w_r                                       95      95
+    clock                                                 70      84
+    glue -> blk s_rd                                      47      47
+CUT x=2000 (y 1000-2000, as asked): capacity 7187 tracks, used 9194 (128 %)
+    write-back rotators (f_y/w_y/b2 -> S/map wr)        3190    3241
+    S-read rotator (s_q -> act)                         1474    1480
+    prm staging internal                                1201    1203
+    blk f_y out                                          891     945
+    S macro Q (s_mq)                                     809     827
+    glue blk-out consumers (flags, b2f, other)           349     366
+    glue other                                           231     234
+    glue -> blk w_r                                      186     187
+    blk w_y out                                          175     179
+    head                                                 157     159
+    clock                                                 73      87
+    prm -> blk t2                                         68      79
+CUT y=1700.6 (array bottom, x 860-3980): capacity 31200 tracks, used 10461 (34 %)
+    S-read rotator (s_q -> act)                         2575    3979
+    blk f_y out                                         1344    2061
+    S macro Q (s_mq)                                    1279    1920
+    write-back rotators (f_y/w_y/b2 -> S/map wr)         797     817
+    prm -> blk t2                                        730     730
+    glue -> blk w_r                                      218     340
+    blk b2 out                                           168     284
+    blk w_y out                                           63      98
+    glue other                                            80      89
+    blk other out (f_b,w_b,vld)                           35      50
+    glue -> blk ctl/other                                 21      38
+    clock                                                 19      23
+CUT y=2000 (x 1000-3500, as asked): capacity 167 tracks, used 1533 (920 %)
+    S-read rotator (s_q -> act)                          541     543
+    blk f_y out                                          333     333
+    write-back rotators (f_y/w_y/b2 -> S/map wr)         241     241
+    prm -> blk t2                                        224     224
+    S macro Q (s_mq)                                     120     124
+    glue other                                            56      57
+    glue blk-out consumers (flags, b2f, other)             8       8
+    glue -> blk ctl/other                                  2       2
+    clock                                                  1       1
+CUT x=860 (array west edge, y 1700.6-4810.6): capacity 31100 tracks, used 10116 (33 %)
+    S-read rotator (s_q -> act)                         2294    2337
+    write-back rotators (f_y/w_y/b2 -> S/map wr)        1081    2046
+    glue other                                           526    1120
+    act supply internal                                  620    1059
+    S macro Q (s_mq)                                     919     919
+    prm -> blk t2                                        385     893
+    blk f_y out                                          691     730
+    act supply out (dist -> col0 act)                    261     409
+    clock                                                141     241
+    sequencer                                            110     192
+    glue blk-out consumers (flags, b2f, other)            47     125
+    glue -> blk ctl/other                                  8      24
+CUT x=1000 (y 2000-4500, as asked): capacity 7500 tracks, used 2594 (35 %)
+    S-read rotator (s_q -> act)                          781     782
+    write-back rotators (f_y/w_y/b2 -> S/map wr)         504     598
+    prm -> blk t2                                        306     379
+    blk f_y out                                          339     343
+    S macro Q (s_mq)                                     171     171
+    act supply internal                                   80     153
+    glue other                                           105     112
+    clock                                                 20      40
+    glue -> blk ctl/other                                  6       7
+    glue blk-out consumers (flags, b2f, other)             5       5
+    glue -> act supply (ctl)                               1       2
+    sequencer                                              2       2

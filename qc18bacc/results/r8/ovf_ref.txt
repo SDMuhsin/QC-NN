@@ -1,0 +1,37 @@
+# GRT overflow [S] r6c_h: gcells 3 um; ovf gcells = unique overflowed gcells (H or V) and % of the region; entries / tracks per direction; unit = % of entries with a source net of that unit
+r6c_h total   ovf_gcells   682554 (26.43 % of   2582594) H   486681 /   5467247  V   609111 /   6245203 | act 27 seq 17 prm 8 head 7 dist 0 clock 45
+r6c_h Sband   ovf_gcells   166225 (28.11 % of    591431) H   160834 /   2264639  V   122316 /    875315 | act 0 prm 30 head 25 clock 37
+r6c_h SWc     ovf_gcells    14265 ( 8.78 % of    162502) H    13138 /     85211  V     9197 /     38148 | act 1 prm 20 head 42 clock 40
+r6c_h Wstrip  ovf_gcells   255691 (86.04 % of    297178) H   182614 /   1467092  V   240607 /   3692391 | act 64 seq 31 dist 0 clock 73
+r6c_h array   ovf_gcells   209786 (19.40 % of   1081589) H   103567 /   1441026  V   204554 /   1307595 | act 9 seq 0 head 0 clock 7
+r6c_h north   ovf_gcells    36587 ( 8.13 % of    449895) H    26528 /    209279  V    32437 /    331754 | seq 100 clock 86
+# GRT overflow [S] r7b_w: gcells 3 um; ovf gcells = unique overflowed gcells (H or V) and % of the region; entries / tracks per direction; unit = % of entries with a source net of that unit
+r7b_w total   ovf_gcells  1497984 (57.38 % of   2610524) H   795253 /   6852408  V  1161886 /   6192624 | act 13 seq 24 prm 3 head 2 dist 0 clock 31
+r7b_w Sband   ovf_gcells   143928 (24.34 % of    591431) H   141212 /   2186311  V    58103 /    222443 | prm 30 head 21 clock 39
+r7b_w SWc     ovf_gcells     3756 ( 2.31 % of    162502) H     3450 /     11832  V      949 /      4938 | act 1 prm 23 head 26 clock 27
+r7b_w Wstrip  ovf_gcells   225119 (75.75 % of    297178) H   106642 /    638060  V   210005 /   3658954 | act 79 seq 10 dist 0 clock 56
+r7b_w array   ovf_gcells   889608 (82.25 % of   1081589) H   318255 /   1795678  V   799064 /   1821602 | act 1 seq 11 clock 9
+r7b_w north   ovf_gcells   235573 (49.30 % of    477825) H   225694 /   2220527  V    93765 /    484687 | seq 97 clock 78
+
+# worst setup WNS -0.000 ns, hold -0.000 ns
+## setup: 5000 endpoints (of the worst 5000), by class: count worst_ns example
+blk.f_y -> head.tacc                        362  -20.269  u_top/u_core/u_arr/g_c_4__u_col/f_y[383] -> u_head/tacc_reg_38
+blk.f_y -> head.hold                        380  -20.221  u_top/u_core/u_arr/g_c_4__u_col/f_y[383] -> u_head/hold_reg_38
+blk.f_y -> glue.s_wd                        757  -19.043  u_top/u_core/u_arr/g_c_4__u_col/f_y[383] -> u_top/s_wd_reg_4__
+blk.f_y -> glue.quiet                         4  -18.807  u_top/u_core/u_arr/g_c_6__u_col/f_y[122] -> u_top/quiet_reg_0_
+blk.f_y -> glue.fs_hq                        32  -16.739  u_top/u_core/u_arr/g_c_6__u_col/f_y[122] -> u_top/fs_hq_reg_29
+blk.f_y -> glue.fp_hq                        32  -16.703  u_top/u_core/u_arr/g_c_6__u_col/f_y[122] -> u_top/fp_hq_reg_29
+blk.f_y -> glue.fp_hqd                        8  -16.511  u_top/u_core/u_arr/g_c_6__u_col/f_y[122] -> u_top/fp_hqd_reg_3
+blk.f_y -> glue.fs_hqd                        8  -16.489  u_top/u_core/u_arr/g_c_6__u_col/f_y[122] -> u_top/fs_hqd_reg_3
+glue.pt -> glue.s_wd                       3257  -13.956  u_top/pt_reg_21__52_/Q -> u_top/s_wd_reg_6__42_/D
+glue.pt -> glue.s_wa                         71  -13.862  u_top/pt_reg_21__52_/Q -> u_top/s_wa_reg_17__4_/D
+glue.s_wa -> glue.err                         1  -13.415  u_top/s_wa_reg_15__4_/Q -> u_top/err_reg/D
+glue.pt -> glue.s_wm                         80  -12.264  u_top/pt_reg_21__52_/Q -> u_top/s_wm_reg_24__32_/D
+glue.pt -> glue.w_a_q                         6  -12.204  u_top/pt_reg_21__49_/Q -> u_top/w_a_q_reg_2_/D
+seq -> seq                                    1  -12.127  u_top/g_r3b_g_rt_u_seq/g_lp_1__wC_reg_20_/Q -> u_top/g_r3b_g_r
+glue.pt -> glue.w_d_q                         1  -12.032  u_top/pt_reg_21__49_/Q -> u_top/w_d_q_reg_0_/D
+## hold: 5000 endpoints (of the worst 5000), by class: count worst_ns example
+seq -> seq                                  427   -8.677  u_top/g_r3b_g_rt_u_seq/cm_de_reg_5_/Q -> u_top/g_r3b_g_rt_u_se
+glue -> glue.pt                              49   -6.248  g_hpn_q_d_reg_42_/Q -> u_top/pt_reg_18__42_/D
+glue.g_hwn_wc_d -> glue.g_hwn_wc_d           12   -4.612  u_top/g_hwn_wc_d_reg_4__120_/Q -> u_top/g_hwn_wc_d_reg_5__120_
+dist -> blk.act                            4512   -3.728  u_top/g_dist_0__u_d/q_reg_4249_/Q -> u_top/u_core/u_arr/g_c_1_
