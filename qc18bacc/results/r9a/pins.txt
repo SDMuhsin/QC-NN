@@ -1,0 +1,10 @@
+# R9a pin plan of qb_act2_blk (r9a_f2j, die 900 x 1970 um, block top = array top: yoff 1140 um), impl/r9a/pins.tcl [S]
+east   4 608  act[4607:0], M3 / M5, at column 0's act-pin y - 1140 (block y 97.8-1951.8); abutment check vs r5b_blk col LEF: 4 608 / 4 608 match, 0 bad
+south  2 581  s_q[2047:0] 2 048 + m_q[511:0] 512 + s_ren, s_ra[7:0], s_ctx, m_ren, m_ra[8:0], m_ctx (S / map macro read port), M2 / M4 / M6, >= 2 tracks
+north    185  clk, rst_n, start / c_* pass commands, busy / done, tgo / l_ok / l_seq* / l_pos* (tokens, load), f_* (flag port), d_* / a_* descriptors, err
+              (sequencer side; QB9_CTL_SIDE bottom puts them south instead), x 300 um centred
+west       0
+PG     VDD / VSS = M7 straps (0.8 um, pitch 30, offset 5) to the east / west boundary (impl/hard/pe_pdn.tcl, as the column)
+# Abstracts on tau3 /tmp/ckp908/qc18bacc/build/r9a_blk/r9a_f2j/: qb_act2_blk.lef (exact shapes, SIZE fixed to the die), qb_act2_blk_ring.lef,
+#   qb_act2_blk_{tt,ss,ff}.lib + _lib.db (PT extract_model on the routed netlist + SPEF), qb_act2_blk.v (routed netlist).
+#   CAVEAT: from the DR-iteration-0 route (2.2 M markers; 37 k nets not annotated, PT SPFP-103 / PARA-044 errors): floorplan / pin / timing-shape use only.

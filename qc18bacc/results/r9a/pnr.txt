@@ -1,0 +1,29 @@
+# R9a P&R of qb_act2_blk (netlist r9a_act, 819 202 um2), impl/r9a/run.sh pnr (act.cfg), tau3, OpenROAD 2.0-12381 [S, OR est. = OpenROAD STA]
+# recipe: dens 0.65, P&R DRV limits 0.30 ns / fo 32 (same as DC), IO latency 0.55, act output flops structured at their pins (place.tcl),
+#   DPL window 200 um, P&R SDC period 1.85 ns up to CTS; post-CTS repair at 2.0 ns (repair_timing at 1.85: > 1.5 h, oscillating on the lb ICG
+#   enables, stopped: r9a_f1 / f2 / f2v); one setup + hold + setup + hold loop (QB_RT_LOOPS 1)
+floorplan            die um (mm2)       yoff  edge flops (depth, max dy)  DRV nets before repair 1/2  cell um2 after DRV repair (x DC)  place WNS @1.85
+F1 r9a_f1            780 x 2420 (1.888)  690  4608 (56 um, 5.7 um)         14 111 / 8 959               1 045 123 (1.276) util 0.564       -0.876
+F2 r9a_f2            900 x 1970 (1.773) 1140  4608 (56 um, 5.7 um)         12 517 / 7 957                 997 226 (1.217) util 0.572       -0.513
+# DPL: no DPL-0036 in either (R7c: 94-398 cells), max displacement 89 um (F1 place); CTS legalisation clean.
+floorplan  post-CTS pre-repair @2.0 (WNS / viol ep / hold WNS / ep)   after repair loop @2.0 (WNS / ep / hold)   cell um2 (util)
+F1 r9a_f1r -0.772 / 14 856 / -0.328 / 4 949                          not finished (setup repair > 60 min), stopped
+F2 r9a_f2r -0.486 /  1 809 / -0.224 / 4 216                          -0.218 / 124 / +0.011 (0 ep)               1 084 942 (0.622)
+# worst post-CTS class (both): line-buffer write-enable broadcast ev2.row / vb -> wsl = ev2.row - vb -> slot decode -> ~20 repeaters (BUFFD16)
+#   across the block -> lb ICG CKLNQD1 E pins (clock-gating check: ICG clock 0.51 ns vs launch 0.67 ns); 2.03 ns data path, ~1.2 ns of it repeaters.
+# hold: sdq (ungated) -> lb_reg (behind ICG) skew, repaired.
+GRT of F2 (db/cts_rt.odb, M2-M7):
+run       GR adjust  iterations  usage total / M2 / M4 / M6   overflow (max V per gcell)  missing routes  GRT s  WNS @2.0 at GRT RC
+r9a_f2r   0.25       50 (flow)   -                             not converged after 2 h (maze rerouting), stopped
+r9a_f2rp  0.25       10, allow   59.1 / 65.3 / 66.3 / 62.8 %   283 351 (37)                -               1218   -2.38
+r9a_f2d   0.25       20, allow   65.5 / 74.1 / 75.0 / 69.4 %   576 493 (18)                yes -> GRT antenna repair SIGSEGV   3432  -5.11
+r9a_f2g   0.10       10, allow   ~50 / 55.1 / 56.3 / 51.9 %     20 242 (5)                 1                907    -
+r9a_f2h/i 0.05       10, allow   44.4 / 50.9 / 51.6 / 45.2 %        313 (2)                0                502   -0.903
+# overflow classes at adj 0.25 (10 it): V S1 36 %, repair buffers 31 %, pre-mux 15 %, line buffer 9 %; H S1 53 %, repair 24 %, pre-mux 17 %.
+Route of F2 = r9a_f2j (route_rt.tcl from r9a_f2r db/cts_rt.odb; GR adjust 0.05, 10 iterations, -allow_congestion, no GRT antenna repair, DR 16 threads):
+  GRT 499 s, overflow 313, 0 missing routes; DR stopped by design after iteration 0 (QB_DR_ITER 0, time box): 1 h 05 min, 2 205 122 markers
+  (shorts M2 1.03 M, M3 378 k, M4 147 k, M5 143 k, M6 90 k, M7 50 k; VIA1 cut spacing 22 k; M2 spacing 100 k); WL 21.85 m, 2.66 M vias
+  DR memory: peak 18.75 GB (DRT-0267), process max RSS 19.8 GB (route.time) -> fits 30 GB; iteration 0 alone 65 min at 16 threads
+  (the 7-thread run r9a_f2h was at 20 % after 15.5 min: DR wall is not thread-limited)
+  check_antennas (routed, iteration-0 wires): 0 net / 0 pin violations
+  r9a_f2i (DR_END_ITER 2, 15 threads) stopped at iteration 0 / 20 % for the time box.

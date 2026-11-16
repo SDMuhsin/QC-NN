@@ -1,0 +1,11 @@
+# R9a DC topographical qb_act2_blk (impl/r9a/run.sh syn, tt 1.65 ns, compile_ultra -no_autoungroup -gate_clock -spg) [S]
+# defines: impl/r9a/qb_act2_blk.f (R8a act set CTXR / LDR / CNT / SRA + QB_ACT_S1M=1 + QB_ACT_S2M + chip defines)
+# hook impl/r9a/topo.tcl: max_transition 0.30 ns / max_fanout 32 (= P&R limits), compile_final_drc_fix all, util 0.46, aspect 2.7,
+#   act east / S + map read port south / controls north.  tau3 build /tmp/ckp908/qc18bacc/build/syn/r9a_act, DC wall 16:33, peak 3.5 GB
+run        cell_um2  cells    regs    DRV nets left (max_tran / max_cap)   pre-route PT tt / ss MHz (1.65 ns, DC topo RC)
+r8c_s2m    828 477   226 593  54 809  39 236 (36 900 / 3 199) at 0.165 ns  602.4 / 384.9
+r9a_act    819 202   223 092  55 245     230 (230 / 14) at 0.30 ns        601.6 / 383.6
+# tt worst ctx lval -> m_ra (R8a domain); classes tt: s1_reg 611.4, s2_reg 667.2, lb_reg 602.2 (ev2_reg_row -> lb write), pipe 2661
+# ss worst lval -> s_ra; s1 399.8, s2 440.0, lb 420.6 (rcnt -> lb ICG enable), pipe 2230
+# Mechanism of R7c / R8c's DRV leftovers (R8c dc.log): DC's DRV pass took the design-rule cost 210 k -> 28 k, then the -spg re-placement
+#   + area recovery deleted the fix buffers (938 k -> 861 k um2, cost back to 205 k) and no DRV pass followed; compile_final_drc_fix all adds it.
