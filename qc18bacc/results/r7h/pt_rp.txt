@@ -1,0 +1,20 @@
+# PT tt pre-route (DC topo parasitics, 1.65 ns, impl/r4/run.sh pt): r7h_rp (RSH=2 + PCOL)
+r7h_rp clock qb_clk period_ns 1.650 wns_ns -4.045 fmax_mhz 175.6 path u_top/g_dist_0__u_d/q_reg_265_/CP -> u_top/u_core/u_arr/g_c_7__u_col/act[265]
+r7h_rp core_other -4.045 175.6 u_top/g_dist_0__u_d/q_reg_265_/CP -> u_top/u_core/u_arr/g_c_7__u_col/act[265]
+r7h_rp act_supply -0.723 421.4 u_top/u_act/g_ctx_1__u_ctx/ival_reg/CP -> u_top/u_act/g_ctx_1__u_ctx/nav_reg_3_/D
+r7h_rp seq -0.696 426.2 u_top/g_r3b_g_rt_u_seq/g_ps_0__pf_r_reg/CP -> u_top/g_r3b_g_rt_u_seq/g_lp_0__RdA_reg/D
+r7h_rp prm -0.483 468.9 u_top/g_r3b_u_prm/rfree_reg_0__4_/CP -> u_top/g_r3b_u_prm/b_a_reg_7_/D
+r7h_rp head -1.654 302.7 u_top/u_core/u_arr/g_c_0__u_col/clk -> u_head/g_pcol_0__u_pc/hold_reg_4__18_/D
+r7h_rp out_port 0.577 932.4 busy_reg/CP -> st_img_free
+r7h_rp token_tgo -0.445 477.3 u_top/g_r3b_g_rt_u_seq/cm_k_reg_4_/CP -> u_top/u_act/sel1a_reg_11_/D
+r7h_rp token_deot -0.247 527.3 u_top/u_act/dsc_reg_19_/CP -> u_top/u_act/sel1a_reg_11_/D
+# PT ss pre-route (DC topo parasitics, 1.65 ns, impl/r4/run.sh pt): r7h_rp (RSH=2 + PCOL)
+r7h_rp clock qb_clk period_ns 1.650 wns_ns -3.498 fmax_mhz 194.3 path u_top/u_core/u_arr/g_c_0__u_col/clk -> u_head/g_pcol_0__u_pc/hold_reg_4__18_/D
+r7h_rp core_other -1.552 312.3 u_top/g_dist_0__u_d/q_reg_1160_/CP -> u_top/u_core/u_arr/g_c_7__u_col/act[1160]
+r7h_rp act_supply -2.145 263.5 u_top/u_act/g_ctx_0__u_ctx/ival_reg/CP -> u_top/u_act/g_ctx_0__u_ctx/nav_reg_3_/D
+r7h_rp seq -2.055 269.9 u_top/g_r3b_g_rt_u_seq/g_ps_0__pf_r_reg/CP -> u_top/g_r3b_g_rt_u_seq/g_lp_0__RdB_reg/D
+r7h_rp prm -1.719 296.8 u_top/g_r3b_u_prm/rfree_reg_0__0_/CP -> u_top/g_r3b_u_prm/b_a_reg_7_/D
+r7h_rp head -3.498 194.3 u_top/u_core/u_arr/g_c_0__u_col/clk -> u_head/g_pcol_0__u_pc/hold_reg_4__18_/D
+r7h_rp out_port 0.286 733.1 busy_reg/CP -> st_img_free
+r7h_rp token_tgo -1.650 303.0 u_top/g_r3b_g_rt_u_seq/eqf_reg_0__57_/CP -> u_top/u_act/sel1a_reg_11_/D
+r7h_rp token_deot -1.264 343.1 u_top/u_act/dsc_reg_19_/CP -> u_top/u_act/sel1a_reg_11_/D

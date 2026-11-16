@@ -1,0 +1,58 @@
+# r7h_rp PT tt: worst 3 endpoints into u_act/sdq_reg and the detailed path to sdq_reg_760_
+u_top/u_core/u_arr/g_c_7__u_col/clk (qb_col_blk) u_top/u_act/sdq_reg_760_/D (DFQD4)    -0.67
+u_top/u_core/u_arr/g_c_6__u_col/clk (qb_col_blk) u_top/u_act/sdq_reg_309_/D (DFQD4)    -0.65
+u_top/u_core/u_arr/g_c_7__u_col/clk (qb_col_blk) u_top/u_act/sdq_reg_1016_/D (DFQD2)    -0.65
+u_top/u_core/u_arr/g_c_7__u_col/clk (qb_col_blk) 0.000
+u_top/u_core/u_arr/g_c_7__u_col/f_y[414] (qb_col_blk) 1.166
+u_top/U45510/A2 (AOI222D4) 1.265
+u_top/U45510/ZN (AOI222D4) 1.435
+u_top/U47725/B1 (OAI22D0) 1.454
+u_top/U47725/ZN (OAI22D0) 1.526
+u_top/U47726/B (AOI21D1) 1.526
+u_top/U47726/ZN (AOI21D1) 1.633
+u_top/U47727/B (OAI21D4) 1.633
+u_top/U47727/ZN (OAI21D4) 1.699
+u_top/U55726/B1 (AOI22D1) 1.701
+u_top/U55726/ZN (AOI22D1) 1.780
+u_top/U55727/A2 (ND2D4) 1.780
+u_top/U55727/ZN (ND2D4) 1.863
+u_top/U93679/I (CKBD12) 1.879
+u_top/U93679/Z (CKBD12) 1.948
+u_top/u_act/U2223/I (BUFFD1) 1.994
+u_top/u_act/U2223/Z (BUFFD1) 2.064
+u_top/u_act/sdq_reg_760_/D (DFQD4) 2.064
+data arrival time
+u_top/u_act/sdq_reg_760_/CP (DFQD4) 1.400
+data arrival time
+slack (VIOLATED) (VIOLATED)
+# r6a_ref PT tt: worst 3 endpoints into u_act/sdq_reg and the detailed path to sdq_reg_760_
+u_top/g_s_0__u_m/g_mac_g_s_u_mac/CLKA (qb_s_256x128m1) u_top/u_act/sdq_reg_1213_/D (DFQD1)    -0.10
+u_top/g_s_28__u_m/g_mac_g_s_u_mac/CLKA (qb_s_256x128m1) u_top/u_act/sdq_reg_191_/D (DFQD1)    -0.10
+u_top/g_s_0__u_m/g_mac_g_s_u_mac/CLKA (qb_s_256x128m1) u_top/u_act/sdq_reg_189_/D (DFQD1)    -0.10
+u_top/g_s_27__u_m/g_mac_g_s_u_mac/CLKA (qb_s_256x128m1) 0.000
+u_top/g_s_27__u_m/g_mac_g_s_u_mac/QA[120] (qb_s_256x128m1) 0.697
+u_top/U21253/I (BUFFD8) 0.697
+u_top/U21253/Z (BUFFD8) 0.747
+u_top/U21266/I (BUFFD3) 0.801
+u_top/U21266/Z (BUFFD3) 0.895
+u_top/U18242/B2 (AOI22D0) 0.901
+u_top/U18242/ZN (AOI22D0) 0.968
+u_top/U18243/A2 (ND2D0) 0.968
+u_top/U18243/ZN (ND2D0) 1.060
+u_top/U30744/B2 (AOI22D0) 1.061
+u_top/U30744/ZN (AOI22D0) 1.141
+u_top/U30745/B (OAI21D0) 1.141
+u_top/U30745/ZN (OAI21D0) 1.181
+u_top/U30746/B (AOI21D1) 1.181
+u_top/U30746/ZN (AOI21D1) 1.282
+u_top/U32121/B1 (AOI22D4) 1.282
+u_top/U32121/ZN (AOI22D4) 1.358
+u_top/u_act/sdq_reg_760_/D (DFQD4) 1.362
+data arrival time
+u_top/u_act/sdq_reg_760_/CP (DFQD4) 1.400
+data arrival time
+slack (MET) (MET)
+# r7h_rp act_supply class worst (internal ctx path)
+u_top/u_act/g_ctx_1__u_ctx/ival_reg/CP (DFCNQD1) 0.000
+u_top/u_act/g_ctx_1__u_ctx/ival_reg/Q (DFCNQD1) 0.158
+slack (VIOLATED) (VIOLATED)
