@@ -1,0 +1,18 @@
+# R9b r8d_rpg hub, die 3990 x 1700.6 (SB 400), DC buffers removed, plain gpl density 0.62 (no TD/RD): nets with HPWL > 400 um by driver class (impl/r9b/longnets.tcl probe)
+R9B long u_top_UN                                      nets  11710 hpwl_m 11.85
+R9B long MACRO:qb_s_256x128m1                          nets   4091 hpwl_m 5.34
+R9B long MACRO:qb_p_240x144m2                          nets   1296 hpwl_m 5.23
+R9B long u_top_g_wbq_fyq_reg_N_                        nets   1920 hpwl_m 1.73
+R9B long MACRO:qb_b_128x128m1                          nets    768 hpwl_m 1.53
+R9B long u_top_g_rNb_u_prm                             nets    615 hpwl_m 1.30
+R9B long u_top_b_wd_reg_N__N__N_                       nets    600 hpwl_m 0.82
+R9B long PORT:wb_fy                                    nets    829 hpwl_m 0.37
+R9B long u_top_g_wbk_qa_reg_N__N_                      nets    126 hpwl_m 0.37
+R9B long u_top_g_wbq_wyq_reg_N_                        nets    344 hpwl_m 0.35
+R9B long u_head                                        nets    351 hpwl_m 0.31
+R9B long u_top_b_wa_reg_N__N__N_                       nets     56 hpwl_m 0.17
+R9B long MACRO:qb_f_3232x128m8                         nets    128 hpwl_m 0.14
+R9B long MACRO:qb_i_128x128m1                          nets    239 hpwl_m 0.12
+R9B long PORT:g_hpn_q_d                                nets     60 hpwl_m 0.10
+R9B long u_top_g_hin_ic_d_reg_N_                       nets    128 hpwl_m 0.08
+R9B long total hpwl_m 31.72

@@ -1,0 +1,3 @@
+EQUIV instances old 605210 new 605290 (split buffers 80); missing in new 0, extra in new 0, master mismatches 0
+EQUIV nets old 669043 new 669043 (after split-buffer merge); identical terminal sets 669043; old-only 0 new-only 0
+EQUIV constant pins old 4604 new 4604, pins with a different constant / missing 0

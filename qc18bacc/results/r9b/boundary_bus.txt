@@ -1,0 +1,44 @@
+# bus (top-side class) | dir (hub view) | bits | registered on the hub side | %
+col.pf                       out             5224      0   0.0
+col.pw                       out             5080   5056  99.5
+col.s_rd                     out             4147      0   0.0
+col.f_y                      in              4096   4096 100.0
+act                          out             2652     12   0.5
+glueT                        out             1246    895  71.8
+col.t2                       out             1088   1088 100.0
+col.b2                       in              1024   1024 100.0
+seq                          out             1018   1000  98.2
+col.w_r                      out              608      1   0.2
+col.w_y                      in               608    608 100.0
+glueT                        in               345    289  83.8
+col.f_b                      in               256      0   0.0
+glueT+seq                    in               107     92  86.0
+host                         in                64     62  96.9
+glueT+host                   in                48     39  81.2
+seq                          in                44     15  34.1
+io                           out               41     40  97.6
+col.w_b                      in                32      0   0.0
+act                          in                18      0   0.0
+glueT+seq                    out               12      0   0.0
+col.p_ld                     out                8      0   0.0
+col.w_ld                     out                8      0   0.0
+col.w_sh                     out                8      0   0.0
+col.f_sh                     out                8      0   0.0
+col.f_src                    out                8      8 100.0
+col.w_vld                    out                8      8 100.0
+col.f_vld                    out                8      8 100.0
+glueN                        out                6      0   0.0
+act+glueT                    out                5      0   0.0
+col.rst_n                    out                5      0   0.0
+glueT+host+seq               in                 4      0   0.0
+host+seq                     in                 4      4 100.0
+col.ctl                      out                3      0   0.0
+act+glueT                    in                 3      1  33.3
+act+seq                      out                2      0   0.0
+glueN+glueT                  in                 1      1 100.0
+rst                          in                 1      0   0.0
+glueT+host+seq               out                1      0   0.0
+act+glueT+seq                in                 1      1 100.0
+glueT+io                     in                 1      0   0.0
+clk                          in  multi-col      1      0   0.0
+TOTAL 27852 port bits, registered 14348

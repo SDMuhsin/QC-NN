@@ -1,0 +1,10 @@
+col0: 2640 pins abutting the column south pins (6.77 /um over 390 um) + 136 column-north pins (t2/rst_n, over the array)
+col1: 2643 pins abutting the column south pins (6.78 /um over 390 um) + 136 column-north pins (t2/rst_n, over the array)
+col2: 2640 pins abutting the column south pins (6.77 /um over 390 um) + 136 column-north pins (t2/rst_n, over the array)
+col3: 2640 pins abutting the column south pins (6.77 /um over 390 um) + 137 column-north pins (t2/rst_n, over the array)
+col4: 2642 pins abutting the column south pins (6.77 /um over 390 um) + 137 column-north pins (t2/rst_n, over the array)
+col5: 2642 pins abutting the column south pins (6.77 /um over 390 um) + 138 column-north pins (t2/rst_n, over the array)
+col6: 2643 pins abutting the column south pins (6.78 /um over 390 um) + 138 column-north pins (t2/rst_n, over the array)
+col7: 2641 pins abutting the column south pins (6.77 /um over 390 um) + 138 column-north pins (t2/rst_n, over the array)
+west strip x 12-848 (act supply above): 5625 pins = 6.73 /um
+total 27852 pins, all on the north edge (3990 um): 6.98 /um

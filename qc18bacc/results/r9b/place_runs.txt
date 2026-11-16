@@ -1,0 +1,62 @@
+== r9b_d
+init init_tt setup_wns_ns -0.736 setup_tns_ns -46.426 hold_wns_ns -0.187 hold_tns_ns -106.439
+floorplan die_um 3990.00 x 1551.20 core_um2 6132384.0 cell_um2 841265.6 macro_um2 4041585.7 utilisation 0.796
+pdn VDD check_power_grid true
+pdn VSS check_power_grid true
+QC_PNR drv violations after global placement: 376434
+QC_PNR repair_design on 80093 nets with DRV violations (122571 nets kept)
+[INFO RSZ-0034] Found 71882 slew violations.
+[INFO RSZ-0035] Found 2387 fanout violations.
+[INFO RSZ-0036] Found 11354 capacitance violations.
+[INFO RSZ-0037] Found 15805 long wires.
+[INFO RSZ-0038] Inserted 53082 buffers in 73728 nets.
+[INFO RSZ-0039] Resized 81119 instances.
+QC_PNR gpl_incr: incremental global placement after the DRV repair, density 0.6799999999999999 die_um 3990.00 x 1551.20 core_um2 6132384.0 cell_um2 1599100.2 macro_um2 4041585.7 utilisation 0.920
+[ERROR GPL-0302] Use a higher -density or re-floorplan with a larger core area.
+== r9b_e
+init init_tt setup_wns_ns -0.736 setup_tns_ns -46.426 hold_wns_ns -0.187 hold_tns_ns -106.439
+floorplan die_um 3990.00 x 1700.60 core_um2 6726996.0 cell_um2 841265.6 macro_um2 4041585.7 utilisation 0.726
+pdn VDD check_power_grid true
+pdn VSS check_power_grid true
+QC_PNR drv violations after global placement: 360584
+QC_PNR repair_design on 75012 nets with DRV violations (129029 nets kept)
+[INFO RSZ-0034] Found 67476 slew violations.
+[INFO RSZ-0035] Found 2387 fanout violations.
+[INFO RSZ-0036] Found 9804 capacitance violations.
+[INFO RSZ-0037] Found 15498 long wires.
+[INFO RSZ-0038] Inserted 47260 buffers in 69356 nets.
+[INFO RSZ-0039] Resized 74987 instances.
+QC_PNR gpl_incr: incremental global placement after the DRV repair, density 0.6799999999999999 die_um 3990.00 x 1700.60 core_um2 6726996.0 cell_um2 1506355.2 macro_um2 4041585.7 utilisation 0.825
+QC_PNR repair_design on 15202 nets with DRV violations (236099 nets kept)
+[INFO RSZ-0034] Found 11926 slew violations.
+[INFO RSZ-0035] Found 60 fanout violations.
+[INFO RSZ-0036] Found 3114 capacitance violations.
+[INFO RSZ-0037] Found 11094 long wires.
+[INFO RSZ-0038] Inserted 19518 buffers in 12477 nets.
+[INFO RSZ-0039] Resized 5787 instances.
+== r9b_f (SB 400, TD/RD off, DPL -max_displacement 500)
+floorplan die_um 3990.00 x 1700.60 core_um2 6726996.0 cell_um2 841265.6 macro_um2 4041585.7 utilisation 0.726
+place die_um 3990.00 x 1700.60 core_um2 6726996.0 cell_um2 1710627.8 macro_um2 4041585.7 utilisation 0.855
+place place_tt setup_wns_ns -998.997 setup_tns_ns -517853.594 hold_wns_ns -0.074 hold_tns_ns -6.210
+QC_PNR drv violations after global placement: 361745
+QC_PNR repair_design on 75036 nets with DRV violations (129005 nets kept)
+[INFO RSZ-0034] Found 67376 slew violations.
+[INFO RSZ-0035] Found 2387 fanout violations.
+[INFO RSZ-0036] Found 9600 capacitance violations.
+[INFO RSZ-0037] Found 14316 long wires.
+[INFO RSZ-0038] Inserted 45428 buffers in 69289 nets.
+[INFO RSZ-0039] Resized 75551 instances.
+QC_PNR repair_design on 14928 nets with DRV violations (234541 nets kept)
+[INFO RSZ-0034] Found 11517 slew violations.
+[INFO RSZ-0035] Found 60 fanout violations.
+[INFO RSZ-0036] Found 3835 capacitance violations.
+[INFO RSZ-0037] Found 10784 long wires.
+[INFO RSZ-0038] Inserted 19782 buffers in 12458 nets.
+[INFO RSZ-0039] Resized 5428 instances.
+QC_PNR r6c: icg 1376 gates, sinks 1-8 122 9-24 20 25-64 1234 65-160 0 >160 0, masters {CKLNQD2 122 CKLNQD4 20 CKLNQD8 1234}, moved 1376 (mean 115 um, max 1021 um)
+== r9b_e DPL-0036 failed instances (unique, by name class)
+    300 u_top_UN
+     14 fanoutN
+      9 u_top_g_wbq_fyq_reg_N_
+      5 u_head/g_pcol_N__u_pc/fyi_reg_N_
+      3 wireN

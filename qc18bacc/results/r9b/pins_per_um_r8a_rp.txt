@@ -1,0 +1,10 @@
+col0 south-abutted pins 2640 (6.77 /um of 390 um), over-array north pins 136
+col1 south-abutted pins 2641 (6.77 /um of 390 um), over-array north pins 136
+col2 south-abutted pins 2637 (6.76 /um of 390 um), over-array north pins 136
+col3 south-abutted pins 2643 (6.78 /um of 390 um), over-array north pins 137
+col4 south-abutted pins 2642 (6.77 /um of 390 um), over-array north pins 137
+col5 south-abutted pins 2644 (6.78 /um of 390 um), over-array north pins 137
+col6 south-abutted pins 2642 (6.77 /um of 390 um), over-array north pins 137
+col7 south-abutted pins 2642 (6.77 /um of 390 um), over-array north pins 137
+west strip (x 12-848, 836 um): 5423 pins (6.49 /um)
+total 27647 pins on the 3990-um north edge = 6.93 /um; west/east/south edges: 0

@@ -1,0 +1,14 @@
+PART icg flops moved with their gate 1
+PART units H 111250 (cells 202498, 4.8826 mm2 incl. macros) T cells 374832 (4.2423 mm2) B 8
+PART WA glue cells moved to hub 20559 (sequential 13)
+PART chip-level H 1456 T 364
+R9B cells before 577338
+R9B top-level cells after ungroup 121938
+R9B hub units found 111250 of 111250
+R9B leaf cells after 581275
+R9B broadcast hub outputs: 32
+R9B split broadcast ports: 75 new hub ports / buffers
+R9B hub pins 27852
+R9B hub ports 27852 in 6658 out 21194
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 2:38.32
+	Maximum resident set size (kbytes): 3558380
