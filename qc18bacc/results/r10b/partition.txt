@@ -1,0 +1,32 @@
+== r10b_part.out
+GROUP_CELLS N 11056
+GROUP_CELLS S 180815
+GROUP_CELLS W 144061
+GROUP_CELLS WA 239637
+PART icg flops moved with their gate 1
+PART units H 114189 (cells 206548, 4.8854 mm2 incl. macros) T cells 369125 (4.2349 mm2) B 8
+PART WA glue cells moved to hub 21696 (sequential 13)
+PART chip-level H 1640 T 321
+R9B hub units found 114189 of 114189
+R9B split broadcast ports: 81 new hub ports / buffers
+R9B hub pins 27758
+R9B hub ports 27758 in 6607 out 21151
+EQUIV instances old 575681 new 575762 (split buffers 81); missing in new 0, extra in new 0, master mismatches 0
+EQUIV nets old 639442 new 639442 (after split-buffer merge); identical terminal sets 639442; old-only 0 new-only 0
+EQUIV constant pins old 4603 new 4603, pins with a different constant / missing 0
+== r10w_part.out
+GROUP_CELLS N 10759
+GROUP_CELLS S 243641
+GROUP_CELLS W 147753
+GROUP_CELLS WA 236414
+PART icg flops moved with their gate 1
+PART units H 182209 (cells 271050, 5.1227 mm2 incl. macros) T cells 367621 (4.2276 mm2) B 8
+PART WA glue cells moved to hub 19245 (sequential 24)
+PART chip-level H 5432 T 328
+R9B hub units found 182209 of 182209
+R9B split broadcast ports: 79 new hub ports / buffers
+R9B hub pins 27789
+R9B hub ports 27789 in 6643 out 21146
+EQUIV instances old 638679 new 638758 (split buffers 79); missing in new 0, extra in new 0, master mismatches 0
+EQUIV nets old 702481 new 702481 (after split-buffer merge); identical terminal sets 702481; old-only 0 new-only 0
+EQUIV constant pins old 5185 new 5185, pins with a different constant / missing 0

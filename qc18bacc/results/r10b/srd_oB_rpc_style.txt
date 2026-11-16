@@ -1,0 +1,28 @@
+SRD cone: column-local 1335, multi-column (body) 13423, no S source (control) 584, levels 0..5, s_q ports 2048, density 0.5
+SRD channels (y um): 573.0-598.7, 817.8-843.5, 1062.6-1088.3
+SRD local col 0 channel 1 (y 817.8-843.5): cells 85 failed 0 mean |dx| 17.8 um
+SRD local col 1 channel 1 (y 817.8-843.5): cells 76 failed 0 mean |dx| 10.1 um
+SRD local col 2 channel 1 (y 817.8-843.5): cells 79 failed 0 mean |dx| 7.9 um
+SRD local col 3 channel 1 (y 817.8-843.5): cells 79 failed 0 mean |dx| 10.7 um
+SRD local col 4 channel 1 (y 817.8-843.5): cells 77 failed 0 mean |dx| 13.0 um
+SRD local col 5 channel 1 (y 817.8-843.5): cells 81 failed 0 mean |dx| 7.5 um
+SRD local col 6 channel 1 (y 817.8-843.5): cells 96 failed 0 mean |dx| 9.2 um
+SRD local col 7 channel 1 (y 817.8-843.5): cells 94 failed 0 mean |dx| 9.8 um
+SRD local col 0 channel 2 (y 1062.6-1088.3): cells 86 failed 0 mean |dx| 12.7 um
+SRD local col 1 channel 2 (y 1062.6-1088.3): cells 90 failed 0 mean |dx| 14.6 um
+SRD local col 2 channel 2 (y 1062.6-1088.3): cells 89 failed 0 mean |dx| 9.0 um
+SRD local col 3 channel 2 (y 1062.6-1088.3): cells 89 failed 0 mean |dx| 10.0 um
+SRD local col 4 channel 2 (y 1062.6-1088.3): cells 81 failed 0 mean |dx| 13.0 um
+SRD local col 5 channel 2 (y 1062.6-1088.3): cells 73 failed 0 mean |dx| 6.6 um
+SRD local col 6 channel 2 (y 1062.6-1088.3): cells 74 failed 0 mean |dx| 6.9 um
+SRD local col 7 channel 2 (y 1062.6-1088.3): cells 86 failed 0 mean |dx| 8.8 um
+SRD body level 0 (y 1662.0-1692.6, 17 rows): cells 2048 failed 0 mean |dx| 0.0 um
+SRD body level 1 (y 1631.4-1662.0, 17 rows): cells 2048 failed 0 mean |dx| 0.1 um
+SRD body level 2 (y 1608.0-1631.4, 13 rows): cells 2745 failed 0 mean |dx| 0.3 um
+SRD body level 3 (y 1584.5-1607.9, 13 rows): cells 2381 failed 0 mean |dx| 0.4 um
+SRD body level 4 (y 1562.9-1584.5, 12 rows): cells 2208 failed 0 mean |dx| 0.8 um
+SRD body level 5 (y 1541.3-1562.9, 12 rows): cells 1993 failed 0 mean |dx| 0.8 um
+SRD west buffers channel 0 (y 585.8 +- 110, x 662-846): buffers 910 failed 0
+SRD west buffers channel 1 (y 830.6 +- 110, x 662-846): buffers 1587 failed 0
+SRD west buffers channel 2 (y 1075.4 +- 110, x 662-846): buffers 2496 failed 0
+SRD westward nets buffered: 4993

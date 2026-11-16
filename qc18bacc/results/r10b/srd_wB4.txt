@@ -1,0 +1,39 @@
+SRD cone: column-local 5210, multi-column (body) 8102, no S source (control) 78, levels 0..2, s_q ports 2048, density 0.5
+SRD channels (y um): 573.0-598.7, 817.8-843.5, 1062.6-1088.3
+SRD local col 0 channel 0 (y 585.8-598.7): cells 69 failed 0 mean |dx| 14.7 um
+SRD local col 1 channel 0 (y 585.8-598.7): cells 81 failed 0 mean |dx| 17.4 um
+SRD local col 2 channel 0 (y 585.8-598.7): cells 85 failed 0 mean |dx| 18.4 um
+SRD local col 3 channel 0 (y 585.8-598.7): cells 75 failed 0 mean |dx| 16.4 um
+SRD local col 4 channel 0 (y 585.8-598.7): cells 78 failed 0 mean |dx| 17.1 um
+SRD local col 5 channel 0 (y 585.8-598.7): cells 88 failed 0 mean |dx| 19.5 um
+SRD local col 6 channel 0 (y 585.8-598.7): cells 80 failed 0 mean |dx| 17.6 um
+SRD local col 7 channel 0 (y 585.8-598.7): cells 75 failed 0 mean |dx| 16.5 um
+SRD local col 0 channel 1 (y 830.6-843.5): cells 224 failed 0 mean |dx| 50.8 um
+SRD local col 1 channel 1 (y 830.6-843.5): cells 232 failed 0 mean |dx| 52.7 um
+SRD local col 2 channel 1 (y 830.6-843.5): cells 212 failed 0 mean |dx| 48.0 um
+SRD local col 3 channel 1 (y 830.6-843.5): cells 220 failed 0 mean |dx| 50.9 um
+SRD local col 4 channel 1 (y 830.6-843.5): cells 220 failed 0 mean |dx| 50.9 um
+SRD local col 5 channel 1 (y 830.6-843.5): cells 206 failed 0 mean |dx| 47.6 um
+SRD local col 6 channel 1 (y 830.6-843.5): cells 210 failed 0 mean |dx| 48.5 um
+SRD local col 7 channel 1 (y 830.6-843.5): cells 203 failed 0 mean |dx| 46.9 um
+SRD local col 0 channel 2 (y 1075.4-1088.3): cells 355 failed 0 mean |dx| 81.3 um
+SRD local col 1 channel 2 (y 1075.4-1088.3): cells 347 failed 0 mean |dx| 79.5 um
+SRD local col 2 channel 2 (y 1075.4-1088.3): cells 350 failed 0 mean |dx| 80.2 um
+SRD local col 3 channel 2 (y 1075.4-1088.3): cells 355 failed 0 mean |dx| 83.1 um
+SRD local col 4 channel 2 (y 1075.4-1088.3): cells 350 failed 0 mean |dx| 81.8 um
+SRD local col 5 channel 2 (y 1075.4-1088.3): cells 366 failed 0 mean |dx| 85.6 um
+SRD local col 6 channel 2 (y 1075.4-1088.3): cells 357 failed 0 mean |dx| 83.5 um
+SRD local col 7 channel 2 (y 1075.4-1088.3): cells 372 failed 0 mean |dx| 87.1 um
+SRD tree level 2 channel 0: cells 409 failed 0 mean |dx| 23.1 um
+SRD tree level 2 channel 1: cells 1206 failed 0 mean |dx| 70.0 um
+SRD tree level 2 channel 2: cells 1215 failed 0 mean |dx| 70.5 um
+SRD tree level 1 channel 0: cells 449 failed 0 mean |dx| 25.2 um
+SRD tree level 1 channel 1: cells 1923 failed 0 mean |dx| 36.5 um
+SRD tree level 1 channel 2: cells 852 failed 0 mean |dx| 14.4 um
+SRD tree level 0 channel 0: cells 65 failed 0 mean |dx| 0.0 um
+SRD tree level 0 channel 1: cells 1881 failed 0 mean |dx| 10.8 um
+SRD tree level 0 channel 2: cells 102 failed 0 mean |dx| 0.1 um
+SRD west port buffers channel 0: buffers 65 failed 0
+SRD west port buffers channel 1: buffers 1881 failed 0
+SRD west port buffers channel 2: buffers 102 failed 0
+SRD westward nets buffered: 2048

@@ -1,0 +1,49 @@
+gcell 3.0 um; overflowed gcells 149494 of 752780 = 19.86 %; records H 148591 V 59839; total overflow H 2126202 V 427111 tracks
+REGION west  overflowed gcells    509 =   0.3 % of region; overflow H    782 V     32 tracks
+REGION col0  overflowed gcells  16474 =  22.4 % of region; overflow H  93725 V  10000 tracks
+REGION col1  overflowed gcells  23506 =  31.9 % of region; overflow H 381794 V  98135 tracks
+REGION col2  overflowed gcells  25581 =  34.8 % of region; overflow H 484706 V 107626 tracks
+REGION col3  overflowed gcells  25279 =  34.4 % of region; overflow H 453653 V 113204 tracks
+REGION col4  overflowed gcells  23179 =  31.5 % of region; overflow H 387111 V  78272 tracks
+REGION col5  overflowed gcells  22574 =  30.7 % of region; overflow H 261281 V  17683 tracks
+REGION col6  overflowed gcells  12392 =  16.8 % of region; overflow H  63150 V   2159 tracks
+REGION col7  overflowed gcells      0 =   0.0 % of region; overflow H      0 V      0 tracks
+# class: share of net-tracks in overflowed gcells | overflow left if the class's tracks vanished (of 2553313)
+CLASS glue:fy-reg>s-in        20.2 % | overflow left 1324436 ( 51.9 % of base)
+CLASS fyreg>s-in              12.8 % | overflow left 1760095 ( 68.9 % of base)
+CLASS MACRO:qb_p Q            12.4 % | overflow left 1864203 ( 73.0 % of base)
+CLASS glue:s-Q>act-out        11.3 % | overflow left 1788704 ( 70.1 % of base)
+CLASS MACRO:qb_s Q            10.8 % | overflow left 1808892 ( 70.8 % of base)
+CLASS glue regs                5.9 % | overflow left 2102806 ( 82.4 % of base)
+CLASS glue:reg>s-in            4.6 % | overflow left 2200024 ( 86.2 % of base)
+CLASS pcol                     3.8 % | overflow left 2282221 ( 89.4 % of base)
+CLASS port in                  3.7 % | overflow left 2252792 ( 88.2 % of base)
+CLASS glue:reg>col-out         3.3 % | overflow left 2303719 ( 90.2 % of base)
+CLASS prm                      3.0 % | overflow left 2346960 ( 91.9 % of base)
+CLASS glue:reg>reg             1.5 % | overflow left 2448533 ( 95.9 % of base)
+CLASS f_y path                 1.4 % | overflow left 2459242 ( 96.3 % of base)
+CLASS glue:reg>act-out         1.3 % | overflow left 2449554 ( 95.9 % of base)
+FAMILY write-back (f_y regs -> rotators -> S/B write)   share  39.0 % | overflow left 954924 ( 37.4 %), overflowed records left 79665 of 208430, gcells 10.55 %
+FAMILY S-read -> act port (S Q + rotator)               share  22.1 % | overflow left 1213912 ( 47.5 %), overflowed records left 132508 of 208430, gcells 14.16 %
+FAMILY params Q -> pf / pw                              share  12.4 % | overflow left 1864203 ( 73.0 %), overflowed records left 170958 of 208430, gcells 15.69 %
+FAMILY write-back + S-read                              share  61.2 % | overflow left 497051 ( 19.5 %), overflowed records left 40171 of 208430, gcells 5.34 %
+FAMILY all three                                        share  73.6 % | overflow left  27984 (  1.1 %), overflowed records left 6284 of 208430, gcells 0.83 %
+YREGION south (params/B) y<361     H overflow       0 tracks, overflowed gcells 0
+YREGION south (params/B) y<361     V overflow       0 tracks, overflowed gcells 0
+YREGION S rows y 361-1300          H overflow  462220 tracks, overflowed gcells 39968
+YREGION S rows y 361-1300          V overflow  187091 tracks, overflowed gcells 26519
+YREGION band y>1300                H overflow 1663982 tracks, overflowed gcells 108623
+YREGION band y>1300                V overflow  240020 tracks, overflowed gcells 33320
+# demand / nominal capacity in % per layer and region (guides; M1 / macro OBS not subtracted)
+layer dir pitch   west   col0   col1   col2   col3   col4   col5   col6   col7  total
+M1    H 0.20   11.9    7.4   14.8   18.0   17.6   14.9    9.8    6.1    4.6   11.7
+M2    V 0.20   38.6   27.3   33.7   34.1   34.2   32.9   29.7   24.1   16.9   31.1
+M3    H 0.20   30.5   35.6   49.4   53.2   51.6   48.5   44.0   30.4   15.7   38.7
+M4    V 0.20   30.1   40.0   44.4   45.0   46.4   44.8   40.8   33.6   31.2   38.4
+M5    H 0.20   26.7   50.8   59.9   61.9   59.7   54.9   46.2   33.9   13.6   43.0
+M6    V 0.20   21.6   29.8   33.9   34.7   35.0   33.7   31.0   27.3   12.8   28.0
+M7    H 0.20    7.8   18.4   21.8   22.5   20.9   19.4   17.2   12.8    5.2   15.2
+M8    V 0.80    7.4   15.8   19.1   19.3   19.0   18.3   16.8   11.0    2.3   13.5
+M9    H 0.80    6.5   17.5   21.1   23.6   22.4   20.7   18.4   15.1    4.5   15.4
+R10B grt tt setup_wns_ns -3.988 fmax_est_mhz 171.3
+R10B_DONE ana

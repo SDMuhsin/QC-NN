@@ -1,0 +1,52 @@
+r10_rpc DC_DONE r10_rpc rc 0 errors 0 summary ok
+r10_rpc   design qb_chip top qb_chip corner tt period_ns 1.65 topo 1 wire_load topo
+r10_rpc   cell_area_um2 16105895.915152 gate_eq_kGE 11184.65 cells 575681 regs 139724
+r10_rpc   setup_wns_ns -4.51068 0.00725329 setup_tns_ns -17074.778 setup_viol_endpoints 22509
+r10_rpc tt head slack_ns -0.195 fmax_mhz 542.0
+r10_rpc tt act_supply slack_ns 0.063 fmax_mhz 630.1
+r10_rpc tt seq slack_ns 0.030 fmax_mhz 617.4
+r10_rpc tt prm slack_ns 0.077 fmax_mhz 635.7
+r10_rpc tt top_glue slack_ns -0.569 fmax_mhz 450.7
+r10_rpc tt top_glue_x slack_ns 0.009 fmax_mhz 609.3
+r10_rpc tt b2r slack_ns -0.569 fmax_mhz 450.7
+r10_rpc tt to_macro slack_ns 0.084 fmax_mhz 638.7
+r10_rpc tt from_macro slack_ns 0.063 fmax_mhz 630.1
+r10_rpc tt chip_glue none_below_0.20   
+r10_rpc tt core_in slack_ns -4.003 fmax_mhz 176.9
+r10_rpc ss head slack_ns -1.104 fmax_mhz 363.1
+r10_rpc ss act_supply slack_ns -0.859 fmax_mhz 398.5
+r10_rpc ss seq slack_ns -0.902 fmax_mhz 391.9
+r10_rpc ss prm slack_ns -0.818 fmax_mhz 405.2
+r10_rpc ss top_glue slack_ns -1.371 fmax_mhz 331.0
+r10_rpc ss top_glue_x slack_ns -0.921 fmax_mhz 388.9
+r10_rpc ss b2r slack_ns -1.371 fmax_mhz 331.0
+r10_rpc ss to_macro slack_ns -0.715 fmax_mhz 422.9
+r10_rpc ss from_macro slack_ns -0.817 fmax_mhz 405.4
+r10_rpc ss chip_glue slack_ns -0.253 fmax_mhz 525.6
+r10_rpc ss core_in slack_ns -1.521 fmax_mhz 315.4
+r10_rpw DC_DONE r10_rpw rc 0 errors 0 summary ok
+r10_rpw   design qb_chip top qb_chip corner tt period_ns 1.65 topo 1 wire_load topo
+r10_rpw   cell_area_um2 16335949.599059 gate_eq_kGE 11344.41 cells 638679 regs 158211
+r10_rpw   setup_wns_ns -4.60039 5.6386e-05 setup_tns_ns -17241.047 setup_viol_endpoints 24073
+r10_rpw tt head slack_ns -0.233 fmax_mhz 531.1
+r10_rpw tt act_supply slack_ns 0.017 fmax_mhz 612.3
+r10_rpw tt seq slack_ns -0.008 fmax_mhz 603.0
+r10_rpw tt prm slack_ns 0.014 fmax_mhz 611.4
+r10_rpw tt top_glue slack_ns -0.575 fmax_mhz 449.4
+r10_rpw tt top_glue_x slack_ns -0.000 fmax_mhz 606.0
+r10_rpw tt b2r slack_ns -0.575 fmax_mhz 449.4
+r10_rpw tt to_macro slack_ns 0.024 fmax_mhz 615.0
+r10_rpw tt from_macro slack_ns 0.104 fmax_mhz 646.7
+r10_rpw tt chip_glue none_below_0.20   
+r10_rpw tt core_in slack_ns -4.051 fmax_mhz 175.4
+r10_rpw ss head slack_ns -1.167 fmax_mhz 355.0
+r10_rpw ss act_supply slack_ns -0.897 fmax_mhz 392.6
+r10_rpw ss seq slack_ns -0.967 fmax_mhz 382.0
+r10_rpw ss prm slack_ns -0.952 fmax_mhz 384.3
+r10_rpw ss top_glue slack_ns -1.456 fmax_mhz 322.0
+r10_rpw ss top_glue_x slack_ns -0.928 fmax_mhz 387.9
+r10_rpw ss b2r slack_ns -1.456 fmax_mhz 322.0
+r10_rpw ss to_macro slack_ns -0.885 fmax_mhz 394.5
+r10_rpw ss from_macro slack_ns -0.660 fmax_mhz 432.8
+r10_rpw ss chip_glue slack_ns -0.334 fmax_mhz 504.1
+r10_rpw ss core_in slack_ns -1.562 fmax_mhz 311.4

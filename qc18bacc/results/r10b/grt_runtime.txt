@@ -1,0 +1,21 @@
+== r9b_f3 cts.odb, 0 congestion iterations
+R10B_T    24.3 s loaded
+R10B_T    26.7 s nets 280707 pins 905525 nets>64pins 0 insts 260753 bterms 27852
+R10B_T    26.7 s global_route -congestion_iterations 0 -allow_congestion -verbose
+Total         37292774       16489241           44.22%            198 / 17 / 2166870
+R10B_T    71.4 s global_route done
+	Maximum resident set size (kbytes): 6592908
+== r9b_f3 cts.odb, 3 congestion iterations
+R10B_T    23.6 s loaded
+R10B_T    25.9 s nets 280707 pins 905525 nets>64pins 0 insts 260753 bterms 27852
+R10B_T    25.9 s global_route -congestion_iterations 3 -allow_congestion -verbose
+Total         37292774       18665564           50.05%            73 / 54 / 1562623
+R10B_T   396.4 s global_route done
+	Maximum resident set size (kbytes): 7070496
+== r9b_f3 cts.odb, 10 congestion iterations
+R10B_T    24.1 s loaded
+R10B_T    26.4 s nets 280707 pins 905525 nets>64pins 0 insts 260753 bterms 27852
+R10B_T    26.4 s global_route -congestion_iterations 10 -allow_congestion -verbose
+Total         37292774       19778447           53.04%            53 / 44 / 1049748
+R10B_T  2476.7 s global_route done
+	Maximum resident set size (kbytes): 7198648

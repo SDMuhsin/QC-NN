@@ -1,0 +1,64 @@
+gcell 3.0 um; overflowed gcells 138836 of 752780 = 18.44 %; records H 124853 V 86341; total overflow H 1586132 V 630657 tracks
+REGION west  overflowed gcells  25879 =  16.0 % of region; overflow H 436132 V 180894 tracks
+REGION col0  overflowed gcells  20449 =  27.8 % of region; overflow H 292672 V 146842 tracks
+REGION col1  overflowed gcells  21856 =  29.7 % of region; overflow H 366968 V 151744 tracks
+REGION col2  overflowed gcells  18588 =  25.3 % of region; overflow H 148927 V  47379 tracks
+REGION col3  overflowed gcells  17630 =  24.0 % of region; overflow H 117747 V  26925 tracks
+REGION col4  overflowed gcells  19754 =  26.8 % of region; overflow H 123704 V  46872 tracks
+REGION col5  overflowed gcells  14527 =  19.7 % of region; overflow H  99925 V  29889 tracks
+REGION col6  overflowed gcells    153 =   0.2 % of region; overflow H     57 V    112 tracks
+REGION col7  overflowed gcells      0 =   0.0 % of region; overflow H      0 V      0 tracks
+# class: share of net-tracks in overflowed gcells | overflow left if the class's tracks vanished (of 2216789)
+CLASS MACRO:qb_s Q            17.9 % | overflow left 1191660 ( 53.8 % of base)
+CLASS glue:s-Q>act-out        14.7 % | overflow left 1221361 ( 55.1 % of base)
+CLASS glue:reg>s-in           10.1 % | overflow left 1630043 ( 73.5 % of base)
+CLASS glue regs                8.9 % | overflow left 1600114 ( 72.2 % of base)
+CLASS pcol                     6.0 % | overflow left 1778625 ( 80.2 % of base)
+CLASS f_y path                 5.1 % | overflow left 1868522 ( 84.3 % of base)
+CLASS glue:reg>reg             5.0 % | overflow left 1982000 ( 89.4 % of base)
+CLASS prm                      4.6 % | overflow left 1924750 ( 86.8 % of base)
+CLASS fyreg>s-in               4.3 % | overflow left 1935174 ( 87.3 % of base)
+CLASS port in                  4.1 % | overflow left 1895495 ( 85.5 % of base)
+CLASS MACRO:qb_p Q             3.6 % | overflow left 1947850 ( 87.9 % of base)
+CLASS glue:reg>act-out         3.0 % | overflow left 1981026 ( 89.4 % of base)
+CLASS glue:reg>col-out         2.6 % | overflow left 2029186 ( 91.5 % of base)
+CLASS glue:fy-reg>s-in         2.3 % | overflow left 2065586 ( 93.2 % of base)
+FAMILY write-back (f_y regs -> rotators -> S/B write)   share  21.9 % | overflow left 1250060 ( 56.4 %), overflowed records left 117370 of 211194, gcells 12.19 %
+FAMILY S-read -> act port (S Q + rotator)               share  33.6 % | overflow left 476823 ( 21.5 %), overflowed records left 68589 of 211194, gcells 7.89 %
+FAMILY params Q -> pf / pw                              share   3.6 % | overflow left 1947850 ( 87.9 %), overflowed records left 190761 of 211194, gcells 16.96 %
+FAMILY write-back + S-read                              share  55.5 % | overflow left 245329 ( 11.1 %), overflowed records left 28497 of 211194, gcells 3.72 %
+FAMILY all three                                        share  59.1 % | overflow left 130451 (  5.9 %), overflowed records left 19014 of 211194, gcells 2.48 %
+YREGION south (params/B) y<361     H overflow       0 tracks, overflowed gcells 0
+YREGION south (params/B) y<361     V overflow       0 tracks, overflowed gcells 0
+YREGION S rows y 361-1300          H overflow   20339 tracks, overflowed gcells 9297
+YREGION S rows y 361-1300          V overflow   55153 tracks, overflowed gcells 17100
+YREGION band y>1300                H overflow 1565793 tracks, overflowed gcells 115556
+YREGION band y>1300                V overflow  575504 tracks, overflowed gcells 69241
+LAYER M1 0 323449 0.00% 26 / 2 / 323449
+LAYER M2 3420436 2336024 68.30% 3 / 26 / 330380
+LAYER M3 3565653 3292118 92.33% 35 / 2 / 651526
+LAYER M4 7054215 3858790 54.70% 2 / 15 / 167097
+LAYER M5 8287644 4200680 50.69% 25 / 2 / 426578
+LAYER M6 8250412 2761507 33.47% 2 / 11 / 102272
+LAYER M7 4111038 1515461 36.86% 12 / 1 / 137314
+LAYER M8 1205273 350635 29.09% 1 / 6 / 25814
+LAYER M9 1398039 409508 29.29% 8 / 1 / 37228
+# demand / nominal capacity in % per layer and region (guides; M1 / macro OBS not subtracted)
+layer dir pitch   west   col0   col1   col2   col3   col4   col5   col6   col7  total
+M1    H 0.20   17.8   16.4   17.8   11.1    9.6    9.5    9.3    7.5    7.2   12.5
+M2    V 0.20   53.9   43.6   43.2   36.8   34.9   36.8   34.8   27.5   23.1   39.1
+M3    H 0.20   48.0   47.9   51.5   43.1   40.9   41.7   39.8   28.1   20.9   41.1
+M4    V 0.20   41.6   53.2   51.9   47.1   44.6   47.8   45.0   34.2   29.2   43.5
+M5    H 0.20   39.2   64.8   62.6   51.5   47.3   47.2   41.5   27.1   15.1   43.4
+M6    V 0.20   28.7   34.8   34.0   30.5   29.8   33.3   30.2   19.7   11.1   28.0
+M7    H 0.20   11.9   21.1   22.3   19.0   17.4   17.4   15.6    9.0    3.6   14.8
+M8    V 0.80   14.2   21.3   20.8   18.7   16.6   19.8   16.8    8.3    0.5   15.1
+M9    H 0.80   13.2   20.7   22.4   18.9   18.6   19.8   16.9    7.9    1.5   15.2
+R10B grt tt setup_wns_ns -24.897 fmax_est_mhz 37.4
+R10B_DONE ana
+R10B_T    26.6 s loaded
+R10B_T    26.6 s global_route -guide_file /tmp/ckp908/qc18bacc/build/pnr/r10b_wA/grt_pl3/route.guide -congestion_iterations 3 -allow_congestion -verbose -congestion_report_file /tmp/ckp908/qc18bacc/build/pnr/r10b_wA/grt_pl3/gr_congestion.rpt
+Total         37292710       19048172           51.08%            114 / 66 / 2201658
+R10B_T   494.8 s global_route done
+R10B_T   526.9 s parasitics + sta done
+R10B_T   529.8 s saved
