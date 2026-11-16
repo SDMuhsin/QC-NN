@@ -1,0 +1,38 @@
+# R12 Q2 band y >= 1301: 51-um bins (util = std area / row area), bins with row area >= 25 % of the bin
+bins 659, mean util 0.893, mean overflowed-gcell fraction 0.590, Pearson r(util, ovf frac) = 0.497
+Spearman rho = 0.631
+# util histogram: bins clean (0 ovf gcells) | bins hot (>= 30 % gcells ovf) | mean ovf frac | H ovf tracks
+UTIL 0.00-0.50  all   43  clean   42  hot    0  mean_ovf 0.000  Hovf       1
+UTIL 0.50-0.60  all    6  clean    6  hot    0  mean_ovf 0.000  Hovf       0
+UTIL 0.60-0.70  all   17  clean   11  hot    2  mean_ovf 0.106  Hovf    4596
+UTIL 0.70-0.80  all   21  clean   11  hot    1  mean_ovf 0.069  Hovf    1090
+UTIL 0.80-0.85  all   13  clean    3  hot    3  mean_ovf 0.229  Hovf    3920
+UTIL 0.85-0.90  all   32  clean   14  hot    9  mean_ovf 0.216  Hovf    4098
+UTIL 0.90-0.95  all  136  clean   37  hot   70  mean_ovf 0.439  Hovf  101354
+UTIL 0.95-1.00  all  323  clean   34  hot  267  mean_ovf 0.796  Hovf  937653
+UTIL 1.00-9.00  all   68  clean    3  hot   59  mean_ovf 0.870  Hovf  268327
+util >= 0.80: 572 bins mean ovf 0.675 | < 0.80: 87 bins mean ovf 0.037
+util >= 0.85: 559 bins mean ovf 0.685 | < 0.85: 100 bins mean ovf 0.062
+util >= 0.90: 527 bins mean ovf 0.713 | < 0.90: 132 bins mean ovf 0.100
+# per region: mean util, mean ovf frac
+REG west  bins 110 util 0.747 ovf 0.470
+REG col0  bins  72 util 0.977 ovf 0.899
+REG col1  bins  63 util 0.972 ovf 0.884
+REG col2  bins  72 util 0.952 ovf 0.730
+REG col3  bins  63 util 0.936 ovf 0.778
+REG col4  bins  72 util 0.951 ovf 0.746
+REG col5  bins  72 util 0.945 ovf 0.820
+REG col6  bins  63 util 0.906 ovf 0.043
+REG col7  bins  72 util 0.741 ovf 0.000
+UTILREG 0.00-0.90 col6 bins  12 ovf 0.005 | col0-5 bins  35 ovf 0.209
+UTILREG 0.90-0.95 col6 bins  19 ovf 0.053 | col0-5 bins  77 ovf 0.649
+UTILREG 0.95-1.00 col6 bins  28 ovf 0.054 | col0-5 bins 245 ovf 0.916
+UTILREG 1.00-9.00 col6 bins   4 ovf 0.023 | col0-5 bins  57 ovf 0.931
+# pins per gcell (3 um, cell centres; all band gcells incl. over macros) vs overflow: gcells, overflowed (H or V), H ovf tracks, V ovf tracks
+PINS   0-0   gcells   46951 ovf   13106 ( 27.9 %) Hovf  140291 Vovf   45343
+PINS   1-4   gcells   60087 ovf   38052 ( 63.3 %) Hovf  444264 Vovf  144910
+PINS   5-9   gcells   66055 ovf   47389 ( 71.7 %) Hovf  562919 Vovf  211982
+PINS  10-14  gcells   19448 ovf   14381 ( 73.9 %) Hovf  176165 Vovf   88906
+PINS  15-19  gcells    3520 ovf    2718 ( 77.2 %) Hovf   37032 Vovf   20281
+PINS  20-29  gcells     774 ovf     551 ( 71.2 %) Hovf    7962 Vovf    4547
+PINS  30-999 gcells       5 ovf       3 ( 60.0 %) Hovf      65 Vovf      46

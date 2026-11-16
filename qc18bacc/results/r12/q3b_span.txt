@@ -1,0 +1,53 @@
+# R12 Q3b band (y >= 1301) H demand (M3+M5+M7+M9, calibrated M3 0.695 M5 0.845 M7 0.897 M9 0.948): total 6.271 M track-gcells
+# by net x-span (um) | by tree x-span (logical connection, through repair buffers)
+SPAN     0-50     net  11.2 % | tree   9.7 %
+SPAN    50-390    net  45.3 % | tree  35.0 %
+SPAN   390-1000   net  36.5 % | tree  11.3 %
+SPAN  1000-2000   net   6.5 % | tree  30.9 %
+SPAN  2000-99999  net   0.5 % | tree  13.1 %
+# band H capacity (q3 model, calibrated) 28.0 tracks per gcell
+# H demand per 30-um x slice of the band (calibrated track-gcells / gcell rows = mean tracks used per band row-gcell), every 4th slice
+X     0    0.0
+X   120    2.0
+X   240    7.5
+X   360   14.0
+X   480   32.1
+X   600   37.5
+X   720   45.8
+X   840   44.8
+X   960   41.2
+X  1080   41.3
+X  1200   43.7
+X  1320   45.0
+X  1440   42.2
+X  1560   41.5
+X  1680   41.0
+X  1800   38.4
+X  1920   33.3
+X  2040   34.3
+X  2160   40.0
+X  2280   36.1
+X  2400   32.0
+X  2520   33.0
+X  2640   37.8
+X  2760   37.3
+X  2880   38.7
+X  3000   40.5
+X  3120   37.6
+X  3240   26.7
+X  3360   29.3
+X  3480   23.7
+X  3600   19.9
+X  3720   21.4
+X  3840   11.5
+X  3960    0.4
+# band H crossings of vertical cuts (calibrated tracks) vs H capacity across the band height 4198 tracks
+CUT x  650 crossings  5684 (135 % of cap) | tree span <390 59% 390-1000 13% >=1000 28% | top classes glue:s-Q>act-out 29%, glue regs 16%, port in 8%, glue:port>reg 7%, glue:reg>reg 6%
+CUT x 1055 crossings  6175 (147 % of cap) | tree span <390 56% 390-1000 9% >=1000 35% | top classes glue:s-Q>act-out 22%, glue:reg>s-in 17%, glue regs 10%, pcol 8%, MACRO:qb_s Q 8%
+CUT x 1445 crossings  6332 (151 % of cap) | tree span <390 52% 390-1000 9% >=1000 38% | top classes glue:s-Q>act-out 16%, pcol 15%, MACRO:qb_s Q 13%, glue:reg>s-in 10%, prm 8%
+CUT x 1835 crossings  5513 (131 % of cap) | tree span <390 35% 390-1000 9% >=1000 56% | top classes MACRO:qb_s Q 22%, glue:s-Q>act-out 16%, glue:reg>s-in 10%, glue regs 7%, port in 6%
+CUT x 2225 crossings  6148 (146 % of cap) | tree span <390 42% 390-1000 7% >=1000 51% | top classes MACRO:qb_s Q 32%, glue:reg>s-in 10%, glue:s-Q>act-out 8%, port in 8%, prm 7%
+CUT x 2615 crossings  5515 (131 % of cap) | tree span <390 48% 390-1000 9% >=1000 44% | top classes MACRO:qb_s Q 23%, glue:reg>reg 13%, prm 12%, glue:reg>s-in 10%, glue regs 9%
+CUT x 3005 crossings  6153 (147 % of cap) | tree span <390 54% 390-1000 13% >=1000 33% | top classes MACRO:qb_s Q 16%, glue:reg>reg 14%, glue regs 13%, glue:reg>s-in 13%, prm 10%
+CUT x 3395 crossings  4274 (102 % of cap) | tree span <390 48% 390-1000 16% >=1000 36% | top classes glue:reg>s-in 16%, MACRO:qb_s Q 15%, prm 12%, pcol 11%, glue regs 10%
+CUT x 3785 crossings  3092 ( 74 % of cap) | tree span <390 67% 390-1000 8% >=1000 25% | top classes glue:reg>s-in 19%, fyreg>s-in 13%, pcol 12%, prm 12%, glue regs 7%

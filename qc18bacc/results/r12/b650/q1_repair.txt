@@ -1,0 +1,66 @@
+# R12 Q1 repair inflation [S] (std cells only; macros excluded)
+init std area 1081415 um2 (271129 inst) -> placed 1852428 um2 (299860 inst): delta +771013 um2
+removed (remove_buffers, init-only)    33747 inst      -98178 um2
+resized (same name, other master)       88443 inst     +265478 um2  (61604 up, 26839 down)
+added wire                              45316 inst     +463038 um2
+added fanout                            13897 inst     +128511 um2
+added max_length                          472 inst       +4836 um2
+added load_slew                           446 inst       +4499 um2
+added tie                                2309 inst       +2494 um2
+added max_cap                              38 inst        +336 um2
+check: removed + resized + added = +771013 um2
+resize area by cell function (top 8): AOI22 +145599, ND2 +30185, NR2X +12490, OAI211 +10769, ND4 +10187, NR3 +7175, INV +6094, OAI22 +5679
+# resize area by class of the resized cell's output net (top 10): glue:reg>s-in +79376 (34488), glue:reg>col-out +58947 (11735), glue:fy-reg>s-in +53425 (13522), glue:s-Q>act-out +20285 (8283), glue:reg>reg +13579 (3503), head +7732 (2692), glue:reg>top-out +6393 (1262), prm +6321 (2080), glue regs +4395 (6221), glue:b-Q>act-out +4053 (756)
+repair-buffer area in trees 601221 um2 in 16100 trees of 259526 (driver nets)
+# per driver class: trees, buffered trees, buffers, buffer area, share; reason mix (prefix counts); fanout / HPWL p50/p90/max of buffered trees
+CLS glue:reg>s-in          trees  45788 buffered   1121 bufs   8162 area    83037 um2  13.8 % | fanout 5938 wire 2022 max_length 133 load_slew 67 | fo 24/86/1281 hpwl 1039/3023/4876 um
+CLS MACRO:qb_s Q           trees   4096 buffered   2345 bufs   7270 area    74798 um2  12.4 % | wire 7244 load_slew 26 | fo 5/7/7 hpwl 2265/2934/3214 um
+CLS MACRO:qb_p Q           trees   1296 buffered   1296 bufs   6748 area    69499 um2  11.6 % | wire 6639 load_slew 109 | fo 13/13/13 hpwl 2237/2464/4238 um
+CLS glue:s-Q>act-out       trees  13312 buffered   1433 bufs   5118 area    51889 um2   8.6 % | wire 5118 | fo 1/1/1 hpwl 1496/2003/2221 um
+CLS glue:fy-reg>s-in       trees  21647 buffered   2878 bufs   4374 area    45522 um2   7.6 % | wire 4374 | fo 1/1/1 hpwl 839/1111/1294 um
+CLS glue regs              trees  38879 buffered   1242 bufs   4326 area    44245 um2   7.4 % | wire 3447 fanout 699 load_slew 105 max_length 75 | fo 1/15/569 hpwl 1316/2298/4674 um
+CLS glue:b-Q>act-out       trees   1346 buffered    632 bufs   3952 area    38794 um2   6.5 % | wire 3952 | fo 1/2/2 hpwl 1622/1717/1774 um
+CLS port in                trees   3053 buffered   1059 bufs   4132 area    38764 um2   6.4 % | wire 3179 fanout 810 max_length 116 load_slew 27 | fo 1/15/443 hpwl 1586/2367/5067 um
+CLS prm                    trees  40049 buffered   1021 bufs   3860 area    38441 um2   6.4 % | wire 2849 fanout 932 load_slew 50 max_length 29 | fo 4/34/197 hpwl 997/4902/4902 um
+CLS MACRO:qb_b Q           trees   1209 buffered    486 bufs   3051 area    30451 um2   5.1 % | wire 3051 | fo 2/2/2 hpwl 1833/3192/3315 um
+CLS glue:reg>col-out       trees  12108 buffered    165 bufs   1682 area    17324 um2   2.9 % | fanout 1350 wire 326 load_slew 6 | fo 1/608/1024 hpwl 1125/3259/3320 um
+CLS glue:reg>act-out       trees    122 buffered     80 bufs   1739 area    15986 um2   2.7 % | fanout 1670 wire 68 max_length 1 | fo 128/512/1540 hpwl 1318/1635/1902 um
+CLS head                   trees  23706 buffered    860 bufs   1808 area    13456 um2   2.2 % | fanout 1476 wire 328 load_slew 4 | fo 24/37/146 hpwl 151/1387/2636 um
+CLS glue:reg>reg           trees   7029 buffered    595 bufs   1363 area    13183 um2   2.2 % | fanout 668 wire 661 max_length 29 load_slew 5 | fo 3/32/1098 hpwl 409/1288/2864 um
+CLS glue:reg>top-out       trees   2004 buffered    255 bufs    645 area     6560 um2   1.1 % | wire 609 fanout 30 max_length 3 load_slew 3 | fo 1/8/65 hpwl 1573/2437/3222 um
+CLS glue:port>s-in         trees    174 buffered     82 bufs    637 area     6423 um2   1.1 % | wire 515 max_length 74 max_cap 32 load_slew 11 | fo 5/6/25 hpwl 3257/4645/4686 um
+# buffered trees by leaf fanout bin: trees, buffers, area
+FO    1-1          trees   7135 bufs  19241 area   195051 um2
+FO    2-4          trees   1938 bufs   8037 area    81977 um2
+FO    5-16         trees   4553 bufs  17081 area   175842 um2
+FO   17-64         trees   2115 bufs   4834 area    43181 um2
+FO   65-256        trees    210 bufs   2530 area    22359 um2
+FO  257-1000000000 trees    149 bufs   8446 area    82811 um2
+# buffered trees by HPWL bin (um): trees, buffers, area
+HPWL     0-100    trees    314 bufs    540 area     2716 um2
+HPWL   100-300    trees   1188 bufs   2178 area    18059 um2
+HPWL   300-757    trees   2189 bufs   3420 area    33962 um2
+HPWL   757-1500   trees   5991 bufs  11034 area   113764 um2
+HPWL  1500-3000   trees   5724 bufs  32328 area   323907 um2
+HPWL  3000-99999  trees    694 bufs  10669 area   108813 um2
+# top 20 source nets by added buffer area
+TOP u_top_n44319                                     glue:reg>s-in        bufs  106 area    1088 um2 fo  1281 hpwl   3036 um fanout 103 wire 3
+TOP u_top_n44318                                     glue:reg>s-in        bufs  104 area    1070 um2 fo  1280 hpwl   3033 um fanout 102 wire 2
+TOP u_top_n44316                                     glue:reg>s-in        bufs  103 area    1061 um2 fo  1280 hpwl   3030 um fanout 100 wire 2 max_length 1
+TOP u_top_n44322                                     glue:reg>s-in        bufs  103 area    1056 um2 fo  1280 hpwl   3035 um fanout 100 wire 2 max_length 1
+TOP u_top_n44315                                     glue:reg>s-in        bufs  103 area    1053 um2 fo  1280 hpwl   3029 um fanout 102 wire 1
+TOP u_top_n43967                                     glue:reg>s-in        bufs  105 area    1049 um2 fo  1280 hpwl   3020 um fanout 99 wire 6
+TOP u_top_n44317                                     glue:reg>s-in        bufs  102 area    1048 um2 fo  1280 hpwl   3034 um fanout 99 wire 3
+TOP u_top_n44314                                     glue:reg>s-in        bufs  102 area    1041 um2 fo  1280 hpwl   3031 um fanout 99 wire 3
+TOP u_top_n43963                                     glue:reg>s-in        bufs  102 area    1036 um2 fo  1281 hpwl   3007 um fanout 100 wire 2
+TOP u_top_n43984                                     glue:reg>s-in        bufs  101 area    1028 um2 fo  1280 hpwl   3013 um fanout 99 wire 2
+TOP u_top_n43968                                     glue:reg>s-in        bufs  101 area    1021 um2 fo  1280 hpwl   3015 um fanout 100 wire 1
+TOP u_top_n43965                                     glue:reg>s-in        bufs  101 area    1018 um2 fo  1280 hpwl   3015 um fanout 98 wire 3
+TOP u_top_n82500                                     glue:reg>s-in        bufs  100 area    1008 um2 fo  1281 hpwl   3024 um fanout 98 wire 2
+TOP u_top_n48083                                     glue:reg>act-out     bufs  126 area    1003 um2 fo  1540 hpwl   1617 um fanout 125 wire 1
+TOP u_top_n48089                                     glue:reg>act-out     bufs  123 area     994 um2 fo  1540 hpwl   1616 um fanout 122 wire 1
+TOP u_top_n81323                                     glue:reg>reg         bufs   94 area     922 um2 fo  1098 hpwl   2498 um fanout 88 wire 6
+TOP u_top_n42305                                     glue:reg>col-out     bufs   86 area     879 um2 fo  1024 hpwl   3320 um fanout 79 wire 7
+TOP u_top_n41492                                     glue:reg>col-out     bufs   85 area     878 um2 fo  1024 hpwl   3313 um fanout 79 wire 5 load_slew 1
+TOP u_top_n42130                                     glue:reg>col-out     bufs   83 area     861 um2 fo  1016 hpwl   3316 um fanout 79 wire 4
+TOP u_top_n41493                                     glue:reg>col-out     bufs   83 area     859 um2 fo  1024 hpwl   3313 um fanout 79 wire 4

@@ -1,0 +1,41 @@
+# R12 Q3 [E] capacity model validation (whole die): layer, model capacity / GRT Resource, guide demand / GRT Demand
+VAL M2 V model cap   4438061 GRT res   3669724 (1.209) | guide dem   3479530 GRT dem   1805957 (1.927)
+VAL M3 H model cap   4163152 GRT res   3808011 (1.093) | guide dem   3681824 GRT dem   2722128 (1.353)
+VAL M4 V model cap   7658869 GRT res   7289641 (1.051) | guide dem   3846157 GRT dem   3305754 (1.163)
+VAL M5 H model cap   8723138 GRT res   8532180 (1.022) | guide dem   3941108 GRT dem   3595538 (1.096)
+VAL M6 V model cap   8723138 GRT res   8498754 (1.026) | guide dem   2686595 GRT dem   2482487 (1.082)
+VAL M7 H model cap   4480605 GRT res   4230720 (1.059) | guide dem   1481806 GRT dem   1404931 (1.055)
+VAL M8 V model cap   1859166 GRT res   1241376 (1.498) | guide dem    310900 GRT dem    275188 (1.130)
+VAL M9 H model cap   2073565 GRT res   1437933 (1.442) | guide dem    375064 GRT dem    364183 (1.030)
+# calibration applied: cap x M2 0.827 M3 0.915 M4 0.952 M5 0.978 M6 0.974 M7 0.944 M8 0.668 M9 0.693 ; dem x M2 0.519 M3 0.739 M4 0.859 M5 0.912 M6 0.924 M7 0.948 M8 0.885 M9 0.971
+# band y >= 1301: demand / capacity per layer and region (track-gcells, %); GRT demand scale = guide/GRT ratio not applied
+layer dir    west    col0    col1    col2    col3    col4    col5    col6    col7   band   dem(M)  cap(M)
+M2    V      63.1    93.4    93.8    91.7    86.8    87.0    81.5    71.4    66.6   80.1   1.425   1.779
+M3    H      72.0   123.4   132.5   128.6   119.1   111.6    98.8    79.4    70.2  101.2   1.981   1.957
+M4    V      57.6   102.8   104.0    99.2    95.7    92.9    82.9    61.1    58.0   81.0   1.628   2.010
+M5    H      58.1   112.7   118.6   116.3   110.9   105.9    95.8    77.0    51.5   89.7   1.957   2.181
+M6    V      47.8    87.9    90.2    83.7    80.9    76.8    67.4    32.6    23.4   63.4   1.377   2.172
+M7    H      49.8   106.6   112.3   110.8   105.1    99.6    91.8    78.3    29.5   82.5   0.891   1.080
+M8    V      31.0    79.8    82.6    72.7    67.5    64.7    51.9    15.0     5.5   49.7   0.158   0.317
+M9    H      41.7   101.9   107.2   104.7   100.2    97.2    89.5    68.9    20.8   76.5   0.280   0.366
+ALLH  H      59.7   114.7   121.7   118.9   112.0   106.2    95.7    77.6    52.0   91.5   (M3+M5+M7+M9)
+ALLV  V      54.0    93.8    95.3    90.4    86.7    84.3    75.7    52.1    46.1   73.1   (M2+M4+M6+M8)
+GCELL H band gcells 198170: some layer over  58.1 %, all-layer sum over  43.5 %, layer over but sum fits  14.6 %
+   M3 over in  52.9 % of band gcells, excess   302596 track-gcells
+   M5 over in  36.1 % of band gcells, excess   184000 track-gcells
+   M7 over in  22.1 % of band gcells, excess    70345 track-gcells
+   M9 over in   6.4 % of band gcells, excess    13941 track-gcells
+GCELL V band gcells 198170: some layer over  45.7 %, all-layer sum over  19.6 %, layer over but sum fits  26.2 %
+   M2 over in  28.0 % of band gcells, excess   123224 track-gcells
+   M4 over in  29.5 % of band gcells, excess   126116 track-gcells
+   M6 over in  19.7 % of band gcells, excess    45981 track-gcells
+   M8 over in   7.2 % of band gcells, excess    15938 track-gcells
+# band gcells by pins per gcell: count | per layer: % of gcells with demand > capacity (M2 M3 M4 M5 M6 M7) | all-layer H over %
+PINS   0-0   n   50347 | M2   8.4 M3  31.8 M4  18.4 M5  24.9 M6  13.9 M7  16.1 | allH  28.9
+PINS   1-4   n   65403 | M2  15.3 M3  48.1 M4  26.6 M5  35.2 M6  17.9 M7  21.9 | allH  41.7
+PINS   5-9   n   59728 | M2  39.7 M3  64.8 M4  34.0 M5  40.9 M6  21.8 M7  24.6 | allH  50.6
+PINS  10-14  n   16760 | M2  77.2 M3  81.5 M4  49.3 M5  48.9 M6  31.2 M7  27.5 | allH  60.9
+PINS  15-19  n    3826 | M2  93.8 M3  93.3 M4  63.7 M5  58.8 M6  40.1 M7  33.3 | allH  71.4
+PINS  20-999 n    2106 | M2  50.0 M3  72.5 M4  38.4 M5  51.1 M6  22.9 M7  38.0 | allH  61.6
+# M1 share (guide M1 boxes per gcell, uncalibrated): band H overflowed records 61869, overflow 278023 tracks, of which <= M1 count 200820 (72.2 %); records still over without M1 usage 23837 (38.5 %)
+# band H overflowed records by overflow (tracks): 1:11927 2:10532 3:9113 4:7250 5:5706 6:4082 7:2943 8:2263 9:1875 >=10:6178
