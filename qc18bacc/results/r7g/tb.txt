@@ -1,0 +1,56 @@
+# R7g chip bench (Verilator 5.050), QBT_TECH=2 + QB_HEAD_FW=128 + QB_HPW=144 (R4b f); vectors = copies of /tmp/root/qc18bacc/r7d/{s0,s1} in /tmp/root/qc18bacc/r7g/v
+# tags: pc = +QB_TOP_RSH=1+QB_HEAD_PCOL=1, pcm = pc + QBH_MUT_PCOL (slice picks the wrong half of its 8 channels), def = plain defaults
+== run_pc_s0
+QB_CHIP img 0 img60 go 0 img_free +275 end +3780 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7030 (after end +3250) PASS
+QB_CHIP img 1 img61 go 3780 img_free +275 end +3748 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +6998 (after end +3250) PASS
+QB_CHIP img 2 img0 go 7528 img_free +275 end +3748 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +6998 (after end +3250) PASS
+QB_CHIP img 3 img1 go 11276 img_free +275 end +3788 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7038 (after end +3250) PASS
+QB_CHIP img 4 img2 go 15064 img_free +275 end +3812 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7062 (after end +3250) PASS
+QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 0 head_err 0 PASS
+== run_pc_s1
+QB_CHIP img 0 img13 go 0 img_free +275 end +3836 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7086 (after end +3250) PASS
+QB_CHIP img 1 img55 go 3836 img_free +275 end +3764 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7014 (after end +3250) PASS
+QB_CHIP img 2 img7 go 7600 img_free +275 end +3732 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +6982 (after end +3250) PASS
+QB_CHIP img 3 img42 go 11332 img_free +275 end +3796 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7046 (after end +3250) PASS
+QB_CHIP img 4 img91 go 15128 img_free +275 end +3804 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7054 (after end +3250) PASS
+QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 0 head_err 0 PASS
+== run_pcm_s0
+QB_CHIP img 0 img60 go 0 img_free +275 end +3780 logits 100/100 err 100 tiles 600 cycle_mismatch 0 last_logit +7030 (after end +3250) FAIL
+QB_CHIP img 1 img61 go 3780 img_free +275 end +3748 logits 100/100 err 100 tiles 600 cycle_mismatch 0 last_logit +6998 (after end +3250) FAIL
+QB_CHIP img 2 img0 go 7528 img_free +275 end +3748 logits 100/100 err 100 tiles 600 cycle_mismatch 0 last_logit +6998 (after end +3250) FAIL
+QB_CHIP img 3 img1 go 11276 img_free +275 end +3788 logits 100/100 err 100 tiles 600 cycle_mismatch 0 last_logit +7038 (after end +3250) FAIL
+QB_CHIP img 4 img2 go 15064 img_free +275 end +3812 logits 100/100 err 100 tiles 600 cycle_mismatch 0 last_logit +7062 (after end +3250) FAIL
+QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 0 head_err 0 FAIL
+== run_pcm_s1
+QB_CHIP img 0 img13 go 0 img_free +275 end +3836 logits 100/100 err 100 tiles 600 cycle_mismatch 0 last_logit +7086 (after end +3250) FAIL
+QB_CHIP img 1 img55 go 3836 img_free +275 end +3764 logits 100/100 err 100 tiles 600 cycle_mismatch 0 last_logit +7014 (after end +3250) FAIL
+QB_CHIP img 2 img7 go 7600 img_free +275 end +3732 logits 100/100 err 100 tiles 600 cycle_mismatch 0 last_logit +6982 (after end +3250) FAIL
+QB_CHIP img 3 img42 go 11332 img_free +275 end +3796 logits 100/100 err 100 tiles 600 cycle_mismatch 0 last_logit +7046 (after end +3250) FAIL
+QB_CHIP img 4 img91 go 15128 img_free +275 end +3804 logits 100/100 err 100 tiles 600 cycle_mismatch 0 last_logit +7054 (after end +3250) FAIL
+QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 0 head_err 0 FAIL
+== run_def_s1
+QB_CHIP img 0 img13 go 0 img_free +275 end +3836 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7086 (after end +3250) PASS
+QB_CHIP img 1 img55 go 3836 img_free +275 end +3764 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7014 (after end +3250) PASS
+QB_CHIP_TB images 2 err 0 img_read_err 0 timeout 0 head_err 0 PASS
+== --check (export_top3.py --fc 128 --check, cache /tmp/root/qc18bacc/exp2/cache)
+pc R3C_CHECK E6_s0 val 60: rtl logits x fscale == IntBin2 logits (torch.equal): PASS; argmax 6
+pc R3C_CHECK E6_s0 val 61: rtl logits x fscale == IntBin2 logits (torch.equal): PASS; argmax 8
+pc R3C_CHECK E6_s0 val 0: rtl logits x fscale == IntBin2 logits (torch.equal): PASS; argmax 37
+pc R3C_CHECK E6_s0 val 1: rtl logits x fscale == IntBin2 logits (torch.equal): PASS; argmax 98
+pc R3C_CHECK E6_s0 val 2: rtl logits x fscale == IntBin2 logits (torch.equal): PASS; argmax 54
+pc R3C_CHECK E6_s1 val 13: rtl logits x fscale == IntBin2 logits (torch.equal): PASS; argmax 55
+pc R3C_CHECK E6_s1 val 55: rtl logits x fscale == IntBin2 logits (torch.equal): PASS; argmax 6
+pc R3C_CHECK E6_s1 val 7: rtl logits x fscale == IntBin2 logits (torch.equal): PASS; argmax 59
+pc R3C_CHECK E6_s1 val 42: rtl logits x fscale == IntBin2 logits (torch.equal): PASS; argmax 50
+pc R3C_CHECK E6_s1 val 91: rtl logits x fscale == IntBin2 logits (torch.equal): PASS; argmax 84
+pcm R3C_CHECK E6_s0 val 60: rtl logits x fscale == IntBin2 logits (torch.equal): FAIL; argmax 6
+pcm R3C_CHECK E6_s0 val 61: rtl logits x fscale == IntBin2 logits (torch.equal): FAIL; argmax 8
+pcm R3C_CHECK E6_s0 val 0: rtl logits x fscale == IntBin2 logits (torch.equal): FAIL; argmax 37
+pcm R3C_CHECK E6_s0 val 1: rtl logits x fscale == IntBin2 logits (torch.equal): FAIL; argmax 98
+pcm R3C_CHECK E6_s0 val 2: rtl logits x fscale == IntBin2 logits (torch.equal): FAIL; argmax 54
+pcm R3C_CHECK E6_s1 val 13: rtl logits x fscale == IntBin2 logits (torch.equal): FAIL; argmax 55
+pcm R3C_CHECK E6_s1 val 55: rtl logits x fscale == IntBin2 logits (torch.equal): FAIL; argmax 6
+pcm R3C_CHECK E6_s1 val 7: rtl logits x fscale == IntBin2 logits (torch.equal): FAIL; argmax 59
+pcm R3C_CHECK E6_s1 val 42: rtl logits x fscale == IntBin2 logits (torch.equal): FAIL; argmax 50
+pcm R3C_CHECK E6_s1 val 91: rtl logits x fscale == IntBin2 logits (torch.equal): FAIL; argmax 84
+== pc logs vs R7e RSH=1 logs (/tmp/root/qc18bacc/r7d/s{0,1}/sim_chip_rsh.log, paths and Verilator walltime lines stripped): s0 identical, s1 identical

@@ -1,0 +1,25 @@
+# R7g task B: qb_prm (hw/rtl/qb_seq.sv 353-502) -> column blocks, from the RTL (R4b f: NFF 160, NFW 32, NFT 112, HPW 144)
+macros: 9 x rf_sp 240 x 144 = one 1296-b bank row b_q per cycle (b_ren; registered request x, data lands at end of x + 2)
+shared (column-agnostic) state:
+  fetch lists flf 160 / flw 32 / flt 112 x 25 b = 7 600 flops (flt = R7b's "2 800 fetch-line regs"): only -> b_a (8 b) + tags
+  arbiter / counters rf rfree ruse uf uu rowc (3 x), p1_* / p2_* pipeline, tags tgf[2] tgw tgt, valid vf[2] vw vt, err
+  HPW chain pc_v / pc_l / pc_a / pc_d (3 stages x 144 b) -> macro write port
+per-bit data state (staging, 16 576 flops, pure enable-loaded): stg_f[2] 2 x 5184, stg_w 5184 (5056 used), stg_t 1296 (1088 used)
+  landing: stg_f[p2_b][1296 p2_r +: 1296] <= b_q | stg_w[1296 p2_r +: 1296] <= b_q | stg_t <= b_q    (p2_c selects)
+  outputs: pf = stg_f[ruse[0][0]] (2:1 mux, 5184 b), pw = stg_w[5055:0], t2 = stg_t[1087:0]; + common bits from the
+  pass table in qb_top: pf_c = {ptf[93:89], pf}, pw_c = {ptw[91:89], pw} (5 / 3 b broadcast)
+column block pins (qb_colarr.sv / qb_col_blk): col c gets pf[648 c +: 648] + 5, pw[632 c +: 632] + 3, t2[136 c +: 136]
+  = 1 424 b per column, 11 392 b total, from the staging registers (today one shared group)
+b_q bits each column needs (fused row c/2 half c%2; wide records 79 b straddle rows; t2 row all columns):
+  col     0    1    2    3    4    5    6    7     (sum 6 072 tap-bits of a 1296-b trunk; every cut east of col 0 carries 1296)
+  bits  648  800  680  832  744  728  880  760
+  wide rows: col 0,1 row 0; col 2 rows 0+1; col 3 row 1; col 4 rows 1+2; col 5 row 2; col 6 rows 2+3; col 7 row 3; fused: row c/2
+per-cycle crossing macros -> columns: 1 296 b (one row) + control; a fused / wide set = 4 cycles, T2 set = 1 cycle
+split (bit / cycle exact, not implemented): 8 slices g_prm_<c> each holding column c's bits of stg_f[0..1], stg_w,
+  stg_t (648 x 2 + 632 + 136 = 2 064 flops) and the pf 2:1 mux; inputs = its b_q taps (table above) + 9 broadcast
+  control bits {p2_v, p2_c[1:0], p2_r[2:0], p2_b, rsel = ruse[0][0]} (+ the 8 common pt bits); landing per slice
+  = the same enable equations restricted to its bit range (stg_w for col 2 / 4 / 6 has two row enables).  Control,
+  fetch lists and macros stay shared at the macros.  Effect: 11 392 block-pin wires become slice-local; the south
+  band carries one 1296-b b_q trunk (+ 17 control) instead.  Optional (cycle-exact, changes the bank-row layout in
+  export_top / the compiler + the stg_w -> pw pin map): pad wide records to 81 b (64 x 81 = 5184 = stg_w): wide rows
+  then align with fused, so col c needs b_q half c % 2 (648 b) + its t2 136 b: 648 / 784 / 648 / 784 / 680 / 648 / 784 / 648 b (sum 5 624 vs 6 072).

@@ -1,0 +1,53 @@
+# R7g Yosys generic (impl/r7g/syn.sh: qb_head FW 128, FC macro black box, abc -g AND..MUX), flattened totals
+== h0 (PCOL 0)
+    55654 wires
+    74159 wire bits
+      801 public wires
+    14253 public wire bits
+       22 ports
+     4612 port bits
+    64409 cells
+     4463   $_ANDNOT_
+     6952   $_AND_
+       39   $_DFFE_PN0P_
+     6238   $_DFFE_PP_
+       66   $_DFF_PN0_
+      488   $_DFF_P_
+     4221   $_MUX_
+    22580   $_NAND_
+      445   $_NOR_
+      122   $_NOT_
+     1331   $_ORNOT_
+     1945   $_OR_
+        8   $_SDFF_PN0_
+       72   $_SDFF_PN1_
+       28   $_SDFF_PP0_
+     1980   $_XNOR_
+    13430   $_XOR_
+        1   qbt_rfsp
+== h1 (PCOL 1)
+    55636 wires
+    83659 wire bits
+      819 public wires
+    23829 public wire bits
+       22 ports
+     4612 port bits
+    64376 cells
+     4330   $_ANDNOT_
+     7003   $_AND_
+       39   $_DFFE_PN0P_
+     6238   $_DFFE_PP_
+       66   $_DFF_PN0_
+      488   $_DFF_P_
+     4065   $_MUX_
+    23177   $_NAND_
+      350   $_NOR_
+       93   $_NOT_
+     1017   $_ORNOT_
+     1959   $_OR_
+        8   $_SDFF_PN0_
+       72   $_SDFF_PN1_
+       28   $_SDFF_PP0_
+     2087   $_XNOR_
+    13355   $_XOR_
+        1   qbt_rfsp

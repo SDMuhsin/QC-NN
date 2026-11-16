@@ -26,8 +26,13 @@
 //   (4 x int32) then 4 x 32 weight rows (3 225 rows); FC macro = ONE behavioural rf_sp 3232 x 128 (the ARM
 //   sram_sp_adv 3232 x 128 mux 8, qb_f_3232x128m8), same registered boundaries (row in x + 3); 12-b row address
 //   (qb_chip: h_sel 16 rows 0..2047, h_sel 18 rows 2048..).  HP: two partial sums of NMAC / 2 products.
+// R7g parameter PCOL (qb_chip define QB_HEAD_PCOL, default 0 = everything above unchanged): the pool split into 8
+//   column slices g_pcol[c].u_pc (qb_hpcol): slice c takes only column c's f_y lanes (64 q + 8 c + i: 4 px x 8 ch x
+//   16 b) and holds s4 / tacc / hold of its 8 channels; requant lane i reads hold[NQ rq_j + i] = channel of column
+//   (NQ rq_j) / 8: each slice drives its NQ x 19-b candidate only when rq_j selects it (else 0) and the lanes take the
+//   OR of the 8 slice outputs.  Control (tap, rq_v / rq_j / hct / rq_ovr / err) stays here: same cycles, same values.
 module qb_head #(parameter int NQ = 4, parameter int NK = 512, parameter int FW = 256,
-                 parameter int NFR = (FW == 128 ? 3232 : 1632), parameter bit HP = 0,
+                 parameter int NFR = (FW == 128 ? 3232 : 1632), parameter bit HP = 0, parameter bit PCOL = 0,
                  parameter int AW = (FW == 128 ? 12 : 11)) (
     input  logic          clk, rst_n,
     // host: FC macro rows (fc_we) at h_addr
@@ -58,6 +63,7 @@ module qb_head #(parameter int NQ = 4, parameter int NK = 512, parameter int FW 
     always_comb
         for (int c = 0; c < 64; c++) begin
             s4[c] = '0;
+            if (!PCOL)
             for (int q = 0; q < 4; q++) begin
                 logic signed [15:0] v;
                 v = f_y[17 * (64 * q + c) +: 16];
@@ -74,9 +80,9 @@ module qb_head #(parameter int NQ = 4, parameter int NK = 512, parameter int FW 
     always_ff @(posedge clk or negedge rst_n)
         if (!rst_n) begin rq_v <= 1'b0; rq_j <= '0; rq_ovr <= 1'b0; end
         else begin
-            if (tap) for (int c = 0; c < 64; c++) tacc[c] <= (f_k == 2'd0 ? 19'd0 : tacc[c]) + s4[c];
+            if (tap && !PCOL) for (int c = 0; c < 64; c++) tacc[c] <= (f_k == 2'd0 ? 19'd0 : tacc[c]) + s4[c];
             if (tap && f_k == 2'd3) begin
-                for (int c = 0; c < 64; c++) hold[c] <= tacc[c] + s4[c];
+                if (!PCOL) for (int c = 0; c < 64; c++) hold[c] <= tacc[c] + s4[c];
                 hct <= f_ct; rq_v <= 1'b1; rq_j <= '0;
                 if (rq_v && rq_j != 4'd15) rq_ovr <= 1'b1;                // a tile completed before the last was converted
             end else if (rq_v) begin
@@ -84,12 +90,30 @@ module qb_head #(parameter int NQ = 4, parameter int NK = 512, parameter int FW 
                 if (rq_j == 4'd15) rq_v <= 1'b0;
             end
         end
+    // ================================================================ PCOL: column slices + select
+    logic [NQ*19-1:0] pc_o [8];
+    logic [18:0]      pc_q [NQ];                                         // OR of the slice candidates = lane inputs
+    for (genvar c = 0; c < (PCOL ? 8 : 0); c++) begin : g_pcol
+        logic [511:0] fyc;                                              // column c: f_y lane 64 q + 8 c + i, 16 b
+        for (genvar q = 0; q < 4; q++) begin : g_fq
+            for (genvar i = 0; i < 8; i++) begin : g_fi
+                assign fyc[16 * (8 * q + i) +: 16] = f_y[17 * (64 * q + 8 * c + i) +: 16];
+            end
+        end
+        qb_hpcol #(.NQ(NQ), .C(c)) u_pc (.clk, .rst_n, .tap, .k0(f_k == 2'd0), .k3(f_k == 2'd3), .fy(fyc), .rq_j,
+                                         .po(pc_o[c]));
+    end
+    always_comb
+        for (int i = 0; i < NQ; i++) begin
+            pc_q[i] = '0;
+            if (PCOL) for (int c = 0; c < 8; c++) pc_q[i] = pc_q[i] | pc_o[c][19 * i +: 19];
+        end
     // ================================================================ pool requant lanes (latency 4)
     logic [NQ-1:0]  qv;
     logic [18:0]    qy [NQ];
     for (genvar i = 0; i < NQ; i++) begin : g_q
         logic b_unused;
-        qbcw_lane #(.TP(0)) u_lq (.clk, .rst_n, .vld(rq_v), .relu(1'b0), .sgn(1'b0), .acc({1'b0, hold[NQ * rq_j + i]}),
+        qbcw_lane #(.TP(0)) u_lq (.clk, .rst_n, .vld(rq_v), .relu(1'b0), .sgn(1'b0), .acc({1'b0, PCOL ? pc_q[i] : hold[NQ * rq_j + i]}),
                                   .bias(20'sd0), .m(c_m0), .sh(c_sh), .omode(2'd2), .t(21'sd0), .r(19'sd0),
                                   .vld_o(qv[i]), .y_o(qy[i]), .b_o(b_unused));
     end
@@ -258,4 +282,47 @@ module qb_head #(parameter int NQ = 4, parameter int NK = 512, parameter int FW 
     always_ff @(posedge clk or negedge rst_n)
         if (!rst_n) err <= 1'b0;
         else err <= err | rq_ovr | (pq_wr && fc_busy) | (pool_done && fc_busy) | (c_nrows > AW'(NFR));
+endmodule
+
+// qb_hpcol (R7g, qb_head PCOL): pool slice of column C = channels 8 C .. 8 C + 7 (local index i): s4 / tacc / hold as in
+//   qb_head (same enables, same reset behaviour: no register reset, updates only out of reset); po = the NQ hold words
+//   hold[NQ (rq_j % (8 / NQ)) + i] when rq_j / (8 / NQ) == C (requant lane i reads channel NQ rq_j + i), else 0.
+module qb_hpcol #(parameter int NQ = 4, parameter int C = 0) (
+    input  logic             clk, rst_n, tap, k0, k3,
+    input  logic [511:0]     fy,                                         // [16 (8 q + i) +: 16] = px q, channel 8 C + i
+    input  logic [3:0]       rq_j,
+    output logic [NQ*19-1:0] po
+);
+    localparam int NJ = 8 / NQ;                                         // conversion steps per column
+    logic [18:0] s4 [8], tacc [8], hold [8];
+    always_comb
+        for (int i = 0; i < 8; i++) begin
+            s4[i] = '0;
+            for (int q = 0; q < 4; q++) begin
+                logic signed [15:0] v;
+                v = fy[16 * (8 * q + i) +: 16];
+`ifdef QBH_MUT_RELU
+                s4[i] = s4[i] + 19'(v);
+`else
+                s4[i] = s4[i] + ((v < 0) ? 19'd0 : 19'(v));
+`endif
+            end
+        end
+    always_ff @(posedge clk or negedge rst_n)
+        if (!rst_n) begin end
+        else begin
+            if (tap) for (int i = 0; i < 8; i++) tacc[i] <= (k0 ? 19'd0 : tacc[i]) + s4[i];
+            if (tap && k3) for (int i = 0; i < 8; i++) hold[i] <= tacc[i] + s4[i];
+        end
+    wire [3:0] jl = 4'(int'(rq_j) % NJ);
+    always_comb
+        for (int i = 0; i < NQ; i++) begin
+            logic [3:0] li;
+`ifdef QBH_MUT_PCOL
+            li = 4'(NQ * int'(jl ^ 4'd1) + i);                          // mutant: wrong half of the column's channels
+`else
+            li = 4'(NQ * int'(jl) + i);
+`endif
+            po[19 * i +: 19] = (int'(rq_j) / NJ == C) ? hold[li[2:0]] : 19'd0;
+        end
 endmodule

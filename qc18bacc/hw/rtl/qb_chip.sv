@@ -23,6 +23,10 @@
 // R5e: define QB_HEAD_FW (default 256) = qb_head FC weight port FW.  128 (results/r5e_fc.md): FC rows 0..2047 are
 // written with h_sel 16 at h_addr, rows 2048.. with h_sel 18 at h_addr (row = {h_sel == 18, h_addr}); head
 // configuration word 7 (FC rows) is 12 b.
+// R7g: define QB_HEAD_PCOL (default 0) = qb_head PCOL: pool in 8 column slices (results/r7g.md; same cycles / values).
+`ifndef QB_HEAD_PCOL
+`define QB_HEAD_PCOL 0
+`endif
 `ifndef QB_HEAD_FW
 `define QB_HEAD_FW 256
 `endif
@@ -156,7 +160,7 @@ module qb_chip #(parameter int DIST = 1, parameter int AP = 1, parameter int HPW
         assign fc_we = i_we && i_sel == 5'd16;
         assign fc_a  = i_addr;
     end
-    qb_head #(.HP(`QB_HEAD_HP), .FW(FW)) u_head (
+    qb_head #(.HP(`QB_HEAD_HP), .FW(FW), .PCOL(`QB_HEAD_PCOL)) u_head (
         .clk, .rst_n, .fc_we, .h_addr(fc_a), .h_d(i_data[FW-1:0]), .c_m0, .c_sh, .c_last, .c_ncls,
         .c_nrows, .f_v(wb_fv), .f_pi(wb_fpi), .f_ct(wb_fct), .f_k(wb_fk), .f_y(wb_fy), .lo_vld, .lo_idx, .lo_val,
         .pool_done, .fc_busy, .busy(st_head_busy), .err(h_err));
