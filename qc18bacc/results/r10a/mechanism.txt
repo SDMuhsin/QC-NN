@@ -1,0 +1,26 @@
+# R10a step 1: why HQ / HQD / Z rotate (default RTL, qb_top.sv WBR / WBQ / WBK + layout_s.py), and the column-local scheme
+Geometry: S lane l = 8 r + c under column c (4 rows); fused lane 64 q + 8 c + i (pixel q, channel 8 c + i of the 64-ch ct) and
+wide lane 8 q + c are column c's.  Stream writes are already local (lane 8 G + col takes column col).
+OLD HQ  word (pl, g) = 64 px x 32 ch of chunk g (channels of columns 4j..4j+3, j = g & 1), logical lane l = 2 y + (x >> 2) (4 px x
+        32 ch), physical lane (l + 2 pl + j) & 15 at 128 + 8 pl + g.  One hm cycle (tp, k, ct) = 4 px x 64 ch x 8 planes = the 16
+        lane-words (pl, j) of ONE logical lane l = 4 tp + k: each gathered from 4 columns, then rotated by l0 = l over all 16 lanes
+        (else all 16 would collide on lane l); the act read un-rotates by 2 pl + j.  -> 1 792 of 2 048 b / cycle cross a column.
+OLD HQD (pl, h) even pixels, lanes 16 + ((l + rD(pl)) & 15), written as 64-b halves rotated by bq = 8 ct0 + oy (payload rotator);
+OLD Z   (pl, q4) 16 lane-words x 16 b (bit i0 of each byte) per wide cycle from 4 columns each, rotated by bz = 8 ct0 + y.
+Lower bound (why "move the rotation to the read side" alone cannot work): a column produces 8 planes x 32 b per hm cycle but owns
+only 2 lanes in rows 0-1 (4 in all rows); each lane takes one address per cycle and the act reads plane-pure 2048-b words, so a
+lane-word written in one cycle holds >= 4 columns' data.  Column-local needs (1) write-side buffering to full plane-pure
+lane-words, (2) HQ on all 4 rows (a chunk = 4 columns must still fill 16 lanes at one address), (3) a read-side reorder.
+NEW (QB_WB_COL, column-local, logical words / addresses / flags / program unchanged; compile/layout_s.py phys_col + self-test):
+  HQ  lane-word = one hm job's (tp, ct) 16 px x 8 ch of column c, plane pl: lane 8 ((tp + pl) & 3) + c, address 128 + 4 pl + ct
+      (rows 0-1) / 176 + 4 pl + ct (rows 2-3, free during block 6), bit 32 k + 8 q + i.  Buffer 128 b x 8 planes per column;
+      the 8 words go 2 per row in free cycles (at the latest the next job's k = 0 / 1; slice-0 side copy).  Latency <= 2 cycles.
+  HQD ct pair (2 consecutive jobs) of one oy as one 64-b write: row 2 + ((oy ^ pl) & 1), address 128 + 2 pl + h, bit 64 ct0 +
+      32 (oy >> 1) + 8 ox + i.  Must stay on rows 2-3: on rows 0-1 the b6.sc HQD reads collide with b6.c2's r reads (first attempt,
+      s_conf err).  Rows 2-3 then carry HQ 2 + HQD 2 writes per row per 4-cycle job = 100 % during the 64 back-to-back hm cycles.
+  Z   4-cycle group (4 ch x 4 px x 8 pl per column) written in the next 4 cycles, row 2 + (ct0 ^ pl0), address 144 + 4 pl + q4.
+  Read: hub selects lanes 8 R(G) + 4 J(G) + cc per slot 4 G + cc (HQ: R = (G + pl) & 3, J = j; Z: R = 2 + (G1 ^ pl0), J = G0;
+      HQD: 32-b chunks oy from row 2 + (oy ^ pl0)), per-row-pair address, no rotator; qb_act2 applies the fixed transpose T
+      (wiring) to every S word -> line buffer / S1 / S2 unchanged.  HQ reads now use rows 2-3: no other reader there in b6.c1.
+Cycles: none added; writes land <= 2 / 6 / 4 cycles (HQ / HQD / Z) after the old time, inside the model's +8 int8 RAW margin
+(export_top.lats: hm D+16, wc1 D+17); measured min slack to the next read 7 / 13 / 5 cycles; err on a late / conflicting write.

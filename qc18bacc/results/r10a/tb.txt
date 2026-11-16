@@ -1,0 +1,99 @@
+# R10a bench (Verilator 5.050, QBT_TECH=2; work /tmp/root/qc18bacc/r10a, vectors v/ = R8d s0 / s1 copies, progc = compile/prm_col.py convert prog progc; hw/tb/run_tb_chip.sh)
+# full = R8d 'new' + QB_ACT_S2M + QB_PRM_COL=1 = +define+QB_HEAD_FW=128+QB_HPW=144+QB_TOP_RSH=2+QB_HEAD_PCOL=1+QB_HEAD_IREG=2+QB_TOP_WBQ=2+QB_ACT_CTXR+QB_ACT_LDR+QB_ACT_CNT+QB_ACT_SRA+QB_SEQ_LPS+QB_SEQ_CMH+QB_SEQ_TKS+QB_PRM_BAR+QB_SEQ_DSP+QB_SEQ_TGO+QB_PRM_NUR+QB_SEQ_NXW+QB_SEQ_RAL+QB_ACT_S1M=1+QB_TOP_FPR=1+QB_TOP_WBK=1+QB_TOP_FFT=1+QB_SEQ_DEP+QB_ACT_S2M+QB_PRM_COL=1
+# ref = full (progc); wbc = full +QB_WB_COL=1; chk = wbc +QBT_CHK_WBC (shadow S in the old layout, every act S read compared after T, every fused / wide S read compared); stat = wbc +QBT_STAT_WBC
+# mwbc = wbc +QBT_MUT_WBC (HQ word written one row off); plain = base only (+define+QB_HEAD_FW=128+QB_HPW=144+QB_TOP_RSH=2+QB_HEAD_PCOL=1) on prog
+## wbc s0
+QB_CHIP img 0 s0/img60 go 0 end +3780 interval 3780 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7032 (after end +3252) PASS
+QB_CHIP img 1 s0/img61 go 3780 end +3748 interval 3748 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7000 (after end +3252) PASS
+QB_CHIP img 2 s0/img0 go 7528 end +3748 interval 3748 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7000 (after end +3252) PASS
+QB_CHIP img 3 s0/img1 go 11276 end +3788 interval 3788 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7040 (after end +3252) PASS
+QB_CHIP img 4 s0/img2 go 15064 end +3812 interval - logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7064 (after end +3252) PASS
+QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 0 head_err 0 PASS
+## wbc s1
+QB_CHIP img 0 s1/img13 go 0 end +3836 interval 3836 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7088 (after end +3252) PASS
+QB_CHIP img 1 s1/img55 go 3836 end +3764 interval 3764 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7016 (after end +3252) PASS
+QB_CHIP img 2 s1/img7 go 7600 end +3732 interval 3732 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +6984 (after end +3252) PASS
+QB_CHIP img 3 s1/img42 go 11332 end +3796 interval 3796 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7048 (after end +3252) PASS
+QB_CHIP img 4 s1/img91 go 15128 end +3804 interval - logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7056 (after end +3252) PASS
+QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 0 head_err 0 PASS
+## chk s0
+QB_CHIP img 0 s0/img60 go 0 end +3780 interval 3780 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7032 (after end +3252) PASS
+QB_CHIP img 1 s0/img61 go 3780 end +3748 interval 3748 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7000 (after end +3252) PASS
+QB_CHIP img 2 s0/img0 go 7528 end +3748 interval 3748 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7000 (after end +3252) PASS
+QB_CHIP img 3 s0/img1 go 11276 end +3788 interval 3788 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7040 (after end +3252) PASS
+QB_CHIP img 4 s0/img2 go 15064 end +3812 interval - logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7064 (after end +3252) PASS
+QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 0 head_err 0 PASS
+## chk s1
+QB_CHIP img 0 s1/img13 go 0 end +3836 interval 3836 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7088 (after end +3252) PASS
+QB_CHIP img 1 s1/img55 go 3836 end +3764 interval 3764 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7016 (after end +3252) PASS
+QB_CHIP img 2 s1/img7 go 7600 end +3732 interval 3732 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +6984 (after end +3252) PASS
+QB_CHIP img 3 s1/img42 go 11332 end +3796 interval 3796 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7048 (after end +3252) PASS
+QB_CHIP img 4 s1/img91 go 15128 end +3804 interval - logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7056 (after end +3252) PASS
+QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 0 head_err 0 PASS
+## mwbc s0
+QB_CHIP img 0 s0/img60 go 0 end +3764 interval 3764 logits 100/100 err 100 tiles 600 cycle_mismatch 30 last_logit +7016 (after end +3252) FAIL
+QB_CHIP img 1 s0/img61 go 3764 end +3740 interval 3740 logits 100/100 err 100 tiles 600 cycle_mismatch 30 last_logit +6992 (after end +3252) FAIL
+QB_CHIP img 2 s0/img0 go 7504 end +3740 interval 3740 logits 100/100 err 100 tiles 600 cycle_mismatch 30 last_logit +6992 (after end +3252) FAIL
+QB_CHIP img 3 s0/img1 go 11244 end +3796 interval 3796 logits 100/100 err 100 tiles 600 cycle_mismatch 30 last_logit +7048 (after end +3252) FAIL
+QB_CHIP img 4 s0/img2 go 15040 end +3812 interval - logits 100/100 err 100 tiles 600 cycle_mismatch 0 last_logit +7064 (after end +3252) FAIL
+QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 0 head_err 0 FAIL
+## mwbc s1
+QB_CHIP img 0 s1/img13 go 0 end +3836 interval 3836 logits 100/100 err 100 tiles 600 cycle_mismatch 0 last_logit +7088 (after end +3252) FAIL
+QB_CHIP img 1 s1/img55 go 3836 end +3764 interval 3764 logits 100/100 err 100 tiles 600 cycle_mismatch 0 last_logit +7016 (after end +3252) FAIL
+QB_CHIP img 2 s1/img7 go 7600 end +3716 interval 3716 logits 100/100 err 100 tiles 600 cycle_mismatch 30 last_logit +6968 (after end +3252) FAIL
+QB_CHIP img 3 s1/img42 go 11316 end +3788 interval 3788 logits 100/100 err 100 tiles 600 cycle_mismatch 30 last_logit +7040 (after end +3252) FAIL
+QB_CHIP img 4 s1/img91 go 15104 end +3812 interval - logits 100/100 err 100 tiles 600 cycle_mismatch 30 last_logit +7064 (after end +3252) FAIL
+QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 0 head_err 0 FAIL
+## stat s0
+QB_CHIP img 0 s0/img60 go 0 end +3780 interval 3780 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7032 (after end +3252) PASS
+QB_CHIP img 1 s0/img61 go 3780 end +3748 interval 3748 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7000 (after end +3252) PASS
+QB_CHIP img 2 s0/img0 go 7528 end +3748 interval 3748 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7000 (after end +3252) PASS
+QB_CHIP img 3 s0/img1 go 11276 end +3788 interval 3788 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7040 (after end +3252) PASS
+QB_CHIP img 4 s0/img2 go 15064 end +3812 interval - logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7064 (after end +3252) PASS
+QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 0 head_err 0 PASS
+## stat s1
+QB_CHIP img 0 s1/img13 go 0 end +3836 interval 3836 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7088 (after end +3252) PASS
+QB_CHIP img 1 s1/img55 go 3836 end +3764 interval 3764 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7016 (after end +3252) PASS
+QB_CHIP img 2 s1/img7 go 7600 end +3732 interval 3732 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +6984 (after end +3252) PASS
+QB_CHIP img 3 s1/img42 go 11332 end +3796 interval 3796 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7048 (after end +3252) PASS
+QB_CHIP img 4 s1/img91 go 15128 end +3804 interval - logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7056 (after end +3252) PASS
+QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 0 head_err 0 PASS
+## ref s0
+QB_CHIP img 0 s0/img60 go 0 end +3780 interval 3780 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7032 (after end +3252) PASS
+QB_CHIP img 1 s0/img61 go 3780 end +3748 interval 3748 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7000 (after end +3252) PASS
+QB_CHIP img 2 s0/img0 go 7528 end +3748 interval 3748 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7000 (after end +3252) PASS
+QB_CHIP img 3 s0/img1 go 11276 end +3788 interval 3788 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7040 (after end +3252) PASS
+QB_CHIP img 4 s0/img2 go 15064 end +3812 interval - logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7064 (after end +3252) PASS
+QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 0 head_err 0 PASS
+## ref s1
+QB_CHIP img 0 s1/img13 go 0 end +3836 interval 3836 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7088 (after end +3252) PASS
+QB_CHIP img 1 s1/img55 go 3836 end +3764 interval 3764 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7016 (after end +3252) PASS
+QB_CHIP img 2 s1/img7 go 7600 end +3732 interval 3732 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +6984 (after end +3252) PASS
+QB_CHIP img 3 s1/img42 go 11332 end +3796 interval 3796 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7048 (after end +3252) PASS
+QB_CHIP img 4 s1/img91 go 15128 end +3804 interval - logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7056 (after end +3252) PASS
+QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 0 head_err 0 PASS
+## plain s0
+QB_CHIP img 0 s0/img60 go 0 end +3780 interval 3780 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7030 (after end +3250) PASS
+QB_CHIP img 1 s0/img61 go 3780 end +3748 interval 3748 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +6998 (after end +3250) PASS
+QB_CHIP img 2 s0/img0 go 7528 end +3748 interval 3748 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +6998 (after end +3250) PASS
+QB_CHIP img 3 s0/img1 go 11276 end +3788 interval 3788 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7038 (after end +3250) PASS
+QB_CHIP img 4 s0/img2 go 15064 end +3812 interval - logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7062 (after end +3250) PASS
+QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 0 head_err 0 PASS
+## plain s1
+QB_CHIP img 0 s1/img13 go 0 end +3836 interval 3836 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7086 (after end +3250) PASS
+QB_CHIP img 1 s1/img55 go 3836 end +3764 interval 3764 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7014 (after end +3250) PASS
+QB_CHIP img 2 s1/img7 go 7600 end +3732 interval 3732 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +6982 (after end +3250) PASS
+QB_CHIP img 3 s1/img42 go 11332 end +3796 interval 3796 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7046 (after end +3250) PASS
+QB_CHIP img 4 s1/img91 go 15128 end +3804 interval - logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7054 (after end +3250) PASS
+QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 0 head_err 0 PASS
+## sim-only checks
+chk: WBCCHK reads 3296 bad 0
+chk: WBCCHK reads 3112 bad 0
+stat: WBCSTAT drain latency max HQ 2 HQD 6 Z 4; slack to next read min HQ 7 HQD 13 Z 5
+stat: WBCSTAT drain latency max HQ 2 HQD 6 Z 4; slack to next read min HQ 7 HQD 13 Z 5
+## full-log diffs (walltime / cpu / checker lines stripped, vector paths normalised)
+s0: wbc vs ref 0 lines; chk vs ref 0; ref vs R8d new 0; plain vs R8d plain 0
+s1: wbc vs ref 0 lines; chk vs ref 0; ref vs R8d new 0; plain vs R8d plain 0
+logits files wbc == ref: 10 / 10 byte-identical (ref == R9c col == R8d new logits, torch.equal 10/10 there)
+## first attempt (HQD on rows 0-1 for half the words): logits wrong, err 1 = S read-port conflicts (s_conf) of the act HQD read with the b6.c2 wide r reads on lanes 0-15, e.g. 'now 2719 sra 200 rd_en 0000ff00': HQD kept on rows 2-3 (as before)
+## final RTL rebuild (debug blocks removed): wbcf / reff (full) / plainf 10/10 PASS each; logs wbcf == ref, reff == ref, plainf == plain: 0 diff lines (s0, s1)

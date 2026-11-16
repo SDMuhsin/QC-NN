@@ -140,7 +140,20 @@ module qb_act2 #(parameter int ACT_PIPE = 1) (
             if (gm) begin m_ra <= laddr[cm]; m_ctx <= cm; end
             if (gs) begin s_ra <= laddr[cs][7:0]; s_ctx <= cs; end
         end
-    always_ff @(posedge clk) begin rdq <= m_q; sdq <= s_q; end
+`ifndef QB_WB_COL
+`define QB_WB_COL 0
+`endif
+    // R10a QB_WB_COL (qb_top.sv header, results/r10a.md): S words arrive in the column-local slot order; the fixed
+    // transpose T (wiring only: slot 4 G + a, bit 32 b + 8 q + i -> lane 4 G + b, bit 32 q + 8 a + i) restores the
+    // logical word of compile/layout_s.py, so the line buffer, S1 and S2 are unchanged.
+    logic [2047:0] s_qt;
+    always_comb
+        if (`QB_WB_COL != 0) begin
+            for (int G = 0; G < 4; G++) for (int a = 0; a < 4; a++) for (int b = 0; b < 4; b++)
+                for (int q = 0; q < 4; q++) for (int i = 0; i < 8; i++)
+                    s_qt[128 * (4 * G + b) + 32 * q + 8 * a + i] = s_q[128 * (4 * G + a) + 32 * b + 8 * q + i];
+        end else s_qt = s_q;
+    always_ff @(posedge clk) begin rdq <= m_q; sdq <= s_qt; end
 
     // ---------------------------------------------------------------- shared patch network + descriptors
     localparam int NS1 = 192;

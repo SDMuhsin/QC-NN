@@ -1,0 +1,4 @@
+# R10a Yosys-slang elaboration of qb_top (read_slang + hierarchy, -DSYNTHESIS, R4b tech defines + full set + QB_WB_COL=1, R3B=1 HSEL=1 HPW=144), /tmp/root/qc18bacc/r10a/ys/e1.ys
+Build succeeded: 0 errors, 68 warnings (all 'asynchronous load value missing' for block-local temporaries in async-reset always_ff, the same pattern as the existing code, incl. g_wbc.hp / zp / dp / e)
+# Cost [E] (not synthesized): g_wbc buffers per column: HQ 8 x 128 + slice-0 side copy 8 x 32, HQD even / odd / side 3 x 8 x 32, Z 8 x 32 = 2 304 flops -> 18 432 flops + ~40 control; ~0.13 mm2 at ~7 um2 per enabled flop (65 nm), i.e. ~0.6 % of a 23.2 mm2 die.
+# Removed from the synthesized path: HQ 2048-b gather + 4-stage rotator, HQD / Z 1024-b payload gather + rotator + 8-b address rotators (khq / khqd / kz constant 0), S-read group mux + 4-stage rotator -> one 8:1 (HQD: row 2:1 per 32 b) select per slot bit. R7e DC: rotators + lane mux ~57 k um2 comb, so net ~ +0.07..0.1 mm2 [E].

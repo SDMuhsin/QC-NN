@@ -108,5 +108,167 @@ def _selftest():
     return "layout_s self-test PASS"
 
 
+# ------------------------------------------------------------------------------------------------ R10a: physical layouts
+# S lane l = 8 r + c sits under column c (row r); a map bit of channel ch is produced by column (ch >> 3) & 7 (fused lane
+# 64 q + 8 c + i / wide lane 8 q + c, channel 64 ct + 8 c + i).  phys_old = the default RTL (qb_top.sv header: rotated
+# lane-words), phys_col = QB_WB_COL (column-local).  Both keep the logical words above; the hub selects 16 lanes and
+# qb_act2 applies T (QB_WB_COL), so the program / flags / addresses s_ra are identical (no compile change).
+PITCH = 390.0                                   # column pitch (um, R9b mplace9)
+_RD = lambda pl: (pl & 3) + 8 * (pl >> 2)
+
+
+def _bits(kind, a, pos):
+    """logical (address, bit) -> (pl, ct64, column, fields)."""
+    o = a - BASE[kind]
+    if kind == "hq":
+        pl, g = o >> 3, o & 7
+        y, x, c5 = pos >> 8, (pos >> 5) & 7, pos & 31
+        return pl, g >> 1, 4 * (g & 1) + (c5 >> 3), dict(y=y, x=x, i=c5 & 7, g=g)
+    if kind == "hqd":
+        pl, h = o >> 1, o & 1
+        tq, oy, ox, c5 = pos >> 9, (pos >> 7) & 3, (pos >> 5) & 3, pos & 31
+        t = 4 * h + tq
+        return pl, t >> 1, 4 * (t & 1) + (c5 >> 3), dict(oy=oy, ox=ox, i=c5 & 7, h=h)
+    pl, q4 = o >> 2, o & 3
+    gq, y, x, c5 = pos >> 9, (pos >> 7) & 3, (pos >> 5) & 3, pos & 31
+    g = 4 * q4 + gq
+    return pl, g >> 1, 4 * (g & 1) + (c5 >> 3), dict(y=y, x=x, i=c5 & 7, q4=q4)
+
+
+def phys_old(kind, a, pos):
+    pl, ct, c, f = _bits(kind, a, pos)
+    l = pos >> 7
+    if kind == "hq":
+        return (l + 2 * pl + (f["g"] & 1)) & 15, a, pos & 127
+    base = 128 if kind == "hqd" else 144
+    return 16 + ((l + _RD(pl)) & 15), base + a - BASE[kind], pos & 127
+
+
+def phys_col(kind, a, pos):
+    """QB_WB_COL: (physical lane, physical address, in-lane bit); lane & 7 == producing column."""
+    pl, ct, c, f = _bits(kind, a, pos)
+    if kind == "hq":
+        y, x, i = f["y"], f["x"], f["i"]
+        tp, k, q = y >> 1, 2 * (y & 1) + (x >> 2), x & 3
+        r = (tp + pl) & 3
+        return 8 * r + c, (128 if r < 2 else 176) + 4 * pl + ct, 32 * k + 8 * q + i
+    if kind == "hqd":
+        oy, ox, i = f["oy"], f["ox"], f["i"]
+        return 16 + 8 * ((oy ^ pl) & 1) + c, 128 + 2 * pl + f["h"], 64 * (ct & 1) + 32 * (oy >> 1) + 8 * ox + i
+    y, x, i = f["y"], f["x"], f["i"]
+    return 16 + 8 * ((ct ^ pl) & 1) + c, 144 + 4 * pl + f["q4"], 32 * y + 8 * x + i
+
+
+def producer_col(kind, a, pos):
+    return _bits(kind, a, pos)[2]
+
+
+def T_act(w):
+    """qb_act2 QB_WB_COL transpose: slot 4 G + a, bit 32 b + 8 q + i -> lane 4 G + b, bit 32 q + 8 a + i."""
+    v = np.asarray(w).reshape(4, 4, 4, 4, 8)            # [G, a, b, q, i]
+    return v.transpose(0, 2, 3, 1, 4).reshape(-1)       # [G, b, q, a, i]
+
+
+def hub_read_col(mem, kind, a):
+    """qb_top g_srd_col: the 16 slots (2048 b) of logical word a from the physical S image mem[(lane, addr)]."""
+    o = a - BASE[kind]
+    out = np.zeros((16, 128), np.uint8)
+    for G in range(4):
+        for cc in range(4):
+            if kind == "hq":
+                pl, g = o >> 3, o & 7
+                r = (G + pl) & 3
+                out[4 * G + cc] = mem[(8 * r + 4 * (g & 1) + cc, (128 if r < 2 else 176) + 4 * pl + (g >> 1))]
+            elif kind == "hqd":
+                pl = o >> 1
+                for oy in range(4):
+                    ln = 16 + 8 * ((oy ^ pl) & 1) + 4 * (G & 1) + cc
+                    out[4 * G + cc, 32 * oy:32 * oy + 32] = mem[(ln, 128 + o)][64 * (G >> 1) + 32 * (oy >> 1):][:32]
+            else:
+                pl = o >> 2
+                out[4 * G + cc] = mem[(16 + 8 * ((G >> 1) ^ (pl & 1)) + 4 * (G & 1) + cc, 144 + o)]
+    return out.reshape(-1)
+
+
+def wire_model():
+    """write-back bits per map: total, cross-column, x-span (straight line producer column -> lane column), old / col."""
+    res = {}
+    for kind in ("hq", "hqd", "z"):
+        n = {"hq": 64, "hqd": 16, "z": 32}[kind]
+        tot = {"old": [0, 0, 0.0], "col": [0, 0, 0.0]}
+        for w in range(n):
+            a = BASE[kind] + w
+            for pos in range(WORD):
+                c = producer_col(kind, a, pos)
+                for k, f in (("old", phys_old), ("col", phys_col)):
+                    d = f(kind, a, pos)[0] & 7
+                    tot[k][0] += 1
+                    tot[k][1] += d != c
+                    tot[k][2] += abs(d - c) * PITCH
+        res[kind] = tot
+    return res
+
+
+def net_model():
+    """static nets: each core output bit (f_y lane bit pl / w_y lane bit pl) -> the S lane columns it ever writes;
+    HPWL in x = (max - min of producer + lane columns) x PITCH; returns {kind: {old/col: (nets, cross nets, m)}}."""
+    res = {}
+    for kind in ("hq", "hqd", "z"):
+        n = {"hq": 64, "hqd": 16, "z": 32}[kind]
+        dst = {"old": {}, "col": {}}
+        for w in range(n):
+            a = BASE[kind] + w
+            for pos in range(WORD):
+                pl, ct, c, f = _bits(kind, a, pos)
+                q = f["x"] & 3 if kind != "hqd" else 2 * (f["ox"] & 1)
+                src = (pl, q, c, f["i"]) if kind != "z" else (pl, q, c)      # f_y lane 64 q + 8 c + i / w_y lane 8 q + c
+                for k, fn in (("old", phys_old), ("col", phys_col)):
+                    dst[k].setdefault(src, {c}).add(fn(kind, a, pos)[0] & 7)
+        res[kind] = {k: (len(v), sum(len(s) > 1 for s in v.values()),
+                         sum((max(s) - min(s)) * PITCH for s in v.values()) / 1e6) for k, v in dst.items()}
+    return res
+
+
+def _selftest_col():
+    rng = np.random.default_rng(2)
+    for kind in ("hq", "hqd", "z"):
+        n = {"hq": 64, "hqd": 16, "z": 32}[kind]
+        seen, mem = set(), {}
+        words = {BASE[kind] + w: rng.integers(0, 2, WORD, dtype=np.uint8) for w in range(n)}
+        for a, wv in words.items():
+            for pos in range(WORD):
+                ln, pa, b = phys_col(kind, a, pos)
+                assert ln & 7 == producer_col(kind, a, pos), (kind, a, pos)          # column-local
+                assert (ln, pa, b) not in seen, (kind, a, pos)                       # no two bits on one cell
+                seen.add((ln, pa, b))
+                mem.setdefault((ln, pa), np.zeros(128, np.uint8))[b] = wv[pos]
+        for a, wv in words.items():                                                 # hub select + T == logical
+            assert np.array_equal(T_act(hub_read_col(mem, kind, a)), wv), (kind, a)
+    cells = {}
+    for kind in ("hq", "hqd", "z"):
+        n = {"hq": 64, "hqd": 16, "z": 32}[kind]
+        for w in range(n):
+            for pos in range(0, WORD, 1):
+                ln, pa, _ = phys_col(kind, BASE[kind] + w, pos)
+                cells.setdefault((ln, pa), set()).add(kind)
+    assert all(len(v) == 1 for v in cells.values())
+    assert all(64 <= pa < 128 or 128 <= pa < 208 for (ln, pa) in cells) and \
+        not any(ln < 16 and (64 <= pa < 128 or pa >= 192) for (ln, pa) in cells)
+    return "layout_s phys_col self-test PASS (column-local, collision-free, hub + T == logical, disjoint from r / stream)"
+
+
 if __name__ == "__main__":
+    import sys
     print(_selftest())
+    print(_selftest_col())
+    if "--wire" in sys.argv:
+        cyc = {"hq": 64, "hqd": 32, "z": 256}         # write cycles per image: hm 64, HQD on the 32 even-row hm cycles, c1 wide 8 ct x 32
+        for kind, t in wire_model().items():
+            for k in ("old", "col"):
+                b, x, sp = t[k]
+                print(f"WIRE {kind:3s} {k:3s} bits {b:6d} cross-column {x:6d} ({100 * x / b:5.1f} %) x-span {sp / 1e6:7.3f} m"
+                      f" | per write cycle: {x / cyc[kind]:7.1f} b, {sp / cyc[kind] / 1e3:7.2f} mm")
+        for kind, t in net_model().items():
+            for k in ("old", "col"):
+                nn, nx, m = t[k]
+                print(f"NETS {kind:3s} {k:3s} source bits {nn:5d} crossing a column {nx:5d} x-HPWL {m:6.3f} m")

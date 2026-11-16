@@ -1,0 +1,15 @@
+# R10a write-back wire model [Mod] (python3 -m qc18bacc.compile.layout_s --wire): producer column (channel >> 3 & 7) -> S lane column (lane & 7), x only, pitch 390 um; WIRE = bits of one image written (HQ 64 hm cycles, HQD 32 even-row hm cycles, Z 256 c1 wide cycles), x-span = sum |dcol| x 390 um (the per-cycle column is in mm); NETS = static nets: each core output bit -> set of lane columns it ever writes, HPWL_x = (max - min of producer + lanes) x 390 um. old = default RTL (rotators), col = QB_WB_COL.  Not covered (still cross-column): b6.sc r (w_y col 4h+cc -> lane 8 k0 + 2q + h: 532 of 608 b per kind-6 cycle, 0.56 m), B1 / B2 map writes (B1 macros under cols 0-3, B2 under 4-7).
+layout_s self-test PASS
+layout_s phys_col self-test PASS (column-local, collision-free, hub + T == logical, disjoint from r / stream)
+WIRE hq  old bits 131072 cross-column 114688 ( 87.5 %) x-span 134.185 m | per write cycle:  1792.0 b, 2096.64 mm
+WIRE hq  col bits 131072 cross-column      0 (  0.0 %) x-span   0.000 m | per write cycle:     0.0 b,    0.00 mm
+WIRE hqd old bits  32768 cross-column  27648 ( 84.4 %) x-span  29.153 m | per write cycle:   864.0 b,  911.04 mm
+WIRE hqd col bits  32768 cross-column      0 (  0.0 %) x-span   0.000 m | per write cycle:     0.0 b,    0.00 mm
+WIRE z   old bits  65536 cross-column  55296 ( 84.4 %) x-span  58.307 m | per write cycle:   216.0 b,  227.76 mm
+WIRE z   col bits  65536 cross-column      0 (  0.0 %) x-span   0.000 m | per write cycle:     0.0 b,    0.00 mm
+NETS hq  old source bits  2048 crossing a column  2048 x-HPWL  5.591 m
+NETS hq  col source bits  2048 crossing a column     0 x-HPWL  0.000 m
+NETS hqd old source bits  1024 crossing a column  1024 x-HPWL  1.922 m
+NETS hqd col source bits  1024 crossing a column     0 x-HPWL  0.000 m
+NETS z   old source bits   256 crossing a column   256 x-HPWL  0.480 m
+NETS z   col source bits   256 crossing a column     0 x-HPWL  0.000 m
