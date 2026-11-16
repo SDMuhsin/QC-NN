@@ -1,0 +1,63 @@
+# cuts.py --head-south on unplaced DC netlists (OpenROAD link, LEF cell sizes): r6a_hpw144 | r7f_rsh
+BLK  col0       1.2129 0	BLK  col0       1.2129 0
+BLK  col1       1.2129 0	BLK  col1       1.2129 0
+BLK  col2       1.2129 0	BLK  col2       1.2129 0
+BLK  col3       1.2129 0	BLK  col3       1.2129 0
+BLK  col4       1.2129 0	BLK  col4       1.2129 0
+BLK  col5       1.2129 0	BLK  col5       1.2129 0
+BLK  col6       1.2129 0	BLK  col6       1.2129 0
+BLK  col7       1.2129 0	BLK  col7       1.2129 0
+N    glue       0.0457 3701	N    glue       0.0467 3701
+N    qb_w       2.6709 0	N    qb_w       2.6709 0
+S    glue       0.3483 13055	S    glue       0.2902 13056
+S    head       0.1659 7419	S    head       0.1665 7419
+S    prm        0.2392 25689	S    prm        0.2380 25689
+S    qb_b       0.4061 0	S    qb_b       0.4061 0
+S    qb_f       0.4663 0	S    qb_f       0.4663 0
+S    qb_i       0.1354 0	S    qb_i       0.1354 0
+S    qb_p       0.5364 0	S    qb_p       0.5364 0
+S    qb_s       2.4973 0	S    qb_s       2.4973 0
+W    act        0.8310 53218	W    act        0.8253 53218
+W    chip       0.0136 288	W    chip       0.0117 288
+W    dist       0.0357 4608	W    dist       0.0354 4608
+W    glue       0.0830 2789	W    glue       0.0937 2789
+W    qb_d       0.2358 0	W    qb_d       0.2358 0
+W    seq        0.5474 26787	W    seq        0.5470 26787
+GROUP W std_mm2 1.5107 macro_mm2 0.2358	GROUP W std_mm2 1.5131 macro_mm2 0.2358
+GROUP WA std_mm2 0.0000 macro_mm2 0.0000	GROUP WA std_mm2 0.0000 macro_mm2 0.0000
+GROUP S std_mm2 0.7533 macro_mm2 4.0416	GROUP S std_mm2 0.6948 macro_mm2 4.0416
+GROUP N std_mm2 0.0457 macro_mm2 2.6709	GROUP N std_mm2 0.0467 macro_mm2 2.6709
+# cut totals r6a
+TOTAL BLK -> S      4353    4353       0
+TOTAL BLK -> W      1680    1680       0
+TOTAL IO  -> BLK       1       1       1
+TOTAL IO  -> N         1       1       1
+TOTAL IO  -> S         1       1       1
+TOTAL IO  -> W       168     168     160
+TOTAL N   -> BLK    2328    2285    2328
+TOTAL N   -> S         1       0       1
+TOTAL S   -> BLK   16138    6109   16138
+TOTAL S   -> IO       41      40      41
+TOTAL S   -> N        51       0      49
+TOTAL S   -> W      6556    3216       4
+TOTAL W   -> BLK    4611    4511    4611
+TOTAL W   -> IO       19      17      19
+TOTAL W   -> N       652     543     115
+TOTAL W   -> S      2712     534     233
+# cut totals r7f_rsh
+TOTAL BLK -> S      4526    4526       0
+TOTAL BLK -> W      2163    2163       0
+TOTAL IO  -> BLK       1       1       1
+TOTAL IO  -> N         1       1       1
+TOTAL IO  -> S         2       2       1
+TOTAL IO  -> W       168     168     160
+TOTAL N   -> BLK    2331    2292    2331
+TOTAL N   -> S         7       0       6
+TOTAL S   -> BLK   16142    6128   16142
+TOTAL S   -> IO       41      40      41
+TOTAL S   -> N        95       0      81
+TOTAL S   -> W      7494    3538       6
+TOTAL W   -> BLK    4612    4543    4612
+TOTAL W   -> IO       19      17      19
+TOTAL W   -> N       614     546      70
+TOTAL W   -> S      4625     539     257

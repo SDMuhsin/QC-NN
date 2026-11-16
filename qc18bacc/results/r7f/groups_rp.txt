@@ -1,0 +1,45 @@
+# cuts.py --head-south, r7f_rp (u_head/g_pcol_<c>__u_pc kept as hierarchy, 16 397 of 40 167 u_head cells; labelled S head)
+BLK  col0       1.2129 0
+BLK  col1       1.2129 0
+BLK  col2       1.2129 0
+BLK  col3       1.2129 0
+BLK  col4       1.2129 0
+BLK  col5       1.2129 0
+BLK  col6       1.2129 0
+BLK  col7       1.2129 0
+N    glue       0.0438 3701
+N    qb_w       2.6709 0
+S    glue       0.2896 13056
+S    head       0.1674 7422
+S    prm        0.2380 25689
+S    qb_b       0.4061 0
+S    qb_f       0.4663 0
+S    qb_i       0.1354 0
+S    qb_p       0.5364 0
+S    qb_s       2.4973 0
+W    act        0.8218 53218
+W    chip       0.0133 288
+W    dist       0.0355 4608
+W    glue       0.0923 2789
+W    qb_d       0.2358 0
+W    seq        0.5462 26787
+GROUP W std_mm2 1.5090 macro_mm2 0.2358
+GROUP WA std_mm2 0.0000 macro_mm2 0.0000
+GROUP S std_mm2 0.6950 macro_mm2 4.0416
+GROUP N std_mm2 0.0438 macro_mm2 2.6709
+TOTAL BLK -> S      4471    4471       0
+TOTAL BLK -> W      2194    2194       0
+TOTAL IO  -> BLK       1       1       1
+TOTAL IO  -> N         1       1       1
+TOTAL IO  -> S         2       2       1
+TOTAL IO  -> W       168     168     160
+TOTAL N   -> BLK    2327    2295    2327
+TOTAL N   -> S         7       0       6
+TOTAL S   -> BLK   16155    6113   16155
+TOTAL S   -> IO       41      40      41
+TOTAL S   -> N        78       0      69
+TOTAL S   -> W      7503    3914       8
+TOTAL W   -> BLK    4612    4531    4612
+TOTAL W   -> IO       19      17      19
+TOTAL W   -> N       630     550      85
+TOTAL W   -> S      4720     546     272

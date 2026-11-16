@@ -1,0 +1,29 @@
+design qb_chip top qb_chip corner tt period_ns 1.65 topo 1 wire_load topo
+cell_area_um2 16188448.227025 gate_eq_kGE 11241.98 cells 608315 regs 133661
+setup_wns_ns -4.39018 setup_tns_ns -26899.588 setup_viol_endpoints 61012
+setup_worst_path u_top/g_dist_0__u_d/q_reg_4071_/CP -> u_top/u_core/u_arr/g_c_7__u_col/act[4071]
+hold_wns_ns -0.604627 hold_tns_ns -5560.805 hold_viol_endpoints 20094
+hold_worst_path u_top/u_core/u_arr/g_c_3__u_col/clk -> u_top/s_wd_reg_19__33_/D
+dc_wall_s 4070
+wall 1:07:58 peak_rss_mb 9280
+
+# /tmp/ckp908/qc18bacc/build/syn/r7f_rsh/rpt/area.rpt: top qb_chip, total cell area 16188448 um2, macros 13933919, logic 2254530
+core: other (port regs, cmp, ctl)                       logic_um2         1622 mm2 0.002
+core: total                                             logic_um2         1622 mm2 0.002
+act supply (qb_act2)                                    logic_um2       825315 mm2 0.825
+sequencer (qb_seq)                                      logic_um2       546986 mm2 0.547
+params path (qb_prm)                                    logic_um2       238043 mm2 0.238
+head (qb_head)                                          logic_um2       166473 mm2 0.166
+u_top macro wrappers                                    logic_um2         3899 mm2 0.004  (n 92)
+top glue in qb_top (write-back, delay lines, dist)      logic_um2       460540 mm2 0.461
+qb_chip glue (host port, head cfg)                      logic_um2        11650 mm2 0.012
+logic total                                             logic_um2      2254530 mm2 2.255
+macro qb_b_128x128m1       n   8 um2     406136 mm2 0.406
+macro qb_d_624x80m8        n   2 um2     235847 mm2 0.236
+macro qb_f_3232x128m8      n   1 um2     466267 mm2 0.466
+macro qb_i_128x128m1       n   4 um2     135424 mm2 0.135
+macro qb_p_240x144m2       n   9 um2     536415 mm2 0.536
+macro qb_s_256x128m1       n  32 um2    2497343 mm2 2.497
+macro qb_w_204x144m2       n  48 um2    2670888 mm2 2.671
+macro total n 104 mm2 6.948
+chip total (logic + macros) mm2 16.188

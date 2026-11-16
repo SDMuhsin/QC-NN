@@ -1,0 +1,55 @@
+u_top/u_core/u_arr/g_c_0__u_col/clk (qb_col_blk) 0.000
+u_top/u_core/u_arr/g_c_0__u_col/f_vld_o (qb_col_blk) 1.069
+u_top/U3783/A1 (CKND2D8) 1.252
+u_top/U3783/ZN (CKND2D8) 1.314
+u_top/U70897/I (CKND12) 1.336
+u_top/U70897/ZN (CKND12) 1.386
+u_top/U3785/A1 (ND2D4) 1.389
+u_top/U3785/ZN (ND2D4) 1.471
+u_top/U93200/I (BUFFD8) 1.473
+u_top/U93200/Z (BUFFD8) 1.543
+u_top/U95710/I (BUFFD4) 1.548
+u_top/U95710/Z (BUFFD4) 1.600
+u_top/U26147/A1 (ND2D1) 1.601
+u_top/U26147/ZN (ND2D1) 1.676
+u_top/U26148/B (OAI21D4) 1.677
+u_top/U26148/ZN (OAI21D4) 1.754
+u_top/U24636/I (BUFFD2) 1.760
+u_top/U24636/Z (BUFFD2) 1.814
+u_top/U26211/B1 (INR2D2) 1.814
+u_top/U26211/ZN (INR2D2) 1.899
+u_top/U97067/I (BUFFD6) 1.900
+u_top/U97067/Z (BUFFD6) 1.969
+u_top/U102111/I (BUFFD3) 1.970
+u_top/U102111/Z (BUFFD3) 2.061
+u_top/U97098/I (BUFFD2) 2.061
+u_top/U97098/Z (BUFFD2) 2.110
+u_top/U101480/I (BUFFD1) 2.110
+u_top/U101480/Z (BUFFD1) 2.170
+u_top/U101434/I (CKBD0) 2.170
+u_top/U101434/Z (CKBD0) 2.283
+u_top/U32262/A1 (AOI22D0) 2.283
+u_top/U32262/ZN (AOI22D0) 2.328
+u_top/U32269/A1 (ND3D1) 2.328
+u_top/U32269/ZN (ND3D1) 2.395
+u_top/U59153/B1 (AOI22D0) 2.395
+u_top/U59153/ZN (AOI22D0) 2.449
+u_top/U59156/A1 (CKND2D2) 2.449
+u_top/U59156/ZN (CKND2D2) 2.533
+u_top/U98981/I (CKBD12) 2.535
+u_top/U98981/Z (CKBD12) 2.604
+u_top/u_act/U1289/I (CKBD1) 2.659
+u_top/u_act/U1289/Z (CKBD1) 2.732
+u_top/u_act/sdq_reg_508_/D (DFQD4) 2.733
+data arrival time
+u_top/u_act/sdq_reg_508_/CP (DFQD4) 1.400
+data arrival time
+slack (VIOLATED) (VIOLATED)
+u_top/u_core/u_arr/g_c_0__u_col/clk (qb_col_blk) u_top/u_act/sdq_reg_508_/D (DFQD4)    -1.35
+u_top/u_core/u_arr/g_c_0__u_col/clk (qb_col_blk) u_top/u_act/sdq_reg_1924_/D (DFQD4)    -1.34
+u_top/u_core/u_arr/g_c_0__u_col/clk (qb_col_blk) u_top/u_act/sdq_reg_234_/D (DFQD1)    -1.34
+u_top/u_core/u_arr/g_c_0__u_col/clk (qb_col_blk) u_top/u_act/sdq_reg_238_/D (DFQD4)    -1.33
+u_top/u_core/u_arr/g_c_0__u_col/clk (qb_col_blk) u_top/u_act/sdq_reg_429_/D (DFQD4)    -1.30
+u_top/u_core/u_arr/g_c_0__u_col/clk (qb_col_blk) u_top/u_act/sdq_reg_703_/D (DFQD4)    -1.30
+u_top/u_core/u_arr/g_c_0__u_col/clk (qb_col_blk) u_top/u_act/sdq_reg_906_/D (DFQD4)    -1.30
+u_top/u_core/u_arr/g_c_0__u_col/clk (qb_col_blk) u_top/u_act/sdq_reg_1419_/D (DFQD4)    -1.29

@@ -1,0 +1,20 @@
+# PT tt pre-route, as pt_rsh.txt: r7f_rp (RSH + PCOL)
+r7f_rp clock qb_clk period_ns 1.650 wns_ns -4.135 fmax_mhz 172.8 path u_top/g_dist_0__u_d/q_reg_265_/CP -> u_top/u_core/u_arr/g_c_2__u_col/act[265]
+r7f_rp core_other -4.135 172.8 u_top/g_dist_0__u_d/q_reg_265_/CP -> u_top/u_core/u_arr/g_c_2__u_col/act[265]
+r7f_rp act_supply -1.384 329.6 u_top/u_core/u_arr/g_c_0__u_col/clk -> u_top/u_act/sdq_reg_1517_/D
+r7f_rp seq -0.725 421.0 u_top/g_r3b_g_rt_u_seq/g_ps_1__pf_r_reg/CP -> u_top/g_r3b_g_rt_u_seq/g_lp_1__RdA_reg/D
+r7f_rp prm -0.516 461.8 u_top/g_r3b_u_prm/rfree_reg_2__0_/CP -> u_top/g_r3b_u_prm/b_a_reg_7_/D
+r7f_rp head -1.682 300.1 u_top/u_core/u_arr/g_c_0__u_col/clk -> u_head/g_pcol_0__u_pc/tacc_reg_4__18_/D
+r7f_rp out_port 0.650 999.7 busy_reg/CP -> st_img_free
+r7f_rp token_tgo -0.493 466.7 u_top/g_r3b_g_rt_u_seq/eqf_reg_0__49_/CP -> u_top/u_act/sel1b_reg_12_/D
+r7f_rp token_deot -0.315 508.8 u_top/u_act/dsc_reg_22_/CP -> u_top/u_act/sel1b_reg_12_/D
+# PT ss pre-route, as pt_rsh.txt: r7f_rp (RSH + PCOL)
+r7f_rp clock qb_clk period_ns 1.650 wns_ns -3.422 fmax_mhz 197.2 path u_top/u_core/u_arr/g_c_0__u_col/clk -> u_head/g_pcol_0__u_pc/tacc_reg_4__18_/D
+r7f_rp core_other -1.557 311.9 u_top/g_dist_0__u_d/q_reg_1160_/CP -> u_top/u_core/u_arr/g_c_7__u_col/act[1160]
+r7f_rp act_supply -2.910 219.3 u_top/u_core/u_arr/g_c_0__u_col/clk -> u_top/u_act/sdq_reg_1517_/D
+r7f_rp seq -2.107 266.1 u_top/g_r3b_g_rt_u_seq/g_ps_1__pf_r_reg/CP -> u_top/g_r3b_g_rt_u_seq/g_lp_1__RdA_reg/D
+r7f_rp prm -1.768 292.5 u_top/g_r3b_u_prm/rfree_reg_2__0_/CP -> u_top/g_r3b_u_prm/b_a_reg_7_/D
+r7f_rp head -3.422 197.2 u_top/u_core/u_arr/g_c_0__u_col/clk -> u_head/g_pcol_0__u_pc/tacc_reg_4__18_/D
+r7f_rp out_port 0.395 796.9 busy_reg/CP -> st_img_free
+r7f_rp token_tgo -1.724 296.4 u_top/g_r3b_g_rt_u_seq/eqf_reg_0__49_/CP -> u_top/u_act/sel1b_reg_10_/D
+r7f_rp token_deot -1.348 333.5 u_top/u_act/dsc_reg_22_/CP -> u_top/u_act/sel1b_reg_10_/D

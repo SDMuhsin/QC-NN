@@ -1,0 +1,38 @@
+# PT tt pre-route (DC topo parasitics, 1.65 ns, impl/r4 constraints + pt_class): class slack_ns fmax_mhz worst path; r6a_ref = the r6a_hpw144 netlist re-timed on tau4
+r7f_rsh clock qb_clk period_ns 1.650 wns_ns -4.255 fmax_mhz 169.4 path u_top/g_dist_0__u_d/q_reg_265_/CP -> u_top/u_core/u_arr/g_c_2__u_col/act[265]
+r7f_rsh core_other -4.255 169.4 u_top/g_dist_0__u_d/q_reg_265_/CP -> u_top/u_core/u_arr/g_c_2__u_col/act[265]
+r7f_rsh act_supply -1.350 333.3 u_top/u_core/u_arr/g_c_0__u_col/clk -> u_top/u_act/sdq_reg_508_/D
+r7f_rsh seq -0.613 441.9 u_top/g_r3b_g_rt_u_seq/g_ps_0__pf_r_reg/CP -> u_top/g_r3b_g_rt_u_seq/g_lp_0__RdA_reg/D
+r7f_rsh prm -0.469 471.9 u_top/g_r3b_u_prm/rfree_reg_2__0_/CP -> u_top/g_r3b_u_prm/b_a_reg_7_/D
+r7f_rsh head -1.719 296.8 u_top/u_core/u_arr/g_c_7__u_col/clk -> u_head/hold_reg_56__18_/D
+r7f_rsh out_port 0.640 990.2 busy_reg/CP -> st_img_free
+r7f_rsh token_tgo -0.568 450.9 u_top/g_r3b_g_rt_u_seq/eqf_reg_0__57_/CP -> u_top/u_act/g_ctx_1__u_ctx/nav_reg_3_/D
+r7f_rsh token_deot -0.327 505.8 u_top/u_act/dsc_reg_19_/CP -> u_top/u_act/g_ctx_1__u_ctx/nav_reg_3_/D
+r6a_ref clock qb_clk period_ns 1.650 wns_ns -5.142 fmax_mhz 147.2 path u_top/g_dist_0__u_d/q_reg_265_/CP -> u_top/u_core/u_arr/g_c_7__u_col/act[265]
+r6a_ref core_other -5.142 147.2 u_top/g_dist_0__u_d/q_reg_265_/CP -> u_top/u_core/u_arr/g_c_7__u_col/act[265]
+r6a_ref act_supply -0.534 457.9 u_top/u_act/g_ctx_1__u_ctx/ival_reg/CP -> u_top/u_act/g_ctx_1__u_ctx/nav_reg_3_/D
+r6a_ref seq -0.793 409.4 u_top/g_r3b_g_rt_u_seq/g_ps_0__pf_r_reg/CP -> u_top/g_r3b_g_rt_u_seq/g_lp_0__RdA_reg/D
+r6a_ref prm -0.470 471.8 u_top/g_r3b_u_prm/rfree_reg_0__0_/CP -> u_top/g_r3b_u_prm/b_a_reg_7_/D
+r6a_ref head -1.369 331.2 u_top/u_core/u_arr/g_c_0__u_col/clk -> u_head/hold_reg_6__18_/D
+r6a_ref out_port 0.601 953.7 busy_reg/CP -> st_img_free
+r6a_ref token_tgo -0.451 476.1 u_top/g_r3b_g_rt_u_seq/eqf_reg_0__57_/CP -> u_top/u_act/g_ctx_1__u_ctx/nav_reg_3_/D
+r6a_ref token_deot -0.144 557.6 u_top/u_act/dsc_reg_22_/CP -> u_top/u_act/g_ctx_1__u_ctx/nav_reg_3_/D
+# PT ss pre-route (DC topo parasitics, 1.65 ns, impl/r4 constraints + pt_class): class slack_ns fmax_mhz worst path; r6a_ref = the r6a_hpw144 netlist re-timed on tau4
+r7f_rsh clock qb_clk period_ns 1.650 wns_ns -3.601 fmax_mhz 190.4 path u_top/u_core/u_arr/g_c_7__u_col/clk -> u_head/hold_reg_56__18_/D
+r7f_rsh core_other -1.551 312.4 u_top/g_dist_0__u_d/q_reg_1160_/CP -> u_top/u_core/u_arr/g_c_7__u_col/act[1160]
+r7f_rsh act_supply -2.864 221.5 u_top/u_core/u_arr/g_c_0__u_col/clk -> u_top/u_act/sdq_reg_1924_/D
+r7f_rsh seq -1.907 281.1 u_top/g_r3b_g_rt_u_seq/sqf_reg_0__35_/CP -> u_top/g_r3b_g_rt_u_seq/rokO_reg/D
+r7f_rsh prm -1.675 300.8 u_top/g_r3b_u_prm/rfree_reg_2__0_/CP -> u_top/g_r3b_u_prm/b_a_reg_7_/D
+r7f_rsh head -3.601 190.4 u_top/u_core/u_arr/g_c_7__u_col/clk -> u_head/hold_reg_56__18_/D
+r7f_rsh out_port 0.383 789.3 busy_reg/CP -> st_img_free
+r7f_rsh token_tgo -1.826 287.7 u_top/g_r3b_g_rt_u_seq/eqf_reg_0__49_/CP -> u_top/u_act/g_ctx_1__u_ctx/nav_reg_3_/D
+r7f_rsh token_deot -1.370 331.2 u_top/u_act/dsc_reg_19_/CP -> u_top/u_act/g_ctx_1__u_ctx/nav_reg_3_/D
+r6a_ref clock qb_clk period_ns 1.650 wns_ns -3.061 fmax_mhz 212.3 path u_top/u_core/u_arr/g_c_0__u_col/clk -> u_head/hold_reg_6__18_/D
+r6a_ref core_other -1.615 306.3 u_top/g_dist_0__u_d/q_reg_1160_/CP -> u_top/u_core/u_arr/g_c_7__u_col/act[1160]
+r6a_ref act_supply -1.815 288.6 u_top/u_act/g_ctx_1__u_ctx/ival_reg/CP -> u_top/u_act/g_ctx_1__u_ctx/nav_reg_3_/D
+r6a_ref seq -2.180 261.1 u_top/g_r3b_g_rt_u_seq/g_ps_0__pf_r_reg/CP -> u_top/g_r3b_g_rt_u_seq/g_lp_0__RdB_reg/D
+r6a_ref prm -1.701 298.4 u_top/g_r3b_u_prm/rfree_reg_0__0_/CP -> u_top/g_r3b_u_prm/b_a_reg_7_/D
+r6a_ref head -3.061 212.3 u_top/u_core/u_arr/g_c_0__u_col/clk -> u_head/hold_reg_6__18_/D
+r6a_ref out_port 0.339 763.1 busy_reg/CP -> st_img_free
+r6a_ref token_tgo -1.662 301.9 u_top/g_r3b_g_rt_u_seq/eqf_reg_0__57_/CP -> u_top/u_act/g_ctx_1__u_ctx/nav_reg_3_/D
+r6a_ref token_deot -1.084 365.7 u_top/u_act/dsc_reg_22_/CP -> u_top/u_act/g_ctx_1__u_ctx/nav_reg_3_/D
