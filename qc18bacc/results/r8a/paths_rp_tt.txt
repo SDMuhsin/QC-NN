@@ -1,0 +1,105 @@
+# r8a_rp PT tt: 12 worst endpoints per class (slack ns, startpoint -> endpoint), impl/r8a/pt_xtra.tcl
+#### class head (1894 endpoints with slack < 0.20)
+  -0.219 u_top/u_core/u_arr/g_c_5__u_col/clk -> u_head/g_pcol_5__u_pc/fyi_reg_479_/D
+  -0.200 u_top/u_core/u_arr/g_c_2__u_col/clk -> u_head/g_pcol_2__u_pc/fyi_reg_479_/D
+  -0.186 u_top/u_core/u_arr/g_c_6__u_col/clk -> u_head/g_pcol_6__u_pc/fyi_reg_86_/D
+  -0.180 u_top/u_core/u_arr/g_c_6__u_col/clk -> u_head/g_pcol_6__u_pc/fyi_reg_80_/D
+  -0.176 u_top/u_core/u_arr/g_c_6__u_col/clk -> u_head/g_pcol_6__u_pc/fyi_reg_479_/D
+  -0.175 u_top/u_core/u_arr/g_c_6__u_col/clk -> u_head/g_pcol_6__u_pc/fyi_reg_84_/D
+  -0.160 u_top/u_core/u_arr/g_c_6__u_col/clk -> u_head/g_pcol_6__u_pc/fyi_reg_82_/D
+  -0.158 u_top/u_core/u_arr/g_c_2__u_col/clk -> u_head/g_pcol_2__u_pc/fyi_reg_86_/D
+  -0.158 u_top/u_core/u_arr/g_c_5__u_col/clk -> u_head/g_pcol_5__u_pc/fyi_reg_86_/D
+  -0.157 u_top/u_core/u_arr/g_c_5__u_col/clk -> u_head/g_pcol_5__u_pc/fyi_reg_84_/D
+  -0.155 u_top/u_core/u_arr/g_c_5__u_col/clk -> u_head/g_pcol_5__u_pc/fyi_reg_92_/D
+  -0.152 u_top/u_core/u_arr/g_c_5__u_col/clk -> u_head/g_pcol_5__u_pc/fyi_reg_88_/D
+#### class act_supply (31265 endpoints with slack < 0.20)
+  -0.296 u_top/fp_z_reg_123_/CP -> u_top/u_act/f_hq_reg_55_/D
+  -0.296 u_top/fp_z_reg_123_/CP -> u_top/u_act/f_hq_reg_39_/D
+  -0.295 u_top/fp_z_reg_123_/CP -> u_top/u_act/f_hq_reg_47_/D
+  -0.292 u_top/fp_z_reg_123_/CP -> u_top/u_act/f_hq_reg_5_/D
+  -0.292 u_top/fp_z_reg_123_/CP -> u_top/u_act/f_hq_reg_37_/D
+  -0.291 u_top/fp_z_reg_123_/CP -> u_top/u_act/f_hq_reg_3_/D
+  -0.291 u_top/fp_z_reg_123_/CP -> u_top/u_act/f_hq_reg_35_/D
+  -0.291 u_top/fp_z_reg_123_/CP -> u_top/u_act/f_hq_reg_61_/D
+  -0.291 u_top/fp_z_reg_123_/CP -> u_top/u_act/f_hq_reg_13_/D
+  -0.290 u_top/fp_z_reg_123_/CP -> u_top/u_act/f_hq_reg_21_/D
+  -0.289 u_top/fp_z_reg_123_/CP -> u_top/u_act/f_hq_reg_43_/D
+  -0.289 u_top/fp_z_reg_123_/CP -> u_top/u_act/f_hq_reg_49_/D
+#### class seq (1504 endpoints with slack < 0.20)
+  -0.324 u_top/g_r3b_g_rt_u_seq/eqf_reg_0__60_/CP -> u_top/g_r3b_g_rt_u_seq/cm_de_reg_13_/D
+  -0.320 u_top/g_r3b_g_rt_u_seq/eqf_reg_0__60_/CP -> u_top/g_r3b_g_rt_u_seq/cm_de_reg_14_/D
+  -0.315 u_top/g_r3b_g_rt_u_seq/eqf_reg_0__60_/CP -> u_top/g_r3b_g_rt_u_seq/lane_f_reg_13_/D
+  -0.314 u_top/g_r3b_g_rt_u_seq/eqf_reg_0__60_/CP -> u_top/g_r3b_g_rt_u_seq/lane_w_reg_13_/D
+  -0.311 u_top/g_r3b_g_rt_u_seq/eqf_reg_0__60_/CP -> u_top/g_r3b_g_rt_u_seq/cm_de_reg_7_/D
+  -0.310 u_top/g_r3b_g_rt_u_seq/eqf_reg_0__60_/CP -> u_top/g_r3b_g_rt_u_seq/cm_de_reg_12_/D
+  -0.304 u_top/g_r3b_g_rt_u_seq/eqf_reg_0__60_/CP -> u_top/g_r3b_g_rt_u_seq/cm_de_reg_9_/D
+  -0.302 u_top/g_r3b_g_rt_u_seq/eqf_reg_0__60_/CP -> u_top/g_r3b_g_rt_u_seq/cm_de_reg_11_/D
+  -0.299 u_top/g_r3b_g_rt_u_seq/eqf_reg_0__60_/CP -> u_top/g_r3b_g_rt_u_seq/cm_de_reg_15_/D
+  -0.296 u_top/g_r3b_g_rt_u_seq/eqf_reg_0__60_/CP -> u_top/g_r3b_g_rt_u_seq/lane_w_reg_7_/D
+  -0.295 u_top/g_r3b_g_rt_u_seq/eqf_reg_0__60_/CP -> u_top/g_r3b_g_rt_u_seq/lane_f_reg_7_/D
+  -0.291 u_top/g_r3b_g_rt_u_seq/eqf_reg_0__60_/CP -> u_top/g_r3b_g_rt_u_seq/lane_w_reg_11_/D
+#### class prm (89 endpoints with slack < 0.20)
+  -0.120 u_top/g_r3b_u_prm/rfree_reg_2__0_/CP -> u_top/g_r3b_u_prm/rf_reg_1__6_/D
+  -0.120 u_top/g_r3b_u_prm/rfree_reg_2__0_/CP -> u_top/g_r3b_u_prm/rf_reg_2__6_/D
+  -0.120 u_top/g_r3b_u_prm/rfree_reg_2__0_/CP -> u_top/g_r3b_u_prm/rf_reg_0__6_/D
+  -0.094 u_top/g_r3b_u_prm/rfree_reg_2__0_/CP -> u_top/g_r3b_u_prm/rowc_reg_0__1_/D
+  -0.094 u_top/g_r3b_u_prm/rfree_reg_2__0_/CP -> u_top/g_r3b_u_prm/rf_reg_0__5_/D
+  -0.091 u_top/g_r3b_u_prm/rfree_reg_2__0_/CP -> u_top/g_r3b_u_prm/rowc_reg_1__1_/D
+  -0.088 u_top/g_r3b_u_prm/rfree_reg_2__0_/CP -> u_top/g_r3b_u_prm/rf_reg_2__5_/D
+  -0.088 u_top/g_r3b_u_prm/rfree_reg_2__0_/CP -> u_top/g_r3b_u_prm/rf_reg_1__5_/D
+  -0.086 u_top/g_r3b_u_prm/rfree_reg_2__0_/CP -> u_top/g_r3b_u_prm/rowc_reg_2__1_/D
+  -0.084 u_top/g_r3b_u_prm/rfree_reg_2__0_/CP -> u_top/g_r3b_u_prm/rf_reg_0__7_/D
+  -0.077 u_top/g_r3b_u_prm/rfree_reg_2__0_/CP -> u_top/g_r3b_u_prm/rowc_reg_0__2_/D
+  -0.077 u_top/g_r3b_u_prm/rfree_reg_2__0_/CP -> u_top/g_r3b_u_prm/rf_reg_2__7_/D
+#### class top_glue (4928 endpoints with slack < 0.20)
+  -0.873 u_top/wdl_reg_13__kind__2_/CP -> u_top/err_reg/D
+  -0.550 u_top/u_core/u_arr/g_c_2__u_col/clk -> u_top/b2r_reg_976_/D
+  -0.543 u_top/u_core/u_arr/g_c_2__u_col/clk -> u_top/b2r_reg_978_/D
+  -0.537 u_top/u_core/u_arr/g_c_0__u_col/clk -> u_top/b2r_reg_772_/D
+  -0.532 u_top/u_core/u_arr/g_c_0__u_col/clk -> u_top/b2r_reg_960_/D
+  -0.525 u_top/u_core/u_arr/g_c_0__u_col/clk -> u_top/b2r_reg_774_/D
+  -0.525 u_top/u_core/u_arr/g_c_2__u_col/clk -> u_top/b2r_reg_981_/D
+  -0.513 u_top/u_core/u_arr/g_c_0__u_col/clk -> u_top/b2r_reg_961_/D
+  -0.512 u_top/u_core/u_arr/g_c_0__u_col/clk -> u_top/b2r_reg_962_/D
+  -0.507 u_top/u_core/u_arr/g_c_2__u_col/clk -> u_top/b2r_reg_919_/D
+  -0.504 u_top/u_core/u_arr/g_c_2__u_col/clk -> u_top/b2r_reg_979_/D
+  -0.500 u_top/u_core/u_arr/g_c_0__u_col/clk -> u_top/b2r_reg_965_/D
+#### class to_macro (4543 endpoints with slack < 0.20)
+  -0.429 u_top/wdl_reg_13__kind__2_/CP -> u_top/g_s_25__u_m/g_mac_g_s_u_mac/DB[50]
+  -0.428 u_top/wdl_reg_13__kind__2_/CP -> u_top/g_s_25__u_m/g_mac_g_s_u_mac/DB[51]
+  -0.428 u_top/wdl_reg_13__kind__2_/CP -> u_top/g_s_25__u_m/g_mac_g_s_u_mac/DB[48]
+  -0.428 u_top/wdl_reg_13__kind__2_/CP -> u_top/g_s_24__u_m/g_mac_g_s_u_mac/DB[87]
+  -0.428 u_top/wdl_reg_13__kind__2_/CP -> u_top/g_s_25__u_m/g_mac_g_s_u_mac/DB[53]
+  -0.427 u_top/wdl_reg_13__kind__2_/CP -> u_top/g_s_25__u_m/g_mac_g_s_u_mac/DB[49]
+  -0.427 u_top/wdl_reg_13__kind__2_/CP -> u_top/g_s_16__u_m/g_mac_g_s_u_mac/DB[93]
+  -0.427 u_top/wdl_reg_13__kind__2_/CP -> u_top/g_s_16__u_m/g_mac_g_s_u_mac/DB[64]
+  -0.426 u_top/wdl_reg_13__kind__2_/CP -> u_top/g_s_24__u_m/g_mac_g_s_u_mac/DB[120]
+  -0.426 u_top/wdl_reg_13__kind__2_/CP -> u_top/g_s_17__u_m/g_mac_g_s_u_mac/DB[72]
+  -0.426 u_top/wdl_reg_13__kind__2_/CP -> u_top/g_s_25__u_m/g_mac_g_s_u_mac/DB[52]
+  -0.425 u_top/wdl_reg_13__kind__2_/CP -> u_top/g_s_24__u_m/g_mac_g_s_u_mac/DB[125]
+#### class from_macro (2048 endpoints with slack < 0.20)
+  -0.019 u_top/g_s_24__u_m/g_mac_g_s_u_mac/CLKA -> u_top/u_act/sdq_reg_1269_/D
+  -0.012 u_top/g_s_27__u_m/g_mac_g_s_u_mac/CLKA -> u_top/u_act/sdq_reg_149_/D
+  -0.007 u_top/g_s_24__u_m/g_mac_g_s_u_mac/CLKA -> u_top/u_act/sdq_reg_757_/D
+  -0.005 u_top/g_s_16__u_m/g_mac_g_s_u_mac/CLKA -> u_top/u_act/sdq_reg_1464_/D
+  0.001 u_top/g_s_24__u_m/g_mac_g_s_u_mac/CLKA -> u_top/u_act/sdq_reg_221_/D
+  0.001 u_top/g_s_16__u_m/g_mac_g_s_u_mac/CLKA -> u_top/u_act/sdq_reg_1452_/D
+  0.002 u_top/g_s_24__u_m/g_mac_g_s_u_mac/CLKA -> u_top/u_act/sdq_reg_1781_/D
+  0.005 u_top/g_s_17__u_m/g_mac_g_s_u_mac/CLKA -> u_top/u_act/sdq_reg_1503_/D
+  0.009 u_top/g_s_31__u_m/g_mac_g_s_u_mac/CLKA -> u_top/u_act/sdq_reg_1482_/D
+  0.010 u_top/g_s_28__u_m/g_mac_g_s_u_mac/CLKA -> u_top/u_act/sdq_reg_970_/D
+  0.010 u_top/g_s_31__u_m/g_mac_g_s_u_mac/CLKA -> u_top/u_act/sdq_reg_1500_/D
+  0.012 u_top/g_s_16__u_m/g_mac_g_s_u_mac/CLKA -> u_top/u_act/sdq_reg_440_/D
+#### class core_in (6657 endpoints with slack < 0.20)
+  -3.988 u_top/g_dist_0__u_d/q_reg_265_/CP -> u_top/u_core/u_arr/g_c_7__u_col/act[265]
+  -3.595 u_top/g_dist_0__u_d/q_reg_265_/CP -> u_top/u_core/u_arr/g_c_6__u_col/act[265]
+  -3.328 u_top/g_dist_0__u_d/q_reg_4071_/CP -> u_top/u_core/u_arr/g_c_7__u_col/act[4071]
+  -3.190 u_top/g_dist_0__u_d/q_reg_265_/CP -> u_top/u_core/u_arr/g_c_5__u_col/act[265]
+  -2.949 u_top/g_dist_0__u_d/q_reg_4071_/CP -> u_top/u_core/u_arr/g_c_6__u_col/act[4071]
+  -2.697 u_top/g_dist_0__u_d/q_reg_602_/CP -> u_top/u_core/u_arr/g_c_7__u_col/act[602]
+  -2.601 u_top/g_dist_0__u_d/q_reg_2023_/CP -> u_top/u_core/u_arr/g_c_7__u_col/act[2023]
+  -2.570 u_top/g_dist_0__u_d/q_reg_4071_/CP -> u_top/u_core/u_arr/g_c_5__u_col/act[4071]
+  -2.321 u_top/g_dist_0__u_d/q_reg_265_/CP -> u_top/u_core/u_arr/g_c_1__u_col/act[265]
+  -2.286 u_top/g_dist_0__u_d/q_reg_602_/CP -> u_top/u_core/u_arr/g_c_6__u_col/act[602]
+  -2.149 u_top/g_dist_0__u_d/q_reg_265_/CP -> u_top/u_core/u_arr/g_c_2__u_col/act[265]
+  -2.136 u_top/g_dist_0__u_d/q_reg_2023_/CP -> u_top/u_core/u_arr/g_c_6__u_col/act[2023]

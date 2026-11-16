@@ -1,0 +1,80 @@
+# R8b chip bench (Verilator 5.050, QBT_TECH=2 + QB_HEAD_FW=128 + QB_HPW=144 + QB_TOP_RSH=1; R7d vectors, copies in /tmp/root/qc18bacc/r8b/v) [M]
+# build tags: _s1s = +QB_ACT_S1M=2, _s1m = +QB_ACT_S1M=1, _s1x = +QB_ACT_S1M=2+QBA2_MUT_S1M (mutant), _def = no QB_ACT_S1M
+## s1s s0
+QB_CHIP img 0 v/s0/img60 go 0 img_free +275 end +3780 (rtl_end 3780 model 3779 delta 1) interval 3780 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7030 (after e
+QB_CHIP img 1 v/s0/img61 go 3780 img_free +275 end +3748 (rtl_end 3748 model 3747 delta 1) interval 3748 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +6998 (afte
+QB_CHIP img 2 v/s0/img0 go 7528 img_free +275 end +3748 (rtl_end 3748 model 3747 delta 1) interval 3748 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +6998 (after
+QB_CHIP img 3 v/s0/img1 go 11276 img_free +275 end +3788 (rtl_end 3788 model 3787 delta 1) interval 3788 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7038 (afte
+QB_CHIP img 4 v/s0/img2 go 15064 img_free +275 end +3812 (rtl_end 3812 model 3811 delta 1) interval - logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7062 (after e
+QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 0 head_err 0 PASS
+## s1s s1
+QB_CHIP img 0 v/s1/img13 go 0 img_free +275 end +3836 (rtl_end 3836 model 3835 delta 1) interval 3836 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7086 (after e
+QB_CHIP img 1 v/s1/img55 go 3836 img_free +275 end +3764 (rtl_end 3764 model 3763 delta 1) interval 3764 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7014 (afte
+QB_CHIP img 2 v/s1/img7 go 7600 img_free +275 end +3732 (rtl_end 3732 model 3731 delta 1) interval 3732 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +6982 (after
+QB_CHIP img 3 v/s1/img42 go 11332 img_free +275 end +3796 (rtl_end 3796 model 3795 delta 1) interval 3796 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7046 (aft
+QB_CHIP img 4 v/s1/img91 go 15128 img_free +275 end +3804 (rtl_end 3804 model 3803 delta 1) interval - logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7054 (after 
+QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 0 head_err 0 PASS
+## s1m s0
+QB_CHIP img 0 v/s0/img60 go 0 img_free +275 end +3780 (rtl_end 3780 model 3779 delta 1) interval 3780 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7030 (after e
+QB_CHIP img 1 v/s0/img61 go 3780 img_free +275 end +3748 (rtl_end 3748 model 3747 delta 1) interval 3748 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +6998 (afte
+QB_CHIP img 2 v/s0/img0 go 7528 img_free +275 end +3748 (rtl_end 3748 model 3747 delta 1) interval 3748 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +6998 (after
+QB_CHIP img 3 v/s0/img1 go 11276 img_free +275 end +3788 (rtl_end 3788 model 3787 delta 1) interval 3788 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7038 (afte
+QB_CHIP img 4 v/s0/img2 go 15064 img_free +275 end +3812 (rtl_end 3812 model 3811 delta 1) interval - logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7062 (after e
+QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 0 head_err 0 PASS
+## s1m s1
+QB_CHIP img 0 v/s1/img13 go 0 img_free +275 end +3836 (rtl_end 3836 model 3835 delta 1) interval 3836 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7086 (after e
+QB_CHIP img 1 v/s1/img55 go 3836 img_free +275 end +3764 (rtl_end 3764 model 3763 delta 1) interval 3764 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7014 (afte
+QB_CHIP img 2 v/s1/img7 go 7600 img_free +275 end +3732 (rtl_end 3732 model 3731 delta 1) interval 3732 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +6982 (after
+QB_CHIP img 3 v/s1/img42 go 11332 img_free +275 end +3796 (rtl_end 3796 model 3795 delta 1) interval 3796 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7046 (aft
+QB_CHIP img 4 v/s1/img91 go 15128 img_free +275 end +3804 (rtl_end 3804 model 3803 delta 1) interval - logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7054 (after 
+QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 0 head_err 0 PASS
+## s1x s0
+QB_CHIP img 0 v/s0/img60 go 0 img_free +275 end +3540 (rtl_end 3540 model 3779 delta -239) interval 3540 logits 100/100 err 100 tiles 600 cycle_mismatch 40 last_logit +6790 (a
+QB_CHIP img 1 v/s0/img61 go 3540 img_free +275 end +3572 (rtl_end 3572 model 3747 delta -175) interval 3572 logits 100/100 err 100 tiles 600 cycle_mismatch 40 last_logit +6822
+QB_CHIP img 2 v/s0/img0 go 7112 img_free +275 end +3604 (rtl_end 3604 model 3747 delta -143) interval 3604 logits 100/100 err 100 tiles 600 cycle_mismatch 40 last_logit +6854 
+QB_CHIP img 3 v/s0/img1 go 10716 img_free +275 end +3564 (rtl_end 3564 model 3787 delta -223) interval 3564 logits 100/100 err 100 tiles 600 cycle_mismatch 40 last_logit +6814
+QB_CHIP img 4 v/s0/img2 go 14280 img_free +275 end +3588 (rtl_end 3588 model 3811 delta -223) interval - logits 100/100 err 100 tiles 600 cycle_mismatch 40 last_logit +6838 (a
+QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 0 head_err 0 FAIL
+## s1x s1
+QB_CHIP img 0 v/s1/img13 go 0 img_free +275 end +3476 (rtl_end 3476 model 3835 delta -359) interval 3476 logits 100/100 err 100 tiles 600 cycle_mismatch 40 last_logit +6726 (a
+QB_CHIP img 1 v/s1/img55 go 3476 img_free +275 end +3492 (rtl_end 3492 model 3763 delta -271) interval 3492 logits 100/100 err 100 tiles 600 cycle_mismatch 40 last_logit +6742
+QB_CHIP img 2 v/s1/img7 go 6968 img_free +275 end +3500 (rtl_end 3500 model 3731 delta -231) interval 3500 logits 100/100 err 100 tiles 600 cycle_mismatch 40 last_logit +6750 
+QB_CHIP img 3 v/s1/img42 go 10468 img_free +275 end +3516 (rtl_end 3516 model 3795 delta -279) interval 3516 logits 100/100 err 100 tiles 600 cycle_mismatch 40 last_logit +676
+QB_CHIP img 4 v/s1/img91 go 13984 img_free +275 end +3508 (rtl_end 3508 model 3803 delta -295) interval - logits 100/100 err 100 tiles 600 cycle_mismatch 40 last_logit +6758 (
+QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 0 head_err 0 FAIL
+## def s1
+QB_CHIP img 0 v/s1/img13 go 0 img_free +275 end +3836 (rtl_end 3836 model 3835 delta 1) interval 3836 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7086 (after e
+QB_CHIP img 1 v/s1/img55 go 3836 img_free +275 end +3764 (rtl_end 3764 model 3763 delta 1) interval - logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7014 (after e
+QB_CHIP_TB images 2 err 0 img_read_err 0 timeout 0 head_err 0 PASS
+## logits torch.equal (hw/tb/export_top3.py --check, E6_s0 / E6_s1 best.pt, --fc 128)
+s1s R3C_CHECK E6_s0 val 60: rtl logits x fscale == IntBin2 logits (torch.equal): PASS; argmax 6
+s1s R3C_CHECK E6_s0 val 61: rtl logits x fscale == IntBin2 logits (torch.equal): PASS; argmax 8
+s1s R3C_CHECK E6_s0 val 0: rtl logits x fscale == IntBin2 logits (torch.equal): PASS; argmax 37
+s1s R3C_CHECK E6_s0 val 1: rtl logits x fscale == IntBin2 logits (torch.equal): PASS; argmax 98
+s1s R3C_CHECK E6_s0 val 2: rtl logits x fscale == IntBin2 logits (torch.equal): PASS; argmax 54
+s1s R3C_CHECK E6_s1 val 13: rtl logits x fscale == IntBin2 logits (torch.equal): PASS; argmax 55
+s1s R3C_CHECK E6_s1 val 55: rtl logits x fscale == IntBin2 logits (torch.equal): PASS; argmax 6
+s1s R3C_CHECK E6_s1 val 7: rtl logits x fscale == IntBin2 logits (torch.equal): PASS; argmax 59
+s1s R3C_CHECK E6_s1 val 42: rtl logits x fscale == IntBin2 logits (torch.equal): PASS; argmax 50
+s1s R3C_CHECK E6_s1 val 91: rtl logits x fscale == IntBin2 logits (torch.equal): PASS; argmax 84
+s1x R3C_CHECK E6_s0 val 60: rtl logits x fscale == IntBin2 logits (torch.equal): FAIL; argmax 6
+s1x R3C_CHECK E6_s0 val 61: rtl logits x fscale == IntBin2 logits (torch.equal): FAIL; argmax 8
+s1x R3C_CHECK E6_s0 val 0: rtl logits x fscale == IntBin2 logits (torch.equal): FAIL; argmax 37
+s1x R3C_CHECK E6_s0 val 1: rtl logits x fscale == IntBin2 logits (torch.equal): FAIL; argmax 98
+s1x R3C_CHECK E6_s0 val 2: rtl logits x fscale == IntBin2 logits (torch.equal): FAIL; argmax 54
+s1x R3C_CHECK E6_s1 val 13: rtl logits x fscale == IntBin2 logits (torch.equal): FAIL; argmax 55
+s1x R3C_CHECK E6_s1 val 55: rtl logits x fscale == IntBin2 logits (torch.equal): FAIL; argmax 6
+s1x R3C_CHECK E6_s1 val 7: rtl logits x fscale == IntBin2 logits (torch.equal): FAIL; argmax 59
+s1x R3C_CHECK E6_s1 val 42: rtl logits x fscale == IntBin2 logits (torch.equal): FAIL; argmax 50
+s1x R3C_CHECK E6_s1 val 91: rtl logits x fscale == IntBin2 logits (torch.equal): FAIL; argmax 84
+## bench logs vs R7e RSH=1 reference (v/<s>/sim_chip_rsh.log), paths / cpu / walltime lines stripped
+s0 s1s: 0 differing lines (only the walltime line differs)
+s0 s1m: 0 differing lines (only the walltime line differs)
+s1 s1s: 0 differing lines (only the walltime line differs)
+s1 s1m: 0 differing lines (only the walltime line differs)
+## s1mc s1 (current working tree incl. R8a's edits at 09:57 UTC; +QB_ACT_S1M=1+QB_ACT_CTXR+QB_ACT_LDR)
+QB_CHIP img 0 v/s1/img13 go 0 img_free +275 end +3836 (rtl_end 3836 model 3835 delta 1) interval 3836 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7086 (after e
+QB_CHIP img 1 v/s1/img55 go 3836 img_free +275 end +3764 (rtl_end 3764 model 3763 delta 1) interval 3764 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7014 (afte
+QB_CHIP img 2 v/s1/img7 go 7600 img_free +275 end +3732 (rtl_end 3732 model 3731 delta 1) interval - logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +6982 (after en
+QB_CHIP_TB images 3 err 0 img_read_err 0 timeout 0 head_err 0 PASS
+## logits files: s1m == s1s == R7e rsh for all 10 images (cmp)

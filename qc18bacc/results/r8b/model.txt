@@ -1,0 +1,31 @@
+# R8b act-supply gather-network demand model (impl/r8b/model.py) [Mod]
+## (1) S1 connections (data inputs, select lines excluded), per bit = x 32 per group
+base: S1 data-input connections   79616 bits (2488 groups); LB-bit fan-out mean 2.43 max 8; S1-bit fan-in mean 12.96 max 46
+      LB fan-out hist {1: 404, 2: 236, 3: 164, 4: 96, 5: 52, 6: 36, 7: 28, 8: 8}
+a   : S1 data-input connections   72576 bits (2268 groups); LB-bit fan-out mean 1.00 max 1; S1-bit fan-in mean 6.48 max 23
+      LB fan-out hist {1: 1024}
+ab  : S1 data-input connections   80224 bits (2507 groups); LB-bit fan-out mean 1.00 max 1; S1-bit fan-in mean 2.72 max 8; shifter-internal 30720 bits
+      LB fan-out hist {1: 1024}
+## (2) base S1 candidates per context by select class, chunk-major LB order (G = g W + x in a slot)
+  W32 3x3     candidates  192 (10.9 %)  group span mean  16.0 max 32  cross-slot   0  sum |span| x 32 b =  98304 bit-groups
+  W16 3x3     candidates  320 (18.2 %)  group span mean  24.0 max 48  cross-slot   0  sum |span| x 32 b = 245760 bit-groups
+  W8 3x3      candidates  512 (29.1 %)  group span mean  28.0 max 56  cross-slot   0  sum |span| x 32 b = 458752 bit-groups
+  W4 3x3      candidates  256 (14.5 %)  group span mean  30.0 max 60  cross-slot   0  sum |span| x 32 b = 245760 bit-groups
+  1x1 gather  candidates  224 (12.7 %)  group span mean  15.5 max 31  cross-slot   0  sum |span| x 32 b = 111104 bit-groups
+  int8 b6.c1  candidates   64 ( 3.6 %)  group span mean  28.0 max 56  cross-slot  56  sum |span| x 32 b =  57344 bit-groups
+  int8 b6.sc  candidates  128 ( 7.3 %)  group span mean  18.8 max 48  cross-slot 112  sum |span| x 32 b =  76800 bit-groups
+  int8 b6.c2  candidates   64 ( 3.6 %)  group span mean  30.0 max 60  cross-slot  48  sum |span| x 32 b =  61440 bit-groups
+  distinct LB-group -> S1-group pairs per context 1244 (= AND terms), x 2 contexts x 32 b = 79616 bit inputs
+## (3) 1-D placement along the block height (H 2420 um, act rows at column 0's y, S / map pins south)
+  placement: free (all movable)
+  base: y wirelength  19.94 bit-m; cut (bits across a horizontal line) peak  12736 mean   8418; area 0.704 mm2; by class: LB Q (shift + S1/premux) 10.72, S1 -> act (S2) 5.93, sdq/rdq -> LB 3.22, S/map in 0.07
+  a   : y wirelength  18.81 bit-m; cut (bits across a horizontal line) peak  11520 mean   8026; area 0.699 mm2; by class: premux out -> S1 5.94, S1 -> act (S2) 5.48, LB Q (shift + S1/premux) 4.24, sdq/rdq -> LB 3.02, S/map in 0.14
+  ab  : y wirelength  17.58 bit-m; cut (bits across a horizontal line) peak  11168 mean   7577; area 0.654 mm2; by class: S1 -> act (S2) 4.76, LB Q (shift + S1/premux) 3.67, premux out -> S1 3.33, sdq/rdq -> LB 3.07, shifter internal 2.56, S/map in 0.20
+    a vs base: wirelength -5.6 %, peak cut -9.5 %, mean cut -4.7 %
+    ab vs base: wirelength -11.8 %, peak cut -12.3 %, mean cut -10.0 %
+  placement: structured (LB group G at act row G mod 16, rest free)
+  base: y wirelength  32.03 bit-m; cut (bits across a horizontal line) peak  23744 mean  13410; area 0.704 mm2; by class: LB Q (shift + S1/premux) 22.72, S1 -> act (S2) 5.55, sdq/rdq -> LB 3.56, S/map in 0.20
+  a   : y wirelength  28.55 bit-m; cut (bits across a horizontal line) peak  19200 mean  12030; area 0.699 mm2; by class: LB Q (shift + S1/premux) 10.65, premux out -> S1 8.60, S1 -> act (S2) 5.54, sdq/rdq -> LB 3.56, S/map in 0.21
+  ab  : y wirelength  22.19 bit-m; cut (bits across a horizontal line) peak  14592 mean   9464; area 0.654 mm2; by class: LB Q (shift + S1/premux) 6.05, S1 -> act (S2) 4.90, premux out -> S1 3.76, shifter internal 3.72, sdq/rdq -> LB 3.51, S/map in 0.25
+    a vs base: wirelength -10.9 %, peak cut -19.1 %, mean cut -10.3 %
+    ab vs base: wirelength -30.7 %, peak cut -38.5 %, mean cut -29.4 %

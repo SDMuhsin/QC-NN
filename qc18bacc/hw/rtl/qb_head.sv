@@ -31,8 +31,15 @@
 //   16 b) and holds s4 / tacc / hold of its 8 channels; requant lane i reads hold[NQ rq_j + i] = channel of column
 //   (NQ rq_j) / 8: each slice drives its NQ x 19-b candidate only when rq_j selects it (else 0) and the lanes take the
 //   OR of the 8 slice outputs.  Control (tap, rq_v / rq_j / hct / rq_ovr / err) stays here: same cycles, same values.
+// R8a parameter IREG (qb_chip define QB_HEAD_IREG, default 0 = everything above unchanged): IREG = 1: the pool inputs
+//   (f_y lanes, tap = f_v && f_pi == c_last, f_k, f_ct) are registered once before the pool (f_y in each PCOL slice,
+//   next to its column, with the slice's own tap / k0 / k3 registers; with PCOL 0 here); IREG = 2: in addition the 4-px
+//   sums s4 are registered.  The whole pool / requant / FC sequence runs IREG cycles later, same values (the FC of image
+//   i overlaps image i + 1; the pq write / FC conflict check is unchanged).  Mutant QBH_MUT_IREG: the slices' tile
+//   accumulator clear (k0) one stage early.
 module qb_head #(parameter int NQ = 4, parameter int NK = 512, parameter int FW = 256,
                  parameter int NFR = (FW == 128 ? 3232 : 1632), parameter bit HP = 0, parameter bit PCOL = 0,
+                 parameter int IREG = 0,
                  parameter int AW = (FW == 128 ? 12 : 11)) (
     input  logic          clk, rst_n,
     // host: FC macro rows (fc_we) at h_addr
@@ -58,19 +65,42 @@ module qb_head #(parameter int NQ = 4, parameter int NK = 512, parameter int FW 
     output logic          pool_done, fc_busy, busy, err
 );
     // ================================================================ pool: tile accumulators
-    wire tap = f_v && f_pi == c_last;
-    logic [18:0] s4 [64];
+    wire tap_i = f_v && f_pi == c_last;
+    logic       tap;                                                // R8a IREG: pool control IREG cycles later
+    logic [1:0] fk;
+    logic [3:0] fct;
+    logic [4351:0] fyr;                                             // IREG, PCOL 0: registered f_y
+    logic          tapd [IREG + 1];
+    logic [1:0]    fkd [IREG + 1];
+    logic [3:0]    fctd [IREG + 1];
+    assign tapd[0] = tap_i;  assign fkd[0] = f_k;  assign fctd[0] = f_ct;
+    for (genvar k = 0; k < IREG; k++) begin : g_ird
+        always_ff @(posedge clk or negedge rst_n) if (!rst_n) tapd[k + 1] <= 1'b0; else tapd[k + 1] <= tapd[k];
+        always_ff @(posedge clk) begin fkd[k + 1] <= fkd[k]; fctd[k + 1] <= fctd[k]; end
+    end
+    assign tap = tapd[IREG];  assign fk = fkd[IREG];  assign fct = fctd[IREG];
+    if (IREG && !PCOL) begin : g_fyr
+        always_ff @(posedge clk) fyr <= f_y;
+    end else begin : g_nfyr
+        assign fyr = PCOL ? '0 : f_y;
+    end
+    logic [18:0] s4 [64], s4c [64];
+    if (IREG >= 2 && !PCOL) begin : g_s4r                           // IREG 2: registered 4-px sums
+        always_ff @(posedge clk) s4 <= s4c;
+    end else begin : g_s4c
+        assign s4 = s4c;
+    end
     always_comb
         for (int c = 0; c < 64; c++) begin
-            s4[c] = '0;
+            s4c[c] = '0;
             if (!PCOL)
             for (int q = 0; q < 4; q++) begin
                 logic signed [15:0] v;
-                v = f_y[17 * (64 * q + c) +: 16];
+                v = fyr[17 * (64 * q + c) +: 16];
 `ifdef QBH_MUT_RELU
-                s4[c] = s4[c] + 19'(v);                                   // mutant: no ReLU in the pool sum
+                s4c[c] = s4c[c] + 19'(v);                                 // mutant: no ReLU in the pool sum
 `else
-                s4[c] = s4[c] + ((v < 0) ? 19'd0 : 19'(v));
+                s4c[c] = s4c[c] + ((v < 0) ? 19'd0 : 19'(v));
 `endif
             end
         end
@@ -80,10 +110,10 @@ module qb_head #(parameter int NQ = 4, parameter int NK = 512, parameter int FW 
     always_ff @(posedge clk or negedge rst_n)
         if (!rst_n) begin rq_v <= 1'b0; rq_j <= '0; rq_ovr <= 1'b0; end
         else begin
-            if (tap && !PCOL) for (int c = 0; c < 64; c++) tacc[c] <= (f_k == 2'd0 ? 19'd0 : tacc[c]) + s4[c];
-            if (tap && f_k == 2'd3) begin
+            if (tap && !PCOL) for (int c = 0; c < 64; c++) tacc[c] <= (fk == 2'd0 ? 19'd0 : tacc[c]) + s4[c];
+            if (tap && fk == 2'd3) begin
                 if (!PCOL) for (int c = 0; c < 64; c++) hold[c] <= tacc[c] + s4[c];
-                hct <= f_ct; rq_v <= 1'b1; rq_j <= '0;
+                hct <= fct; rq_v <= 1'b1; rq_j <= '0;
                 if (rq_v && rq_j != 4'd15) rq_ovr <= 1'b1;                // a tile completed before the last was converted
             end else if (rq_v) begin
                 rq_j <= rq_j + 4'd1;
@@ -100,8 +130,9 @@ module qb_head #(parameter int NQ = 4, parameter int NK = 512, parameter int FW 
                 assign fyc[16 * (8 * q + i) +: 16] = f_y[17 * (64 * q + 8 * c + i) +: 16];
             end
         end
-        qb_hpcol #(.NQ(NQ), .C(c)) u_pc (.clk, .rst_n, .tap, .k0(f_k == 2'd0), .k3(f_k == 2'd3), .fy(fyc), .rq_j,
-                                         .po(pc_o[c]));
+        // IREG: the slice delays tap / k0 / k3 itself (local registers, no head-wide fan-out)
+        qb_hpcol #(.NQ(NQ), .C(c), .IREG(IREG)) u_pc (.clk, .rst_n, .tap(IREG ? tap_i : tap), .k0((IREG ? f_k : fk) == 2'd0),
+                                                      .k3((IREG ? f_k : fk) == 2'd3), .fy(fyc), .rq_j, .po(pc_o[c]));
     end
     always_comb
         for (int i = 0; i < NQ; i++) begin
@@ -287,32 +318,58 @@ endmodule
 // qb_hpcol (R7g, qb_head PCOL): pool slice of column C = channels 8 C .. 8 C + 7 (local index i): s4 / tacc / hold as in
 //   qb_head (same enables, same reset behaviour: no register reset, updates only out of reset); po = the NQ hold words
 //   hold[NQ (rq_j % (8 / NQ)) + i] when rq_j / (8 / NQ) == C (requant lane i reads channel NQ rq_j + i), else 0.
-module qb_hpcol #(parameter int NQ = 4, parameter int C = 0) (
+//   R8a IREG >= 1: fy registered here (512 b, next to the column) and tap / k0 / k3 (undelayed from qb_head) delayed by
+//   IREG local registers; IREG = 2: the sums s4 registered too (8 x 19 b).
+module qb_hpcol #(parameter int NQ = 4, parameter int C = 0, parameter int IREG = 0) (
     input  logic             clk, rst_n, tap, k0, k3,
     input  logic [511:0]     fy,                                         // [16 (8 q + i) +: 16] = px q, channel 8 C + i
     input  logic [3:0]       rq_j,
     output logic [NQ*19-1:0] po
 );
     localparam int NJ = 8 / NQ;                                         // conversion steps per column
-    logic [18:0] s4 [8], tacc [8], hold [8];
+    logic [18:0] s4 [8], s4c [8], tacc [8], hold [8];
+    logic [511:0] fyi;
+    logic         td [IREG + 1], k0d [IREG + 1], k3d [IREG + 1];
+    logic         tp, k0e, k3e;
+    assign td[0] = tap;  assign k0d[0] = k0;  assign k3d[0] = k3;
+    for (genvar k = 0; k < IREG; k++) begin : g_ird
+        always_ff @(posedge clk or negedge rst_n) if (!rst_n) td[k + 1] <= 1'b0; else td[k + 1] <= td[k];
+        always_ff @(posedge clk) begin k0d[k + 1] <= k0d[k]; k3d[k + 1] <= k3d[k]; end
+    end
+    assign tp = td[IREG];  assign k3e = k3d[IREG];
+`ifdef QBH_MUT_IREG
+    assign k0e = k0d[IREG > 0 ? IREG - 1 : 0];                          // mutant: clear one stage early
+`else
+    assign k0e = k0d[IREG];
+`endif
+    if (IREG) begin : g_ireg
+        always_ff @(posedge clk) fyi <= fy;
+    end else begin : g_nireg
+        assign fyi = fy;
+    end
+    if (IREG >= 2) begin : g_s4r
+        always_ff @(posedge clk) s4 <= s4c;
+    end else begin : g_s4c
+        assign s4 = s4c;
+    end
     always_comb
         for (int i = 0; i < 8; i++) begin
-            s4[i] = '0;
+            s4c[i] = '0;
             for (int q = 0; q < 4; q++) begin
                 logic signed [15:0] v;
-                v = fy[16 * (8 * q + i) +: 16];
+                v = fyi[16 * (8 * q + i) +: 16];
 `ifdef QBH_MUT_RELU
-                s4[i] = s4[i] + 19'(v);
+                s4c[i] = s4c[i] + 19'(v);
 `else
-                s4[i] = s4[i] + ((v < 0) ? 19'd0 : 19'(v));
+                s4c[i] = s4c[i] + ((v < 0) ? 19'd0 : 19'(v));
 `endif
             end
         end
     always_ff @(posedge clk or negedge rst_n)
         if (!rst_n) begin end
         else begin
-            if (tap) for (int i = 0; i < 8; i++) tacc[i] <= (k0 ? 19'd0 : tacc[i]) + s4[i];
-            if (tap && k3) for (int i = 0; i < 8; i++) hold[i] <= tacc[i] + s4[i];
+            if (tp) for (int i = 0; i < 8; i++) tacc[i] <= (k0e ? 19'd0 : tacc[i]) + s4[i];
+            if (tp && k3e) for (int i = 0; i < 8; i++) hold[i] <= tacc[i] + s4[i];
         end
     wire [3:0] jl = 4'(int'(rq_j) % NJ);
     always_comb

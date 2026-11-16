@@ -1,0 +1,40 @@
+# PT tt pre-route: r8a_c3 (= netlist built as r8a_rp, iteration 3)
+r8a_c3 clock qb_clk period_ns 1.650 wns_ns -3.522 fmax_mhz 193.4 path u_top/g_dist_0__u_d/q_reg_265_/CP -> u_top/u_core/u_arr/g_c_7__u_col/act[265]
+r8a_c3 class core_other  slack_ns -3.522 fmax_mhz 193.4 arrival_ns 2.809 u_top/g_dist_0__u_d/q_reg_265_/CP -> u_top/u_core/u_arr/g_c_7__u_col/act[265]
+r8a_c3 class token_tgo   slack_ns -0.211 fmax_mhz 537.4 arrival_ns 1.604 u_top/g_r3b_g_rt_u_seq/sqf_reg_0__42_/CP -> u_top/u_act/g_ctx_0__u_ctx/rcnt_reg_2_/D
+r8a_c3 class token_deot  slack_ns 0.087 fmax_mhz 639.7 arrival_ns 1.323 u_top/u_act/dsc_reg_19_/CP -> u_top/g_r3b_g_rt_u_seq/kelt_reg/D
+r8a_c3 xclass head        slack_ns -0.243 fmax_mhz 528.1 n_below_0.20 1967 u_top/u_core/u_arr/g_c_0__u_col/clk -> u_head/g_pcol_4__u_pc/td_reg_1_/D
+r8a_c3 xclass act_supply  slack_ns -0.230 fmax_mhz 532.0 n_below_0.20 25664 u_top/u_act/g_ctx_0__u_ctx/lval_reg/CP -> u_top/u_act/s_ra_reg_7_/D
+r8a_c3 xclass seq         slack_ns -0.234 fmax_mhz 530.9 n_below_0.20 1605 u_top/g_r3b_g_rt_u_seq/g_lp_1__pf_i_reg_0_/CP -> u_top/g_r3b_g_rt_u_seq/g_lp_1__nx_w_reg_0__27_/D
+r8a_c3 xclass prm         slack_ns -0.084 fmax_mhz 576.5 n_below_0.20 78 u_top/g_r3b_u_prm/uu_reg_1__0_/CP -> u_top/g_r3b_u_prm/nuR_reg_1__7_/D
+r8a_c3 xclass top_glue    slack_ns -0.540 fmax_mhz 456.5 n_below_0.20 4672 u_top/u_core/u_arr/g_c_2__u_col/clk -> u_top/b2f_d_reg_0__848_/D
+r8a_c3 xclass to_macro    slack_ns -0.246 fmax_mhz 527.5 n_below_0.20 4523 u_top/fdl_reg_12__hm_/CP -> u_top/g_s_25__u_m/g_mac_g_s_u_mac/DB[17]
+r8a_c3 xclass from_macro  slack_ns -0.054 fmax_mhz 586.9 n_below_0.20 2051 u_top/g_s_27__u_m/g_mac_g_s_u_mac/CLKA -> u_top/u_act/sdq_reg_1178_/D
+r8a_c3 xclass chip_glue none_below_0.20
+r8a_c3 xclass core_in     slack_ns -3.522 fmax_mhz 193.4 n_below_0.20 6879 u_top/g_dist_0__u_d/q_reg_265_/CP -> u_top/u_core/u_arr/g_c_7__u_col/act[265]
+# PT ss pre-route: r8a_c3 (= netlist built as r8a_rp, iteration 3)
+r8a_c3 clock qb_clk period_ns 1.650 wns_ns -1.618 fmax_mhz 306.0 path u_top/u_act/m_ctx_reg/CP -> u_top/err_reg/D
+r8a_c3 class core_other  slack_ns -1.531 fmax_mhz 314.4 arrival_ns 4.140 u_top/g_dist_0__u_d/q_reg_2087_/CP -> u_top/u_core/u_arr/g_c_7__u_col/act[2087]
+r8a_c3 class token_tgo   slack_ns -1.254 fmax_mhz 344.3 arrival_ns 2.642 u_top/g_r3b_g_rt_u_seq/sqf_reg_0__42_/CP -> u_top/u_act/g_ctx_0__u_ctx/rcnt_reg_2_/D
+r8a_c3 class token_deot  slack_ns -0.820 fmax_mhz 404.9 arrival_ns 2.231 u_top/u_act/dsc_reg_19_/CP -> u_top/g_r3b_g_rt_u_seq/kelt_reg/D
+r8a_c3 xclass head        slack_ns -1.203 fmax_mhz 350.5 n_below_0.20 7768 u_head/g_q_3__u_lq/m0_reg_6_/CP -> u_head/g_q_3__u_lq/p1_reg_46_/D
+r8a_c3 xclass act_supply  slack_ns -1.298 fmax_mhz 339.2 n_below_0.20 46566 u_top/fp_z_reg_105_/CP -> u_top/u_act/f_hq_reg_39_/D
+r8a_c3 xclass seq         slack_ns -1.289 fmax_mhz 340.2 n_below_0.20 2888 u_top/g_r3b_g_rt_u_seq/g_lp_1__cfr_reg_1_/CP -> u_top/g_r3b_g_rt_u_seq/g_lp_1__EB_reg_11_/D
+r8a_c3 xclass prm         slack_ns -1.104 fmax_mhz 363.0 n_below_0.20 16692 u_top/g_r3b_u_prm/rfree_reg_2__0_/CP -> u_top/g_r3b_u_prm/rf_reg_2__6_/D
+r8a_c3 xclass top_glue    slack_ns -1.618 fmax_mhz 306.0 n_below_0.20 14772 u_top/u_act/m_ctx_reg/CP -> u_top/err_reg/D
+r8a_c3 xclass to_macro    slack_ns -1.306 fmax_mhz 338.3 n_below_0.20 9192 u_top/fdl_reg_12__hm_/CP -> u_top/g_s_25__u_m/g_mac_g_s_u_mac/DB[17]
+r8a_c3 xclass from_macro  slack_ns -0.961 fmax_mhz 383.0 n_below_0.20 23053 u_top/g_s_27__u_m/g_mac_g_s_u_mac/CLKA -> u_top/u_act/sdq_reg_1178_/D
+r8a_c3 xclass chip_glue   slack_ns -0.325 fmax_mhz 506.3 n_below_0.20 10 nfo_reg_0_/CP -> nfo_reg_5_/D
+r8a_c3 xclass core_in     slack_ns -1.531 fmax_mhz 314.4 n_below_0.20 12592 u_top/g_dist_0__u_d/q_reg_2087_/CP -> u_top/u_core/u_arr/g_c_7__u_col/act[2087]
+# rpt/area.rpt: top qb_chip, total cell area 16137564 um2, macros 13933919, logic 2203645
+core: other (port regs, cmp, ctl)                       logic_um2         2217 mm2 0.002
+core: total                                             logic_um2         2217 mm2 0.002
+act supply (qb_act2)                                    logic_um2       799644 mm2 0.800
+sequencer (qb_seq)                                      logic_um2       469985 mm2 0.470
+params path (qb_prm)                                    logic_um2       240442 mm2 0.240
+head (qb_head)                                          logic_um2       198328 mm2 0.198
+u_top macro wrappers                                    logic_um2         5666 mm2 0.006  (n 92)
+top glue in qb_top (write-back, delay lines, dist)      logic_um2       480826 mm2 0.481
+qb_chip glue (host port, head cfg)                      logic_um2         6537 mm2 0.007
+logic total                                             logic_um2      2203645 mm2 2.204
+chip total (logic + macros) mm2 16.138

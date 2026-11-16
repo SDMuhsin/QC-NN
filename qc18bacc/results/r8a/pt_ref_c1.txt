@@ -1,0 +1,56 @@
+# PT tt pre-route (DC topo parasitics, 1.65 ns, impl/r8a/run_pt.sh = impl/r4 pt_class + pt_xtra): r8a_ref
+r8a_ref clock qb_clk period_ns 1.650 wns_ns -4.045 fmax_mhz 175.6 path u_top/g_dist_0__u_d/q_reg_265_/CP -> u_top/u_core/u_arr/g_c_7__u_col/act[265]
+r8a_ref class core_other  slack_ns -4.045 fmax_mhz 175.6 arrival_ns 2.908 u_top/g_dist_0__u_d/q_reg_265_/CP -> u_top/u_core/u_arr/g_c_7__u_col/act[265]
+r8a_ref class token_tgo   slack_ns -0.445 fmax_mhz 477.3 arrival_ns 1.832 u_top/g_r3b_g_rt_u_seq/cm_k_reg_4_/CP -> u_top/u_act/sel1a_reg_11_/D
+r8a_ref class token_deot  slack_ns -0.247 fmax_mhz 527.3 arrival_ns 1.634 u_top/u_act/dsc_reg_19_/CP -> u_top/u_act/sel1a_reg_11_/D
+r8a_ref xclass head        slack_ns -1.654 fmax_mhz 302.7 n_below_0.20 2690 u_top/u_core/u_arr/g_c_0__u_col/clk -> u_head/g_pcol_0__u_pc/hold_reg_4__18_/D
+r8a_ref xclass act_supply  slack_ns -0.723 fmax_mhz 421.4 n_below_0.20 33144 u_top/u_act/g_ctx_1__u_ctx/ival_reg/CP -> u_top/u_act/g_ctx_1__u_ctx/nav_reg_3_/D
+r8a_ref xclass seq         slack_ns -0.696 fmax_mhz 426.2 n_below_0.20 1318 u_top/g_r3b_g_rt_u_seq/g_ps_0__pf_r_reg/CP -> u_top/g_r3b_g_rt_u_seq/g_lp_0__RdA_reg/D
+r8a_ref xclass prm         slack_ns -0.483 fmax_mhz 468.9 n_below_0.20 51 u_top/g_r3b_u_prm/rfree_reg_0__4_/CP -> u_top/g_r3b_u_prm/b_a_reg_7_/D
+r8a_ref xclass top_glue    slack_ns -1.473 fmax_mhz 320.2 n_below_0.20 8043 u_top/u_core/u_arr/g_c_0__u_col/clk -> u_top/s_wd_reg_30__38_/D
+r8a_ref xclass to_macro    slack_ns -0.022 fmax_mhz 598.0 n_below_0.20 297 u_top/g_hwn_wc_a_reg_0__9_/CP -> u_top/g_wl_0__g_wd_1__u_m/g_mac_g_w_u_mac/A[4]
+r8a_ref xclass from_macro none_below_0.20
+r8a_ref xclass chip_glue none_below_0.20
+r8a_ref xclass core_in     slack_ns -4.045 fmax_mhz 175.6 n_below_0.20 7602 u_top/g_dist_0__u_d/q_reg_265_/CP -> u_top/u_core/u_arr/g_c_7__u_col/act[265]
+# PT ss pre-route (DC topo parasitics, 1.65 ns, impl/r8a/run_pt.sh = impl/r4 pt_class + pt_xtra): r8a_ref
+r8a_ref clock qb_clk period_ns 1.650 wns_ns -3.498 fmax_mhz 194.3 path u_top/u_core/u_arr/g_c_0__u_col/clk -> u_head/g_pcol_0__u_pc/hold_reg_4__18_/D
+r8a_ref class core_other  slack_ns -1.552 fmax_mhz 312.3 arrival_ns 4.186 u_top/g_dist_0__u_d/q_reg_1160_/CP -> u_top/u_core/u_arr/g_c_7__u_col/act[1160]
+r8a_ref class token_tgo   slack_ns -1.650 fmax_mhz 303.0 arrival_ns 3.028 u_top/g_r3b_g_rt_u_seq/eqf_reg_0__57_/CP -> u_top/u_act/sel1a_reg_11_/D
+r8a_ref class token_deot  slack_ns -1.264 fmax_mhz 343.1 arrival_ns 2.642 u_top/u_act/dsc_reg_19_/CP -> u_top/u_act/sel1a_reg_11_/D
+r8a_ref xclass head        slack_ns -3.498 fmax_mhz 194.3 n_below_0.20 4213 u_top/u_core/u_arr/g_c_0__u_col/clk -> u_head/g_pcol_0__u_pc/hold_reg_4__18_/D
+r8a_ref xclass act_supply  slack_ns -2.145 fmax_mhz 263.5 n_below_0.20 47134 u_top/u_act/g_ctx_0__u_ctx/ival_reg/CP -> u_top/u_act/g_ctx_0__u_ctx/nav_reg_3_/D
+r8a_ref xclass seq         slack_ns -2.055 fmax_mhz 269.9 n_below_0.20 1783 u_top/g_r3b_g_rt_u_seq/g_ps_0__pf_r_reg/CP -> u_top/g_r3b_g_rt_u_seq/g_lp_0__RdB_reg/D
+r8a_ref xclass prm         slack_ns -1.719 fmax_mhz 296.8 n_below_0.20 16643 u_top/g_r3b_u_prm/rfree_reg_0__0_/CP -> u_top/g_r3b_u_prm/b_a_reg_7_/D
+r8a_ref xclass top_glue    slack_ns -3.056 fmax_mhz 212.5 n_below_0.20 14461 u_top/u_core/u_arr/g_c_0__u_col/clk -> u_top/s_wd_reg_30__38_/D
+r8a_ref xclass to_macro    slack_ns -0.913 fmax_mhz 390.2 n_below_0.20 765 u_top/g_hwn_wc_a_reg_0__4_/CP -> u_top/g_wl_0__g_wd_1__u_m/g_mac_g_w_u_mac/A[4]
+r8a_ref xclass from_macro  slack_ns -1.313 fmax_mhz 337.5 n_below_0.20 22241 u_top/g_s_2__u_m/g_mac_g_s_u_mac/CLKA -> u_top/u_act/sdq_reg_311_/D
+r8a_ref xclass chip_glue   slack_ns -0.249 fmax_mhz 526.6 n_below_0.20 10 nfo_reg_0_/CP -> nfo_reg_2_/D
+r8a_ref xclass core_in     slack_ns -1.552 fmax_mhz 312.3 n_below_0.20 12968 u_top/g_dist_0__u_d/q_reg_1160_/CP -> u_top/u_core/u_arr/g_c_7__u_col/act[1160]
+# PT tt pre-route (DC topo parasitics, 1.65 ns, impl/r8a/run_pt.sh = impl/r4 pt_class + pt_xtra): r8a_c1
+r8a_c1 clock qb_clk period_ns 1.650 wns_ns -4.022 fmax_mhz 176.3 path u_top/g_dist_0__u_d/q_reg_265_/CP -> u_top/u_core/u_arr/g_c_7__u_col/act[265]
+r8a_c1 class core_other  slack_ns -4.022 fmax_mhz 176.3 arrival_ns 2.885 u_top/g_dist_0__u_d/q_reg_265_/CP -> u_top/u_core/u_arr/g_c_7__u_col/act[265]
+r8a_c1 class token_tgo   slack_ns -0.446 fmax_mhz 477.0 arrival_ns 1.840 u_top/g_r3b_g_rt_u_seq/eqf_reg_0__17_/CP -> u_top/u_act/g_ctx_0__u_ctx/nin_reg_3_/D
+r8a_c1 class token_deot  slack_ns -0.237 fmax_mhz 529.9 arrival_ns 1.628 u_top/u_act/dsc_reg_22_/CP -> u_top/err_reg/D
+r8a_c1 xclass head        slack_ns -0.385 fmax_mhz 491.5 n_below_0.20 3464 u_head/fk_reg_1_/CP -> u_head/g_pcol_0__u_pc/tacc_reg_0__18_/D
+r8a_c1 xclass act_supply  slack_ns -0.453 fmax_mhz 475.6 n_below_0.20 27469 u_top/u_act/g_ctx_1__u_ctx/ival_reg/CP -> u_top/u_act/g_ctx_1__u_ctx/nin_reg_3_/D
+r8a_c1 xclass seq         slack_ns -0.465 fmax_mhz 472.8 n_below_0.20 1658 u_top/g_r3b_g_rt_u_seq/cm_de_reg_0_/CP -> u_top/g_r3b_g_rt_u_seq/cm_de_reg_15_/D
+r8a_c1 xclass prm         slack_ns -0.139 fmax_mhz 559.1 n_below_0.20 93 u_top/g_r3b_u_prm/ruse_reg_0__0_/CP -> u_top/g_r3b_u_prm/vf_reg_1_/D
+r8a_c1 xclass top_glue    slack_ns -1.587 fmax_mhz 308.9 n_below_0.20 6541 u_top/u_core/u_arr/g_c_0__u_col/clk -> u_top/err_reg/D
+r8a_c1 xclass to_macro    slack_ns -0.951 fmax_mhz 384.4 n_below_0.20 8784 u_top/fdl_reg_12__pi__2_/CP -> u_top/g_s_22__u_m/g_mac_g_s_u_mac/DB[119]
+r8a_c1 xclass from_macro  slack_ns -0.408 fmax_mhz 486.0 n_below_0.20 1534 u_top/g_s_8__u_m/g_mac_g_s_u_mac/CLKA -> u_top/g_s_9__u_m/g_mac_g_s_u_mac/DB[32]
+r8a_c1 xclass chip_glue none_below_0.20
+r8a_c1 xclass core_in     slack_ns -4.022 fmax_mhz 176.3 n_below_0.20 7151 u_top/g_dist_0__u_d/q_reg_265_/CP -> u_top/u_core/u_arr/g_c_7__u_col/act[265]
+# PT ss pre-route (DC topo parasitics, 1.65 ns, impl/r8a/run_pt.sh = impl/r4 pt_class + pt_xtra): r8a_c1
+r8a_c1 clock qb_clk period_ns 1.650 wns_ns -2.957 fmax_mhz 217.1 path u_top/u_core/u_arr/g_c_0__u_col/clk -> u_top/err_reg/D
+r8a_c1 class core_other  slack_ns -1.571 fmax_mhz 310.4 arrival_ns 4.187 u_top/g_dist_0__u_d/q_reg_4103_/CP -> u_top/u_core/u_arr/g_c_7__u_col/act[4103]
+r8a_c1 class token_tgo   slack_ns -1.642 fmax_mhz 303.7 arrival_ns 3.032 u_top/g_r3b_g_rt_u_seq/eqf_reg_0__17_/CP -> u_top/u_act/g_ctx_0__u_ctx/nin_reg_3_/D
+r8a_c1 class token_deot  slack_ns -1.234 fmax_mhz 346.7 arrival_ns 2.618 u_top/u_act/dsc_reg_22_/CP -> u_top/err_reg/D
+r8a_c1 xclass head        slack_ns -1.564 fmax_mhz 311.2 n_below_0.20 7757 u_head/g_pcol_0__u_pc/fyi_reg_399_/CP -> u_head/g_pcol_0__u_pc/tacc_reg_0__18_/D
+r8a_c1 xclass act_supply  slack_ns -1.660 fmax_mhz 302.1 n_below_0.20 46830 u_top/u_act/g_ctx_1__u_ctx/ival_reg/CP -> u_top/u_act/g_ctx_1__u_ctx/nin_reg_3_/D
+r8a_c1 xclass seq         slack_ns -1.685 fmax_mhz 299.8 n_below_0.20 2935 u_top/g_r3b_g_rt_u_seq/cm_de_reg_0_/CP -> u_top/g_r3b_g_rt_u_seq/cm_de_reg_15_/D
+r8a_c1 xclass prm         slack_ns -1.138 fmax_mhz 358.6 n_below_0.20 16721 u_top/g_r3b_u_prm/ruse_reg_0__0_/CP -> u_top/g_r3b_u_prm/vf_reg_1_/D
+r8a_c1 xclass top_glue    slack_ns -2.957 fmax_mhz 217.1 n_below_0.20 12353 u_top/u_core/u_arr/g_c_0__u_col/clk -> u_top/err_reg/D
+r8a_c1 xclass to_macro    slack_ns -2.447 fmax_mhz 244.1 n_below_0.20 9286 u_top/fdl_reg_12__pi__2_/CP -> u_top/g_s_22__u_m/g_mac_g_s_u_mac/DB[119]
+r8a_c1 xclass from_macro  slack_ns -1.568 fmax_mhz 310.7 n_below_0.20 20528 u_top/g_s_8__u_m/g_mac_g_s_u_mac/CLKA -> u_top/g_s_13__u_m/g_mac_g_s_u_mac/DB[44]
+r8a_c1 xclass chip_glue   slack_ns -0.340 fmax_mhz 502.5 n_below_0.20 10 nfo_reg_0_/CP -> busy_reg/D
+r8a_c1 xclass core_in     slack_ns -1.571 fmax_mhz 310.4 n_below_0.20 12774 u_top/g_dist_0__u_d/q_reg_4103_/CP -> u_top/u_core/u_arr/g_c_7__u_col/act[4103]

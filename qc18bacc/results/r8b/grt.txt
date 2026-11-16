@@ -1,0 +1,80 @@
+# R8b GRT probes of qb_act2_blk at R7c's B4 floorplan (820 x 2420 um die, 810 x 2410 core box, dens 0.80, max_tran 0.40 / max_fo 64, DPL window 500 um)
+# with QB_IO_LAT 0.55 (R7c: 0.85), on db/cts_rt.odb (after CTS + post-CTS setup / hold repair); impl/r7c/grt_probe.tcl: global_route
+# -allow_congestion, 10 congestion iterations, GR_ADJUST 0.25, M2-M7 [S, OR est.].  base = R7c DC netlist, placement = R7c B4 db/place.odb
+# (IO latency only acts after CTS); s1m1 / s1m2 = full flow init -> cts of the QB_ACT_S1M = 1 / 2 netlists.  tau4 /tmp/ckp908/qc18bacc/r8b/build/pnr/r8b_*
+# Usage % per layer = demand / resource; V = M2 + M4 + M6, H = M3 + M5 + M7.
+run          cell_um2 (util)    total    V       H      M2      M4      M6     overflow   max V ovf/gcell  WL (m)  GRT WNS (ns, 2.0 ns)
+R7c B4 (0.85) 1 276 579 (0.654)  115.1 %  151 %   76 %   181.7 % 141.2 % 129.5 %  6 468 008  -                55.74   -4.14
+base (0.55)  1 257 152 (0.644)  105.1 %  135.2 % 72.4 %  155.0 % 128.8 % 121.3 %  5 322 155  846              51.06   -2.50
+s1m1         1 104 352 (0.566)   87.9 %   96.9 % 77.1 %  105.0 % 100.6 %  85.5 %  2 432 073  119              44.73   -4.16
+s1m2         1 076 167 (0.552)   91.2 %  100.6 % 79.0 %  111.5 % 103.6 %  86.9 %  2 991 584  187              46.14   -8.41
+# GRT WNS: all three worst paths end in S2 (act_reg) and are unrepaired DRV at GRT parasitics (s1m2: s1_reg Q 0.82 pF ->
+# INVD1 driving 0.45 pF, 8.8 ns; base: AOI211D1 slew 2.4 ns); no post-GRT repair in the probe, so WNS is not a timing result.
+# Overflowed-gcell source nets by RTL class (impl/r8b/cong_cls.py = impl/r7c/cong_cls.py + premux class u_pm / lbm):
+== r8b_base
+Horizontal: 79479 overflowed gcells, 3317051 net refs: line buffer 33.8%, S1 21.4%, lb out 10.9%, other 10.4%, S2 10.2%, repair buf 7.8%, clock 2.4%, act pipe 1.7%, sdq 1.4%, rdq 0.2%, ctx ctl 0.0%
+Vertical: 117662 overflowed gcells, 8384184 net refs: line buffer 22.1%, S1 20.1%, S2 17.2%, repair buf 14.0%, other 11.4%, lb out 6.4%, act pipe 6.0%, clock 2.3%, sdq 0.3%, rdq 0.1%, ctx ctl 0.1%
+== r8b_s1m1
+Horizontal: 87141 overflowed gcells, 3603507 net refs: S1 22.2%, line buffer 21.5%, S2 17.0%, repair buf 11.8%, other 8.5%, premux 8.4%, lb out 6.1%, clock 2.0%, act pipe 1.4%, sdq 0.7%, rdq 0.2%, ctx ctl 0.0%
+Vertical: 116418 overflowed gcells, 5420421 net refs: S2 24.9%, line buffer 18.3%, S1 16.6%, repair buf 11.1%, other 9.1%, premux 7.0%, act pipe 4.6%, lb out 4.0%, clock 3.2%, sdq 0.5%, ctx ctl 0.5%, rdq 0.2%
+== r8b_s1m2
+Horizontal: 94456 overflowed gcells, 4097244 net refs: line buffer 27.1%, S2 16.1%, S1 14.7%, repair buf 11.4%, premux 9.1%, lb out 8.8%, other 6.1%, clock 2.2%, act pipe 2.0%, sdq 1.9%, rdq 0.5%, ctx ctl 0.0%
+Vertical: 117710 overflowed gcells, 5765352 net refs: line buffer 24.2%, S2 23.5%, S1 12.9%, repair buf 9.5%, premux 8.6%, lb out 7.1%, other 5.7%, act pipe 4.6%, clock 2.6%, sdq 1.0%, rdq 0.2%, ctx ctl 0.0%
+# Absolute vertical net refs (M): base LB 1.85 S1 1.69 S2 1.44 lb-out 0.54 | s1m1 LB 0.99 premux 0.38 S1 0.90 S2 1.35 lb-out 0.22
+#   | s1m2 LB 1.40 premux 0.50 S1 0.74 S2 1.35 lb-out 0.41: the shifter cuts S1 refs but raises LB + premux (1.37 -> 1.90 M).
+# Per-layer tables:
+== r8b_base
+M1                   0        171301            0.00%            72 /  2 / 171301
+M2             2418715       3749163          155.01%             3 / 311 / 2010145
+M3             2383905       1848013           77.52%            36 /  2 / 245682
+M4             2289029       2948903          128.83%             2 / 282 / 1321323
+M5             2411772       1744955           72.35%            36 /  3 / 193836
+M6             2419039       2934028          121.29%             2 / 244 / 1237450
+M7             2282080       1528524           66.98%            32 /  2 / 142418
+Total         14204540       14924887          105.07%            183 / 846 / 5322155
+[INFO GRT-0018] Total wirelength: 51061320 um
+== r8b_s1m1
+M1                   0        121709            0.00%            19 /  2 / 121709
+M2             2418719       2539342          104.99%             2 / 30 / 664872
+M3             2384081       2110486           88.52%            19 /  3 / 319029
+M4             2289031       2301517          100.55%             2 / 45 / 563485
+M5             2411808       1900121           78.78%            14 /  3 / 222286
+M6             2419039       2067429           85.46%             2 / 33 / 407851
+M7             2282080       1449233           63.50%            15 /  3 / 132841
+Total         14204758       12489837           87.93%            73 / 119 / 2432073
+[INFO GRT-0018] Total wirelength: 44725497 um
+== r8b_s1m2
+M1                   0        198474            0.00%            49 /  3 / 198474
+M2             2418717       2696779          111.50%             3 / 63 / 846262
+M3             2384085       2165071           90.81%            31 /  3 / 386331
+M4             2289029       2370983          103.58%             3 / 76 / 659498
+M5             2411782       1945491           80.67%            25 /  3 / 287151
+M6             2419035       2101601           86.88%             2 / 37 / 434633
+M7             2282080       1481675           64.93%            24 /  2 / 179235
+Total         14204728       12960074           91.24%            137 / 187 / 2991584
+[INFO GRT-0018] Total wirelength: 46140993 um
+# Flow summaries (tt, OR est.; place = after 2 DRV repairs + incremental gpl; base 'place' line = R7c B4 try 2):
+== r8b_base
+cts cts_tt setup_wns_ns -1.889 setup_tns_ns -3678.680 hold_wns_ns -0.641 hold_tns_ns -1708.337
+postcts_pre_repair tt setup_wns_ns -1.889 setup_viol_endpoints 5433 hold_wns_ns -0.305 hold_viol_endpoints 3506 cell_um2 1227820.3 utilisation 0.629
+postcts_hold_legal tt setup_wns_ns -2.275 setup_viol_endpoints 7045 hold_wns_ns 0.002 hold_viol_endpoints 0 cell_um2 1257151.7 utilisation 0.644
+r7c after_repair2 cell_um2 1155758.0 utilisation 0.592
+r7c after_repair2 cell_um2 1156263.1 utilisation 0.593
+place cell_um2 1156263.1 utilisation 0.593
+place place_tt setup_wns_ns -0.847 setup_tns_ns -345.065 hold_wns_ns 0.014 hold_tns_ns 0.000
+postcts_pre_repair tt setup_wns_ns -1.889 setup_viol_endpoints 3636 hold_wns_ns -0.305 hold_viol_endpoints 6856 cell_um2 1227820.3 utilisation 0.629
+postcts_hold_legal tt setup_wns_ns -3.202 setup_viol_endpoints 9030 hold_wns_ns -0.024 hold_viol_endpoints 31 cell_um2 1276579.4 utilisation 0.654
+== r8b_s1m1
+r7c after_repair2 cell_um2 1022902.9 utilisation 0.524
+place cell_um2 1022902.9 utilisation 0.524
+place place_tt setup_wns_ns -0.425 setup_tns_ns -34.675 hold_wns_ns 0.013 hold_tns_ns 0.000
+cts cts_tt setup_wns_ns -2.073 setup_tns_ns -2700.961 hold_wns_ns -0.715 hold_tns_ns -1598.247
+postcts_pre_repair tt setup_wns_ns -2.073 setup_viol_endpoints 1978 hold_wns_ns -0.215 hold_viol_endpoints 1514 cell_um2 1094145.8 utilisation 0.561
+postcts_hold_legal tt setup_wns_ns -0.604 setup_viol_endpoints 1996 hold_wns_ns 0.015 hold_viol_endpoints 0 cell_um2 1104351.8 utilisation 0.566
+== r8b_s1m2
+r7c after_repair2 cell_um2 994574.2 utilisation 0.510
+place cell_um2 994574.2 utilisation 0.510
+place place_tt setup_wns_ns -0.443 setup_tns_ns -26.233 hold_wns_ns 0.004 hold_tns_ns 0.000
+cts cts_tt setup_wns_ns -1.734 setup_tns_ns -2761.721 hold_wns_ns -0.645 hold_tns_ns -1599.365
+postcts_pre_repair tt setup_wns_ns -1.734 setup_viol_endpoints 2390 hold_wns_ns -0.128 hold_viol_endpoints 1269 cell_um2 1065807.4 utilisation 0.546
+postcts_hold_legal tt setup_wns_ns -0.773 setup_viol_endpoints 2246 hold_wns_ns 0.010 hold_viol_endpoints 0 cell_um2 1076167.4 utilisation 0.552

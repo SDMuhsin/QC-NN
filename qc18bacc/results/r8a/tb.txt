@@ -1,0 +1,72 @@
+# R8a bench (Verilator 5.050, QBT_TECH=2, base +QB_HEAD_FW=128+QB_HPW=144+QB_TOP_RSH=2+QB_HEAD_PCOL=1; vectors = R7d s0 / s1 copies, /tmp/root/qc18bacc/r8a/v)
+# fin = base +QB_HEAD_IREG=2+QB_TOP_WBQ=2+QB_ACT_CTXR+QB_ACT_LDR+QB_ACT_CNT+QB_ACT_SRA+QB_SEQ_LPS+QB_SEQ_CMH+QB_SEQ_TKS+QB_PRM_BAR+QB_SEQ_DSP+QB_SEQ_TGO+QB_PRM_NUR+QB_SEQ_NXW+QB_SEQ_RAL (= netlist r8a_rp); ref = base; ref7 = base on the final RTL; hw = +QB_HEAD_IREG=1+QB_TOP_WBQ=1 (first step)
+## ref s0
+QB_CHIP img 0 s0/img60 go 0 end +3780 interval 3780 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7030 (after end +3250) PASS
+QB_CHIP img 1 s0/img61 go 3780 end +3748 interval 3748 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +6998 (after end +3250) PASS
+QB_CHIP img 2 s0/img0 go 7528 end +3748 interval 3748 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +6998 (after end +3250) PASS
+QB_CHIP img 3 s0/img1 go 11276 end +3788 interval 3788 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7038 (after end +3250) PASS
+QB_CHIP img 4 s0/img2 go 15064 end +3812 interval - logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7062 (after end +3250) PASS
+QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 0 head_err 0 PASS
+## ref s1
+QB_CHIP img 0 s1/img13 go 0 end +3836 interval 3836 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7086 (after end +3250) PASS
+QB_CHIP img 1 s1/img55 go 3836 end +3764 interval 3764 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7014 (after end +3250) PASS
+QB_CHIP img 2 s1/img7 go 7600 end +3732 interval 3732 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +6982 (after end +3250) PASS
+QB_CHIP img 3 s1/img42 go 11332 end +3796 interval 3796 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7046 (after end +3250) PASS
+QB_CHIP img 4 s1/img91 go 15128 end +3804 interval - logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7054 (after end +3250) PASS
+QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 0 head_err 0 PASS
+## fin s0
+QB_CHIP img 0 s0/img60 go 0 end +3780 interval 3780 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7032 (after end +3252) PASS
+QB_CHIP img 1 s0/img61 go 3780 end +3748 interval 3748 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7000 (after end +3252) PASS
+QB_CHIP img 2 s0/img0 go 7528 end +3748 interval 3748 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7000 (after end +3252) PASS
+QB_CHIP img 3 s0/img1 go 11276 end +3788 interval 3788 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7040 (after end +3252) PASS
+QB_CHIP img 4 s0/img2 go 15064 end +3812 interval - logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7064 (after end +3252) PASS
+QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 0 head_err 0 PASS
+## fin s1
+QB_CHIP img 0 s1/img13 go 0 end +3836 interval 3836 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7088 (after end +3252) PASS
+QB_CHIP img 1 s1/img55 go 3836 end +3764 interval 3764 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7016 (after end +3252) PASS
+QB_CHIP img 2 s1/img7 go 7600 end +3732 interval 3732 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +6984 (after end +3252) PASS
+QB_CHIP img 3 s1/img42 go 11332 end +3796 interval 3796 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7048 (after end +3252) PASS
+QB_CHIP img 4 s1/img91 go 15128 end +3804 interval - logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7056 (after end +3252) PASS
+QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 0 head_err 0 PASS
+## full-log diffs (walltime / cpu lines stripped)
+s0 ref7 vs ref: 0 lines; ref vs R7g rsh2 log: 0 lines
+s0 fin vs ref: only head-latency fields differ (+2: last_logit, FC done, first pq write); intervals / tiles / cycle_mismatch / logits identical:
+< interval 3780 last_logit +7030 < interval 3748 last_logit +6998 < interval 3748 last_logit +6998 < interval 3788 last_logit +7038 < interval - last_logit +7062 > interval 3780 last_logit +7032 > int
+erval 3748 last_logit +7000 > interval 3748 last_logit +7000 > interval 3788 last_logit +7040 > interval - last_logit +7064 < FC done 7030 < FC done 10778 < FC done 14526 < FC done 18314 > FC done 703
+2 > FC done 10780 > FC done 14528 > FC done 18316
+s1 ref7 vs ref: 0 lines; ref vs R7g rsh2 log: 0 lines
+s1 fin vs ref: only head-latency fields differ (+2: last_logit, FC done, first pq write); intervals / tiles / cycle_mismatch / logits identical:
+< interval 3836 last_logit +7086 < interval 3764 last_logit +7014 < interval 3732 last_logit +6982 < interval 3796 last_logit +7046 < interval - last_logit +7054 > interval 3836 last_logit +7088 > int
+erval 3764 last_logit +7016 > interval 3732 last_logit +6984 > interval 3796 last_logit +7048 > interval - last_logit +7056 < FC done 7086 < FC done 10850 < FC done 14582 < FC done 18378 > FC done 708
+8 > FC done 10852 > FC done 14584 > FC done 18380
+logits files fin == hw == ref values (byte-identical apart from tag); torch.equal (export_top3.py --check): fin s0 5/5, s1 5/5; hw 5/5 + 5/5
+## mutants (QB_CHIP img lines FAIL of 5 / seed; caught by: logits, err, cycle_mismatch, lockstep or new sim check)
+hm QBH_MUT_IREG (IREG 1) s0: 5 img FAIL, sim-check stops 0, lockstep lines 0, TB: QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 0 head_err 
+hm QBH_MUT_IREG (IREG 1) s1: 5 img FAIL, sim-check stops 0, lockstep lines 0, TB: QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 0 head_err 
+mh2 QBH_MUT_IREG (IREG 2) s0: 5 img FAIL, sim-check stops 0, lockstep lines 0, TB: QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 0 head_err 
+mh2 QBH_MUT_IREG (IREG 2) s1: 5 img FAIL, sim-check stops 0, lockstep lines 0, TB: QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 0 head_err 
+mw5 QBT_MUT_WBQ (final) s0: 5 img FAIL, sim-check stops 0, lockstep lines 0, TB: QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 0 head_err 
+mw5 QBT_MUT_WBQ (final) s1: 5 img FAIL, sim-check stops 0, lockstep lines 0, TB: QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 0 head_err 
+mctx QBA_MUT_CTXR s0: 4 img FAIL, sim-check stops 0, lockstep lines 0, TB: QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 0 head_err 
+mctx QBA_MUT_CTXR s1: 3 img FAIL, sim-check stops 0, lockstep lines 0, TB: QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 0 head_err 
+mldr QBA_MUT_LDR s0: 5 img FAIL, sim-check stops 0, lockstep lines 0, TB: QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 0 head_err 
+mldr QBA_MUT_LDR s1: 5 img FAIL, sim-check stops 0, lockstep lines 0, TB: QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 0 head_err 
+mcnt QBA_MUT_CNT s0: 5 img FAIL, sim-check stops 0, lockstep lines 0, TB: QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 1 head_err 
+mcnt QBA_MUT_CNT s1: 5 img FAIL, sim-check stops 0, lockstep lines 0, TB: QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 1 head_err 
+msra QBA_MUT_SRA s0: 5 img FAIL, sim-check stops 0, lockstep lines 0, TB: QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 0 head_err 
+msra QBA_MUT_SRA s1: 5 img FAIL, sim-check stops 0, lockstep lines 0, TB: QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 0 head_err 
+mbar QBP_MUT_BAR s0: 5 img FAIL, sim-check stops 0, lockstep lines 0, TB: QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 0 head_err 
+mbar QBP_MUT_BAR s1: 5 img FAIL, sim-check stops 0, lockstep lines 0, TB: QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 0 head_err 
+mnur QBP_MUT_NUR s0: 0 img FAIL, sim-check stops 1, lockstep lines 0, TB: 
+mnur QBP_MUT_NUR s1: 0 img FAIL, sim-check stops 1, lockstep lines 0, TB: 
+mlps QBS_MUT_LPS s0: 0 img FAIL, sim-check stops 1, lockstep lines 0, TB: 
+mlps QBS_MUT_LPS s1: 0 img FAIL, sim-check stops 1, lockstep lines 0, TB: 
+mdsp QBS_MUT_DSP s0: 5 img FAIL, sim-check stops 0, lockstep lines 5, TB: QB_CHIP_TB images 5 err 1 img_read_err 0 timeout 0 head_err 
+mdsp QBS_MUT_DSP s1: 5 img FAIL, sim-check stops 0, lockstep lines 5, TB: QB_CHIP_TB images 5 err 1 img_read_err 0 timeout 0 head_err 
+mtgo QBS_MUT_TGO s0: 5 img FAIL, sim-check stops 0, lockstep lines 5, TB: QB_CHIP_TB images 5 err 1 img_read_err 0 timeout 0 head_err 
+mtgo QBS_MUT_TGO s1: 5 img FAIL, sim-check stops 0, lockstep lines 5, TB: QB_CHIP_TB images 5 err 1 img_read_err 0 timeout 0 head_err 
+mnxw QBS_MUT_NXW s0: 0 img FAIL, sim-check stops 1, lockstep lines 0, TB: 
+mnxw QBS_MUT_NXW s1: 0 img FAIL, sim-check stops 1, lockstep lines 0, TB: 
+mral QBS_MUT_RAL s0: 0 img FAIL, sim-check stops 0, lockstep lines 5, TB: QB_CHIP_TB images 5 err 1 img_read_err 0 timeout 0 head_err 
+mral QBS_MUT_RAL s1: 0 img FAIL, sim-check stops 0, lockstep lines 5, TB: QB_CHIP_TB images 5 err 1 img_read_err 0 timeout 0 head_err 
+QBS_MUT_TKS / QBS_MUT_CMH: agent runs /tmp/root/qc18bacc/r8a_seq/logs (caught by the new sim check; CMH swap with QBS_NOCHK: err 100, cycle_mismatch 470)

@@ -1,0 +1,42 @@
+# R8b DC topographical qb_act2_blk (R7c recipe: impl/r7c/topo_act.tcl, compile_ultra -no_autoungroup -gate_clock -spg, tt 1.65 ns) [S]
+# base = R7c netlist r7c_act_tt_p1.65_topo (re-run PT with hook impl/r8b/pt_s1.tcl); s1m1 = QB_ACT_S1M=1 (pre-mux + flat S1); s1m2 = QB_ACT_S1M=2 (pre-mux + shifter S1)
+# tau4 build /tmp/ckp908/qc18bacc/r8b/build/syn/r8b_{base_pt,s1m1,s1m2}; DC wall 27 min each, 56 857 regs in all three
+variant  cell_um2   comb      buf/inv   cells   | lb0+lb1  pre-mux  S1       S2      | DC DRV left: max_tran nets / max_fanout / max_cap
+base     910 476    488 613   118 611   258 999 | 449 755        -  237 231   84 295 | 60 191 / 6 695 / 5 934
+s1m1     847 045    436 581    95 962   234 059 | 427 849   59 093  146 313   85 155 | 48 113 / 5 860 / 2 798
+s1m2     829 787    420 447    85 949   227 391 | 428 633   59 511  125 986   89 506 | 40 221 / 5 775 / 1 889
+# s1m2 vs base: -80 689 um2 (-8.9 %), S1 + pre-mux 185 497 vs 237 231 (-21.8 %; S1 comb 191 080 -> 80 846), buf/inv -27.5 %, max_tran nets -33 %
+# pre-route PT (DC topo parasitics), fmax MHz tt / ss: chip-level worst + per endpoint class (impl/r8b/pt_s1.tcl); per variant the tt lines, then the ss lines
+== r8b_base_pt
+  clock qb_clk period_ns 1.650 wns_ns -0.011 fmax_mhz 601.9
+  r8b class s1_reg endpoints 6144 worst_slack_ns 0.023 fmax_mhz 614.6
+  r8b class s2_reg endpoints 4608 worst_slack_ns 0.002 fmax_mhz 606.8
+  r8b class lb_reg endpoints 34816 worst_slack_ns 0.023 fmax_mhz 614.5
+  r8b class pipe endpoints 9216 worst_slack_ns 0.056 fmax_mhz 627.5
+  clock qb_clk period_ns 1.650 wns_ns -0.948 fmax_mhz 384.9
+  r8b class s1_reg endpoints 6144 worst_slack_ns -0.813 fmax_mhz 406.0
+  r8b class s2_reg endpoints 4608 worst_slack_ns -0.846 fmax_mhz 400.6
+  r8b class lb_reg endpoints 34816 worst_slack_ns -0.807 fmax_mhz 407.0
+  r8b class pipe endpoints 9216 worst_slack_ns -0.711 fmax_mhz 423.5
+== r8b_s1m1
+  clock qb_clk period_ns 1.650 wns_ns -0.009 fmax_mhz 602.9
+  r8b class s1_reg endpoints 6144 worst_slack_ns 0.038 fmax_mhz 620.2
+  r8b class s2_reg endpoints 4608 worst_slack_ns 0.024 fmax_mhz 615.0
+  r8b class lb_reg endpoints 34816 worst_slack_ns 0.039 fmax_mhz 620.7
+  r8b class pipe endpoints 9216 worst_slack_ns 0.006 fmax_mhz 608.5
+  clock qb_clk period_ns 1.650 wns_ns -0.938 fmax_mhz 386.3
+  r8b class s1_reg endpoints 6144 worst_slack_ns -0.798 fmax_mhz 408.6
+  r8b class s2_reg endpoints 4608 worst_slack_ns -0.823 fmax_mhz 404.3
+  r8b class lb_reg endpoints 34816 worst_slack_ns -0.817 fmax_mhz 405.3
+  r8b class pipe endpoints 9216 worst_slack_ns -0.789 fmax_mhz 410.0
+== r8b_s1m2
+  clock qb_clk period_ns 1.650 wns_ns -0.008 fmax_mhz 603.1
+  r8b class s1_reg endpoints 6144 worst_slack_ns 0.027 fmax_mhz 616.2
+  r8b class s2_reg endpoints 4608 worst_slack_ns 0.022 fmax_mhz 614.4
+  r8b class lb_reg endpoints 34816 worst_slack_ns 0.059 fmax_mhz 628.7
+  r8b class pipe endpoints 9216 worst_slack_ns 0.606 fmax_mhz 958.3
+  clock qb_clk period_ns 1.650 wns_ns -0.944 fmax_mhz 385.5
+  r8b class s1_reg endpoints 6144 worst_slack_ns -0.803 fmax_mhz 407.7
+  r8b class s2_reg endpoints 4608 worst_slack_ns -0.823 fmax_mhz 404.3
+  r8b class lb_reg endpoints 34816 worst_slack_ns -0.709 fmax_mhz 423.8
+  r8b class pipe endpoints 9216 worst_slack_ns 0.165 fmax_mhz 673.2

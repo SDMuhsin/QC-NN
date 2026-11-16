@@ -1,0 +1,21 @@
+# R8a: top-level (non-column) timing in RTL, opt-in defines, netlist r8a_rp (tau4), pre-route PT
+
+[S] Recipe = R7h (`impl/r8a/syn.sh` = `impl/r5b/run.sh syn`, +QB_HPW=144+QB_TOP_RSH=2+QB_HEAD_PCOL=1) + `+QB_HEAD_IREG=2+QB_TOP_WBQ=2+QB_ACT_CTXR+QB_ACT_LDR+QB_ACT_CNT+QB_ACT_SRA+QB_SEQ_LPS+QB_SEQ_CMH+QB_SEQ_TKS+QB_SEQ_DSP+QB_SEQ_TGO+QB_SEQ_NXW+QB_SEQ_RAL+QB_PRM_BAR+QB_PRM_NUR`. PT: `impl/r8a/run_pt.sh` = pt_class.tcl + `pt_xtra.tcl` (pt_class's top_glue / to_macro / from_macro regexes never match DC names, so those classes were invisible before). "before" = r7h_rp re-timed (`build/syn/r8a_ref`).
+
+| PT fmax MHz tt / ss | r7h_rp | **r8a_rp** | r8a_rp2 (+QB_TOP_FPR) |
+|---|---|---|---|
+| head | 302.7 / 194.3 | **535.0 / 351.9** | 504.0 / 338.5 |
+| act_supply | 421.4 / 263.5 | **514.0 / 328.7** | 520.6 / 337.3 |
+| seq / prm | 426.2 / 269.9 ; 468.9 / 296.8 | **506.6 / 321.6 ; 564.9 / 354.8** | 519.0 / 329.6 ; 546.9 / 344.1 |
+| top_glue (new class) | 320.2 / 212.5 | **396.3 / 258.8** | 390.9 / 253.5 |
+| to_macro / from_macro (new) | 598.0 / 390.2 ; >689 / 337.5 | 481.0 / 316.1 ; 599.2 / 388.5 | 455.9 / 294.0 ; 606.3 / 390.6 |
+| tokens tgo / deot (tt) | 477.3 / 527.3 | 539.7 / 567.5 | 520.6 / 596.3 |
+| logic mm2 / regs | 2.267 / 133 661 | 2.262 / 141 377 | 2.266 / 141 390 |
+Iterations (`results/r8a/pt_*.txt`): r8a_c1 (head IREG 1, WBQ, CTXR, seq/prm round 1), r8a_c3, r8a_rp; run-to-run DC noise is about +-20 MHz per class.
+
+* **Fixes [M+S]**: head: f_y / tap registered in each slice, plus the 4-px sums (IREG 2), slice-local control (no head-wide fk fan-out). qb_top WBQ: f_y / w_y registered, WBR S-write requests formed one cycle later and driven to the S macros directly (no S boundary register, same write cycle); gating from tags, not f_vld_o; pass-table / lane selects precomputed and registered; R7e shared rotator off (HQ own rotator: no f_y -> sdq and no S-read -> S-write path); b2 registered as is with a bypassed FIFO write; slice flags from registered data (WBQ=2, +1 cycle on flags only). act (qb_act2): Z-word summaries in registers (no 128-b priority chain), loader likewise, counters from precomputed candidates with tgo/irel in the last mux, s_ra without the adder. seq/prm: register-addressed stamp lookups, carry-save compares, registered hit flags / RAW sums, prefetch address register, prm per-consumer list reads, registered use count.
+* **Cycles [M]**: intervals, tiles and logits identical to R7h on all 10 images (s0 val 60 61 0 1 2, s1 13 55 7 42 91); only the head runs 2 cycles later (last logit +2; FC/next-pool overlap slack unchanged, 374-454 cycles): interval delta 0 %. err 0, torch.equal 10/10, base build (no new define) log == R7h line for line. 16 mutants caught (`r8a/tb.txt`).
+* **Still < 560 tt**: top_glue (S macro conflict compare on the now-combinational WBR write address -> err, 396), to_macro (wob.kind / fob.hm select fan-out -> S DB, 481), seq eqf -> cm_de (507), act now -> sel1b / fp_z flag find-first -> f_hq (514), head (column clk -> fyi: block f_y output 1.18 ns + wire; a bare flop, bound by the block ETM, 535), tgo (540). b2 -> b2r is the same ETM limit (b2 arrives 1.72 ns). QB_TOP_FPR (registered flag port + err) is exact but did not help (the err path is the macro-wrapper conf compare).
+* **core_other (176 MHz) = ETM artefact [S]**: g_dist q -> 7 act feedthroughs (0.18-0.21 ns each, act arrives 2.9 ns at column 7) against an ETM setup arc of +2.5 ns at the act pin in the pre-route .db; the same pins show hold slack -84 ns (impossible), the slew at the pin (0.43 ns) is at the ETM table edge, and the _ins.lib used for P&R has -1.2 / -3.0 ns setup for that arc. The 7-hop feedthrough itself should still be checked in routed STA.
+* Exactness limits: QB_SEQ_TKS sets err if a start-FIFO entry lands at index < 2 (never on s0/s1); QB_SEQ_DSP needs stamp + rdl < 2^16 (sim check); CMH hit flag and CNT tokc term not exercised by s0/s1. New sim self-checks: QBS_NOCHK / QBP_NOCHK.
+* Files: RTL hw/rtl/qb_{top,head,chip,act2,seq_rt,seq}.sv; impl/r8a/{syn.sh,run_pt.sh,pt_xtra.tcl,pt_paths.tcl}; bench work /tmp/root/qc18bacc/r8a (+ r8a_act, r8a_seq). tau4: build/syn/r8a_{ref,c1,c3,rp,rp2}, snapshots /tmp/ckp908/qc18bacc/r8a_snap*.

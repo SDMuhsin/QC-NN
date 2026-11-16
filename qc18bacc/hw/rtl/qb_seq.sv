@@ -350,6 +350,11 @@ endmodule
 // R6a: HPW > 0 (qb_top narrow host port): a bank write (h_sel 1) carries one macro word, h_d[MW-1:0] = data,
 // h_d[HPW +: 4] = macro index m, through a registered chain of NM / 3 stages along the bank (stage s = macros 3s ..
 // 3s + 2; the write lands s + 1 cycles after this port).  Fetch lists / counts unchanged.
+// R8a: QB_PRM_BAR (default off) reads each consumer's fetch list at its own rf and adds the row per consumer, the
+// arbiter grant only selects the result (rfree -> want -> gsel -> 256-entry list read -> + row -> b_a cut to
+// rfree -> want -> gsel -> 3:1 mux -> b_a); same values, same cycles.
+// R8a round 2: QB_PRM_NUR keeps the nuse of the set in use (fetch-list entry ruse) in a register (retire reads
+// entry ruse + 1, list writes bypassed): ruse -> list read -> last-use compare -> uu / vf cut to registers.
 module qb_prm #(parameter int NM = 9, parameter int MW = 144, parameter int DEP = 240, parameter bit HSEL = 0,
                 parameter int NFF = 256, parameter int NFW = 256, parameter int NFT = 256, parameter int HPW = 0) (
     input  logic         clk, rst_n, go,
@@ -435,6 +440,20 @@ module qb_prm #(parameter int NM = 9, parameter int MW = 144, parameter int DEP 
         gnt = |want;
         gsel = want[2] ? 2'd2 : want[0] ? 2'd0 : 2'd1;
     end
+`ifdef QB_PRM_BAR
+    // R8a: each consumer's fetch-list entry is read at its own rf (address = a register, not rf[gsel]) and base + row
+    // is added per consumer beside the arbiter; the grant only selects the finished address / tag (same values)
+    logic [24:0] fw3 [3];  logic [7:0] ba3 [3];
+    always_comb
+        for (int c = 0; c < 3; c++) begin
+            fw3[c] = fget(c, rf[c]);
+`ifdef QBP_MUT_BAR
+            ba3[c] = fw3[c][16:9] + 8'(rowc[0]);                       // mutant: row offset of the fused consumer for all
+`else
+            ba3[c] = fw3[c][16:9] + 8'(rowc[c]);
+`endif
+        end
+`endif
     // request pipeline: x arbiter -> (b_a, tags) registers -> macro q in x + 2 -> staging write at end of x + 2
     logic       p1_v, p2_v;  logic [1:0] p1_c, p2_c;  logic [2:0] p1_r, p2_r;  logic p1_b, p2_b, p1_l, p2_l;
     logic [8:0] p1_t, p2_t;
@@ -451,9 +470,14 @@ module qb_prm #(parameter int NM = 9, parameter int MW = 144, parameter int DEP 
             b_ren <= gnt;
             p1_v <= gnt;
             if (gnt) begin
+`ifdef QB_PRM_BAR
+                b_a  <= ba3[gsel];
+                p1_c <= gsel; p1_r <= rowc[gsel]; p1_b <= rf[gsel][0]; p1_t <= fw3[gsel][8:0];
+`else
                 w = fget(int'(gsel), rf[gsel]);
                 b_a  <= w[16:9] + 8'(rowc[gsel]);
                 p1_c <= gsel; p1_r <= rowc[gsel]; p1_b <= rf[gsel][0]; p1_t <= w[8:0];
+`endif
                 p1_l <= rowc[gsel] == 3'(NR[gsel] - 1);
                 if (rowc[gsel] == 3'(NR[gsel] - 1)) begin rowc[gsel] <= '0; rf[gsel] <= rf[gsel] + 8'd1; end
                 else rowc[gsel] <= rowc[gsel] + 3'd1;
@@ -483,7 +507,11 @@ module qb_prm #(parameter int NM = 9, parameter int MW = 144, parameter int DEP 
             for (int c = 0; c < 3; c++)
                 if (u_use[c]) begin
                     logic ok;
+`ifdef QB_PRM_NUR
+                    w = {nuR[c], 17'd0};                                 // nuse of the set in use (register)
+`else
                     w = fget(c, ruse[c]);
+`endif
                     ok = c == 0 ? (vf[ruse[0][0]] && tgf[ruse[0][0]] == tag_f) : c == 1 ? (vw && tgw == tag_w) : (vt && tgt == tag_t);
                     if (!ok) err <= 1'b1;
                     if (uu[c] + 8'd1 == w[24:17]) begin
@@ -496,6 +524,37 @@ module qb_prm #(parameter int NM = 9, parameter int MW = 144, parameter int DEP 
             if (p2_v && p2_c == 2'd1 && vw && p2_r == 3'd0) err <= 1'b1;
             if (p2_v && p2_c == 2'd2 && vt) err <= 1'b1;
         end
+`ifdef QB_PRM_NUR
+    // R8a round 2: nuR[c] = nuse field of fetch-list entry ruse[c] as a register (ru1 = ruse + 1 read at a retire,
+    // list writes of this cycle bypassed): the last-use compare no longer waits for the 256-entry list read
+    logic [7:0] nuR [3], ru1 [3];
+    function automatic logic [7:0] nul(input int c, input logic [7:0] i, input logic [7:0] v);   // next-cycle fl[i].nuse
+        return (h_we && h_sel == 4'(12 + c) && h_addr[7:0] == i) ? h_d[24:17] : v;
+    endfunction
+    always_ff @(posedge clk or negedge rst_n)
+        if (!rst_n) for (int c = 0; c < 3; c++) begin nuR[c] <= '0; ru1[c] <= 8'd1; end
+        else for (int c = 0; c < 3; c++) begin
+            logic [24:0] w0, w1;
+            w0 = fget(c, 8'd0);
+`ifdef QBP_MUT_NUR
+            w1 = fget(c, ruse[c]);                                       // mutant: retire re-reads the current set
+`else
+            w1 = fget(c, ru1[c]);
+`endif
+            if (go) begin nuR[c] <= nul(c, 8'd0, w0[24:17]); ru1[c] <= 8'd1; end
+            else if (u_use[c] && uu[c] + 8'd1 == nuR[c]) begin nuR[c] <= nul(c, ru1[c], w1[24:17]); ru1[c] <= ru1[c] + 8'd1; end
+            else nuR[c] <= nul(c, ruse[c], nuR[c]);
+        end
+`ifndef SYNTHESIS
+`ifndef QBP_NOCHK
+    always @(posedge clk) for (int c = 0; c < 3; c++) begin
+        logic [24:0] wc;
+        wc = fget(c, ruse[c]);
+        if (rst_n && u_use[c] && nuR[c] != wc[24:17]) $error("qb_prm: registered nuse differs (consumer %0d)", c);
+    end
+`endif
+`endif
+`endif
     assign pf = stg_f[ruse[0][0]];
     assign pw = stg_w[5055:0];
     assign t2 = stg_t[1087:0];

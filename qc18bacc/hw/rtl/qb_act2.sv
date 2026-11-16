@@ -19,6 +19,17 @@
 // Timing (as R2): grant in cycle i -> m_ra / s_ra registered -> macro -> m_q / s_q registered (rdq / sdq) -> line
 // buffer write at the end of i + 3 -> usable by an item issued in i + 4.  Item issued in i: d_* at i + 1, act at
 // i + 2 + ACT_PIPE; done = 1-cycle pulse at last issue + 3 + ACT_PIPE + 1; a new pass may start the cycle after.
+// R8a (opt-in QB_ACT_CTXR, bit- and cycle-exact): int8 issue sequencer without the 128-b priority chain (ival -> icur
+// -> find-first -> inx -> irel -> nav): registered per-Z-word summaries (nonzero / exactly-one, 2 x 32 b for ibm and
+// for irem, + izero), lowest word one-hot by a 32-b prefix OR, irel / is_eot from the summaries; is_sel1 decoded
+// without is_v and gated by it last (tgo -> sel1a: 2 gates).  Mutant QBA_MUT_CTXR: is_eot ignores the lowest word's
+// remaining items.  R8a (opt-in QB_ACT_LDR, with QB_ACT_CTXR): the same for the int8 loader's 64-b find-first over
+// lcur (lw -> saddr, nx -> lrem / lval / lct); mutant QBA_MUT_LDR: S word of the highest instead of lowest flag of a nibble.
+// R8a (opt-in QB_ACT_CNT, with QB_ACT_CTXR + QB_ACT_LDR): 4 registered group summaries (8 Z words each) make irel /
+// is_eot a 4-way select on registers; nin / nav = mux of register-only candidates (+ {0, 1} - {0, irel}) by the release
+// condition written as relA | relB & tgo.  Mutant QBA_MUT_CNT: nav releases 1 instead of 2 words per cfg-9 item.
+// R8a (opt-in QB_ACT_SRA, with the above): int8 S address as a one-hot select of base + 4k (no adder behind lw);
+// rcnt / shq selected by relgo, nin by lgnt last.  Mutant QBA_MUT_SRA: carry select of the address inverted.
 module qb_act2 #(parameter int ACT_PIPE = 1) (
     input  logic          clk,
     input  logic          rst_n,
@@ -137,8 +148,37 @@ module qb_act2 #(parameter int ACT_PIPE = 1) (
     logic [10:0]       sel2, sel2_1;
     logic [32*NS1-1:0] s1;
     logic [4607:0]     act_q;
+`ifdef QB_ACT_S1M
+    // R8b (opt-in, results/r8b.md): one S1 over the context pre-muxed line buffers (qba2_pm, per bit, select s1c =
+    // context of the item in sel1a / sel1b; both never issue in one cycle, and a non-issuing context's select lines
+    // are 0, so s1c only matters when sel1a | sel1b != 0).  QB_ACT_S1M = 1: flat AND-OR (qba2_s1m), 2: 3x3 chunk
+    // select as a 4-stage shifter (qba2_s1s).  Bit- and cycle-exact (same registers, same S1 values).
+    localparam int S1M = `QB_ACT_S1M;
+    logic s1c;
+    logic [16383:0] lbm;
+    always_ff @(posedge clk or negedge rst_n)
+        if (!rst_n) s1c <= 1'b0; else s1c <= is_v[1];
+    qba2_pm u_pm (.lb0(lbf[0]), .lb1(lbf[1]), .ctx(s1c), .m(lbm));
+`ifdef QB_ACT_S2M
+    // R8c (opt-in, with QB_ACT_S1M = 1; results/r8c.md): row-homed S1 / S2 (gen_act2_s2m.py): 128 S1 registers, 8 per
+    // act row, re-used across configurations with a cfg-qualified select (sel2 = the registered cfg of the item in
+    // sel1a / sel1b); S2 connects a register only to the act units of its home row +- 1.  Bit- and cycle-exact.
+    logic [4095:0] s1r;
+    qba2_s1r u_s1 (.clk, .m(lbm), .sel1a, .sel1b, .sel2, .s1(s1r));
+    qba2_s2r u_s2 (.clk, .s1(s1r), .sel2(sel2_1), .act(act_q));
+    assign s1 = '0;                                                // R2 S1 unused
+`else
+    if (S1M == 2) begin : g_s1s
+        qba2_s1s u_s1 (.clk, .m(lbm), .sel1a, .sel1b, .s1);
+    end else begin : g_s1m
+        qba2_s1m u_s1 (.clk, .m(lbm), .sel1a, .sel1b, .s1);
+    end
+    qba_s2  u_s2 (.clk, .s1, .sel2(sel2_1), .act(act_q));
+`endif
+`else
     qba2_s1 u_s1 (.clk, .lb0(lbf[0]), .lb1(lbf[1]), .sel1a, .sel1b, .s1);
     qba_s2  u_s2 (.clk, .s1, .sel2(sel2_1), .act(act_q));
+`endif
 
     wire ic = is_v[1];
     logic [DW+1:0] dsc;                                            // {vld, ctx, fields}
@@ -150,6 +190,9 @@ module qb_act2 #(parameter int ACT_PIPE = 1) (
             // mutant: S-mode items of context 1 on odd channel tiles select context 0's line buffer
             sel1a <= is_v[0] ? is_sel1[0] : (is_v[1] && is_dsc[1][6] ? {is_sel1[1][38:33], 33'd0} : '0);
             sel1b <= is_v[1] ? (is_dsc[1][6] ? {6'd0, is_sel1[1][32:0]} : is_sel1[1]) : '0;
+`elsif QB_ACT_CTXR
+            sel1a <= is_sel1[0];                                   // is_sel1 = 0 when !is_v (qba2_ctx)
+            sel1b <= is_sel1[1];
 `else
             sel1a <= is_v[0] ? is_sel1[0] : '0;
             sel1b <= is_v[1] ? is_sel1[1] : '0;
@@ -285,13 +328,72 @@ module qba2_ctx #(parameter int ACT_PIPE = 1) (
     logic [63:0] lrem;  logic lval, lh;  logic [3:0] lct;  logic [9:0] lcnt, rcnt, wdone;
     logic [3:0] nin, nav;                    // buffered words: lcnt - rcnt, wdone - rcnt (registers)
     wire [63:0] lcur = lval ? lrem : wbm;
+`ifdef QB_ACT_LDR
+    // R8a: loader find-first as the sequencer's (QB_ACT_CTXR): registered per-nibble summaries (nonzero / exactly one,
+    // 2 x 16 b) of wbm (from wbm_d) and of lrem (written with lrem), lowest nibble one-hot by a 16-b prefix OR;
+    // lcur != 0, nx == 0 and nx from the summaries / the selected nibble (no 64-b priority chain, no 1 << lw decode)
+    function automatic logic one4l(input logic [3:0] n);
+        return n == 4'd1 || n == 4'd2 || n == 4'd4 || n == 4'd8;
+    endfunction
+    logic [15:0] wnz, wone, lrnz, lrone;
+    always_ff @(posedge clk)
+        for (int k = 0; k < 16; k++) begin wnz[k] <= |wbm_d[4 * k +: 4]; wone[k] <= one4l(wbm_d[4 * k +: 4]); end
+    wire [15:0] lcnz  = lval ? lrnz  : wnz;
+    wire [15:0] lcone = lval ? lrone : wone;
+    logic [15:0] lpre, lsel, lnz_n, lone_n;  logic [3:0] lnib;  logic [5:0] lw;  logic [63:0] lnx;
+    always_comb begin
+        lpre = lcnz;
+        for (int l = 0; l < 4; l++) lpre = lpre | (lpre << (1 << l));
+        lpre = lpre << 1;                                          // lpre[k] = |lcnz[k-1:0]
+        lsel = lcnz & ~lpre;
+        lnib = '0;  lw = '0;
+        for (int k = 0; k < 16; k++) if (lsel[k]) begin lnib |= lcur[4 * k +: 4]; lw[5:2] |= 4'(k); end
+`ifdef QBA_MUT_LDR
+        lw[1:0] = lnib[3] ? 2'd3 : lnib[2] ? 2'd2 : lnib[1] ? 2'd1 : 2'd0;   // mutant: highest bit of the nibble
+`else
+        lw[1:0] = lnib[0] ? 2'd0 : lnib[1] ? 2'd1 : lnib[2] ? 2'd2 : 2'd3;
+`endif
+        for (int k = 0; k < 16; k++) begin
+            logic [3:0] n, c;
+            n = lcur[4 * k +: 4];  c = n & (n - 4'd1);
+            lnx[4 * k +: 4] = lsel[k] ? c : n;
+            lnz_n[k]  = lsel[k] ? !lcone[k] : lcnz[k];
+            lone_n[k] = lsel[k] ? one4l(c) : lcone[k];
+        end
+    end
+    wire lnx_z = |(lsel & lcone) && !(|(lcnz & lpre));             // = (nx == 0)
+    wire ls_go = active && int8 && (lct < nct) && (lval ? |lrnz : |wnz) && (nin < 4'd8);   // = (lcur != 0)
+`else
     logic [5:0] lw;
     always_comb begin
         lw = '0;
         for (int i = 63; i >= 0; i--) if (lcur[i]) lw = 6'(i);
     end
     wire ls_go = active && int8 && (lct < nct) && (lcur != '0) && (nin < 4'd8);
+`endif
     logic [7:0] saddr;
+`ifdef QB_ACT_SRA
+    // R8a QB_ACT_SRA: S address without an adder behind lw: base + 4k + low = {H(k + carry), (base[1:0] + low)[1:0]},
+    // H(k) = base[7:2] + k from the base register only, selected by the one-hot lowest nibble lsel (cfg 9:
+    // base + 8 k[0] + {low, lh} = {G(k[0] + carry), (base[2:0] + {low, lh})[2:0]}, G(j) = base[7:3] + j).
+    logic [5:0] hk [17];  logic [4:0] gk [3];  logic [5:0] h0, h1;  logic [15:0] lself;
+    always_comb begin
+        for (int k = 0; k < 17; k++) hk[k] = base[7:2] + 6'(k);
+        for (int j = 0; j < 3; j++)  gk[j] = base[7:3] + 5'(j);
+        lself = (cfg == 4'd8) ? lsel : {8'd0, lsel[7:0] | lsel[15:8]};    // default: lw[4:0] (k mod 8)
+        h0 = '0;  h1 = '0;
+        for (int k = 0; k < 16; k++) if (lself[k]) begin h0 |= hk[k]; h1 |= hk[k + 1]; end
+    end
+    wire [2:0] sa2 = {1'b0, base[1:0]} + {1'b0, lw[1:0]};
+    wire [3:0] sa3 = {1'b0, base[2:0]} + {1'b0, lw[1:0], lh};
+    wire       lk0 = |(lsel & 16'haaaa);
+    wire [4:0] g0 = lk0 ? gk[1] : gk[0], g1 = lk0 ? gk[2] : gk[1];
+`ifdef QBA_MUT_SRA
+    always_comb saddr = (cfg == 4'd9) ? {sa3[3] ? g1 : g0, sa3[2:0]} : {sa2[2] ? h0 : h1, sa2[1:0]};   // mutant: carry select inverted
+`else
+    always_comb saddr = (cfg == 4'd9) ? {sa3[3] ? g1 : g0, sa3[2:0]} : {sa2[2] ? h1 : h0, sa2[1:0]};
+`endif
+`else
     always_comb begin
         unique case (cfg)
             4'd8:    saddr = base[7:0] + {2'd0, lw};
@@ -303,6 +405,7 @@ module qba2_ctx #(parameter int ACT_PIPE = 1) (
 `endif
         endcase
     end
+`endif
 
     assign lreq  = l_ok && (lb_go || ls_go);
     assign lmap  = !int8;
@@ -332,11 +435,19 @@ module qba2_ctx #(parameter int ACT_PIPE = 1) (
                 logic [63:0] nx;
                 ev0  <= '{v: 1'b1, wr: 1'b1, s: 1'b1, zero: 1'b0, last: 1'b1, q: 2'd0, row: lcnt};
                 lcnt <= lcnt + 10'd1;
+`ifdef QB_ACT_LDR
+                nx = lnx;
+                if (cfg == 4'd9 && !lh) begin lh <= 1'b1; lrem <= lcur; lval <= 1'b1; end
+                else begin
+                    lh <= 1'b0;
+                    if (lnx_z) begin lval <= 1'b0; lct <= lct + 4'd1; end
+`else
                 nx = lcur & ~(64'd1 << lw);
                 if (cfg == 4'd9 && !lh) begin lh <= 1'b1; lrem <= lcur; lval <= 1'b1; end
                 else begin
                     lh <= 1'b0;
                     if (nx == '0) begin lval <= 1'b0; lct <= lct + 4'd1; end
+`endif
                     else begin lrem <= nx; lval <= 1'b1; end
                 end
             end
@@ -344,6 +455,15 @@ module qba2_ctx #(parameter int ACT_PIPE = 1) (
             ev2 <= ev1;
         end
 
+`ifdef QB_ACT_LDR
+    always_ff @(posedge clk or negedge rst_n)                     // summaries of lrem, written with lrem
+        if (!rst_n) begin lrnz <= '0; lrone <= '0; end
+        else if (!start && lgnt && int8) begin
+            if (cfg == 4'd9 && !lh) begin lrnz <= lcnz; lrone <= lcone; end
+            else if (!lnx_z) begin lrnz <= lnz_n; lrone <= lone_n; end
+        end
+
+`endif
     // ---------------------------------------------------------------- line buffer
     logic [2:0] shq;
     wire [9:0] wsl_b = ev2.row - vb;
@@ -365,6 +485,102 @@ module qba2_ctx #(parameter int ACT_PIPE = 1) (
     wire tok_av = (tokc != 3'd0) || tgo;
     wire bin_ready = vdone >= vbk;
     wire [127:0] icur = ival ? irem : ibm;
+`ifdef QB_ACT_CTXR
+    // R8a: find-first over icur in two levels on registered nibble (Z word) summaries: nz = nibble != 0, one = nibble
+    // has exactly one bit; kept for ibm (registered from ibm_d, so always = summary of ibm) and for irem (written with
+    // irem).  Lowest nonzero nibble = one-hot isel (32-b prefix OR); irel / is_eot / izero from the summaries only
+    // (no 128-b priority chain, no shift by iw); iw = {enc(isel), lowest bit of the selected nibble}.
+    logic [31:0] bnz, bone, rnz, rone;  logic bzero;
+    function automatic logic one4(input logic [3:0] n);
+        return n == 4'd1 || n == 4'd2 || n == 4'd4 || n == 4'd8;
+    endfunction
+    always_ff @(posedge clk) begin
+        for (int k = 0; k < 32; k++) begin bnz[k] <= |ibm_d[4 * k +: 4]; bone[k] <= one4(ibm_d[4 * k +: 4]); end
+        bzero <= (ibm_d == '0);
+    end
+    wire [31:0] cnz  = ival ? rnz  : bnz;
+    wire [31:0] cone = ival ? rone : bone;
+`ifdef QB_ACT_CNT
+    // R8a QB_ACT_CNT: third level, 4 groups of 8 Z words, registered (from ibm_d / written with irem): group nonzero,
+    // lowest word of the group has one item (glone), group holds exactly one item (gsing).  irel / is_eot = 4-way
+    // lowest-group select on registers (no 32-long priority chain in front of nin / nav / rcnt / st).
+    function automatic logic [2:0] gsum(input logic [7:0] nz, input logic [7:0] on);    // {nz, lone, single}
+        logic l, f;
+        l = 1'b0;  f = 1'b0;
+        for (int k = 0; k < 8; k++) if (nz[k] && !f) begin l = on[k]; f = 1'b1; end
+        return {|nz, l, ((nz & (nz - 8'd1)) == 8'd0) && l};
+    endfunction
+    logic [3:0] bgnz, bglone, bgsing, rgnz, rglone, rgsing, rgnz_n, rglone_n, rgsing_n;
+    always_ff @(posedge clk)
+        for (int g = 0; g < 4; g++) begin
+            logic [7:0] dnz, don;  logic [2:0] gs;
+            for (int k = 0; k < 8; k++) begin
+                dnz[k] = |ibm_d[32 * g + 4 * k +: 4];  don[k] = one4(ibm_d[32 * g + 4 * k +: 4]);
+            end
+            gs = gsum(dnz, don);
+            bgnz[g] <= gs[2];  bglone[g] <= gs[1];  bgsing[g] <= gs[0];
+        end
+    wire [3:0] gnzc   = ival ? rgnz   : bgnz;
+    wire [3:0] glonec = ival ? rglone : bglone;
+    wire [3:0] gsingc = ival ? rgsing : bgsing;
+    wire [3:0] gsel   = gnzc & ~{|gnzc[2:0], |gnzc[1:0], gnzc[0], 1'b0};
+`endif
+    logic [31:0] ipre, isel, rnz_n, rone_n;  logic [3:0] inib;  logic [6:0] iw;  logic [127:0] inx;
+    always_comb begin
+`ifdef QB_ACT_CNT
+        for (int g = 0; g < 4; g++) begin                         // lowest word of the selected group
+            logic [7:0] pg;
+            pg = cnz[8 * g +: 8];
+            for (int l = 0; l < 3; l++) pg = pg | (pg << (1 << l));
+            pg = pg << 1;                                          // ipre[k] = |cnz[k-1:8g] (within the group)
+            ipre[8 * g +: 8] = pg;
+            isel[8 * g +: 8] = cnz[8 * g +: 8] & ~pg & {8{gsel[g]}};
+        end
+`else
+        ipre = cnz;                                                // Kogge-Stone prefix OR (5 levels)
+        for (int l = 0; l < 5; l++) ipre = ipre | (ipre << (1 << l));
+        ipre = ipre << 1;                                          // ipre[k] = |cnz[k-1:0]
+        isel = cnz & ~ipre;
+`endif
+        inib = '0;  iw = '0;
+        for (int k = 0; k < 32; k++) if (isel[k]) begin inib |= icur[4 * k +: 4]; iw[6:2] |= 5'(k); end
+        iw[1:0] = inib[0] ? 2'd0 : inib[1] ? 2'd1 : inib[2] ? 2'd2 : 2'd3;
+        for (int k = 0; k < 32; k++) begin
+            logic [3:0] n, c;
+            n = icur[4 * k +: 4];  c = n & (n - 4'd1);                     // nibble with its lowest bit cleared
+            inx[4 * k +: 4] = isel[k] ? c : n;
+            rnz_n[k]  = isel[k] ? !cone[k] : cnz[k];
+            rone_n[k] = isel[k] ? one4(c) : cone[k];
+        end
+    end
+    wire izero  = bzero;                                           // no executed slice: one zero item per channel tile
+`ifdef QB_ACT_CNT
+    always_comb
+        for (int g = 0; g < 4; g++) begin
+            logic [2:0] gs;
+            gs = gsum(rnz_n[8 * g +: 8], rone_n[8 * g +: 8]);
+            rgnz_n[g] = gs[2];  rglone_n[g] = gs[1];  rgsing_n[g] = gs[0];
+        end
+    wire ilone  = |(gsel & glonec);                                // the selected item is the last of its Z word
+    wire ieot   = |(gsel & gsingc) && ((gnzc & (gnzc - 4'd1)) == 4'd0);   // one group left, holding one item
+`else
+    wire ilone  = |(isel & cone);                                  // the selected item is the last of its Z word
+`ifdef QBA_MUT_CTXR
+    wire ieot   = !(|(cnz & ipre));                                // mutant: ignores the rest of the lowest Z word
+`else
+    wire ieot   = ilone && !(|(cnz & ipre));                       // = (inx == 0): one nibble left, with one bit
+`endif
+`endif
+    wire iready = (cfg == 4'd9) ? (nav >= 4'd2) : (nav >= 4'd1);
+    logic [1:0] irel;
+    always_comb begin
+        unique case (cfg)
+            4'd8:    irel = 2'd1;
+            4'd9:    irel = 2'd2;
+            default: irel = ilone ? 2'd1 : 2'd0;                    // last item of its Z word
+        endcase
+    end
+`else
     logic [6:0] iw;
     always_comb begin
         iw = '0;
@@ -381,6 +597,7 @@ module qba2_ctx #(parameter int ACT_PIPE = 1) (
             default: irel = (inx[{iw[6:2], 2'b00} +: 4] == 4'd0) ? 2'd1 : 2'd0;   // last item of its Z word
         endcase
     end
+`endif
 
     logic is_first, is_eot, is_zero, consume;  logic [3:0] is_g;  logic [2:0] is_pl;
     always_comb begin
@@ -394,13 +611,60 @@ module qba2_ctx #(parameter int ACT_PIPE = 1) (
                        if (tok_av) begin is_v = 1'b1; is_first = 1'b1; is_eot = 1'b1; is_zero = 1'b1; consume = 1'b1;
                                          is_g = '0; end
                    end else if (iready && (ival || tok_av)) begin
+`ifdef QB_ACT_CTXR
+                       is_v = 1'b1; is_first = !ival; consume = !ival; is_eot = ieot;
+`else
                        is_v = 1'b1; is_first = !ival; consume = !ival; is_eot = (inx == '0);
+`endif
                        is_g = iw[3:0]; is_pl = iw[6:4];
                    end
             default: ;
         endcase
+`ifdef QB_ACT_CTXR
+        // same is_v, written as (issue without a token) | (issue with a token) & tok_av: late tgo -> 2 gates
+        is_v = (st == S_BIN && bin_ready && g != 5'd0) || (st == S_INT && !izero && iready && ival) ||
+               (((st == S_BIN && bin_ready) || (st == S_INT && (izero || iready))) && (tokc != 3'd0 || tgo));
+`endif
     end
+`ifdef QB_ACT_CTXR
+    always_ff @(posedge clk or negedge rst_n)
+        if (!rst_n) begin rnz <= '0; rone <= '0; end
+        else if (st == S_INT && is_v && !is_eot) begin rnz <= rnz_n; rone <= rone_n; end   // with irem <= inx
+`endif
+`ifdef QB_ACT_CNT
+    always_ff @(posedge clk or negedge rst_n)
+        if (!rst_n) begin rgnz <= '0; rglone <= '0; rgsing <= '0; end
+        else if (st == S_INT && is_v && !is_eot) begin rgnz <= rgnz_n; rglone <= rglone_n; rgsing <= rgsing_n; end
+`endif
     // buffered-word counters (= lcnt - rcnt and wdone - rcnt, kept as registers for timing)
+`ifdef QB_ACT_CNT
+    // candidates nin / nav + {0, 1} - {0, irel} from registers (irel from the group registers), selected by the
+    // release condition (= st == S_INT && is_v && !is_zero) written as relA | relB & tgo: tgo meets the last mux only
+    wire relB = (st == S_INT) && !izero && iready;
+    wire relA = relB && (ival || tokc != 3'd0);
+    wire relgo = relA || (relB && tgo);
+    wire lgi = lgnt && int8, evs = ev2.v && ev2.s;
+`ifdef QB_ACT_SRA
+    wire [3:0] nin_p = nin + 4'd1, nin_rp = nin_p - {2'd0, irel}, nin_rm = nin - {2'd0, irel};
+`endif
+    wire [3:0] nin_k = nin + {3'd0, lgi}, nav_k = nav + {3'd0, evs};
+`ifdef QBA_MUT_CNT
+    wire [3:0] nin_r = nin_k - {2'd0, irel}, nav_r = nav_k - {3'd0, |irel};   // mutant: nav releases 1 word on cfg 9
+`else
+    wire [3:0] nin_r = nin_k - {2'd0, irel}, nav_r = nav_k - {2'd0, irel};
+`endif
+    always_ff @(posedge clk or negedge rst_n)
+        if (!rst_n) begin nin <= '0; nav <= '0; end
+        else if (start) begin nin <= '0; nav <= '0; end
+        else begin
+`ifdef QB_ACT_SRA
+            nin <= lgi ? (relgo ? nin_rp : nin_p) : (relgo ? nin_rm : nin);   // late lgnt (other context's int8 /
+`else                                                                         // request via the arbiter): last mux
+            nin <= relgo ? nin_r : nin_k;
+`endif
+            nav <= relgo ? nav_r : nav_k;
+        end
+`else
     wire [3:0] nrel = (st == S_INT && is_v && !is_zero) ? {2'd0, irel} : 4'd0;
     always_ff @(posedge clk or negedge rst_n)
         if (!rst_n) begin nin <= '0; nav <= '0; end
@@ -409,6 +673,7 @@ module qba2_ctx #(parameter int ACT_PIPE = 1) (
             nin <= nin + {3'd0, lgnt && int8} - nrel;
             nav <= nav + {3'd0, ev2.v && ev2.s} - nrel;
         end
+`endif
     function automatic logic [3:0] k_of(input logic [3:0] c);
         unique case (c)
             4'd3: return 4'd2;
@@ -418,6 +683,9 @@ module qba2_ctx #(parameter int ACT_PIPE = 1) (
             default: return 4'd4;
         endcase
     endfunction
+`ifdef QB_ACT_SRA
+    wire [9:0] rcnt_i = rcnt + {8'd0, irel};
+`endif
     wire last_tile = (tile == ntile - 7'd1);
     wire last_ct   = (ct == nct - 4'd1);
     always_ff @(posedge clk or negedge rst_n)
@@ -425,7 +693,13 @@ module qba2_ctx #(parameter int ACT_PIPE = 1) (
             st <= S_IDLE; shq <= '0; vb <= '0; vbk <= '0; tile <= '0; ct <= '0; g <= '0; fin_cnt <= '0; tokc <= '0; irem <= '0;
             ival <= 1'b0; rcnt <= '0;
         end else begin
+`ifdef QB_ACT_SRA
+            // int8 release (rcnt, shq) from register-only candidates, selected by relgo (= S_INT && is_v && !is_zero)
+            shq <= relgo ? {1'b0, irel == 2'd2, irel == 2'd1} : 3'd0;
+            if (relgo) rcnt <= rcnt_i;
+`else
             shq <= '0;
+`endif
             tokc <= tokc + {2'd0, tgo} - {2'd0, consume};
             unique case (st)
                 S_IDLE: if (start) begin
@@ -450,10 +724,12 @@ module qba2_ctx #(parameter int ACT_PIPE = 1) (
                     end
                 end
                 S_INT: if (is_v) begin
+`ifndef QB_ACT_SRA
                     if (!is_zero) begin
                         rcnt <= rcnt + {8'd0, irel};
                         shq  <= {1'b0, irel == 2'd2, irel == 2'd1};
                     end
+`endif
                     if (is_eot) begin
                         ival <= 1'b0;
                         if (last_ct) begin st <= S_FIN; fin_cnt <= '0; end
@@ -471,6 +747,18 @@ module qba2_ctx #(parameter int ACT_PIPE = 1) (
     assign done = (st == S_FIN) && (fin_cnt == 4'(3 + ACT_PIPE));
 
     // ---------------------------------------------------------------- issue outputs (registered in qb_act2)
+`ifdef QB_ACT_CTXR
+    // select decoded without is_v (S_BIN: int8 = 0, is_g = g; S_INT: int8 = 1, is_g = iw, zero item iff izero), then
+    // gated by is_v: the token (tgo -> is_v) only meets the final AND
+    logic [38:0] sel1c;
+    always_comb begin
+        sel1c = '0;
+        if (int8)    begin if (!izero) sel1c[cfg == 4'd8 ? 33 : cfg == 4'd9 ? 34 : 35 + iw[1:0]] = 1'b1; end
+        else if (k1) sel1c[cfg == 4'd3 ? 30 : 31] = 1'b1;
+        else         sel1c[(wcls == 0 ? 0 : wcls == 1 ? 2 : wcls == 2 ? 6 : 14) + g[3:0]] = 1'b1;
+        is_sel1 = sel1c & {39{is_v}};
+    end
+`else
     always_comb begin
         is_sel1 = '0;
         if (is_v && !is_zero) begin
@@ -479,6 +767,7 @@ module qba2_ctx #(parameter int ACT_PIPE = 1) (
             else         is_sel1[(wcls == 0 ? 0 : wcls == 1 ? 2 : wcls == 2 ? 6 : 14) + is_g] = 1'b1;
         end
     end
+`endif
     assign is_cfg2 = (cfg == 4'd0 && tile[0]) ? 4'd1 : cfg;
     assign is_dsc  = {is_first, is_eot,
                       int8 && is_pl == 3'd7 && !is_zero,                       // neg
