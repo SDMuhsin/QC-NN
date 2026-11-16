@@ -1,0 +1,10 @@
+# R11 top P&R runs (tau4, OpenROAD 2.0-12381, impl/r11/top.cfg; tags /tmp/ckp908/qc18bacc/build/pnr/r11_*) [S]
+# run    die mm2   env / change                                              outcome
+r11_hub  6.390     hub floorplan (R10b recipe) -> abstract LEF                 3990 x 1601.6, 27 789 pins (21 124 fixed under the columns, 1 060 M8 north, 5 605 west strip)
+r11_a    22.848    NB 120, dens .55, max_fo 16                                 GPL-0120 (core inset 5 um < hub width) -> core = die; GPL-0307 divergence (overflow ~.2 plateau);
+                                                                               -overflow .25: DRV repair 73 698 nets, std 0.540 -> 1.075 mm2; incr. gpl needs dens .72 (free 1.497 mm2), oscillates at .38: stopped
+r11_b    23.963    NB 400, max_fo 32, -overflow .2, incr dens .62               DRV repair 74 967 nets, std 1.020 mm2; DPL diamond search > 1 h 35 min (gdb stack): stopped
+r11_c    23.963    NB 400, -overflow .1, REPAIR_DESIGN 0, GR_ITER 5, DPL 4000 place 228 s (std .502); CTS -insertion_delay: 2 clock nets, STA unconstrained (1e39);
+                                                                               plain CTS 1 551 clock nets, skew 5.97 ns; propA; GRT 347 s: 2.72 % gcells overflowed (V 71 560 / H 1 057); peak RSS 12.2 GB
+r11_d    23.963    c + chip IOs at the gap / hub clk pin what-if / ICG          GPL-0307 divergence twice (gpl not robust on this floorplan): not placed
+r11_d2   23.963    c's placement + ICG size/move (1 600 ICGs, mean move 564 um) CTS 92 s, skew 7.68 ns (hub clk 8.94 ns): worse than c

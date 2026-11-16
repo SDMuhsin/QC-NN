@@ -1,0 +1,12 @@
+Clock qb_clk
+Latency      CRPR       Skew
+u_top_g_r3b_g_rt_u_seq/lt_reg_239__34_/CP ^
+   7.55
+u_top_g_r3b_g_rt_u_seq/g_lp_0__wD_reg_34_/CP ^
+   1.58      0.00       5.97
+Clock qb_clk
+Latency      CRPR       Skew
+u_hub/clk ^
+   8.94
+u_top_g_r3b_g_rt_u_seq/clk_gate_g_lp_1__wD_reg_0/latch/CP ^
+   1.26      0.00       7.68

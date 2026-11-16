@@ -1,0 +1,42 @@
+# R11 act block port map (impl/r11/top_nl.py)
+start[1] <- u_top_p_fire[1] (root of start_1__BAR via hub:CKND3/hub-feedthrough, inverted chain)
+start[0] <- u_top_p_fire[0] (root of start_0__BAR via hub:CKND2/hub-feedthrough, inverted chain)
+s_ctx: output not connected in the chip (left open)
+a_vld: output not connected in the chip (left open)
+a_first: output not connected in the chip (left open)
+a_neg: output not connected in the chip (left open)
+a_stem: output not connected in the chip (left open)
+a_g3n: output not connected in the chip (left open)
+c_base[8]: no top driver (DC removed it: unobservable in the chip) -> n_Logic0_
+c_base[17]: no top driver (DC removed it: unobservable in the chip) -> n_Logic0_
+IN0 net u_top_n28472 <- root u_top_p_fire[0] pol 0 chain 2: copy of RTL port start[0]
+IN1 net u_top_p_fire[1] <- root u_top_p_fire[1] pol 0 chain 0: copy of RTL port start[1]
+IN2 net u_top_n5006 <- root u_top_d_ctx pol 0 chain 3: function of top net u_top_d_ctx (qb_act2_ACT_PIPE1/d_ctx)
+IN3 net u_top_n5005 <- root u_top_d_ctx pol 0 chain 2: function of top net u_top_d_ctx (qb_act2_ACT_PIPE1/d_ctx)
+IN4 net u_top_n100 <- root rst_n pol 0 chain 8: copy of RTL port rst_n[0]
+IN5 net u_top_n96 <- root rst_n pol 0 chain 8: copy of RTL port rst_n[0]
+IN6 net u_top_n96 <- root rst_n pol 0 chain 8: copy of RTL port rst_n[0]
+IN7 net u_top_n96 <- root rst_n pol 0 chain 8: copy of RTL port rst_n[0]
+IN8 net u_top_n95 <- root rst_n pol 0 chain 7: copy of RTL port rst_n[0]
+IN9 net u_top_n94 <- root rst_n pol 0 chain 7: copy of RTL port rst_n[0]
+IN10 net u_top_n92 <- root rst_n pol 0 chain 8: copy of RTL port rst_n[0]
+IN11 net u_top_n92 <- root rst_n pol 0 chain 8: copy of RTL port rst_n[0]
+IN12 net u_top_n75 <- root rst_n pol 0 chain 6: copy of RTL port rst_n[0]
+IN13 net u_top_n73 <- root rst_n pol 0 chain 7: copy of RTL port rst_n[0]
+IN14 net u_top_n73 <- root rst_n pol 0 chain 7: copy of RTL port rst_n[0]
+IN15 net n516 <- root rst_n pol 0 chain 6: copy of RTL port rst_n[0]
+IN16 net u_top_n67 <- root rst_n pol 0 chain 7: copy of RTL port rst_n[0]
+IN17 net u_top_n51 <- root rst_n pol 0 chain 6: copy of RTL port rst_n[0]
+IN18 net u_top_n42 <- root rst_n pol 0 chain 8: copy of RTL port rst_n[0]
+IN19 net u_top_n42 <- root rst_n pol 0 chain 8: copy of RTL port rst_n[0]
+IN20 net u_top_n41 <- root rst_n pol 0 chain 7: copy of RTL port rst_n[0]
+IN21 net u_top_n24807 <- root rst_n pol 0 chain 8: copy of RTL port rst_n[0]
+IN22 net u_top_n24986 <- root rst_n pol 0 chain 7: copy of RTL port rst_n[0]
+IN23 net u_top_n24807 <- root rst_n pol 0 chain 8: copy of RTL port rst_n[0]
+IN24 net u_top_n32 <- root rst_n pol 0 chain 5: copy of RTL port rst_n[0]
+IN25 net u_top_n32 <- root rst_n pol 0 chain 5: copy of RTL port rst_n[0]
+IN26 net u_top_n32 <- root rst_n pol 0 chain 5: copy of RTL port rst_n[0]
+IN27 net u_top_n31 <- root rst_n pol 0 chain 5: copy of RTL port rst_n[0]
+IN28 net n509 <- root rst_n pol 0 chain 5: copy of RTL port rst_n[0]
+IN29 net n509 <- root rst_n pol 0 chain 5: copy of RTL port rst_n[0]
+IN30 net n509 <- root rst_n pol 0 chain 5: copy of RTL port rst_n[0]

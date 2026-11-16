@@ -1,0 +1,17 @@
+# R11 proposal A: top register clock arrival median 2.432 ns (n 600, min 2.243 max 7.297), target column clk pin = median - 0.96
+u_top_u_core_u_arr_g_c_0__u_col clk arrival 2.295 -> tap net clknet_1_1_1_clk (20 levels up, driver arrival ~1.472)
+u_top_u_core_u_arr_g_c_1__u_col clk arrival 2.306 -> tap net clknet_1_1_1_clk (19 levels up, driver arrival ~1.472)
+u_top_u_core_u_arr_g_c_2__u_col clk arrival 2.304 -> tap net clknet_1_1_1_clk (20 levels up, driver arrival ~1.472)
+u_top_u_core_u_arr_g_c_3__u_col clk arrival 2.302 -> tap net clknet_1_1_1_clk (20 levels up, driver arrival ~1.472)
+u_top_u_core_u_arr_g_c_4__u_col clk arrival 2.298 -> tap net clknet_1_1_1_clk (20 levels up, driver arrival ~1.472)
+u_top_u_core_u_arr_g_c_5__u_col clk arrival 2.315 -> tap net clknet_1_1_1_clk (19 levels up, driver arrival ~1.472)
+u_top_u_core_u_arr_g_c_6__u_col clk arrival 5.362 -> tap net clknet_1_0_0_clk (20 levels up, driver arrival ~1.472)
+u_top_u_core_u_arr_g_c_7__u_col clk arrival 5.547 -> tap net clknet_1_0_0_clk (21 levels up, driver arrival ~1.472)
+u_top_u_core_u_arr_g_c_0__u_col clk arrival after 1.627
+u_top_u_core_u_arr_g_c_1__u_col clk arrival after 1.590
+u_top_u_core_u_arr_g_c_2__u_col clk arrival after 1.560
+u_top_u_core_u_arr_g_c_3__u_col clk arrival after 1.709
+u_top_u_core_u_arr_g_c_4__u_col clk arrival after 1.799
+u_top_u_core_u_arr_g_c_5__u_col clk arrival after 1.835
+u_top_u_core_u_arr_g_c_6__u_col clk arrival after 2.189
+u_top_u_core_u_arr_g_c_7__u_col clk arrival after 2.223

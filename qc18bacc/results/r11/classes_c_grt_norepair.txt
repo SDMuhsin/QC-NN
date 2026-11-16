@@ -1,0 +1,15 @@
+# R11 top classes (tt, period 1.850000 ns, worst 20000 endpoints): class n_ep worst_slack_ns fmax_est_MHz example
+glue->glue       2324 -124.570     7.9  u_top_w_d_m_reg_1_/Q -> u_top_cd_r_reg_1976_/D
+glue->hub          49   -8.534    96.3  g_hpn_q_d_reg_29_/Q -> u_hub/n5672
+glue->mac          50  -11.188    76.7  u_top_w_a_q_reg_1_/Q -> u_top_g_wl_7__g_wd_1__u_m/g_mac_g_w_u_mac/A[1]
+glue->seq        3055  -14.521    61.1  i_addr_reg_1_/Q -> u_top_g_r3b_g_rt_u_seq/clk_gate_lt_reg_129__0/latch/E
+hub->act         1912  -25.349    36.8  u_hub/n507 -> u_act_blk/rst_n
+hub->col         3235  -13.107    66.9  u_hub/u_top_u_core_u_arr_n70 -> u_top_u_core_u_arr_g_c_5__u_col/ctl[8]
+hub->glue         155  -30.236    31.2  u_hub/n507 -> u_top_now_reg_2_/CDN
+hub->hub           12   -6.021   127.1  u_hub/n5780 -> u_hub/u_top_N96633
+hub->io            43  -11.008    77.8  u_hub/busy -> st_img_free
+hub->seq         3533  -38.302    24.9  u_hub/n507 -> u_top_g_r3b_g_rt_u_seq/svb_reg_486_/CDN
+io->seq          1190  -51.081    18.9  h_go -> u_top_g_r3b_g_rt_u_seq/g_lp_0__wD_reg_2_/D
+seq->act           21   -8.463    97.0  u_top_g_r3b_g_rt_u_seq/g_lp_1__i8r_reg/Q -> u_act_blk/l_seq1[8]
+seq->glue           1   -9.160    90.8  u_top_g_r3b_g_rt_u_seq/rwH_reg_6_/Q -> u_top_err_q_reg/D
+seq->seq         4420  -80.723    12.1  u_top_g_r3b_g_rt_u_seq/g_lp_1__la_reg_7_/Q -> u_top_g_r3b_g_rt_u_seq/g_lp_1__nx_w_reg_0__14_/D

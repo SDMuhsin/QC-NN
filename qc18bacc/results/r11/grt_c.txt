@@ -1,0 +1,35 @@
+# R11 top classes (tt, period 1.850000 ns, worst 20000 endpoints): class n_ep worst_slack_ns fmax_est_MHz exam
+glue->glue       2324 -124.570     7.9  u_top_w_d_m_reg_1_/Q -> u_top_cd_r_reg_1976_/D
+glue->hub          49   -8.534    96.3  g_hpn_q_d_reg_29_/Q -> u_hub/n5672
+glue->mac          50  -11.188    76.7  u_top_w_a_q_reg_1_/Q -> u_top_g_wl_7__g_wd_1__u_m/g_mac_g_w_u_mac/A[1]
+glue->seq        3055  -14.521    61.1  i_addr_reg_1_/Q -> u_top_g_r3b_g_rt_u_seq/clk_gate_lt_reg_129__0/latch
+hub->act         1912  -25.349    36.8  u_hub/n507 -> u_act_blk/rst_n
+hub->col         3235  -13.107    66.9  u_hub/u_top_u_core_u_arr_n70 -> u_top_u_core_u_arr_g_c_5__u_col/ctl[8]
+hub->glue         155  -30.236    31.2  u_hub/n507 -> u_top_now_reg_2_/CDN
+hub->hub           12   -6.021   127.1  u_hub/n5780 -> u_hub/u_top_N96633
+hub->io            43  -11.008    77.8  u_hub/busy -> st_img_free
+hub->seq         3533  -38.302    24.9  u_hub/n507 -> u_top_g_r3b_g_rt_u_seq/svb_reg_486_/CDN
+io->seq          1190  -51.081    18.9  h_go -> u_top_g_r3b_g_rt_u_seq/g_lp_0__wD_reg_2_/D
+seq->act           21   -8.463    97.0  u_top_g_r3b_g_rt_u_seq/g_lp_1__i8r_reg/Q -> u_act_blk/l_seq1[8]
+seq->glue           1   -9.160    90.8  u_top_g_r3b_g_rt_u_seq/rwH_reg_6_/Q -> u_top_err_q_reg/D
+seq->seq         4420  -80.723    12.1  u_top_g_r3b_g_rt_u_seq/g_lp_1__la_reg_7_/Q -> u_top_g_r3b_g_rt_u_seq/g
+
+# R11 proposal A: top register clock arrival median 2.833 ns (n 600, min 2.258 max 7.982), target column clk pin = media
+u_top_u_core_u_arr_g_c_0__u_col clk arrival 2.304 -> tap net clknet_4_8_0_clk (11 levels up, driver arrival ~1.873)
+u_top_u_core_u_arr_g_c_1__u_col clk arrival 2.339 -> tap net clknet_4_9_0_clk (10 levels up, driver arrival ~1.873)
+u_top_u_core_u_arr_g_c_2__u_col clk arrival 2.326 -> tap net clknet_4_9_0_clk (11 levels up, driver arrival ~1.873)
+u_top_u_core_u_arr_g_c_3__u_col clk arrival 2.314 -> tap net clknet_4_12_0_clk (11 levels up, driver arrival ~1.873)
+u_top_u_core_u_arr_g_c_4__u_col clk arrival 2.294 -> tap net clknet_4_13_0_clk (11 levels up, driver arrival ~1.873)
+u_top_u_core_u_arr_g_c_5__u_col clk arrival 2.304 -> tap net clknet_4_14_0_clk (10 levels up, driver arrival ~1.873)
+u_top_u_core_u_arr_g_c_6__u_col clk arrival 6.101 -> tap net clknet_1_0_2_clk (19 levels up, driver arrival ~1.873)
+u_top_u_core_u_arr_g_c_7__u_col clk arrival 5.299 -> tap net clknet_1_0_2_clk (17 levels up, driver arrival ~1.873)
+OVF11 gcell 3.0 um; overflowed gcells 72345 of 2661330 = 2.72 %; overflow H 1057 V 71560 tracks
+region    ovf_gcell  %region     ovf_H     ovf_V  top source-net stems
+hub             222    0.03%       199        34  u_top_pt 138, u_top_n 102, clknet_1_0__leaf_u_top_g_r3b_g_rt_u_seq/net 65, u_top_g_r3b_g_rt_u_seq/lt 60, u_top_g_cx_1__ph 40
+array         19822    1.83%         9     19859  u_top_g_r3b_t2_s 17683, n 6715, g_hpn_q_d 5222, u_top_fh 5130, u_top_g_r3b_g_rt_u_seq/n 4951
+act           50980   24.31%         4     51045  g_hpn_q_d 44431, u_top_g_r3b_g_rt_u_seq/n 40762, n 19315, u_top_n 8837, u_top_g_r3b_g_rt_u_seq/n_cse 4832
+gap            1320    2.00%       845       621  u_top_g_r3b_g_rt_u_seq/n 11421, u_top_g_r3b_g_rt_u_seq/lt 7173, u_top_s_q 4249, u_top_pt 2640, u_top_n 2304
+NWcorner          0    0.00%         0         0  
+north             1    0.00%         0         1  u_top_g_r3b_g_rt_u_seq/n 28, u_top_g_r3b_g_rt_u_seq/stb 8
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 8:06.52
+	Maximum resident set size (kbytes): 12162124

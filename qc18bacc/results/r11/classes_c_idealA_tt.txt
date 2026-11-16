@@ -1,0 +1,20 @@
+# R11 top classes (tt, period 1.850000 ns, worst 20000 endpoints): class n_ep worst_slack_ns fmax_est_MHz example
+act->act           22   -1.098   339.2  u_act_blk/d_vld -> u_act_blk/tgo[1]
+act->col            6   -0.367   451.0  u_act_blk/act[4069] -> u_top_u_core_u_arr_g_c_7__u_col/act[4069]
+act->glue           1   -0.719   389.2  u_act_blk/d_vld -> u_top_err_q_reg/D
+act->hub           39   -1.931   264.5  u_act_blk/d_vld -> u_hub/u_top_chd_3_
+act->seq         1169   -2.816   214.3  u_act_blk/l_pos0[2] -> u_top_g_r3b_g_rt_u_seq/g_lp_0__wD_reg_10_/D
+col->hub         1152   -0.480   429.2  u_top_u_core_u_arr_g_c_7__u_col/b2[104] -> u_hub/u_top_n35831
+glue->col          10   -0.074   519.9  u_top_cd_r_reg_185_/Q -> u_top_u_core_u_arr_g_c_0__u_col/cd[185]
+glue->hub         285   -0.802   377.1  g_hpn_q_d_reg_33_/Q -> u_hub/n5678
+glue->mac          14   -0.224   482.1  u_top_w_a_q_reg_1_/Q -> u_top_g_wl_15__g_wd_2__u_m/g_mac_g_w_u_mac/A[1]
+hub->act         2635   -1.207   327.1  u_hub/u_top_n5012 -> u_act_blk/l_ok[1]
+hub->col        10422   -1.385   309.1  u_hub/u_top_s_rd_3280_ -> u_top_u_core_u_arr_g_c_0__u_col/s_rd[424]
+hub->glue         159   -2.536   228.0  u_hub/u_top_n5006 -> u_top_w_a_q_reg_7_/D
+hub->hub          179   -2.298   241.1  u_hub/n5778 -> u_hub/u_top_N96644
+hub->io            43   -0.637   402.0  u_hub/busy -> st_img_free
+hub->seq         3343   -3.626   182.6  u_hub/n5778 -> u_top_g_r3b_g_rt_u_seq/g_lp_1__wD_reg_13_/D
+io->hub             3   -0.858   369.3  h_go -> u_hub/n468
+io->seq             2   -0.516   422.6  h_go -> u_top_g_r3b_g_rt_u_seq/clk_gate_wq_w_reg/latch/E
+seq->hub           35   -1.305   317.0  u_top_g_r3b_g_rt_u_seq/fq_r_reg_4_/Q -> u_hub/u_top_fh[9]
+seq->seq          481   -2.021   258.4  u_top_g_r3b_g_rt_u_seq/g_lp_0__la_reg_8_/Q -> u_top_g_r3b_g_rt_u_seq/g_lp_0__kN_reg_4_/D

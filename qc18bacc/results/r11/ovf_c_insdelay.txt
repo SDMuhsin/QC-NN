@@ -1,0 +1,8 @@
+OVF11 gcell 3.0 um; overflowed gcells 86906 of 2661330 = 3.27 %; overflow H 305 V 87090 tracks
+region    ovf_gcell  %region     ovf_H     ovf_V  top source-net stems
+hub              42    0.01%        34         8  u_top_pt 39, u_top_g_r3b_g_rt_u_seq/n 23, u_top_g_cx_1__ph 13, u_top_n 12, clknet_7_40__leaf_clk_regs 10
+array         32941    3.05%        11     33008  u_top_g_r3b_t2_s 21800, g_hpn_q_d 11492, n 10423, u_top_chd 9089, u_top_g_r3b_g_rt_u_seq/n 8929
+act           53453   25.49%        10     53814  g_hpn_q_d 49320, u_top_g_r3b_g_rt_u_seq/n 40063, n 18468, u_top_n 8855, u_top_g_r3b_g_rt_u_seq/n_cse 5070
+gap             469    0.71%       250       259  u_top_g_r3b_g_rt_u_seq/n 3626, u_top_g_r3b_g_rt_u_seq/lt 2093, u_top_s_q 1367, u_top_g_r3b_g_rt_u_seq/net 928, u_top_n 777
+NWcorner          0    0.00%         0         0  
+north             1    0.00%         0         1  u_top_g_r3b_g_rt_u_seq/n 33, u_top_g_r3b_g_rt_u_seq/stb 3

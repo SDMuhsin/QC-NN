@@ -1,0 +1,8 @@
+# R11 top classes (tt, period 1.850000 ns, worst 20000 endpoints): class n_ep worst_slack_ns fmax_est_MHz example
+hub->act         2635   -6.525   119.4  u_hub/u_top_n5012 -> u_act_blk/l_ok[1]
+hub->col        13688   -6.192   124.4  u_hub/u_top_s_rd_3280_ -> u_top_u_core_u_arr_g_c_0__u_col/s_rd[424]
+hub->glue         155   -7.883   102.7  u_hub/u_top_n5006 -> u_top_w_a_q_reg_7_/D
+hub->io            43   -7.406   108.0  u_hub/busy -> st_img_free
+hub->seq         3088   -7.983   101.7  u_hub/n5778 -> u_top_g_r3b_g_rt_u_seq/g_lp_1__wD_reg_19_/D
+seq->act           10   -5.155   142.8  u_top_g_r3b_g_rt_u_seq/g_lp_1__i8r_reg/Q -> u_act_blk/l_seq1[8]
+seq->seq          381   -5.554   135.1  u_top_g_r3b_g_rt_u_seq/g_lp_1__i8r_reg/Q -> u_top_g_r3b_g_rt_u_seq/g_lp_1__SC_reg_15_/D

@@ -1,0 +1,7 @@
+R11EQ block input bits without a top driver: 2 [('c_base', 8), ('c_base', 17)] -> tied to n_Logic0_ (chip u_act: unloaded port bit, c_base[8] only reaches m_ra[8], which is unconnected in the chip: map 128 lines)
+R11NL u_act DC-punched pins IN*: 31 (copies of RTL inputs 29, other functions 2); start BAR pins 2
+R11NL dead top cells removed (fed only the removed u_act pins): 0 {}
+R11EQ top instances kept 12707, master / pin-net differences 0; removed act+dreg 2, dead 0, added blk 1 + inverters 0
+R11EQ block pin bits 7368 match the chip port bit they replace (s_q via T), mismatches 0
+R11EQ chip u_act / dreg boundary nets not on a block pin (excluding act->dreg internal, IN*, start BAR): 2
+R11NL modules kept 1609 of 4627 (dropped: qb_hub, act hierarchy, dreg, unreachable)
