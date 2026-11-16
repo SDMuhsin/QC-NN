@@ -1,0 +1,10 @@
+ETM_FIX act[4071] setup rise -7.049 -> -0.922 (median setup -0.839)
+ETM_FIX act[4071] hold rise 8.175 -> 0.934 (median hold 0.864)
+ETM_FIX act[2023] setup rise -3.341 -> -0.768 (median setup -0.839)
+ETM_FIX act[1160] setup fall 11.281 -> -0.935 (median setup -0.839)
+ETM_FIX act[1160] hold fall -6.554 -> 0.930 (median hold 0.864)
+ETM_FIX pf[526] setup rise -17.278 -> -0.854 (median setup -0.839)
+ETM_FIX pf[526] hold rise 12.509 -> 0.879 (median hold 0.864)
+ETM_FIX_DONE qb_col_blk_tt_ins.lib: 7 arcs corrected, 13918 constraint groups, medians {'setup': -0.839256, 'hold': 0.8642225}
+ETM_FIX_DONE qb_col_blk_ss_ins.lib: 0 arcs corrected, 13918 constraint groups, medians {'setup': -1.258489, 'hold': 1.289204}
+ETM_FIX_DONE qb_col_blk_ff_ins.lib: 0 arcs corrected, 13918 constraint groups, medians {'setup': -0.257185, 'hold': 0.266677}

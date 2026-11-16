@@ -1,0 +1,57 @@
+r7b_s QC_PNR step place
+r7b_s QC_PNR r6b: max_transition 0.4
+r7b_s QC_PNR r6c: spread3 replaces spread2
+r7b_s QC_PNR r6c: signal wire RC estimate 0.73 ohm/um 0.28 fF/um (QB_EST_RC)
+r7b_s QC_PNR r7b: clock latency removed on 8 block clk pins (block insertion via the ETM arcs + propagated clk pin)
+r7b_s QC_PNR r7b_import cells 623477 not_found 0 left_for_gpl 0
+r7b_s QC_PNR r6b: gpl of the 0 remaining cells 0 s
+r7b_s QC_PNR drv violations after global placement: 780585
+r7b_s QC_PNR repair_design on 155318 nets with DRV violations (548649 nets kept)
+r7b_s QC_PNR r6b: DRV repair 1 added 202818 instances die_um 3990.00 x 5825.40 core_um2 23139720.0 cell_um2 5076950.4 macro_um2 16651520.7 utilisation 0.939
+r7b_s QC_PNR r6c: snap3 126689 cells out of block / macro footprints onto rows (0 via stepped edges, 0 without a row edge)
+r7b_s QC_PNR r6c: spread3 fallback 91932 of 132483 cells placed (mean 3814 um)
+r7b_s QC_PNR r6c: spread3 343485 movable cells: 65140 kept, 145862 moved (mean 127.8 um, 67246 > 100 um), 132483 without room within 400 um, 118.3 s
+r7b_w(sliced) QC_PNR step place
+r7b_w(sliced) QC_PNR r6b: max_transition 0.4
+r7b_w(sliced) QC_PNR r6c: spread3 replaces spread2
+r7b_w(sliced) QC_PNR r6c: signal wire RC estimate 0.73 ohm/um 0.28 fF/um (QB_EST_RC)
+r7b_w(sliced) QC_PNR r7b: clock latency removed on 8 block clk pins (block insertion via the ETM arcs + propagated clk pin)
+r7b_w(sliced) QC_PNR r7b_import cells 623477 not_found 0 left_for_gpl 0
+r7b_w(sliced) QC_PNR r6b: gpl of the 0 remaining cells 0 s
+r7b_w(sliced) QC_PNR drv violations after global placement: 818240
+r7b_w(sliced) QC_PNR repair_design on 162921 nets with DRV violations (541046 nets kept)
+r7b_w(sliced) QC_PNR r6b: DRV repair 1 added 210288 instances die_um 3990.00 x 5888.40 core_um2 23390460.0 cell_um2 5170086.0 macro_um2 16651520.7 utilisation 0.933
+r7b_w(sliced) QC_PNR r6c: snap3 139551 cells out of block / macro footprints onto rows (0 via stepped edges, 0 without a row edge)
+r7b_w(sliced) QC_PNR r6c: spread3 fallback 115328 of 135909 cells placed (mean 3534 um)
+r7b_w(sliced) QC_PNR r6c: spread3 356861 movable cells: 60860 kept, 160092 moved (mean 133.8 um, 76366 > 100 um), 135909 without room within 400 um, 139.5 s
+r7b_w QC_PNR step place
+r7b_w QC_PNR r6b: max_transition 0.4
+r7b_w QC_PNR r6c: spread3 replaces spread2
+r7b_w QC_PNR r6c: signal wire RC estimate 0.73 ohm/um 0.28 fF/um (QB_EST_RC)
+r7b_w QC_PNR r7b: clock latency removed on 8 block clk pins (block insertion via the ETM arcs + propagated clk pin)
+r7b_w QC_PNR r7b_import cells 623477 not_found 0 left_for_gpl 0
+r7b_w QC_PNR r6b: gpl of the 0 remaining cells 0 s
+r7b_w QC_PNR drv violations after global placement: 612321
+r7b_w QC_PNR repair_design on 113620 nets with DRV violations (590347 nets kept)
+r7b_w QC_PNR r6b: DRV repair 1 added 93970 instances die_um 3990.00 x 5888.40 core_um2 23390460.0 cell_um2 3730274.6 macro_um2 16651520.7 utilisation 0.871
+r7b_w QC_PNR r6c: snap3 44193 cells out of block / macro footprints onto rows (0 via stepped edges, 0 without a row edge)
+r7b_w QC_PNR r6c: spread3 fallback 25377 of 25377 cells placed (mean 1393 um)
+r7b_w QC_PNR r6c: spread3 194369 movable cells: 61309 kept, 107683 moved (mean 91.3 um, 34754 > 100 um), 25377 without room within 400 um, 75.1 s
+r7b_w QC_PNR r6b: first detailed placement (after snap) 98 s
+r7b_w QC_PNR place die_um 3990.00 x 5888.40 core_um2 23390460.0 cell_um2 3730274.6 macro_um2 16651520.7 utilisation 0.871
+r7b_w QC_PNR place place_tt setup_wns_ns -13.992 setup_tns_ns -103875.405 hold_wns_ns -1.478 hold_tns_ns -27266.537
+r7b_w QC_PNR step place done (373 s)
+r7b_w QC_PNR step cts
+r7b_w QC_PNR r6c: icg 4006 gates, sinks 1-8 261 9-24 1347 25-64 2398 65-160 0 >160 0, masters {CKLNQD2 261 CKLNQD4 1347 CKLNQD8 2398}, moved 4006 (mean 319 um, max 1701 um)
+r7b_w QC_PNR r6c: signal wire RC estimate 0.73 ohm/um 0.28 fF/um (QB_EST_RC)
+r7b_w QC_PNR r7b: clock latency removed on 8 block clk pins (block insertion via the ETM arcs + propagated clk pin)
+r7b_w QC_PNR r6c: spread3 fallback 2808 of 2808 cells placed (mean 2246 um)
+r7b_w QC_PNR r6c: spread3 37913 movable cells: 4332 kept, 30773 moved (mean 65.6 um, 7305 > 100 um), 2808 without room within 400 um, 17.2 s
+r7b_w QC_PNR r6b: detailed placement after spread2 32 s
+r7b_w QC_PNR cts die_um 3990.00 x 5888.40 core_um2 23390460.0 cell_um2 3967006.7 macro_um2 16651520.7 utilisation 0.881
+r7b_w QC_PNR cts cts_tt setup_wns_ns -14.627 setup_tns_ns -142154.953 hold_wns_ns -5.930 hold_tns_ns -106741.056
+r7b_w QC_PNR step cts done (646 s)
+r7b_w QC_PNR step route
+r7b_w QC_PNR r6c: signal wire RC estimate 0.73 ohm/um 0.28 fF/um (QB_EST_RC)
+r7b_w QC_PNR r6c: post-CTS repair skipped (QB_SKIP_RT)
+r7b_w QC_PNR r6c: global_route -guide_file /tmp/ckp908/qc18bacc/build/pnr/r7b_w/route.guide -congestion_iterations 50 -congestion_report_file /tmp/ckp908/qc18bacc/build/pnr/r7b_w/rpt/gr_congestion.rpt -allow_congestion

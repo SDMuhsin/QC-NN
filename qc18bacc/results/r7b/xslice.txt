@@ -1,0 +1,30 @@
+# xslice [S, from the netlist + slice labels]: 207237 nets with an S-slice terminal
+# distinct columns per net: 0:14100 1:174343 2:14670 3:1998 4:1245 5:648 6:111 7:73 8:49
+# column span (pitches of 390 um) of nets with >= 2 columns: 1:4416 2:3136 3:2582 4:3661 5:2401 6:1806 7:792
+# summed span 23.97 m (lower bound of horizontal wire across slices)
+# driver kind | nets >= 2 columns | summed span m
+glue                             12694   14.30
+prm                               2795    5.27
+head                              1007    1.26
+prm.flf                            615    1.07
+glue.rq_r                          931    0.93
+prm.clk_gate_flf                   160    0.30
+glue.clk_gate_b2f_d                 64    0.13
+prm.flt                             94    0.13
+head.m0                             83    0.13
+prm.clk_gate_flt                    73    0.11
+head.p1                             51    0.09
+glue.b2f_d                          64    0.07
+prm.clk_gate_flw                    25    0.04
+blk.f_y                             19    0.02
+glue.fp_z                           13    0.02
+prm.nfl                             11    0.01
+glue.fdl                             9    0.01
+head.x0                              6    0.01
+glue.fs_z                            8    0.01
+glue.s_wa                            4    0.01
+glue.cdl                             3    0.01
+blk.w_y                              3    0.00
+glue.clk_gate_g_hin_ic_d             4    0.00
+head.y2                              4    0.00
+prm.clk_gate_stg_f                   8    0.00

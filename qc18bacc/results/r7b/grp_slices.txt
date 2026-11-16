@@ -1,0 +1,17 @@
+r7b_s GRP S0: 26682 cells (+0 no group) movable 0.111 mm2, rows in region 0.361 mm2 (util 0.308), 596795 other cells removed, 14877 anchors, 793 rows, density 0.600
+r7b_s GRP_DONE S0 gpl 1155 s, cells in region 26682, outside 0
+r7b_s GRP S1: 16737 cells (+0 no group) movable 0.068 mm2, rows in region 0.153 mm2 (util 0.443), 606740 other cells removed, 12088 anchors, 218 rows, density 0.600
+r7b_s GRP_DONE S1 gpl 1132 s, cells in region 16737, outside 0
+r7b_s GRP S2: 24682 cells (+0 no group) movable 0.098 mm2, rows in region 0.153 mm2 (util 0.639), 598795 other cells removed, 17718 anchors, 218 rows, density 0.690
+r7b_s GRP_DONE S2 gpl 586 s, cells in region 24682, outside 0
+r7b_s GRP S3: 16323 cells (+0 no group) movable 0.065 mm2, rows in region 0.153 mm2 (util 0.427), 607154 other cells removed, 11657 anchors, 218 rows, density 0.600
+r7b_s GRP_DONE S3 gpl 1171 s, cells in region 16323, outside 0
+r7b_s GRP S4: 18397 cells (+0 no group) movable 0.075 mm2, rows in region 0.153 mm2 (util 0.491), 605080 other cells removed, 14132 anchors, 218 rows, density 0.600
+r7b_s GRP_DONE S4 gpl 1405 s, cells in region 18397, outside 0
+r7b_s GRP S5: 16336 cells (+0 no group) movable 0.064 mm2, rows in region 0.153 mm2 (util 0.416), 607141 other cells removed, 11585 anchors, 218 rows, density 0.600
+r7b_s GRP_DONE S5 gpl 1237 s, cells in region 16336, outside 0
+r7b_s GRP S6: 16268 cells (+0 no group) movable 0.064 mm2, rows in region 0.153 mm2 (util 0.416), 607209 other cells removed, 12573 anchors, 218 rows, density 0.600
+r7b_s GRP_DONE S6 gpl 1320 s, cells in region 16268, outside 0
+r7b_s GRP S7: 26788 cells (+0 no group) movable 0.110 mm2, rows in region 0.155 mm2 (util 0.705), 596689 other cells removed, 14775 anchors, 301 rows, density 0.762
+r7b_s GRP SX: 26156 cells (+0 no group) movable 0.099 mm2, rows in region 0.349 mm2 (util 0.283), 597321 other cells removed, 36054 anchors, 875 rows, density 0.600
+r7b_s GRP_DONE SX gpl 1503 s, cells in region 26156, outside 0

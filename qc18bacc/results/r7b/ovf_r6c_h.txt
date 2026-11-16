@@ -1,0 +1,17 @@
+# GRT overflow by region [S] r6c_h: entries (overflowed gcell x layer-direction), sum overflow (tracks); unit = % of entries with a source net of that unit
+r6c_h total     H entries   486681 overflow   5467247 | act 25 seq 17 prm 11 head 10 dist 0 clock 45
+r6c_h total     V entries   609111 overflow   6245203 | act 29 seq 17 prm 6 head 6 dist 0 clock 45
+r6c_h Sband     H entries   160834 overflow   2264639 | prm 31 head 26 clock 34
+r6c_h Sband     V entries   122316 overflow    875315 | act 0 prm 28 head 25 clock 41
+r6c_h SWc       H entries    13138 overflow     85211 | act 0 prm 21 head 43 clock 39
+r6c_h SWc       V entries     9197 overflow     38148 | act 1 prm 18 head 42 clock 41
+r6c_h Wstrip    H entries   182614 overflow   1467092 | act 62 seq 31 dist 0 clock 70
+r6c_h Wstrip    V entries   240607 overflow   3692391 | act 66 seq 30 dist 0 clock 75
+r6c_h array     H entries   103567 overflow   1441026 | act 10 seq 0 head 0 clock 7
+r6c_h array     V entries   204554 overflow   1307595 | act 8 seq 0 head 0 clock 7
+r6c_h north     H entries    26528 overflow    209279 | seq 100 clock 88
+r6c_h north     V entries    32437 overflow    331754 | seq 99 clock 84
+r6c_h r7a_south H entries   200421 overflow   3304410 | prm 23 head 18 clock 27
+r6c_h r7a_south V entries   175010 overflow   1354094 | prm 18 head 16 clock 29
+r6c_h r7a_west  H entries   194267 overflow   1543828 | act 60 seq 26 dist 0 clock 63
+r6c_h r7a_west  V entries   247450 overflow   3980426 | act 67 seq 23 dist 0 clock 68

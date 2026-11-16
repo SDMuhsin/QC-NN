@@ -1,0 +1,38 @@
+# slice.py T=0.6 F=0.5: S cells 188369, seeds 54699, nets used 207233, rounds 15
+# slice sub cells n_seq std_mm2 (DC cell sizes, before repair buffers)
+S0  glue     10899   1645   0.0411
+S0  head     13161   4102   0.0532
+S0  prm       2622   1692   0.0169
+S1  glue     12009   1509   0.0412
+S1  head      1983    312   0.0096
+S1  prm       2745   1956   0.0170
+S2  glue     13366   1591   0.0410
+S2  head      3693    395   0.0144
+S2  prm       7623   5086   0.0423
+S3  glue     11622   1438   0.0390
+S3  head      1990    317   0.0098
+S3  prm       2711   1904   0.0166
+S4  glue     11293   1556   0.0399
+S4  head      2946    355   0.0128
+S4  prm       4158   2419   0.0225
+S5  glue     11569   1439   0.0370
+S5  head      2018    314   0.0098
+S5  prm       2749   1962   0.0168
+S6  glue     11215   1454   0.0359
+S6  head      2415    337   0.0111
+S6  prm       2638   1784   0.0167
+S7  glue     10702   1435   0.0369
+S7  head      2719    351   0.0121
+S7  prm      13367   5805   0.0606
+SX  glue     11715    988   0.0364
+SX  head      9317    936   0.0329
+SX  prm       5124   3081   0.0297
+SLICE S0 std_mm2 0.1112 cells 26682
+SLICE S1 std_mm2 0.0678 cells 16737
+SLICE S2 std_mm2 0.0978 cells 24682
+SLICE S3 std_mm2 0.0654 cells 16323
+SLICE S4 std_mm2 0.0752 cells 18397
+SLICE S5 std_mm2 0.0637 cells 16336
+SLICE S6 std_mm2 0.0637 cells 16268
+SLICE S7 std_mm2 0.1096 cells 26788
+SLICE SX std_mm2 0.0990 cells 26156
