@@ -1,0 +1,56 @@
+# R7d per-cycle S write-request classes (tb_qb_chip QBT_WBSTAT), build QBT_TECH=2 + QB_HEAD_FW=128 + QB_HPW=144 (QB_TOP_WBR=1, QB_TOP_SROT=1)
+# classes 0 HQ, 1 HQD, 2 Z, 3 stream, 4 r (b6.sc), 5 b6.c2, 6 S-read rotator in use (s_ren one cycle earlier)
+# co i: j = cycles with both i and j active (diagonal = cycles with i); mindist i: j = min |cycle(i) - cycle(j)| over the run
+# hist: shift amount 0..15 (HQ l0, HQD bq, Z bz, S-read s_rot)
+== E6_s0 val 60 61 0 1 2
+QB_CHIP img 0 s0/img60 go 0 img_free +275 end +3780 (rtl_end 3780 model 3779 delta 1) interval 3780 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7030 (after end +3250) PASS
+QB_CHIP img 1 s0/img61 go 3780 img_free +275 end +3748 (rtl_end 3748 model 3747 delta 1) interval 3748 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +6998 (after end +3250) PASS
+QB_CHIP img 2 s0/img0 go 7528 img_free +275 end +3748 (rtl_end 3748 model 3747 delta 1) interval 3748 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +6998 (after end +3250) PASS
+QB_CHIP img 3 s0/img1 go 11276 img_free +275 end +3788 (rtl_end 3788 model 3787 delta 1) interval 3788 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7038 (after end +3250) PASS
+QB_CHIP img 4 s0/img2 go 15064 img_free +275 end +3812 (rtl_end 3812 model 3811 delta 1) interval - logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7062 (after end +3250) PASS
+QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 0 head_err 0 PASS
+QB_WBSTAT cycles 22128 wr_conf 0 classes HQ HQD Z stream r c2 sread
+QB_WBSTAT co 0: 320 160 0 0 0 0 0
+QB_WBSTAT co 1: 160 160 0 0 0 0 0
+QB_WBSTAT co 2: 0 0 1280 0 0 0 1161
+QB_WBSTAT co 3: 0 0 0 6880 0 0 0
+QB_WBSTAT co 4: 0 0 0 0 1280 0 384
+QB_WBSTAT co 5: 0 0 0 0 0 1280 384
+QB_WBSTAT co 6: 0 0 1161 0 384 384 3112
+QB_WBSTAT mindist 0: 1000000 0 76 2 404 521 11
+QB_WBSTAT mindist 1: 0 1000000 78 2 406 523 13
+QB_WBSTAT mindist 2: 76 78 1000000 141 3 120 0
+QB_WBSTAT mindist 3: 2 2 141 1000000 290 208 76
+QB_WBSTAT mindist 4: 404 406 3 290 1000000 3 0
+QB_WBSTAT mindist 5: 521 523 120 208 3 1000000 0
+QB_WBSTAT mindist 6: 11 13 0 76 0 0 1000000
+QB_WBSTAT hist HQ_l0: 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20
+QB_WBSTAT hist HQD_bq: 20 20 20 20 0 0 0 0 20 20 20 20 0 0 0 0
+QB_WBSTAT hist Z_bz: 160 160 160 160 0 0 0 0 160 160 160 160 0 0 0 0
+QB_WBSTAT hist SREAD_srot: 400 400 400 400 160 160 160 160 400 328 64 72 8 0 0 0
+== E6_s1 val 13 55 7 42 91
+QB_CHIP img 0 s1/img13 go 0 img_free +275 end +3836 (rtl_end 3836 model 3835 delta 1) interval 3836 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7086 (after end +3250) PASS
+QB_CHIP img 1 s1/img55 go 3836 img_free +275 end +3764 (rtl_end 3764 model 3763 delta 1) interval 3764 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7014 (after end +3250) PASS
+QB_CHIP img 2 s1/img7 go 7600 img_free +275 end +3732 (rtl_end 3732 model 3731 delta 1) interval 3732 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +6982 (after end +3250) PASS
+QB_CHIP img 3 s1/img42 go 11332 img_free +275 end +3796 (rtl_end 3796 model 3795 delta 1) interval 3796 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7046 (after end +3250) PASS
+QB_CHIP img 4 s1/img91 go 15128 img_free +275 end +3804 (rtl_end 3804 model 3803 delta 1) interval - logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7054 (after end +3250) PASS
+QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 0 head_err 0 PASS
+QB_WBSTAT cycles 22184 wr_conf 0 classes HQ HQD Z stream r c2 sread
+QB_WBSTAT co 0: 320 160 0 0 0 0 0
+QB_WBSTAT co 1: 160 160 0 0 0 0 0
+QB_WBSTAT co 2: 0 0 1280 0 0 0 1181
+QB_WBSTAT co 3: 0 0 0 6880 0 0 0
+QB_WBSTAT co 4: 0 0 0 0 1280 0 387
+QB_WBSTAT co 5: 0 0 0 0 0 1280 402
+QB_WBSTAT co 6: 0 0 1181 0 387 402 3296
+QB_WBSTAT mindist 0: 1000000 0 80 2 437 548 11
+QB_WBSTAT mindist 1: 0 1000000 82 2 439 550 13
+QB_WBSTAT mindist 2: 80 82 1000000 145 4 115 0
+QB_WBSTAT mindist 3: 2 2 145 1000000 284 208 76
+QB_WBSTAT mindist 4: 437 439 4 284 1000000 4 0
+QB_WBSTAT mindist 5: 548 550 115 208 4 1000000 0
+QB_WBSTAT mindist 6: 11 13 0 76 0 0 1000000
+QB_WBSTAT hist HQ_l0: 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20 20
+QB_WBSTAT hist HQD_bq: 20 20 20 20 0 0 0 0 20 20 20 20 0 0 0 0
+QB_WBSTAT hist Z_bz: 160 160 160 160 0 0 0 0 160 160 160 160 0 0 0 0
+QB_WBSTAT hist SREAD_srot: 400 400 400 400 160 160 160 160 400 328 168 136 8 16 0 0

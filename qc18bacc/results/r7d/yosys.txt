@@ -1,0 +1,14 @@
+# R7d Yosys 0.68 (yosys-slang) synth -flatten + abc generic gates; wires = nets left after opt_clean (excl. ports)
+# impl/r7d/rot.sv variants (packing copied from qb_top QB_TOP_WBR block): data 16 x 128 b + address 16 x 8 b
+r_HQ   wires=6242 cells=8308 $_MUX_=8209 
+n_HQ   wires=25 cells=8 
+r_HQD  wires=2109 cells=3139 $_MUX_=3080 
+n_HQD  wires=25 cells=8 
+r_Z    wires=558 cells=822 $_MUX_=773 
+n_Z    wires=25 cells=1 
+r_SHZ  wires=2451 cells=3497 $_MUX_=3395 
+n_SHZ  wires=32 cells=281 $_MUX_=261 
+srd    wires=8197 cells=10240 $_MUX_=10240 
+hqs    wires=10260 cells=12297 $_MUX_=12292 
+# r_X = rotator X, n_X = same with shift forced 0 (packing only); SHZ = HQD + Z on one 64-b-payload rotator (Z priority);
+# srd = act-port S-read group mux + rotator (qb_top g_srot verbatim); hqs = HQ + S-read on one rotator (3:1 input mux)

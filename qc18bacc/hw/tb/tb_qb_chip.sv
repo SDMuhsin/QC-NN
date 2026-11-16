@@ -55,6 +55,47 @@ module tb_qb_chip;
     int X_pi [MAXI][1024], X_tp [MAXI][1024], X_ct [MAXI][1024], X_ce [MAXI][1024], nX [MAXI];
     int ce_rtl [NP][64][8], cyc_err [MAXI], lg_err [MAXI], img_rd_err, cur, ld_img, ld_line, lo_img, timeout;
     int free_c [MAXI], pq0_c [MAXI], fcd_c [MAXI], nfcd;
+`ifdef QBT_WBSTAT
+    // R7d measurement hook (default off): per-cycle S write-request classes of the QB_TOP_WBR write-back (0 HQ, 1 HQD,
+    // 2 Z, 3 stream, 4 r, 5 b6.c2; 6 = S-read rotator in use = s_ren one cycle earlier), co-occurrence matrix, shift
+    // histograms of the HQ (l0) / HQD (bq) / Z (bz) rotators and of the S-read rotator (s_rot), wr_conf cycles.
+    longint ws_co [7][7], ws_h [4][16], ws_cyc, ws_conf, ws_last [7], ws_md [7][7];   // md: min cycle distance i -> j
+    logic ws_sren_d = 1'b0;  logic [3:0] ws_srot_d = '0;
+    initial begin
+        ws_cyc = 0; ws_conf = 0;
+        for (int i = 0; i < 7; i++) begin ws_last[i] = -1000000; for (int j = 0; j < 7; j++) ws_md[i][j] = 1000000; end
+        for (int i = 0; i < 7; i++) for (int j = 0; j < 7; j++) ws_co[i][j] = 0;
+        for (int i = 0; i < 4; i++) for (int j = 0; j < 16; j++) ws_h[i][j] = 0;
+    end
+    task automatic ws_sample();
+        logic [6:0] a;  logic f, w;  logic [3:0] y, l0, bq, bz;
+        f = dut.u_top.fo.v && dut.u_top.f_vld_o;
+        w = dut.u_top.wo.v && dut.u_top.w_vld_o;
+        y  = 4'(2 * dut.u_top.fo.tp + 7'(dut.u_top.fo.k[1]));
+        l0 = 4'(2 * y + 4'(dut.u_top.fo.k[0]));
+        bq = {dut.u_top.fo.ct[0], 1'b0, 2'(y >> 1)};
+        bz = {dut.u_top.wo.ct[0], 1'b0, 2'(dut.u_top.wo.k >> 3)};
+        a = '0;
+        a[0] = f && dut.u_top.fo.hm;
+        a[1] = f && dut.u_top.fo.hm && !y[0];
+        a[2] = w && dut.u_top.wo.kind == 3'd5;
+        a[3] = f && !dut.u_top.fo.hm;
+        a[4] = w && dut.u_top.wo.kind == 3'd6;
+        a[5] = w && dut.u_top.wo.kind == 3'd7;
+        a[6] = ws_sren_d;
+        ws_cyc++;
+        if (dut.u_top.wr_conf) ws_conf++;
+        for (int i = 0; i < 7; i++) for (int j = 0; j < 7; j++) if (a[i] && a[j]) ws_co[i][j]++;
+        for (int i = 0; i < 7; i++) if (a[i]) ws_last[i] = ws_cyc;
+        for (int i = 0; i < 7; i++) if (a[i]) for (int j = 0; j < 7; j++)
+            if (j != i && ws_cyc - ws_last[j] < ws_md[i][j]) begin ws_md[i][j] = ws_cyc - ws_last[j]; ws_md[j][i] = ws_md[i][j]; end
+        if (a[0]) ws_h[0][l0]++;
+        if (a[1]) ws_h[1][bq]++;
+        if (a[2]) ws_h[2][bz]++;
+        if (a[6]) ws_h[3][ws_srot_d]++;
+        ws_sren_d = dut.u_top.s_ren;  ws_srot_d = dut.u_top.s_rot;
+    endtask
+`endif
 
     task automatic tick(); #5 clk = 1; #5 clk = 0; endtask
 `ifndef QB_HPW
@@ -135,6 +176,9 @@ module tb_qb_chip;
         cur = 0; ld_img = 1; ld_line = 0; lo_img = 0; img_rd_err = 0; timeout = 0;
         for (cyc = 0; ; cyc++) begin
             #1;
+`ifdef QBT_WBSTAT
+            ws_sample();
+`endif
             h_go = 0; h_we = 0;
             // image end (engine idle again)
             if (cur > 0 && end_c[cur - 1] < 0 && st_idle) begin
@@ -244,6 +288,20 @@ module tb_qb_chip;
             for (int i = 0; i + 1 < N; i++)
                 $display("QB_CHIP_OVERLAP img %0d FC done %0d, img %0d first pq write %0d: slack %0d cycles", i, fcd_c[i], i + 1,
                          pq0_c[i + 1], pq0_c[i + 1] - fcd_c[i]);
+`ifdef QBT_WBSTAT
+            $display("QB_WBSTAT cycles %0d wr_conf %0d classes HQ HQD Z stream r c2 sread", ws_cyc, ws_conf);
+            for (int i = 0; i < 7; i++)
+                $display("QB_WBSTAT co %0d: %0d %0d %0d %0d %0d %0d %0d", i, ws_co[i][0], ws_co[i][1], ws_co[i][2], ws_co[i][3],
+                         ws_co[i][4], ws_co[i][5], ws_co[i][6]);
+            for (int i = 0; i < 7; i++)
+                $display("QB_WBSTAT mindist %0d: %0d %0d %0d %0d %0d %0d %0d", i, ws_md[i][0], ws_md[i][1], ws_md[i][2], ws_md[i][3],
+                         ws_md[i][4], ws_md[i][5], ws_md[i][6]);
+            for (int i = 0; i < 4; i++) begin
+                string t;  t = "";
+                for (int j = 0; j < 16; j++) t = {t, $sformatf(" %0d", ws_h[i][j])};
+                $display("QB_WBSTAT hist %0s:%0s", i == 0 ? "HQ_l0" : i == 1 ? "HQD_bq" : i == 2 ? "Z_bz" : "SREAD_srot", t);
+            end
+`endif
 `ifndef QBT_GLS
             $display("QB_CHIP_TB images %0d err %0d img_read_err %0d timeout %0d head_err %0d %s", N, err, img_rd_err, timeout,
                      dut.h_err, pass_all ? "PASS" : "FAIL");
