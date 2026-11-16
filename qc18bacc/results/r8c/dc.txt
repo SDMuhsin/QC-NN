@@ -1,0 +1,23 @@
+# R8c DC topographical qb_act2_blk (R7c / R8b recipe: impl/r7c/topo_act.tcl, compile_ultra -no_autoungroup -gate_clock -spg, tt 1.65 ns) [S]
+# s2m = QB_ACT_S1M=1 + QB_ACT_S2M (impl/r8c/qb_act2_blk_s2m.f); s1m1 = R8b row (results/r8b/dc.txt).  tau4 build /tmp/ckp908/qc18bacc/r8c/build/syn/r8c_s2m
+# DC wall 20 min; PT hook impl/r8b/pt_s1.tcl (classes: s1_reg = u_act/*u_s1/s1_reg*, s2_reg = u_act/u_s2/act_reg*)
+variant  cell_um2   comb      buf/inv   noncomb   cells   regs   | lb0+lb1  pre-mux  S1 (comb/seq)            S2 (comb/seq)
+s1m1     847 045    436 581    95 962   410 464   235 135 56 857 | 427 849   59 093  146 313 (99 804 / 46 509)  85 155 (53 636 / 31 519)
+s2m      828 477    435 509   109 258   392 967   227 669 54 809 | 427 519   37 712  165 934 (136 634 / 29 300) 65 143 (33 621 / 31 521)
+# s2m vs s1m1: -18 568 um2 (-2.2 %), regs -2 048 (S1 6 144 -> 4 096 b), S1 + S2 231 468 -> 231 077 (S1 comb +37 %, S2 comb -37 %),
+#   pre-mux -21 381 (DC sizing; same RTL), buf/inv +13 296
+# pre-route PT (DC topo parasitics) fmax MHz, tt then ss: chip-level worst + per endpoint class
+== r8c_s2m tt
+  clock qb_clk period_ns 1.650 wns_ns -0.010 fmax_mhz 602.4 path u_act/g_ctx_1__u_ctx/ival_reg/CP -> u_act/g_ctx_1__u_ctx/nav_reg_2_/D
+  class s1_reg endpoints 4096 worst_slack_ns 0.027 fmax_mhz 616.2 path u_act/sel2_reg_1_/CP -> u_act/u_s1/s1_reg_22_/D
+  class s2_reg endpoints 4608 worst_slack_ns 0.048 fmax_mhz 624.3 path u_act/sel2_1_reg_0_/CP -> u_act/u_s2/act_reg_4342_/D
+  class lb_reg endpoints 34816 worst_slack_ns 0.061 fmax_mhz 629.2
+  class pipe endpoints 9216 worst_slack_ns 0.235 fmax_mhz 706.9
+== r8c_s2m ss
+  clock qb_clk period_ns 1.650 wns_ns -0.948 fmax_mhz 384.9 path u_act/g_ctx_0__u_ctx/vbk_reg_0_/CP -> u_act/sel1a_reg_3_/D
+  class s1_reg endpoints 4096 worst_slack_ns -0.828 fmax_mhz 403.6 path u_act/dsc_reg_21_/CP -> u_act/u_s1/s1_reg_2027_/D
+  class s2_reg endpoints 4608 worst_slack_ns -0.753 fmax_mhz 416.2
+  class lb_reg endpoints 34816 worst_slack_ns -0.728 fmax_mhz 420.6
+  class pipe endpoints 9216 worst_slack_ns -0.430 fmax_mhz 480.9
+# s1m1 (R8b): tt 602.9 (s1_reg 620.2, s2_reg 615.0), ss 386.3 (s1_reg 408.6, s2_reg 404.3).  Chip worst in both = ctx sequencer
+# (R8a's domain), unchanged; S1 class -4 / -5 MHz tt / ss (cfg-qualified select: sel2 -> AND -> fan-out), S2 class +9 / +12.

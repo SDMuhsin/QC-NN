@@ -1,0 +1,42 @@
+# R8c GRT probe of qb_act2_blk, R8b recipe (impl/r8c/run.sh = impl/r8b/run.sh flow): B4 820 x 2420 um die (810 x 2410 core), dens 0.80,
+# max_tran 0.40 / max_fo 64, DPL window 500 um, QB_IO_LAT 0.55; probe on db/cts_rt.odb (after CTS + post-CTS setup / hold repair):
+# impl/r7c/grt_probe.tcl global_route -allow_congestion, 10 congestion iterations, GR_ADJUST 0.25, M2-M7 [S, OR est.].
+# s2m = QB_ACT_S1M=1 + QB_ACT_S2M netlist r8c_s2m, full flow init -> cts.  tau4 /tmp/ckp908/qc18bacc/r8c/build/pnr/r8c_s2m.
+# s1m1 / base rows = R8b (results/r8b/grt.txt).  V = M2 + M4 + M6, H = M3 + M5 + M7 (demand / resource).
+run            cell_um2 (util)    total    V        H       M2       M4       M6      overflow   max V ovf/gcell  WL (m)  GRT WNS (ns, 2.0 ns)
+base (R8b)     1 257 152 (0.644)  105.1 %  135.2 %  72.4 %  155.0 %  128.8 %  121.3 %  5 322 155  846              51.06   -2.50
+s1m1 (R8b)     1 104 352 (0.566)   87.9 %   96.9 %  77.1 %  105.0 %  100.6 %   85.5 %  2 432 073  119              44.73   -4.16
+s2m            1 047 775 (0.537)   70.1 %   75.2 %  63.8 %   81.9 %   76.4 %   67.3 %  1 124 159   38              36.32   -5.57
+# s2m vs s1m1: total -17.8 pt, V -21.7 pt, M2 -23.1 pt, overflow -54 %, WL -18.8 %, post-CTS cell area -5.1 %.
+# GRT WNS: worst path is a line-buffer load-enable net (u_lb IOA21D1 -> INVD1 at 0.41 pF, 4.4 ns), unrepaired DRV at GRT parasitics
+# (no post-GRT repair in the probe): not a timing result, and not in S1 / S2.
+# Overflowed-gcell source nets by RTL class (impl/r8b/cong_cls.py):
+== r8c_s2m
+Horizontal: 63919 overflowed gcells, 2542132 net refs: line buffer 38.0%, S1 30.4%, repair buf 16.0%, premux 7.5%, lb out 3.7%, clock 2.0%, sdq 1.2%, other 0.6%, rdq 0.4%, S2 0.2%, act pipe 0.0%
+Vertical: 82988 overflowed gcells, 3338629 net refs: S1 34.2%, line buffer 29.5%, repair buf 13.3%, premux 9.1%, S2 3.5%, lb out 3.0%, clock 2.7%, other 2.3%, act pipe 1.6%, sdq 0.3%, ctx ctl 0.3%, rdq 0.1%
+# Absolute vertical net refs (M): s1m1 LB 0.99 premux 0.38 S1 0.90 S2 1.35 lb-out 0.22 repair 0.60 total 5.42
+#                                 s2m  LB 0.98 premux 0.30 S1 1.14 S2 0.12 lb-out 0.10 repair 0.44 total 3.34
+#   S2 -91 %; S1 +27 % (pre-mux -> S1 nets now carry the pixel -> row distance, as modelled: impl/r8c/model.py).
+== r8c_s2m per layer
+M1                   0         86939            0.00%            24 /  3 / 86939
+M2             2418741       1981131           81.91%             2 / 38 / 302426
+M3             2384169       1752589           73.51%            21 /  2 / 179574
+M4             2289049       1748957           76.41%             2 / 38 / 188888
+M5             2411824       1586184           65.77%            20 /  2 / 129966
+M6             2419037       1628064           67.30%             3 / 26 / 153572
+M7             2282080       1177006           51.58%            20 /  2 / 82794
+Total         14204900       9960870           70.12%            92 / 111 / 1124159
+[INFO GRT-0018] Total wirelength: 36324315 um
+# Flow summary (tt, OR est.; DRV nets by class before the place step's two repairs):
+before_repair1 drv_nets s1m1 14019 (S1 2844, S2 4892, act_pipe 611) | s2m 10062 (S1 3907, S2 1112, act_pipe 30)
+before_repair2 drv_nets s1m1  8206 (S1 2032, S2 2927)               | s2m  5832 (S1 2252, S2 516)
+place          s1m1 cell 1 022 903 (0.524) wns -0.425 | s2m cell 967 861 (0.496) wns -0.371
+cts            s1m1 cell 1 094 146 (0.561) wns -2.073 hold -0.715 | s2m cell 1 037 396 (0.532) wns -0.738 hold -0.679
+postcts_hold_legal s1m1 setup_wns -0.604 (1 996 viol) | s2m setup_wns -0.212 (368 viol), hold 0.011 / 0 viol, cell 1 047 775 (0.537)
+# Narrower die probe (same netlist / recipe, QB_W=710: die 720 x 2420, core 1.710 mm2; tau4 .../pnr/r8c_s2m_w720):
+run            cell_um2 (util)    total    V        H       M2       M4       M6      overflow   max V ovf/gcell  WL (m)  GRT WNS
+s2m die 720    1 063 344 (0.622)  82.8 %   91.2 %   72.7 %   99.8 %   93.0 %   80.9 %  1 645 413  138              37.67   -4.52
+# place 985 575 (0.576) wns -0.568; postcts_hold_legal setup_wns -0.450 (1 302 viol), hold 0.009; GRT WNS = line-buffer shift net DRV.
+# V classes: S1 28.4 %, line buffer 27.7 %, repair buf 21.0 %, premux 8.2 %, S2 3.2 % (4.19 M refs).
+# [E] linear in die width between 820 (V 75.2 %) and 720 (91.2 %): V = 85 % at ~760 um -> ~1.84 mm2 die (B4 1.98; R8b's [E] for
+#     S1M=1 alone at 85 % V: ~2.26 mm2; R7c base: 3.15).

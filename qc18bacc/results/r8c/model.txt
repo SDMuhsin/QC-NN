@@ -1,0 +1,19 @@
+# R8c S2 demand model (impl/r8c/model.py) [Mod]
+## (1) S2 mechanism
+R2 S1 groups read by S2: 192; act-row span (rows, 120 um each) mean 5.43 max 15; hist {0: 53, 1: 14, 2: 7, 3: 4, 4: 10, 5: 12, 6: 9, 7: 7, 8: 14, 9: 21, 10: 11, 11: 5, 12: 9, 13: 5, 14: 5, 15: 6}
+  stride-1 3x3 (0 1 4 7 10)  alone: groups 104, row span mean  4.32 max 15
+  stride-2 3x3 (2 5 8)       alone: groups 152, row span mean  1.91 max 9
+  1x1 gathers (3 6 9)        alone: groups 128, row span mean  3.00 max 12
+  sum over groups of 32 b x row span = 33344 bit-rows; per cfg pair, the mean span added by mixing two classes in one register:
+    stride-1 3x3 + stride-2 3x3: 104 groups, extra span mean 2.60
+    1x1 gathers  + stride-1 3x3:  64 groups, extra span mean 0.86
+    1x1 gathers  + stride-2 3x3:  88 groups, extra span mean 1.70
+## (2) networks (32-b group terms)
+  a (S1M=1):     S1 regs 192  S1 terms 1244  S2 terms 933
+  r (S2M=1):     S1 regs 128  S1 terms 1470  S2 terms 531  (act rows per reg <= 3, all within home +- 1)
+## (3) 1-D placement model, y wirelength (bit-m) / cut
+  a: y WL  17.52 bit-m; cut peak  11136 mean   7424; S1 -> act (S2) 5.49, premux out -> S1 5.23, LB Q (shift + premux) 3.64, sdq/rdq -> LB 3.00, S/map in 0.15
+  r: y WL  16.01 bit-m; cut peak  10080 mean   6769; premux out -> S1 6.76, LB Q (shift + premux) 4.09, sdq/rdq -> LB 3.35, S1 -> act (S2) 1.67, S/map in 0.14
+  r vs a: WL -8.6 %, peak cut -9.5 %, mean cut -8.8 %
+R2 (S1M=1): S1 regs 192 terms 1244; S2 terms 933
+R8c row-homed: S1 regs 128 terms 1470 (fan-in max 33 mean 11.48); S2 terms 531 (fan-in max 7 mean 3.69); check vs R2 composition OK
