@@ -38,6 +38,12 @@
 //     values as register sums beside them, ds == now per candidate (f_fire / w_fire);
 //   QB_SEQ_TGO (round 2, with CMH): token sh1 compared for both drain lengths in parallel (e.u selects after), RAW
 //     compares as carry-save signs.
+// R8d timing define (default off; needs QB_SEQ_DSP):
+//   QB_SEQ_DEP: end-phase de / ds candidates as separate sums of registers (ce + dr, t_sh + dr, lane + dr, stamp + rdl
+//     (+ OVH) + dr) selected after the compares (DC had shared one adder behind the compare-driven select), and the
+//     PPU-tile compare rw > ln as one carry-save sign per lane (lane_f + bc2 inc / lane_w; e.u selects after); the
+//     token-start compares on ce (= ce_p ? ce_q : now -> tgo) done for ce_q and now in parallel, ce_p selects after.
+//     Mutants QBS_MUT_DEP = 1..4 (see k_lwd).
 module qb_seq_rt #(parameter int NT = 1024, parameter int OVH = 12, parameter int NLT = 1024, parameter int NDM = 624,
                    parameter int LSW = 16) (
     input  logic         clk, rst_n, go, run,
@@ -338,6 +344,46 @@ module qb_seq_rt #(parameter int NT = 1024, parameter int OVH = 12, parameter in
         if (!g02 && !g12 && g23) return 2'd2;
         return 2'd3;
     endfunction
+`ifdef QB_SEQ_DEP
+`ifndef QBS_MUT_DEP
+`define QBS_MUT_DEP 0
+`endif
+    // R8d: candidate sums (registers only) beside the compares
+    wire        k_inc = lbc2 && e.hm && e.u == 2'd1;
+    wire [15:0] k_ce  = ce_p ? ce_q : now;
+    wire [15:0] k_dr  = e.u == 2'd2 ? 16'd32 : 16'd4;
+    wire [15:0] k_rs  = hitR ? cm_de : rwH;
+    wire [15:0] k_ov  = e.first ? 16'(OVH) : 16'd0;
+    // each candidate sum in its own instance (qbs_add3; the flow keeps hierarchy): DC cannot share one adder behind the
+    // compare-driven select
+    wire [15:0] k_ovdr = k_ov + k_dr;
+    wire [15:0] k_ced, k_tsd, k_lfd, k_lfa, k_lwd, k_rs3, k_rso;
+    // mutants QBS_MUT_DEP = 1: wide lane with the fused drain, 2: PPU RAW candidate without OVH, 3: ce candidate with
+    // the fused drain, 4: RAW candidate (array tile) without rdl
+    qbs_add3 u_ced (.a(k_ce),   .b(`QBS_MUT_DEP == 3 ? 16'd4 : k_dr), .c(16'd0), .s(k_ced));
+    qbs_add3 u_tsd (.a(t_sh),   .b(k_dr),  .c(16'd0),           .s(k_tsd));
+    qbs_add3 u_lfd (.a(lane_f), .b(16'd4), .c(16'(k_inc)),      .s(k_lfd));   // ln + dr, e.u != 2 (PPU tile)
+    qbs_add3 u_lfa (.a(lane_f), .b(16'd4), .c(16'd0),           .s(k_lfa));   // lane_u + dr, e.u != 2 (array tile)
+    qbs_add3 u_lwd (.a(lane_w), .b(`QBS_MUT_DEP == 1 ? 16'd4 : 16'd32), .c(16'd0), .s(k_lwd));
+    qbs_add3 u_rs3 (.a(k_rs),   .b(`QBS_MUT_DEP == 4 ? 16'd0 : 16'(e.rdl)), .c(k_dr), .s(k_rs3));
+    qbs_add3 u_rso (.a(k_rs),   .b(16'(e.rdl)), .c(`QBS_MUT_DEP == 2 ? k_dr : k_ovdr), .s(k_rso));
+    wire [15:0] k_rwd  = !e.rdv ? k_dr : k_rs3;
+    wire [15:0] k_rwod = !e.rdv ? k_ovdr : k_rso;
+    // rw <= ln (x - stamp - rdl >= 0 with x = lane_f + inc / lane_w), both stamps, both lanes
+    wire        k_gfc = $signed({3'b0, lane_f}) + $signed({18'b0, k_inc}) - $signed({3'b0, cm_de}) - $signed({14'b0, e.rdl}) >= 19'sd0;
+    wire        k_gfh = $signed({3'b0, lane_f}) + $signed({18'b0, k_inc}) - $signed({3'b0, rwH}) - $signed({14'b0, e.rdl}) >= 19'sd0;
+    wire        k_gwc = $signed({3'b0, lane_w}) - $signed({3'b0, cm_de}) - $signed({14'b0, e.rdl}) >= 19'sd0;
+    wire        k_gwh = $signed({3'b0, lane_w}) - $signed({3'b0, rwH}) - $signed({14'b0, e.rdl}) >= 19'sd0;
+    wire        k_gln = !e.rdv || (e.u == 2'd2 ? (hitR ? k_gwc : k_gwh) : (hitR ? k_gfc : k_gfh));
+    // token start: the ce terms (ce = ce_p ? ce_q : now) compared for both sources, ce_p selects after
+    wire        k_ce4q  = $signed({2'b0, ce_q}) <= $signed(NC4),   k_ce4n  = $signed({2'b0, now}) <= $signed(NC4);
+    wire        k_ce32q = $signed({2'b0, ce_q}) <= $signed(NC32),  k_ce32n = $signed({2'b0, now}) <= $signed(NC32);
+    wire        k_ce4 = ce_p ? k_ce4q : k_ce4n,  k_ce32 = ce_p ? k_ce32q : k_ce32n;
+`ifdef QB_SEQ_RAL
+    wire        k_rceq  = raL > 17'(ce_q),  k_rcen = raL > 17'(now);
+    wire        k_rce = ce_p ? k_rceq : k_rcen;
+`endif
+`endif
 `ifdef QB_SEQ_DSP
     // R8a round 2 (needs QB_SEQ_CMH): no adder in front of the end-phase compares: x >= rw (rw = rdv ? stamp + rdl :
     // 0) is the sign of x - stamp - rdl (one carry-save level + compare, both stamp candidates, hitR selects); the
@@ -391,7 +437,11 @@ module qb_seq_rt #(parameter int NT = 1024, parameter int OVH = 12, parameter in
                 g23 = gerw(lane_u);
                 im  = amax4g(ce >= t_sh, ce >= lane_u, g03, t_sh >= lane_u, g13, g23);
                 ds  = im == 2'd0 ? ce : im == 2'd1 ? t_sh : im == 2'd2 ? lane_u : rw0;
+`ifdef QB_SEQ_DEP
+                de  = im == 2'd0 ? k_ced : im == 2'd1 ? k_tsd : im == 2'd2 ? (e.u == 2'd2 ? k_lwd : k_lfa) : k_rwd;
+`else
                 de  = im == 2'd0 ? ce + dr : im == 2'd1 ? t_sh + dr : im == 2'd2 ? lane_u + dr : rwd;
+`endif
                 dsnow = im == 2'd0 ? ce == now : im == 2'd1 ? t_sh == now : im == 2'd2 ? lane_u == now :
                         (!e.rdv ? now == 16'd0 : rs == now - 16'(e.rdl));
                 t_sh_n = de;
@@ -406,9 +456,15 @@ module qb_seq_rt #(parameter int NT = 1024, parameter int OVH = 12, parameter in
             rs   = hitR ? cm_de : rwH;
             rwo  = !e.rdv ? ov : rs + 16'(e.rdl) + ov;                   // rw + OVH (first tile)
             rwod = !e.rdv ? ov + dr : rs + 16'(e.rdl) + ov + dr;
+`ifdef QB_SEQ_DEP
+            c    = !k_gln;                                               // rw > ln
+            ds   = c ? rwo : ln;
+            de   = c ? k_rwod : (e.u == 2'd2 ? k_lwd : k_lfd);
+`else
             c    = !gerw(ln);                                            // rw > ln
             ds   = c ? rwo : ln;
             de   = c ? rwod : ln + dr;
+`endif
             dsnow = c ? (!e.rdv ? ov == now : rs == now - 16'(e.rdl) - ov) : ln == now;
             if (e.u == 2'd2) lane_w_n = de; else begin lane_f_n = de; lbc2_n = 1'b0; end
             if (c ? rwo < now : ln < now) e_err = 1'b1;
@@ -475,10 +531,15 @@ module qb_seq_rt #(parameter int NT = 1024, parameter int OVH = 12, parameter in
 `ifdef QB_SEQ_TGO
         begin
             logic s4, s32;
+`ifdef QB_SEQ_DEP
+            s4  = k_ce4 && $signed({2'b0, t_sh}) <= $signed(NC4) && $signed({2'b0, lane_f}) <= $signed(NC4) && rwle(NC4);
+            s32 = k_ce32 && $signed({2'b0, t_sh}) <= $signed(NC32) && $signed({2'b0, lane_w}) <= $signed(NC32) && rwle(NC32);
+`else
             s4  = $signed({2'b0, ce}) <= $signed(NC4) && $signed({2'b0, t_sh}) <= $signed(NC4) &&
                   $signed({2'b0, lane_f}) <= $signed(NC4) && rwle(NC4);
             s32 = $signed({2'b0, ce}) <= $signed(NC32) && $signed({2'b0, t_sh}) <= $signed(NC32) &&
                   $signed({2'b0, lane_w}) <= $signed(NC32) && rwle(NC32);
+`endif
 `ifdef QBS_MUT_TGO
             sh1 = a.u == 2'd0 || (e.u == 2'd0 ? 18'(t_sh) <= NC : e.u == 2'd2 ? s4 : s32);   // mutant: drain lengths swapped
 `else
@@ -501,7 +562,11 @@ module qb_seq_rt #(parameter int NT = 1024, parameter int OVH = 12, parameter in
 `ifdef QB_SEQ_RAL
         // ra > x  <=>  rav && raL = stamp + ral > x (raL registered with the head)
         ra0 = rok && (!((!last_v || last_pi != a.pi) && a.rav && raL > 17'(t_arr)) || rokO);
+`ifdef QB_SEQ_DEP
+        ra1 = rok && (!(e.pi != a.pi && a.rav && k_rce && (e.u == 2'd0 || raL > 17'(t_sh))) || rokO);
+`else
         ra1 = rok && (!(e.pi != a.pi && a.rav && raL > 17'(ce) && (e.u == 2'd0 || raL > 17'(t_sh))) || rokO);
+`endif
 `else
         ra0 = rok && (!((!last_v || last_pi != a.pi) && a.rav &&
                         $signed({3'b0, raH}) + $signed({14'b0, a.ral}) - $signed({3'b0, t_arr}) > 19'sd0) || rokO);
@@ -831,4 +896,9 @@ module qb_seq_rt #(parameter int NT = 1024, parameter int OVH = 12, parameter in
     always @(posedge clk) if (rst_n && !go && ((e_pop && ec < 3'd2) || (s_fire && fc < 3'd2)))
         $error("qb_seq_rt: prefetch FIFO below 2 entries at a pop (now %0d ke %0d ec %0d fc %0d)", now, ke, ec, fc);
 `endif
+endmodule
+
+// R8d QB_SEQ_DEP: one candidate sum per instance (see qb_seq_rt k_*)
+module qbs_add3 (input logic [15:0] a, b, c, output logic [15:0] s);
+    assign s = a + b + c;
 endmodule

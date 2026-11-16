@@ -24,3 +24,5 @@ foreach p [qc_env QB_ETM_FP {act[1160] pf[526] act[265]}] {
     set fp [get_pins -quiet -of_objects $blks -filter "name==$p"]
     if {[sizeof_collection $fp]} { set_false_path -to $fp }
 }
+# R8d (opt-in, default off): extra DC hook file QB_DC_XHOOK (e.g. impl/r8d/dc_grp.tcl), sourced last.
+if {[qc_env QB_DC_XHOOK ""] ne ""} { source [qc_env QB_DC_XHOOK ""] }

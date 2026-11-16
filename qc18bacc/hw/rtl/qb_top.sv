@@ -65,6 +65,12 @@
 // R8a hook QB_TOP_FPR = 1 (default 0): the slice-flag port to qb_act2 (f_clr / f_we / f_nz / f_bank / f_idx, a 200-b
 // find-first) is registered (qb_act2 sees it one cycle later; the queue's own clear is unchanged), and the sticky err
 // takes its inputs through one register (err one cycle later).
+// R8d hooks (defaults 0, results/r8d.md): QB_TOP_WBK = 1 (needs WBQ + RSH): the tag-derived S write controls (lane
+// enables, addresses, per-lane data-source selects, mask classes, rotation amounts, request conflict) computed from
+// the early tags and registered (g_wbk), and the macro read / write conflict compares + host IMG check from registered
+// port copies (err one cycle later; err inputs registered as FPR).  QB_TOP_FFT = 1: log-depth find-first on the
+// slice-flag queue (ff128).  QB_COL_B2R = 1 (qb_core too, needs WBQ): b2 registered at the column-block pins, b2r a
+// wire.  All exact, same cycles.  Mutants QBT_MUT_WBK, QBT_MUT_WBKE, QBT_MUT_FFT = 1 / 2, QBT_MUT_B2R.
 // R6a hook (parameter HPW, default 0 = the wide host port above): HPW > 0 (qb_chip define QB_HPW, results/r6a.md) =
 // narrow host port: one macro word per write, h_data[HPW-1:0] = data, h_data[HPW +: 5] = lane (all other h_data bits
 // unused).  Weights (h_sel 0): lane 0..15 = weight lane l (144 b), through a registered daisy chain of 8 stages along
@@ -101,6 +107,15 @@
 `endif
 `ifndef QB_TOP_FPR
 `define QB_TOP_FPR 0
+`endif
+`ifndef QB_COL_B2R
+`define QB_COL_B2R 0
+`endif
+`ifndef QB_TOP_WBK
+`define QB_TOP_WBK 0
+`endif
+`ifndef QB_TOP_FFT
+`define QB_TOP_FFT 0
 `endif
 `ifndef QB_PRM_NFF
 `define QB_PRM_NFF 256
@@ -146,6 +161,9 @@ module qb_top #(parameter int DIST = 1, parameter int AP = 1, parameter bit R3B 
     localparam bit WBQ = `QB_TOP_WBQ != 0;                // R8a (see g_wbq)
     localparam bit WBQF = `QB_TOP_WBQ == 2;               // R8a: slice-flag hits from the registered outputs too
     localparam bit RSHA = `QB_TOP_RSH != 0 && !WBQ;       // R8a: shared HQ / S-read rotator (R7e (a)) only without WBQ
+    localparam bit WBK = `QB_TOP_WBK != 0;                // R8d: tag-derived S write controls registered (g_wbk)
+    initial if (WBK && !(WBQ && `QB_TOP_RSH != 0)) $fatal(1, "qb_top: QB_TOP_WBK needs QB_TOP_WBQ and QB_TOP_RSH");
+    initial if (`QB_COL_B2R != 0 && !WBQ) $fatal(1, "qb_top: QB_COL_B2R needs QB_TOP_WBQ");
     initial if (WBQ && !`QB_TOP_WBR) $fatal(1, "qb_top: QB_TOP_WBQ needs QB_TOP_WBR");
     localparam int NLF = 256, NLW = 32;
     initial if (D < 4) $fatal(1, "qb_top: AP + DIST must be >= 2");
@@ -833,7 +851,13 @@ module qb_top #(parameter int DIST = 1, parameter int AP = 1, parameter bit R3B 
     for (genvar k = 0; k < 2; k++) begin : g_b2d
         assign b2d[k] = (WBQ && b2fv && b2fs == k[0]) ? b2r : b2f_d[k];
     end
-    if (WBQ) begin : g_b2r
+    if (WBQ && `QB_COL_B2R != 0) begin : g_b2rc              // R8d QB_COL_B2R: b2 is already registered in the block
+`ifdef QBT_MUT_B2R
+        always_ff @(posedge clk) b2r <= b2;                   // mutant: registered twice
+`else
+        assign b2r = b2;
+`endif
+    end else if (WBQ) begin : g_b2r
         always_ff @(posedge clk) b2r <= b2;
     end else begin : g_nb2r
         assign b2r = '0;
@@ -1260,8 +1284,196 @@ module qb_top #(parameter int DIST = 1, parameter int AP = 1, parameter bit R3B 
             wr_a[l] = ew[l] ? aw[l] : (ef[l] ? af[l] : '0);
         end
     end
+    // R8d hook QB_TOP_WBK = 1 (needs WBQ and RSH): every tag-derived control of the S write requests (lane enables,
+    // addresses incl. the HQ / payload rotations, per-lane one-hot data-source selects, masks as per-lane classes, the
+    // rotation amounts and the request conflict flag) is computed from the early tags (fo / wo, one stage before fob /
+    // wob) and registered, so the macro-write cycle only has data AND-OR + the two data rotators behind registers (no
+    // kind / hm decode fan-out to 4 096 data bits, no address mux in front of the macro conflict compare -> err).
+    // Same macro-write cycle, same values (simulation compares them with the WBR requests every cycle unless
+    // QBT_NOWBKCHK).  Mutant QBT_MUT_WBK: HQ rotation without the k[0] term.
+    logic [127:0] wk_d [32], wk_m [32];  logic [7:0] wk_a [32];  logic wk_conf;
+    if (WBK) begin : g_wbk
+        logic [7:0]  ka [32];                               // early: lane address
+        logic [31:0] khq, khqd, kz, kr, kmall, kmlo, kmhi;  // early: per-lane selects / mask classes
+        logic [3:0]  kstr [32], kc2 [32];                   // early: stream / b6.c2 pixel q -> lane (G, col)
+        logic [7:0]  kmi [32], km16 [32];                   // early: Z (bit i0 of each byte) / c2 (16-b group i0) masks
+        logic [3:0]  kl0, kprs;  logic kzon, kconf;
+        always_comb begin
+            logic [31:0] ef, ew;  logic [7:0] af [32], aw [32];  logic [127:0] pqa, pza, pra;  logic [3:0] pqs, pzs;
+            logic hd_on, z_on, cf, cw;  logic [3:0] fstr [32], wc2 [32];  logic [7:0] wmi [32], wm16 [32];
+            logic [31:0] fhq, fhqd, fall, flo, fhi, wz, wr, wall;
+            ef = '0; ew = '0; cf = 1'b0; cw = 1'b0; hd_on = 1'b0; z_on = 1'b0; pqa = '0; pza = '0; pqs = '0; pzs = '0;
+            fhq = '0; fhqd = '0; fall = '0; flo = '0; fhi = '0; wz = '0; wr = '0; wall = '0; kl0 = '0;
+            for (int l = 0; l < 32; l++) begin
+                af[l] = '0; aw[l] = '0; fstr[l] = '0; wc2[l] = '0; wmi[l] = '0; wm16[l] = '0;
+            end
+            // ---- fused (fo = fob one cycle early)
+            if (fvg) begin
+                if (fo.hm) begin
+                    logic [3:0] y, l0, bq;  logic [1:0] oy;  logic [127:0] xa, xc;
+                    y  = 4'(2 * fo.tp + 7'(fo.k[1]));
+`ifdef QBT_MUT_WBK
+                    l0 = 4'(2 * y);                                          // mutant: HQ rotation without k[0]
+`else
+                    l0 = 4'(2 * y + 4'(fo.k[0]));
+`endif
+                    oy = 2'(y >> 1);
+`ifdef QBT_MUT_WBQ
+                    bq = {1'b0, 1'b0, oy};
+`else
+                    bq = {fo.ct[0], 1'b0, oy};
+`endif
+                    for (int pl = 0; pl < 8; pl++)
+                        for (int j = 0; j < 2; j++) begin
+                            int ix, iz;
+                            ix = 2 * pl + j;  iz = 4 * j + int'(rotd(3'(pl)));
+                            xa[8 * ix +: 8] = 8'd128 + 8'(8 * pl) + 8'(2 * fo.ct + 4'(j));
+                            xc[8 * iz +: 8] = 8'd128 + 8'(2 * pl) + 8'(fo.ct >> 1);
+                        end
+                    xa = rup8(xa, l0);  kl0 = l0;  hd_on = 1'b1;  pqa = xc;  pqs = bq;
+                    for (int l = 0; l < 16; l++) begin
+                        ef[l] = 1'b1;  af[l] = xa[8 * l +: 8];  fhq[l] = 1'b1;  fall[l] = 1'b1;
+                        ef[16 + l] = !y[0];  fhqd[16 + l] = 1'b1;  fhi[16 + l] = fo.k[0];  flo[16 + l] = !fo.k[0];
+                    end
+                end else begin
+                    for (int q = 0; q < 4; q++) for (int r = q + 1; r < 4; r++) if (fsg[q] == fsg[r]) cf = 1'b1;
+                    for (int G = 0; G < 4; G++)
+                        for (int col = 0; col < 8; col++) begin
+                            logic [7:0] aa;  logic en;
+                            aa = '0; en = 1'b0;
+                            for (int q = 0; q < 4; q++)
+                                if (fsg[q] == 2'(G)) begin en = 1'b1; aa = aa | fsa[q]; fstr[8 * G + col][q] = 1'b1; end
+                            ef[8 * G + col] = en;  af[8 * G + col] = aa;  fall[8 * G + col] = 1'b1;
+                        end
+                end
+            end
+            // ---- wide (wo = wob one cycle early)
+            if (wvg) begin
+                logic [2:0] i0;  logic [1:0] y;  logic [7:0] oh;
+                i0 = 3'd7 - 3'(wo.k);
+                y  = 2'(wo.k >> 3);
+                oh = 8'd1 << i0;
+                if (wo.kind == 3'd5) begin
+                    logic [127:0] xa;
+                    for (int pl = 0; pl < 8; pl++)
+                        for (int jj = 0; jj < 2; jj++) xa[8 * (4 * jj + int'(rotd(3'(pl)))) +: 8] = 8'd144 + 8'(4 * pl) + 8'(wo.ct >> 1);
+                    z_on = 1'b1;  pza = xa;  pzs = {wo.ct[0], 1'b0, y};
+                    for (int l = 0; l < 16; l++) begin ew[16 + l] = 1'b1;  wz[16 + l] = 1'b1;  wmi[16 + l] = oh; end
+                end else if (wo.kind == 3'd6) begin
+                    logic [6:0] idx;  logic [7:0] a;
+                    idx = 7'(wo.ct) * 16 + 7'(wo.k[4:1]);
+                    a   = idx < 7'd64 ? 8'd64 + 8'(idx) : 8'd128 + 8'(idx);
+                    for (int l = 0; l < 16; l++) begin
+                        ew[l] = (l >> 3) == int'(wo.k[0]);  aw[l] = a;  wr[l] = 1'b1;  wall[l] = 1'b1;
+                    end
+                end else if (wo.kind == 3'd7) begin
+                    logic [7:0] a [4];  logic [1:0] pg [4];
+                    for (int q = 0; q < 4; q++) begin
+                        a[q]  = 8'(2 * (q + 4 * y)) + 8'(wo.ct >> 2);
+                        pg[q] = 2'(wo.ct) ^ h2(a[q]);
+                    end
+                    for (int q = 0; q < 4; q++) for (int r = q + 1; r < 4; r++) if (pg[q] == pg[r]) cw = 1'b1;
+                    for (int G = 0; G < 4; G++)
+                        for (int col = 0; col < 8; col++) begin
+                            logic [7:0] aa;  logic en;
+                            aa = '0; en = 1'b0;
+                            for (int q = 0; q < 4; q++)
+                                if (pg[q] == 2'(G)) begin en = 1'b1; aa = aa | a[q]; wc2[8 * G + col][q] = 1'b1; end
+                            ew[8 * G + col] = en;  aw[8 * G + col] = aa;  wm16[8 * G + col] = oh;
+                        end
+                end
+            end
+            // payload rotator (HQD / Z, Z priority) addresses and shift
+            pra = pqa;  kprs = pqs;
+            if (z_on) begin pra = pza;  kprs = pzs; end
+            pra = rup8(pra, kprs);  kzon = z_on;
+            for (int l = 0; l < 16; l++) begin
+                if (hd_on) af[16 + l] = pra[8 * l +: 8];
+                if (z_on)  aw[16 + l] = pra[8 * l +: 8];
+            end
+            kconf = cf | cw | ((ef & ew) != '0);
+            // per lane: wide wins, else fused, else nothing (= the WBR request mux)
+            for (int l = 0; l < 32; l++) begin
+                logic w, f;
+                w = ew[l];  f = ef[l] && !ew[l];
+                ka[l]   = w ? aw[l] : f ? af[l] : '0;
+                khq[l]  = f && fhq[l];   khqd[l] = f && fhqd[l];  kz[l] = w && wz[l];  kr[l] = w && wr[l];
+                kstr[l] = f ? fstr[l] : '0;  kc2[l] = w ? wc2[l] : '0;
+                kmall[l] = (f && fall[l]) || (w && wall[l]);  kmlo[l] = f && flo[l];  kmhi[l] = f && fhi[l];
+                kmi[l]  = w ? wmi[l] : '0;  km16[l] = w ? wm16[l] : '0;
+            end
+        end
+        // registers (macro-write cycle = fob / wob)
+        logic [7:0]  qa [32];  logic [31:0] qhq, qhqd, qz, qr, qmall, qmlo, qmhi;  logic [3:0] qstr [32], qc2 [32];
+        logic [7:0]  qmi [32], qm16 [32];  logic [3:0] ql0, qprs;  logic qzon, qconf;
+        always_ff @(posedge clk) begin
+            qa <= ka;  qhq <= khq;  qhqd <= khqd;  qz <= kz;  qr <= kr;  qmall <= kmall;  qmlo <= kmlo;  qmhi <= kmhi;
+            qstr <= kstr;  qc2 <= kc2;  qmi <= kmi;  qm16 <= km16;  ql0 <= kl0;  qprs <= kprs;  qzon <= kzon;
+        end
+        always_ff @(posedge clk or negedge rst_n) if (!rst_n) qconf <= 1'b0; else qconf <= kconf;
+        assign wk_conf = qconf;
+        // macro-write cycle: data from fyw / wyw (registered core outputs) through the two rotators + AND-OR
+        always_comb begin
+            logic [2047:0] xw;  logic [1023:0] pr;
+            for (int pl = 0; pl < 8; pl++) for (int j = 0; j < 2; j++) for (int q = 0; q < 4; q++) for (int c5 = 0; c5 < 32; c5++)
+                xw[128 * (2 * pl + j) + 32 * q + c5] = fyw[17 * (64 * q + 32 * j + c5) + pl];
+            xw = rup16(xw, ql0);
+            pr = '0;
+            for (int pl = 0; pl < 8; pl++)
+                for (int j = 0; j < 2; j++) begin
+                    int iz;
+                    iz = 4 * j + int'(rotd(3'(pl)));
+                    for (int qq = 0; qq < 2; qq++) for (int c5 = 0; c5 < 32; c5++)
+                        pr[64 * iz + 32 * qq + c5] = fyw[17 * (64 * (2 * qq) + 32 * j + c5) + pl];
+                    if (qzon) for (int q = 0; q < 4; q++) for (int cc = 0; cc < 4; cc++)
+                        pr[64 * iz + 4 * q + cc] = wyw[19 * (8 * q + 4 * j + cc) + pl];
+                end
+            pr = rup16p(pr, qprs);
+            for (int l = 0; l < 32; l++) begin
+                logic [127:0] d, m, dz, dr;
+                int col;
+                col = l % 8;
+                d = '0;  dz = '0;  dr = '0;
+                if (l < 16) begin
+                    for (int cc = 0; cc < 4; cc++) begin
+                        logic [18:0] r;
+                        r = wyw[19 * (8 * ((l & 7) >> 1) + 4 * (l & 1) + cc) +: 19];
+                        dr[32 * cc +: 16] = r[15:0];  dr[32 * cc + 16 +: 16] = 16'($signed(r[18:16]));
+                    end
+                    d = d | ({128{qhq[l]}} & xw[128 * l +: 128]) | ({128{qr[l]}} & dr);
+                end else begin
+                    for (int q = 0; q < 4; q++) for (int cc = 0; cc < 4; cc++) for (int i = 0; i < 8; i++)
+                        dz[32 * q + 8 * cc + i] = pr[64 * (l - 16) + 4 * q + cc];
+                    d = d | ({128{qhqd[l]}} & {pr[64 * (l - 16) +: 64], pr[64 * (l - 16) +: 64]}) | ({128{qz[l]}} & dz);
+                end
+                for (int q = 0; q < 4; q++) begin
+                    logic [127:0] ws;
+                    for (int i = 0; i < 8; i++) ws[16 * i +: 16] = fyw[17 * (64 * q + 8 * col + i) +: 16];
+                    d = d | ({128{qstr[l][q]}} & ws) | ({128{qc2[l][q]}} & {8{wyw[19 * (8 * q + col) +: 16]}});
+                end
+                for (int b = 0; b < 128; b++)
+                    m[b] = qmall[l] | (qmlo[l] && b < 64) | (qmhi[l] && b >= 64) | qmi[l][b % 8] | qm16[l][b / 16];
+                wk_d[l] = d;  wk_m[l] = m;  wk_a[l] = qa[l];
+            end
+        end
+`ifndef SYNTHESIS
+`ifndef QBT_NOWBKCHK
+        always @(posedge clk) if (rst_n) begin
+            for (int l = 0; l < 32; l++)
+                if (wr_en[l] && (wk_d[l] !== wr_d[l] || wk_m[l] !== wr_m[l] || wk_a[l] !== wr_a[l]))
+                    $error("qb_top WBK: lane %0d write request differs from WBR (now %0d)", l, now);
+            if (wk_conf !== wr_conf) $error("qb_top WBK: conflict flag differs (now %0d)", now);
+        end
+`endif
+`endif
+    end else begin : g_nwbk
+        for (genvar l = 0; l < 32; l++) begin : g_l
+            assign wk_d[l] = '0;  assign wk_m[l] = '0;  assign wk_a[l] = '0;
+        end
+        assign wk_conf = 1'b0;
+    end
     wire [31:0]  u_en = `QB_TOP_WBR ? wr_en : sw_en;
-    wire         u_conf = `QB_TOP_WBR ? wr_conf : sw_conf;
+    wire         u_conf = WBK ? wk_conf : `QB_TOP_WBR ? wr_conf : sw_conf;
     // R8a WBQ: slice-flag hits at the request cycle (as wr_hq / wr_hqd / wr_z with WBQ 0), from f_y / w_y and fo / wo;
     // WBQ 2: from the registered outputs and tags (wr_hq / wr_hqd / wr_z of the retimed requests): one cycle later
     logic [63:0]  wq_hq;  logic [7:0] wq_hqd;  logic [127:0] wq_z;
@@ -1318,7 +1530,9 @@ module qb_top #(parameter int DIST = 1, parameter int AP = 1, parameter bit R3B 
     if (WBQ) begin : g_swq                                  // R8a WBQ: requests already in the macro-write cycle
         always_comb begin
             s_we = wr_en;
-            for (int l = 0; l < 32; l++) begin s_wa[l] = wr_a[l]; s_wd[l] = wr_d[l]; s_wm[l] = wr_m[l]; end
+            for (int l = 0; l < 32; l++)
+                if (WBK) begin s_wa[l] = wk_a[l]; s_wd[l] = wk_d[l]; s_wm[l] = wk_m[l]; end   // R8d
+                else begin s_wa[l] = wr_a[l]; s_wd[l] = wr_d[l]; s_wm[l] = wr_m[l]; end
         end
     end else begin : g_swr
         always_ff @(posedge clk) begin
@@ -1351,19 +1565,44 @@ module qb_top #(parameter int DIST = 1, parameter int AP = 1, parameter bit R3B 
         assign fa_clr = f_clr;  assign fa_we = f_we;  assign fa_nz = f_nz;  assign fa_bank = f_bank;  assign fa_idx = f_idx;
     end
     logic [63:0] fp_hq, fs_hq;  logic [7:0] fp_hqd, fs_hqd;  logic [127:0] fp_z, fs_z;
+    // R8d QB_TOP_FFT: lowest set index of 128 bits as a balanced tree of (any, index) pairs (7 levels of 2:1 select;
+    // the loop form synthesised to a ~40-gate ripple chain fp_z -> f_idx -> qb_act2 f_hq).  Mutants QBT_MUT_FFT = 1
+    // (top level prefers the upper half), 2 (level-0 index bit dropped).
+    function automatic logic [6:0] ff128(input logic [127:0] x);
+        logic [127:0] v;  logic [6:0] ix [128];
+        v = x;
+        for (int i = 0; i < 128; i++) ix[i] = '0;
+        for (int lv = 0; lv < 7; lv++)
+            for (int i = 0; i < (64 >> lv); i++) begin
+                logic vl, vh;  logic [6:0] il, ih;
+                vl = v[2 * i];  vh = v[2 * i + 1];  il = ix[2 * i];  ih = ix[2 * i + 1];
+                ih[lv] = 1'b1;
+                v[i] = vl | vh;
+`ifndef QBT_MUT_FFT
+                ix[i] = vl ? il : ih;
+`else
+                if (`QBT_MUT_FFT == 1) ix[i] = (lv == 6 ? !vh : vl) ? il : ih;   // mutant 1: top level prefers the upper half
+                else ix[i] = vl ? il : {ih[6:1], ih[0] && lv != 0};              // mutant 2: level-0 index bit dropped
+`endif
+            end
+        return ix[0];
+    endfunction
     logic [1:0] quiet [3];
     always_comb begin
         f_clr = 1'b0; f_we = 1'b0; f_nz = 1'b0; f_bank = '0; f_idx = '0;
         if (clr != 3'd0) begin f_clr = 1'b1; f_bank = 2'(clr - 3'd1); end
         else if (fp_hq != '0) begin
             f_we = 1'b1; f_nz = 1'b1; f_bank = 2'd0;
-            for (int i = 63; i >= 0; i--) if (fp_hq[i]) f_idx = 7'(i);
+            if (`QB_TOP_FFT) f_idx = ff128({64'd0, fp_hq});                  // R8d FFT
+            else for (int i = 63; i >= 0; i--) if (fp_hq[i]) f_idx = 7'(i);
         end else if (fp_hqd != '0) begin
             f_we = 1'b1; f_nz = 1'b1; f_bank = 2'd1;
-            for (int i = 7; i >= 0; i--) if (fp_hqd[i]) f_idx = 7'(i);
+            if (`QB_TOP_FFT) f_idx = ff128({120'd0, fp_hqd});                  // R8d FFT
+            else for (int i = 7; i >= 0; i--) if (fp_hqd[i]) f_idx = 7'(i);
         end else if (fp_z != '0) begin
             f_we = 1'b1; f_nz = 1'b1; f_bank = 2'd2;
-            for (int i = 127; i >= 0; i--) if (fp_z[i]) f_idx = 7'(i);
+            if (`QB_TOP_FFT) f_idx = ff128(fp_z);                  // R8d FFT
+            else for (int i = 127; i >= 0; i--) if (fp_z[i]) f_idx = 7'(i);
         end
     end
     always_ff @(posedge clk or negedge rst_n)
@@ -1464,10 +1703,43 @@ module qb_top #(parameter int DIST = 1, parameter int AP = 1, parameter bit R3B 
     end
 
     // ================================================================ checks (sticky error)
-    wire err_i = (img_wr && m_ren && m_src == 2'd2) | seq_err | prm_err | a_err | s_conf | rd_conf | f_rconf | (|s_rwc) | (|b_rwc) | u_conf | bw_conf | b2_ovf | f_ovl | w_ovl | rsh_err |
+    // R8d WBK: the macro read / write conflict compares (S, B1 / B2: ren && we && ra == wa) and the host-IMG-write vs
+    // stem-read check take registered copies of the macro port values (err one cycle later; the read enables come
+    // from the act supply through the pass-table lookup m_src, the write addresses from the write-back requests).
+    // Mutant QBT_MUT_WBKE: the S compare without the write enable (fires on s0 / s1).
+    logic [31:0] s_rwc_e;  logic [7:0] b_rwc_e;  logic img_e;
+    if (WBK) begin : g_errk
+        logic [31:0] q_sren, q_swe;  logic [7:0] q_sra [32], q_swa [32];  logic [7:0] q_bren, q_bwe;  logic [6:0] q_bra, q_bwa [8];
+        logic q_mren, q_imgwr;
+        always_ff @(posedge clk or negedge rst_n)
+            if (!rst_n) begin q_sren <= '0; q_swe <= '0; q_bren <= '0; q_bwe <= '0; q_mren <= 1'b0; q_imgwr <= 1'b0; end
+            else begin
+                q_sren <= s_mren;  q_swe <= s_we;  q_mren <= m_ren;  q_imgwr <= img_wr;
+                for (int mp = 0; mp < 2; mp++) for (int m = 0; m < 4; m++) begin
+                    q_bren[4 * mp + m] <= m_ren && m_src == 2'(mp);  q_bwe[4 * mp + m] <= b_we[mp][m];
+                end
+            end
+        always_ff @(posedge clk) begin
+            q_sra <= s_mra;  q_swa <= s_wa;  q_bra <= m_ra[6:0];
+            for (int mp = 0; mp < 2; mp++) for (int m = 0; m < 4; m++) q_bwa[4 * mp + m] <= b_wa[mp][m];
+        end
+        always_comb begin
+            for (int l = 0; l < 32; l++)
+`ifdef QBT_MUT_WBKE
+                s_rwc_e[l] = q_sren[l] && q_sra[l] == q_swa[l];
+`else
+                s_rwc_e[l] = q_sren[l] && q_swe[l] && q_sra[l] == q_swa[l];
+`endif
+            for (int k = 0; k < 8; k++) b_rwc_e[k] = q_bren[k] && q_bwe[k] && q_bra == q_bwa[k];
+            img_e = q_imgwr && q_mren && m_src_q == 2'd2;
+        end
+    end else begin : g_nerrk
+        assign s_rwc_e = s_rwc;  assign b_rwc_e = b_rwc;  assign img_e = img_wr && m_ren && m_src == 2'd2;
+    end
+    wire err_i = img_e | seq_err | prm_err | a_err | s_conf | rd_conf | f_rconf | (|s_rwc_e) | (|b_rwc_e) | u_conf | bw_conf | b2_ovf | f_ovl | w_ovl | rsh_err |
                  tchk;
     logic err_q;                                           // R8a FPR: err inputs through one register
-    if (`QB_TOP_FPR) begin : g_errq
+    if (`QB_TOP_FPR || WBK) begin : g_errq                // R8d WBK: also
         always_ff @(posedge clk or negedge rst_n) if (!rst_n) err_q <= 1'b0; else err_q <= err_i;
     end else begin : g_nerrq
         assign err_q = err_i;

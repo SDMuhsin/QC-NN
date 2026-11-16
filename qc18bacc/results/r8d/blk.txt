@@ -1,0 +1,34 @@
+# R8d column-block outputs b2 / f_y: measurement on the routed R5d block (run B, tau3 pnr/r5d_B; tau6 only has the
+# T / C variants), PrimeTime on the existing netlist + SPEF (short read-only sessions, scratch /tmp/claude-0/r8d_blk on
+# tau3; numbers equal the archived pt_blk_* reports).  ETM arrival = block clock insertion + clk->Q + path to the pin.
+| output (ports) | tt worst / median ns | ss worst / median ns | after the last register |
+|---|---|---|---|
+| b2 (128 / column) | 1.707 / 1.48 | 2.52 / 2.12 | nothing: qbc_pe_cmp b2 flop (qb_core.sv `b2[i] <= (acc >= T') ^ inv`) wired to the pin |
+| f_y (544 / column) | 1.395 / 1.065 | 2.20 / 1.62 | nothing: qb_lane_f g_fin2 u_rout (qbf_reg) output wired to the pin |
+| w_y (reference) | 1.03-1.05 | - | bare flop |
+Breakdown (tt):
+* clock insertion 0.87-0.93 ns (ss 1.30-1.42): clk pin at the NE corner -> 0.28 ns route to the mid-block root, 7-level
+  H-tree 0.46 ns, ICG + gated buffers 0.11 ns.  This is ~0.9 ns of every output arrival.
+* b2[104]: PE row 13 comparator flop (y ~2.8-3.0 mm) -> pins on the south edge (y = 0): clk->Q 0.15 + 6 repeaters
+  0.27-0.31 + wire 0.16-0.26 (last unbuffered ~1.04 mm segment, 0.25 pF, 0.34 ns slew) = 0.77 ns of data: distance.
+* f_y[508]: weak u_rout flop driving 0.11 pF (0.68 ns slew): clk->Q 0.40 + 2 inverters 0.09 + wire 0.04 = 0.53 ns worst
+  (median ~0.19): sizing on a few bits.
+Why the top sees them late: DC applies clock latency -0.90 ns on the column clk pins (impl/r5b/dc_hook.tcl, the R5a IO
+budget = a top tree balanced with the block's sinks); the top pre-route PT (impl/r4/constraints.sdc, ideal clocks) does
+not, and the top CTS so far treats the column clk pins as plain sinks (OpenROAD insertion-delay CTS failed in R5b), so
+in silicon too the block flops launch ~0.9 ns after the top flops.  pre-route PT r8d_c1: b2 -> b2r -0.595 (453 MHz),
+block f_y -> head slice fyi (535 MHz in r8a_rp).
+Proposals (cycle impact measured on the chip bench, s0 + s1, 10 images):
+* A (no RTL, no re-harden): balance the column clk pins in the top CTS (insertion-delay-aware CTS, or the 8 column pins
+  on an early branch of the top tree, ~0.9 ns ahead of the top sinks) and give top PT the same -0.90 latency as DC.
+  Effective arrivals b2 0.78, f_y <= 0.53 (median 0.19) tt.  0 flops, 0 cycles.  The only option that fixes f_y.
+* B (RTL, opt-in QB_COL_B2R=1, implemented + verified): b2 leaves qb_core through one more register at the pins (128 /
+  column = 1 024 flops), qb_top's b2r (1 024 flops) becomes a wire: net 0 flops.  0 cycles (bench: logs line for line
+  equal to the reference, logits identical; needs QB_TOP_WBQ >= 1).  b2 arrival 1.72 -> ~1.05-1.10 tt (= insertion +
+  clk->Q, the floor without A); new in-block path PE row 15 -> pin 0.77 / 1.1 ns tt / ss.  Top side: b2 then feeds the
+  b2 FIFO write and the bypassed map-writer read (b2d -> bw_d -> B write register) directly (see pt_rp.txt xfrom).
+* C (P&R only): upsize / buffer the u_rout outputs (max transition on the f_y nets): f_y worst 1.40 -> ~1.05 tt.
+Re-harden cost (R5d run B records): DC topo ~12 min, 16 tile templates ~11 min, OpenROAD P&R 2 h 13 min wall (~11.5
+cores, 91 k CPU-s, 15 GB), SPEF + PT + ETM x3 + gate-level sim + R5b views: ~3 h wall per block (one block type, 8
+instances), then the top DC again (~45 min) and the views copied to tau4 / tau6.  Block 390 x 3110 um (1.213 mm2), util
+0.742, 25 905 regs; +128 flops (B) does not change floorplan or pins.  The R5d block still has 8 178 DRC markers.

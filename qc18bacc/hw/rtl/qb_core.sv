@@ -481,6 +481,9 @@ module qbc_pbank_w #(parameter int NCOL = 8) (
 endmodule
 
 // ================================================================================================ core
+`ifndef QB_COL_B2R
+`define QB_COL_B2R 0
+`endif
 module qb_core #(
     parameter int ROWS = 16,                 // multiple of 8 (one broadcast register per 8-row group), >= 4
     parameter int COLS = 8,
@@ -577,6 +580,7 @@ module qb_core #(
     // ---------------------------------------------------------------- PE array
     logic [8*AW-1:0] shd  [ROWS][COLS];
     logic [AW-1:0]   sho  [ROWS][COLS];
+    logic [ROWS*COLS*8-1:0] b2c;            // PE comparator outputs (R8d: b2 = b2c or registered)
     for (genvar r = 0; r < ROWS; r++) begin : g_r
         for (genvar c = 0; c < COLS; c++) begin : g_c
             logic [8*AW-1:0] up;
@@ -590,8 +594,16 @@ module qb_core #(
             end
             qbc_pe #(KB, AW, (CREG != 0) ? 1 : 0, PPOP) u_pe (.clk, .rst_n, .a(act[KB*8*r +: KB*8]), .c(cbr[r/BRG][c]), .nnw(nbr[r/BRG][c]),
                                    .ctl(kbr[r/BRG][c]), .t2(tbr[r/BRG][c]), .fsh(fsh_g[r/BRG]), .wsh(wsh_g[r/BRG]), .up,
-                                   .sh_in(shi), .shd(shd[r][c]), .sh_out(sho[r][c]), .b2(b2[COLS*8*r + 8*c +: 8]));
+                                   .sh_in(shi), .shd(shd[r][c]), .sh_out(sho[r][c]), .b2(b2c[COLS*8*r + 8*c +: 8]));
         end
+    end
+    // R8d QB_COL_B2R = 1 (default 0; qb_top needs QB_TOP_WBQ, results/r8d.md): b2 leaves the core through one more
+    // register (in the column block, at the b2 pins: replaces qb_top's b2r), i.e. b2 one cycle after b2_vld (b2_vld
+    // unchanged).  The PE comparator registers sit up to 3 mm from the pins; this one sits at the pins.
+    if (`QB_COL_B2R != 0) begin : g_b2r
+        always_ff @(posedge clk) b2 <= b2c;
+    end else begin : g_nb2r
+        assign b2 = b2c;
     end
     // b2 valid: cmp at S2 (ctl n-1 -> BR n -> S0 n+1 -> S1 n+2 -> b2 at n+3; CREG: port reg n -> BR n+1 -> S1 n+2)
     localparam int ND = (CREG != 0) ? 2 : 3;

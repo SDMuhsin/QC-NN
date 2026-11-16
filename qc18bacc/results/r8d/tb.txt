@@ -1,0 +1,63 @@
+# R8d bench (Verilator 5.050, QBT_TECH=2; work /tmp/root/qc18bacc/r8d, vectors v/ = R7d s0 / s1 copies; hw/tb/run_tb_chip.sh as results/r8a/tb.txt)
+# base = +define+QB_HEAD_FW=128+QB_HPW=144+QB_TOP_RSH=2+QB_HEAD_PCOL=1
+# ref = base +QB_HEAD_IREG=2+QB_TOP_WBQ=2+QB_ACT_CTXR+QB_ACT_LDR+QB_ACT_CNT+QB_ACT_SRA+QB_SEQ_LPS+QB_SEQ_CMH+QB_SEQ_TKS+QB_PRM_BAR+QB_SEQ_DSP+QB_SEQ_TGO+QB_PRM_NUR+QB_SEQ_NXW+QB_SEQ_RAL+QB_ACT_S1M=1   (R8a set + QB_ACT_S1M=1)
+# new = ref +QB_TOP_FPR=1+QB_TOP_WBK=1+QB_TOP_FFT=1+QB_SEQ_DEP   (= netlist r8d_rp);  b2r = new +QB_COL_B2R=1 (column-block b2 output register, proposal B)
+# plain = base only (defaults)
+## new s0
+QB_CHIP img 0 s0/img60 go 0 end +3780 interval 3780 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7032 (after end +3252) PASS
+QB_CHIP img 1 s0/img61 go 3780 end +3748 interval 3748 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7000 (after end +3252) PASS
+QB_CHIP img 2 s0/img0 go 7528 end +3748 interval 3748 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7000 (after end +3252) PASS
+QB_CHIP img 3 s0/img1 go 11276 end +3788 interval 3788 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7040 (after end +3252) PASS
+QB_CHIP img 4 s0/img2 go 15064 end +3812 interval - logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7064 (after end +3252) PASS
+QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 0 head_err 0 PASS
+## new s1
+QB_CHIP img 0 s1/img13 go 0 end +3836 interval 3836 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7088 (after end +3252) PASS
+QB_CHIP img 1 s1/img55 go 3836 end +3764 interval 3764 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7016 (after end +3252) PASS
+QB_CHIP img 2 s1/img7 go 7600 end +3732 interval 3732 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +6984 (after end +3252) PASS
+QB_CHIP img 3 s1/img42 go 11332 end +3796 interval 3796 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7048 (after end +3252) PASS
+QB_CHIP img 4 s1/img91 go 15128 end +3804 interval - logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7056 (after end +3252) PASS
+QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 0 head_err 0 PASS
+## b2r s0
+QB_CHIP img 0 s0/img60 go 0 end +3780 interval 3780 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7032 (after end +3252) PASS
+QB_CHIP img 1 s0/img61 go 3780 end +3748 interval 3748 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7000 (after end +3252) PASS
+QB_CHIP img 2 s0/img0 go 7528 end +3748 interval 3748 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7000 (after end +3252) PASS
+QB_CHIP img 3 s0/img1 go 11276 end +3788 interval 3788 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7040 (after end +3252) PASS
+QB_CHIP img 4 s0/img2 go 15064 end +3812 interval - logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7064 (after end +3252) PASS
+QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 0 head_err 0 PASS
+## b2r s1
+QB_CHIP img 0 s1/img13 go 0 end +3836 interval 3836 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7088 (after end +3252) PASS
+QB_CHIP img 1 s1/img55 go 3836 end +3764 interval 3764 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7016 (after end +3252) PASS
+QB_CHIP img 2 s1/img7 go 7600 end +3732 interval 3732 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +6984 (after end +3252) PASS
+QB_CHIP img 3 s1/img42 go 11332 end +3796 interval 3796 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7048 (after end +3252) PASS
+QB_CHIP img 4 s1/img91 go 15128 end +3804 interval - logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7056 (after end +3252) PASS
+QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 0 head_err 0 PASS
+## full-log diffs (walltime / cpu lines and tags stripped)
+s0 new vs ref: 0 lines; b2r vs ref: 0 lines; ref vs R8a fin: 0 lines; plain vs R8a ref: 0 lines
+s1 new vs ref: 0 lines; b2r vs ref: 0 lines; ref vs R8a fin: 0 lines; plain vs R8a ref: 0 lines
+logits files new == b2r == ref (20 files byte-identical); torch.equal (export_top3.py --check, chk_new/): s0 5/5, s1 5/5
+## mutants on the new set (QB_CHIP img lines FAIL of 5; sim-check $error stops; TB line)
+mwbk s0: 5 img FAIL, $error 0, TB: QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 0 head_err 0 FAIL
+mwbk s1: 5 img FAIL, $error 0, TB: QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 0 head_err 0 FAIL
+mwbkc s0: 0 img FAIL, $error 1, TB: 
+mwbkc s1: 0 img FAIL, $error 1, TB: 
+mwbke s0: 0 img FAIL, $error 0, TB: QB_CHIP_TB images 5 err 1 img_read_err 0 timeout 0 head_err 0 FAIL
+mwbke s1: 0 img FAIL, $error 0, TB: QB_CHIP_TB images 5 err 1 img_read_err 0 timeout 0 head_err 0 FAIL
+mfft s0: 0 img FAIL, $error 0, TB: QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 0 head_err 0 PASS
+mfft s1: 0 img FAIL, $error 0, TB: QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 0 head_err 0 PASS
+mfft2 s0: 5 img FAIL, $error 0, TB: QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 1 head_err 0 FAIL
+mfft2 s1: 5 img FAIL, $error 0, TB: QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 1 head_err 0 FAIL
+mdep1 s0: 0 img FAIL, $error 0, TB: QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 0 head_err 0 PASS
+mdep1 s1: 0 img FAIL, $error 0, TB: QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 0 head_err 0 PASS
+mdep2 s0: 0 img FAIL, $error 0, TB: QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 0 head_err 0 PASS
+mdep2 s1: 0 img FAIL, $error 0, TB: QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 0 head_err 0 PASS
+mdep3 s0: 5 img FAIL, $error 0, TB: QB_CHIP_TB images 5 err 1 img_read_err 0 timeout 0 head_err 0 FAIL
+mdep3 s1: 5 img FAIL, $error 0, TB: QB_CHIP_TB images 5 err 1 img_read_err 0 timeout 0 head_err 0 FAIL
+mdep4 s0: 5 img FAIL, $error 0, TB: QB_CHIP_TB images 5 err 1 img_read_err 0 timeout 0 head_err 0 FAIL
+mdep4 s1: 5 img FAIL, $error 0, TB: QB_CHIP_TB images 5 err 1 img_read_err 0 timeout 0 head_err 0 FAIL
+mb2r s0: 5 img FAIL, $error 0, TB: QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 0 head_err 0 FAIL
+mb2r s1: 5 img FAIL, $error 0, TB: QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 0 head_err 0 FAIL
+mwbk = QBT_MUT_WBK + QBT_NOWBKCHK (HQ rotation without k[0]); mwbkc = QBT_MUT_WBK with the WBK-vs-WBR sim check (stops at the first differing request; built before FPR / err-copy / adder edits)
+mwbke = QBT_MUT_WBKE (registered S conflict compare without the write enable: err fires)
+mfft = QBT_MUT_FFT=1 (upper half first: flag service order only, not observable on s0/s1; built before FPR); mfft2 = QBT_MUT_FFT=2 (index bit 0 dropped)
+mdep1..4 = QBS_MUT_DEP=1..4: 1 (wide lane-bound drain) and 2 (PPU first-tile OVH under RAW) not exercised by s0/s1 (built before FPR); 3, 4 caught (err via the R3b lockstep)
+mb2r = QB_COL_B2R=1 + QBT_MUT_B2R (b2 registered twice)

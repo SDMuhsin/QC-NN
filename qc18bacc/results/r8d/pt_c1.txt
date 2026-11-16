@@ -1,0 +1,56 @@
+## r8d_c1 tt (impl/r8a/run_pt.sh)
+class core_pe_pop none_in_worst_200000
+class core_pe_acc none_in_worst_200000
+class core_pe_cmp none_in_worst_200000
+class core_br_dec none_in_worst_200000
+class core_lane_f none_in_worst_200000
+class core_lane_w none_in_worst_200000
+class core_other  slack_ns -3.993 fmax_mhz 177.2 arrival_ns 2.856 u_top/g_dist_0__u_d/q_reg_265_/CP -> u_top/u_core/u_arr/g_c_7__u_col/act[265]
+class act_supply  slack_ns -0.352 fmax_mhz 499.5 arrival_ns 1.768 u_top/fp_hq_reg_0_/CP -> u_top/u_act/f_z_reg_119_/D
+class seq         slack_ns -0.483 fmax_mhz 468.9 arrival_ns 1.875 u_top/g_r3b_g_rt_u_seq/cm_de_reg_3_/CP -> u_top/g_r3b_g_rt_u_seq/lane_w_reg_6_/D
+class prm         slack_ns -0.105 fmax_mhz 569.8 arrival_ns 1.499 u_top/g_r3b_u_prm/rf_reg_2__3_/CP -> u_top/g_r3b_u_prm/b_a_reg_6_/D
+class head        slack_ns -0.383 fmax_mhz 491.8 arrival_ns 1.780 u_head/g_hp_xs_reg_11__3_/CP -> u_head/psb_reg_18_/D
+class to_macro none_in_worst_200000
+class from_macro none_in_worst_200000
+class top_glue none_in_worst_200000
+class out_port    slack_ns 0.654 fmax_mhz 1004.5 arrival_ns 0.416 busy_reg/CP -> st_img_free
+regs_total 141407
+class token_tgo   slack_ns -0.238 fmax_mhz 529.7 arrival_ns 1.627 u_top/g_r3b_g_rt_u_seq/t_sh_reg_1_/CP -> u_top/u_act/g_ctx_0__u_ctx/st_reg_1_/D
+class token_deot  slack_ns -0.081 fmax_mhz 577.7 arrival_ns 1.476 u_top/u_act/dsc_reg_22_/CP -> u_top/g_r3b_g_rt_u_seq/NC4_reg_16_/D
+xclass head        slack_ns -0.383 fmax_mhz 491.8 n_below_0.20 2834 u_head/g_hp_xs_reg_11__3_/CP -> u_head/psb_reg_18_/D
+xclass act_supply  slack_ns -0.352 fmax_mhz 499.5 n_below_0.20 32014 u_top/fp_hq_reg_0_/CP -> u_top/u_act/f_z_reg_119_/D
+xclass seq         slack_ns -0.483 fmax_mhz 468.9 n_below_0.20 1618 u_top/g_r3b_g_rt_u_seq/cm_de_reg_3_/CP -> u_top/g_r3b_g_rt_u_seq/lane_w_reg_6_/D
+xclass prm         slack_ns -0.105 fmax_mhz 569.8 n_below_0.20 68 u_top/g_r3b_u_prm/rf_reg_2__3_/CP -> u_top/g_r3b_u_prm/b_a_reg_6_/D
+xclass top_glue    slack_ns -0.750 fmax_mhz 416.6 n_below_0.20 6003 u_top/u_act/m_ctx_reg/CP -> u_top/err_q_reg/D
+xclass to_macro    slack_ns -0.084 fmax_mhz 576.7 n_below_0.20 3383 u_top/g_wbk_qprs_reg_0_/CP -> u_top/g_s_16__u_m/g_mac_g_s_u_mac/DB[77]
+xclass from_macro  slack_ns 0.025 fmax_mhz 615.2 n_below_0.20 1809 u_top/g_s_7__u_m/g_mac_g_s_u_mac/CLKA -> u_top/u_act/sdq_reg_54_/D
+xclass chip_glue none_below_0.20
+xclass core_in     slack_ns -3.993 fmax_mhz 177.2 n_below_0.20 6300 u_top/g_dist_0__u_d/q_reg_265_/CP -> u_top/u_core/u_arr/g_c_7__u_col/act[265]
+## r8d_c1 ss (impl/r8a/run_pt.sh)
+class core_pe_pop none_in_worst_200000
+class core_pe_acc none_in_worst_200000
+class core_pe_cmp none_in_worst_200000
+class core_br_dec none_in_worst_200000
+class core_lane_f none_in_worst_200000
+class core_lane_w none_in_worst_200000
+class core_other  slack_ns -1.617 fmax_mhz 306.1 arrival_ns 4.233 u_top/g_dist_0__u_d/q_reg_4103_/CP -> u_top/u_core/u_arr/g_c_7__u_col/act[4103]
+class act_supply  slack_ns -1.464 fmax_mhz 321.2 arrival_ns 2.887 u_top/fp_hq_reg_0_/CP -> u_top/u_act/f_z_reg_119_/D
+class seq         slack_ns -1.721 fmax_mhz 296.6 arrival_ns 3.109 u_top/g_r3b_g_rt_u_seq/cm_de_reg_3_/CP -> u_top/g_r3b_g_rt_u_seq/lane_w_reg_6_/D
+class prm         slack_ns -1.104 fmax_mhz 363.0 arrival_ns 2.496 u_top/g_r3b_u_prm/rf_reg_2__3_/CP -> u_top/g_r3b_u_prm/b_a_reg_6_/D
+class head        slack_ns -1.594 fmax_mhz 308.2 arrival_ns 2.989 u_head/g_hp_xs_reg_11__3_/CP -> u_head/psb_reg_18_/D
+class to_macro none_in_worst_200000
+class from_macro none_in_worst_200000
+class top_glue none_in_worst_200000
+class out_port    slack_ns 0.400 fmax_mhz 800.0 arrival_ns 0.670 busy_reg/CP -> st_img_free
+regs_total 141407
+class token_tgo   slack_ns -1.322 fmax_mhz 336.5 arrival_ns 2.703 u_top/g_r3b_g_rt_u_seq/t_sh_reg_1_/CP -> u_top/u_act/g_ctx_0__u_ctx/st_reg_1_/D
+class token_deot  slack_ns -1.052 fmax_mhz 370.1 arrival_ns 2.445 u_top/u_act/dsc_reg_22_/CP -> u_top/g_r3b_g_rt_u_seq/NC4_reg_16_/D
+xclass head        slack_ns -1.594 fmax_mhz 308.2 n_below_0.20 7170 u_head/g_hp_xs_reg_11__3_/CP -> u_head/psb_reg_18_/D
+xclass act_supply  slack_ns -1.464 fmax_mhz 321.2 n_below_0.20 47424 u_top/fp_hq_reg_0_/CP -> u_top/u_act/f_z_reg_119_/D
+xclass seq         slack_ns -1.721 fmax_mhz 296.6 n_below_0.20 2761 u_top/g_r3b_g_rt_u_seq/cm_de_reg_3_/CP -> u_top/g_r3b_g_rt_u_seq/lane_w_reg_6_/D
+xclass prm         slack_ns -1.104 fmax_mhz 363.0 n_below_0.20 16776 u_top/g_r3b_u_prm/rf_reg_2__3_/CP -> u_top/g_r3b_u_prm/b_a_reg_6_/D
+xclass top_glue    slack_ns -1.939 fmax_mhz 278.6 n_below_0.20 13129 u_top/u_act/m_ctx_reg/CP -> u_top/err_q_reg/D
+xclass to_macro    slack_ns -0.955 fmax_mhz 383.9 n_below_0.20 4978 u_top/g_wbk_qprs_reg_0_/CP -> u_top/g_s_25__u_m/g_mac_g_s_u_mac/DB[125]
+xclass from_macro  slack_ns -0.865 fmax_mhz 397.7 n_below_0.20 21558 u_top/g_s_15__u_m/g_mac_g_s_u_mac/CLKA -> u_top/u_act/sdq_reg_714_/D
+xclass chip_glue   slack_ns -0.263 fmax_mhz 522.8 n_below_0.20 10 nfo_reg_0_/CP -> nfo_reg_5_/D
+xclass core_in     slack_ns -1.617 fmax_mhz 306.1 n_below_0.20 11666 u_top/g_dist_0__u_d/q_reg_4103_/CP -> u_top/u_core/u_arr/g_c_7__u_col/act[4103]
