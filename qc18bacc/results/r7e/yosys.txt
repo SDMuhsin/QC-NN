@@ -1,0 +1,12 @@
+# R7e Yosys 0.68 + slang (impl/r7d/syn.sh: synth -flatten, abc generic gates); wires = nets after opt_clean
+# impl/r7e/wbs.sv: HQ + HQD + Z write-back rotators + S-read group mux/rotator + lanes 16..31 Z/HQD output mux
+wbs old (old)  wires=18392 public=18 cells=24612 $_MUX_=24359 
+wbs new (RSH)  wires=16150 public=18 cells=20322 $_MUX_=15424 
+wbs a (RSH_A)  wires=14313 public=18 cells=18485 $_MUX_=18209 
+wbs b (RSH_B)  wires=20211 public=18 cells=26431 $_MUX_=21560 
+# impl/r7e/wbz.sv (HQD/Z part only): ob = old, nb = RSH_B, obx/nbx = NOMUX, nbs = RSH_B + ZSEL
+wbz ob  wires=4009 public=18 cells=6088 $_MUX_=5899 $_NAND_=77 
+wbz nb  wires=5836 public=18 cells=7915 $_MUX_=3102 $_NAND_=2016 
+wbz obx  wires=4009 public=18 cells=6088 $_MUX_=3851 $_NAND_=77 
+wbz nbx  wires=3477 public=18 cells=5508 $_MUX_=3390 $_NAND_=49 
+wbz nbs  wires=3438 public=19 cells=5516 $_MUX_=5411 $_NAND_=46 

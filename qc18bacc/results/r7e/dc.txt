@@ -1,0 +1,9 @@
+# R7e DC (tau4, flow/tsmc65/syn/run_dc.sh, tcbn65gplus tt, wire-load WireAreaLowkCon/enclosed, compile_ultra, 1.65 ns, 1 core):
+# impl/r7e/dc.sh <old|new|a|b> = wbs_top (inputs + outputs registered, 10 614 flops, same in all) around wbs.sv wb_blk
+# comb area / cells from rpt/qor.rpt; u_wb = wb_blk hierarchy area (area.rpt); nets / insts of module wb_blk counted in the netlist
+variant  defines  comb_area_um2  comb_cells  buf_inv  u_wb_um2   wb_blk_nets  wb_blk_insts  setup_wns_ns  dc_wall_s
+old      -        79608.6        37493       3490     79571.5    43903        37484         +0.034        418
+new      RSH      57073.7        26183       2457     57037.7    32595        26175         +0.009        359
+a        RSH_A    57999.96       26361       2598     57964.0    32773        26353         +0.025        347
+b        RSH_B    78697.4        37351       3391     78660.4    43761        37342         +0.030        425
+# new - old: -22 534 um2 (-28.3 %), -11 310 comb cells (-30.2 %), -11 308 nets (-25.8 %); a: -21 608 um2; b: -911 um2 (-142 cells)

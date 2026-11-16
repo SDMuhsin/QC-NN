@@ -45,6 +45,12 @@
 // QB_SEQ_LSW = stored load-permission age width (qb_seq_rt), QB_PRM_NFF / NFW / NFT = qb_prm fetch-list depths,
 // QB_TOP_SROT = 1: the act-port S read rotation (s_q) as a group mux + log rotator (same function, less area),
 // QB_TOP_WBR = 1: the S write requests (stream / HQ / HQD / Z / r / b6.c2) as lane-group selects + log rotators.
+// R7e hook QB_TOP_RSH = 1 (default 0; meaningful with QB_TOP_WBR = QB_TOP_SROT = 1, results/r7e.md): (a) the HQ write
+// rotation (xw by l0) and the act-port S-read rotation (s_q by s_rot_q) on one shared 2048-b log rotator, selected per
+// cycle by the hm write (they never co-occur by the schedule, results/r7d.md; simulation-only check: S-read data cycle
+// and hm write in one cycle sets err), (b) HQD (xd, bq) and Z (xz, bz) on one 16 x 64-b payload + 8-b address rotator,
+// Z priority (exactly the old output mux for all inputs).  Same cycles, same function.  Mutant QBT_MUT_RSH: S read
+// rotated by the HQ shift.
 // R6a hook (parameter HPW, default 0 = the wide host port above): HPW > 0 (qb_chip define QB_HPW, results/r6a.md) =
 // narrow host port: one macro word per write, h_data[HPW-1:0] = data, h_data[HPW +: 5] = lane (all other h_data bits
 // unused).  Weights (h_sel 0): lane 0..15 = weight lane l (144 b), through a registered daisy chain of 8 stages along
@@ -72,6 +78,9 @@
 `endif
 `ifndef QB_TOP_WBR
 `define QB_TOP_WBR 0
+`endif
+`ifndef QB_TOP_RSH
+`define QB_TOP_RSH 0
 `endif
 `ifndef QB_PRM_NFF
 `define QB_PRM_NFF 256
@@ -563,7 +572,54 @@ module qb_top #(parameter int DIST = 1, parameter int AP = 1, parameter bit R3B 
     end
     logic s_grp_q;  logic [3:0] s_rot_q;
     always_ff @(posedge clk) begin s_grp_q <= s_grp; s_rot_q <= s_rot; end
-    if (`QB_TOP_SROT) begin : g_srot                       // R4b: group mux + 4-stage log rotator (same function)
+    // R7e QB_TOP_RSH: shared rotator (HQ write | S read); inputs rsh_hq / rsh_xw / rsh_l0 from the write-back below
+    logic rsh_hq;  logic [3:0] rsh_l0;  logic [2047:0] rsh_xw, rsh_o;
+    if (`QB_TOP_RSH) begin : g_rsh
+        always_comb begin
+            logic [2047:0] x;  logic [3:0] s;
+            for (int l = 0; l < 16; l++) x[128 * l +: 128] = rsh_hq ? rsh_xw[128 * l +: 128] : s_grp_q ? s_mq[16 + l] : s_mq[l];
+`ifdef QBT_MUT_RSH
+            s = 4'(5'd16 - 5'(rsh_l0));                       // mutant: no shift select (S read uses the HQ shift)
+`else
+            s = rsh_hq ? 4'(5'd16 - 5'(rsh_l0)) : s_rot_q;    // HQ: up by l0 = down by 16 - l0
+`endif
+            if (s[0]) x = {x[127:0], x[2047:128]};
+            if (s[1]) x = {x[255:0], x[2047:256]};
+            if (s[2]) x = {x[511:0], x[2047:512]};
+            if (s[3]) x = {x[1023:0], x[2047:1024]};
+            rsh_o = x;
+        end
+    end else begin : g_nrsh
+        assign rsh_o = '0;
+    end
+    logic rsh_err;                                         // sim-only: S-read data cycle (s_ren + 1) with an hm write
+`ifndef SYNTHESIS
+    if (`QB_TOP_RSH) begin : g_rsh_chk
+        logic s_ren_q;
+`ifdef QBT_MUT_RSHC
+        // checker sensitivity test (mutant): flag an S-read data cycle and an hm write 11 cycles apart (either order;
+        // r7d measured min distance 11), i.e. err must fire if the checker sees both signals aligned
+        logic [10:0] hq_h, sr_h;
+        always_ff @(posedge clk or negedge rst_n)
+            if (!rst_n) begin s_ren_q <= 1'b0; rsh_err <= 1'b0; hq_h <= '0; sr_h <= '0; end
+            else begin
+                s_ren_q <= s_ren;  hq_h <= {hq_h[9:0], rsh_hq};  sr_h <= {sr_h[9:0], s_ren_q};
+                rsh_err <= rsh_err | (s_ren_q && hq_h[10]) | (sr_h[10] && rsh_hq);
+            end
+`else
+        always_ff @(posedge clk or negedge rst_n)
+            if (!rst_n) begin s_ren_q <= 1'b0; rsh_err <= 1'b0; end
+            else begin s_ren_q <= s_ren; rsh_err <= rsh_err | (s_ren_q && rsh_hq); end
+`endif
+    end else begin : g_nrsh_chk
+        assign rsh_err = 1'b0;
+    end
+`else
+    assign rsh_err = 1'b0;
+`endif
+    if (`QB_TOP_SROT && `QB_TOP_RSH) begin : g_srot_rsh
+        assign s_q = rsh_o;
+    end else if (`QB_TOP_SROT) begin : g_srot                       // R4b: group mux + 4-stage log rotator (same function)
         always_comb begin
             logic [2047:0] x;
             for (int l = 0; l < 16; l++) x[128 * l +: 128] = s_grp_q ? s_mq[16 + l] : s_mq[l];
@@ -899,11 +955,29 @@ module qb_top #(parameter int DIST = 1, parameter int AP = 1, parameter bit R3B 
         if (s[3]) x = {x[63:0], x[127:64]};
         return x;
     endfunction
+    function automatic logic [1023:0] rup16p(input logic [1023:0] x, input logic [3:0] s);   // R7e: 64-b payload words
+        if (s[0]) x = {x[959:0], x[1023:960]};
+        if (s[1]) x = {x[895:0], x[1023:896]};
+        if (s[2]) x = {x[767:0], x[1023:768]};
+        if (s[3]) x = {x[511:0], x[1023:512]};
+        return x;
+    endfunction
+    // R7e QB_TOP_RSH: HQ word packing (unrotated) + shift -> shared rotator g_rsh (output rsh_o)
+    always_comb begin
+        logic [3:0] y;
+        rsh_hq = fo.v && f_vld_o && fo.hm;
+        y      = 4'(2 * fo.tp + 7'(fo.k[1]));
+        rsh_l0 = 4'(2 * y + 4'(fo.k[0]));
+        for (int pl = 0; pl < 8; pl++) for (int j = 0; j < 2; j++) for (int q = 0; q < 4; q++) for (int c5 = 0; c5 < 32; c5++)
+            rsh_xw[128 * (2 * pl + j) + 32 * q + c5] = f_y[17 * (64 * q + 32 * j + c5) + pl];
+    end
     logic [63:0]  wr_hq;  logic [7:0] wr_hqd;  logic [127:0] wr_z;
     always_comb begin
         logic [31:0]  ef, ew;  logic [7:0] af [32], aw [32];  logic [127:0] df [32], mf [32], dw [32], mw [32];
+        logic [1023:0] pq, pz, pr;  logic [127:0] pqa, pza, pra;  logic [3:0] pqs, pzs, prs;  logic hd_on, z_on;   // R7e
         logic         cf, cw;
         ef = '0; ew = '0; cf = 1'b0; cw = 1'b0; wr_hq = '0; wr_hqd = '0; wr_z = '0;
+        pq = '0; pz = '0; pr = '0; pqa = '0; pza = '0; pra = '0; pqs = '0; pzs = '0; prs = '0; hd_on = 1'b0; z_on = 1'b0;
         for (int l = 0; l < 32; l++) begin af[l] = '0; aw[l] = '0; df[l] = '0; mf[l] = '0; dw[l] = '0; mw[l] = '0; end
         // ---- fused
         if (fo.v && f_vld_o) begin
@@ -934,8 +1008,14 @@ module qb_top #(parameter int DIST = 1, parameter int AP = 1, parameter bit R3B 
                         if (|w) wr_hq[8 * pl + 2 * fo.ct + j] = 1'b1;
                         if (|v[63:0] && !y[0]) wr_hqd[pl] = 1'b1;
                     end
-                xw = rup16(xw, l0);  xa = rup8(xa, l0);                     // word ix -> lane l0 + ix
-                xd = rup16(xd, bq);  xc = rup8(xc, bq);                     // word iz -> lane 16 + bq + iz
+                if (`QB_TOP_RSH) begin                                      // R7e: HQ on g_rsh, HQD on the payload rotator
+                    xw = rsh_o;  xa = rup8(xa, l0);
+                    hd_on = 1'b1;  pqa = xc;  pqs = bq;
+                    for (int iz = 0; iz < 16; iz++) pq[64 * iz +: 64] = xd[128 * iz +: 64];
+                end else begin
+                    xw = rup16(xw, l0);  xa = rup8(xa, l0);                 // word ix -> lane l0 + ix
+                    xd = rup16(xd, bq);  xc = rup8(xc, bq);                 // word iz -> lane 16 + bq + iz
+                end
                 for (int l = 0; l < 16; l++) begin
                     ef[l] = 1'b1; df[l] = xw[128 * l +: 128]; mf[l] = '1; af[l] = xa[8 * l +: 8];
                     ef[16 + l] = !y[0]; df[16 + l] = xd[128 * l +: 128]; af[16 + l] = xc[8 * l +: 8];
@@ -988,7 +1068,12 @@ module qb_top #(parameter int DIST = 1, parameter int AP = 1, parameter bit R3B 
                         xz[128 * iz +: 128] = w;  xa[8 * iz +: 8] = 8'd144 + 8'(4 * pl) + 8'(wo.ct >> 1);
                         if (|h) wr_z[16 * pl + 2 * wo.ct + jj] = 1'b1;
                     end
-                xz = rup16(xz, bz);  xa = rup8(xa, bz);                     // word iz -> lane 16 + bz + iz
+                if (`QB_TOP_RSH) begin                                      // R7e: Z on the payload rotator
+                    z_on = 1'b1;  pza = xa;  pzs = bz;
+                    for (int iz = 0; iz < 16; iz++) for (int b = 0; b < 16; b++) pz[64 * iz + b] = xz[128 * iz + 8 * b];
+                end else begin
+                    xz = rup16(xz, bz);  xa = rup8(xa, bz);                 // word iz -> lane 16 + bz + iz
+                end
                 for (int l = 0; l < 16; l++) begin
                     ew[16 + l] = 1'b1; dw[16 + l] = xz[128 * l +: 128]; mw[16 + l] = mi; aw[16 + l] = xa[8 * l +: 8];
                 end
@@ -1022,6 +1107,23 @@ module qb_top #(parameter int DIST = 1, parameter int AP = 1, parameter bit R3B 
                             if (pg[q] == 2'(G)) begin en = 1'b1; aa = aa | a[q]; v = v | w_y[19 * (8 * q + col) +: 16]; end
                         ew[8 * G + col] = en; dw[8 * G + col] = {8{v}}; mw[8 * G + col] = m16; aw[8 * G + col] = aa;
                     end
+            end
+        end
+        // R7e: HQD + Z on one payload rotator (Z priority: lanes 16..31 take dw whenever Z writes, so df there is unused)
+        if (`QB_TOP_RSH) begin
+            pr = pq;  pra = pqa;  prs = pqs;
+            if (z_on) begin
+                pra = pza;  prs = pzs;
+                for (int iz = 0; iz < 16; iz++) pr[64 * iz +: 16] = pz[64 * iz +: 16];
+            end
+            pr = rup16p(pr, prs);  pra = rup8(pra, prs);
+            for (int l = 0; l < 16; l++) begin
+                if (hd_on) begin df[16 + l] = {pr[64 * l +: 64], pr[64 * l +: 64]};  af[16 + l] = pra[8 * l +: 8]; end
+                if (z_on) begin
+                    for (int q = 0; q < 4; q++) for (int cc = 0; cc < 4; cc++) for (int i = 0; i < 8; i++)
+                        dw[16 + l][32 * q + 8 * cc + i] = pr[64 * l + 4 * q + cc];
+                    aw[16 + l] = pra[8 * l +: 8];
+                end
             end
         end
         wr_en = ef | ew;
@@ -1181,7 +1283,7 @@ module qb_top #(parameter int DIST = 1, parameter int AP = 1, parameter bit R3B 
     // ================================================================ checks (sticky error)
     always_ff @(posedge clk or negedge rst_n)
         if (!rst_n) err <= 1'b0;
-        else err <= err | (img_wr && m_ren && m_src == 2'd2) | seq_err | prm_err | a_err | s_conf | rd_conf | f_rconf | (|s_rwc) | (|b_rwc) | u_conf | bw_conf | b2_ovf | f_ovl | w_ovl |
+        else err <= err | (img_wr && m_ren && m_src == 2'd2) | seq_err | prm_err | a_err | s_conf | rd_conf | f_rconf | (|s_rwc) | (|b_rwc) | u_conf | bw_conf | b2_ovf | f_ovl | w_ovl | rsh_err |
                    (b2_vld && !(bo.v && bo.cmp)) | (f_vld_o && !fo.v) | (w_vld_o && !wo.v) |
                    (fo.v && !f_vld_o) | (wo.v && !w_vld_o);
 

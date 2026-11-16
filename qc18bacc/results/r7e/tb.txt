@@ -1,0 +1,79 @@
+# R7e chip bench (Verilator 5.050), QBT_TECH=2 + QB_HEAD_FW=128 + QB_HPW=144 (R4b f: QB_TOP_WBR=1 QB_TOP_SROT=1); vectors /tmp/root/qc18bacc/r7d/{s0,s1}
+# tags: rsh = +QB_TOP_RSH=1, rshm = + QBT_MUT_RSH (S read uses HQ shift), rshc = + QBT_MUT_RSHC (checker window shifted to distance 11), def = RSH off
+== run_rsh_s0
+QB_CHIP img 0 s0/img60 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7030 (after end +3250) PASS
+QB_CHIP img 1 s0/img61 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +6998 (after end +3250) PASS
+QB_CHIP img 2 s0/img0 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +6998 (after end +3250) PASS
+QB_CHIP img 3 s0/img1 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7038 (after end +3250) PASS
+QB_CHIP img 4 s0/img2 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7062 (after end +3250) PASS
+QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 0 head_err 0 PASS
+   CYCLE_MISMATCH lines 0, logit MISMATCH lines 0
+== run_rsh_s1
+QB_CHIP img 0 s1/img13 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7086 (after end +3250) PASS
+QB_CHIP img 1 s1/img55 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7014 (after end +3250) PASS
+QB_CHIP img 2 s1/img7 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +6982 (after end +3250) PASS
+QB_CHIP img 3 s1/img42 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7046 (after end +3250) PASS
+QB_CHIP img 4 s1/img91 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7054 (after end +3250) PASS
+QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 0 head_err 0 PASS
+   CYCLE_MISMATCH lines 0, logit MISMATCH lines 0
+== run_def_s1
+QB_CHIP img 0 s1/img13 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7086 (after end +3250) PASS
+QB_CHIP img 1 s1/img55 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7014 (after end +3250) PASS
+QB_CHIP img 2 s1/img7 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +6982 (after end +3250) PASS
+QB_CHIP img 3 s1/img42 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7046 (after end +3250) PASS
+QB_CHIP img 4 s1/img91 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7054 (after end +3250) PASS
+QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 0 head_err 0 PASS
+   CYCLE_MISMATCH lines 0, logit MISMATCH lines 0
+== run_rshm_s0
+QB_CHIP img 0 s0/img60 logits 100/100 err 100 tiles 600 cycle_mismatch 30 last_logit +6942 (after end +3250) FAIL
+QB_CHIP img 1 s0/img61 logits 100/100 err 100 tiles 600 cycle_mismatch 30 last_logit +6918 (after end +3250) FAIL
+QB_CHIP img 2 s0/img0 logits 100/100 err 100 tiles 600 cycle_mismatch 30 last_logit +6950 (after end +3250) FAIL
+QB_CHIP img 3 s0/img1 logits 100/100 err 100 tiles 600 cycle_mismatch 30 last_logit +6974 (after end +3250) FAIL
+QB_CHIP img 4 s0/img2 logits 100/100 err 100 tiles 600 cycle_mismatch 30 last_logit +6934 (after end +3250) FAIL
+QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 0 head_err 0 FAIL
+   CYCLE_MISMATCH lines 15, logit MISMATCH lines 15
+== run_rshm_s1
+QB_CHIP img 0 s1/img13 logits 100/100 err 100 tiles 600 cycle_mismatch 30 last_logit +6918 (after end +3250) FAIL
+QB_CHIP img 1 s1/img55 logits 100/100 err 100 tiles 600 cycle_mismatch 30 last_logit +6958 (after end +3250) FAIL
+QB_CHIP img 2 s1/img7 logits 100/100 err 100 tiles 600 cycle_mismatch 30 last_logit +6894 (after end +3250) FAIL
+QB_CHIP img 3 s1/img42 logits 100/100 err 100 tiles 600 cycle_mismatch 30 last_logit +6918 (after end +3250) FAIL
+QB_CHIP img 4 s1/img91 logits 100/100 err 100 tiles 600 cycle_mismatch 30 last_logit +6918 (after end +3250) FAIL
+QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 0 head_err 0 FAIL
+   CYCLE_MISMATCH lines 15, logit MISMATCH lines 15
+== run_rshc_s0
+QB_CHIP img 0 s0/img60 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7030 (after end +3250) PASS
+QB_CHIP img 1 s0/img61 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +6998 (after end +3250) PASS
+QB_CHIP img 2 s0/img0 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +6998 (after end +3250) PASS
+QB_CHIP img 3 s0/img1 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7038 (after end +3250) PASS
+QB_CHIP img 4 s0/img2 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7062 (after end +3250) PASS
+QB_CHIP_TB images 5 err 1 img_read_err 0 timeout 0 head_err 0 FAIL
+   CYCLE_MISMATCH lines 0, logit MISMATCH lines 0
+== run_rshc_s1
+QB_CHIP img 0 s1/img13 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7086 (after end +3250) PASS
+QB_CHIP img 1 s1/img55 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7014 (after end +3250) PASS
+QB_CHIP img 2 s1/img7 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +6982 (after end +3250) PASS
+QB_CHIP img 3 s1/img42 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7046 (after end +3250) PASS
+QB_CHIP img 4 s1/img91 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7054 (after end +3250) PASS
+QB_CHIP_TB images 5 err 1 img_read_err 0 timeout 0 head_err 0 FAIL
+   CYCLE_MISMATCH lines 0, logit MISMATCH lines 0
+== export_top3.py --check (torch.equal)
+def R3C_CHECK E6_s1 val 13: rtl logits x fscale == IntBin2 logits (torch.equal): PASS; argmax 55
+def R3C_CHECK E6_s1 val 55: rtl logits x fscale == IntBin2 logits (torch.equal): PASS; argmax 6
+def R3C_CHECK E6_s1 val 7: rtl logits x fscale == IntBin2 logits (torch.equal): PASS; argmax 59
+def R3C_CHECK E6_s1 val 42: rtl logits x fscale == IntBin2 logits (torch.equal): PASS; argmax 50
+def R3C_CHECK E6_s1 val 91: rtl logits x fscale == IntBin2 logits (torch.equal): PASS; argmax 84
+rsh R3C_CHECK E6_s1 val 13: rtl logits x fscale == IntBin2 logits (torch.equal): PASS; argmax 55
+rsh R3C_CHECK E6_s1 val 55: rtl logits x fscale == IntBin2 logits (torch.equal): PASS; argmax 6
+rsh R3C_CHECK E6_s1 val 7: rtl logits x fscale == IntBin2 logits (torch.equal): PASS; argmax 59
+rsh R3C_CHECK E6_s1 val 42: rtl logits x fscale == IntBin2 logits (torch.equal): PASS; argmax 50
+rsh R3C_CHECK E6_s1 val 91: rtl logits x fscale == IntBin2 logits (torch.equal): PASS; argmax 84
+rshm R3C_CHECK E6_s1 val 13: rtl logits x fscale == IntBin2 logits (torch.equal): FAIL; argmax 55
+rshm R3C_CHECK E6_s1 val 55: rtl logits x fscale == IntBin2 logits (torch.equal): FAIL; argmax 6
+rshm R3C_CHECK E6_s1 val 7: rtl logits x fscale == IntBin2 logits (torch.equal): FAIL; argmax 59
+rshm R3C_CHECK E6_s1 val 42: rtl logits x fscale == IntBin2 logits (torch.equal): FAIL; argmax 50
+rshm R3C_CHECK E6_s1 val 91: rtl logits x fscale == IntBin2 logits (torch.equal): FAIL; argmax 84
+rshm R3C_CHECK E6_s0 val 60: rtl logits x fscale == IntBin2 logits (torch.equal): FAIL; argmax 6
+rshm R3C_CHECK E6_s0 val 61: rtl logits x fscale == IntBin2 logits (torch.equal): FAIL; argmax 8
+rshm R3C_CHECK E6_s0 val 0: rtl logits x fscale == IntBin2 logits (torch.equal): FAIL; argmax 37
+rshm R3C_CHECK E6_s0 val 1: rtl logits x fscale == IntBin2 logits (torch.equal): FAIL; argmax 98
+rshm R3C_CHECK E6_s0 val 2: rtl logits x fscale == IntBin2 logits (torch.equal): FAIL; argmax 54
