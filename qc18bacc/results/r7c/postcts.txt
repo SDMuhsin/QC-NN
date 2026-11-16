@@ -1,0 +1,13 @@
+# R7c post-CTS timing at OpenROAD placement estimates (tt, P&R period 2.0 ns, IO budget impl/r7c/budget.tcl shifted
+# by QB_IO_LAT 0.85), DPL window -max_displacement {500 500} um, max_tran 0.40 / max_fo 64 [S, OR est.]
+# step                         A4 820x1910: WNS / viol ep / util       B4 820x2420: WNS / viol ep / util
+place (ideal clock)            -1.524 / - / 0.730                       -0.847 / - / 0.593   worst: sel2_1 -> S2 act_q (AOI/OAI D1 on 0.07 pF, slew 0.6-0.76 ns)
+cts                            -3.222 / 10308 / 0.776                   -1.889 / 3636 / 0.629  (sel2_1_reg -> u_s2 act_reg)
+setup repair                   -0.371 / 1519 / 0.786                    -0.335 / 270 / 0.632
+setup legalisation             -3.760 / 9633 / 0.786                    -0.786 / 2531 / 0.632
+hold repair (+ legalisation)   -3.760 / 9822 / 0.818 (killed)           -3.202 / 9030 / 0.654
+# B4 worst after hold legalisation: g_pipe_1 q_reg -> act[2313] output: 9 hold buffers (BUFFD1) each driving 0.11-0.17 pF
+#   (500-800 um, moved by the 500-um legalisation window), slew 0.6-0.97 ns.  Cause of the hold chains: QB_IO_LAT 0.85
+#   (column value) vs act-pipe clock latency 0.55-0.57 ns (latency spread 0.55-1.07 ns, lb regs behind ICGs) ->
+#   every act output a ~0.2-ns artificial hold violation.  B5 (QB_IO_LAT 0.55, from B4 place.odb): CTS legalisation
+#   DPL-0036 with the default window and with {100 100} (CTS buffers in the act-edge / S1 / lb clumps).

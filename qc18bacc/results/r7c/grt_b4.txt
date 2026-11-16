@@ -1,0 +1,18 @@
+# R7c GRT probe of r7c_B4 (820 x 2420 um die, db/cts_rt.odb after CTS + setup / hold repair, util 0.654, 1 276 579 um2
+# cells), impl/r7c/grt_probe.tcl: global_route -allow_congestion, 10 congestion iterations, GR_ADJUST 0.25, M2-M7 [S, OR est.]
+Layer  Resource  Demand    Usage    Overflow
+M2     2418737   4395385   181.7 %  2624022   (V)
+M3     2383869   1932018    81.1 %   292079   (H)
+M4     2289037   3230968   141.2 %  1564707   (V)
+M5     2411760   1837739    76.2 %   227942   (H)
+M6     2419051   3132582   129.5 %  1391058   (V)
+M7     2282080   1621525    71.1 %   169537   (H)
+Total 14204534  16348880   115.1 %  6468008   (M1 pin-access demand 198 663); V 10.76 M / 7.13 M = 151 %, H 5.39 M / 7.08 M = 76 %
+wirelength 55.74 m, 310 053 nets, 5.91 M vias; GRT 1 263 s.  Flow GRT of the same db (no -allow_congestion): > 60 min in
+maze rerouting, stopped.  Timing at GRT parasitics: WNS -4.14 ns (TNS -7 637) at 2.0 ns, worst g_pipe_1 -> act[2313]
+(hold-buffer chain, see postcts.txt).
+Overflowed-gcell source nets by class (impl/r7c/cong_cls.py of rpt/grt_probe_congestion.rpt):
+  Horizontal  86 978 gcells: line buffer 29.5 %, S1 20.0 %, repair buffers 13.6 %, S2 11.2 %, other 9.9 %, lb out 9.4 %, act pipe 4.0 %, clock 2.2 %, sdq 0.2 %
+  Vertical   125 162 gcells: line buffer 21.7 %, repair buffers 17.8 %, S1 17.4 %, S2 16.0 %, other 11.0 %, act pipe 7.4 %, lb out 6.0 %, clock 2.0 %, sdq 0.3 %
+[E] Even perfectly balanced, demand 16.3 M > capacity 14.2 M (115 %); at <= 85 % usage the same placement quality needs
+>= 1.35 x the area = 2.65 mm2 = 820 x ~3 240 um (> 3 110).  The S / map input pins are not the cause (sdq / rdq < 0.5 %).

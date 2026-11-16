@@ -1,0 +1,25 @@
+# R7c P&R attempts of qb_act2_blk (DC 910 476 um2), tau4, OpenROAD 2.0-12381; die = W x H um (core = die - 10);
+# yoff = block top at the array top (3110 - H).  util = std-cell area / core area.  [S] from summary.txt / openroad.log
+# run  die       gpl dens  constraints (P&R)            DRV repair (cell um2 / util)                     outcome
+A     820x1910  0.75 +RD  max_tran 0.2, max_fo 16       1 pass: 29 750 buffers, 57 279 resized            stopped: detailed placement > 30 min in diamond search (no re-spread)
+B,C   820x2420/3110 0.75 +RD                            (RUDY RC 1.96 / 1.73 at 0.75: cells packed, die area unused)  stopped, replaced by B2 / C2
+A2    820x1910  0.68      max_tran 0.2, max_fo 16       1 pass -> 1 350 238 / 0.878 (+48 %)                GPL-0302 (incremental density 0.74 < util)
+B2    820x2420  0.56      "                             1 pass -> 1 452 691 / 0.745 (+60 %)                GPL-0302
+C2    820x3110  0.46      "                             1 pass -> 1 588 895 / 0.633 (+75 %)                GPL-0302
+A3    820x1910  0.78      "  (incr. density util+0.07)  1 308 069 / 0.850 -> 2nd pass 1 486 696 / 0.967      stopped (util 0.97)
+B3    820x2420  0.70      "                             1 389 650 / 0.712 -> 1 658 921 / 0.850               stopped
+C3    820x3110  0.62      "                             1 521 660 / 0.606 -> 1 890 575 / 0.753               DPL-0036 (detailed placement failed)
+A4    820x1910  0.80      max_tran 0.40, max_fo 64      1 041 071 / 0.677 -> 1 123 314 / 0.730 (+23 %)       try 1 DPL-0036 (305 cells); try 2 DPL window 500 um
+B4    820x2420  0.80      "                             1 062 222 / 0.545 -> 1 155 758 / 0.592 (+27 %)       try 1 DPL-0036 (94 cells); try 2 DPL window 500 um
+C4    820x3110  0.80      "                             1 137 334 / 0.453 -> 1 285 313 / 0.512 (+41 %)       try 1 DPL-0036 (261 cells); try 2 DPL window 500 um
+# DRV-violating nets before the first repair (max_tran 0.2): A3 39 892 = S1 18 148, S2 8 698, line buffers 6 535,
+#   other 2 857, sdq 1 262, lb outputs 977, act pipe 878, rdq 344, ctx 191; with max_tran 0.4 / fo 64: A4 15 913
+#   (S1 6 559, S2 4 956, lb 1 817, sdq 991, other 606, act pipe 492)
+B4 try 2 (500-um DPL window): place util 0.593, post-CTS + repair 0.654 (1 276 579 um2); OR est. -0.335 after setup repair,
+   -3.202 ns after hold legalisation; flow GRT > 60 min in maze rerouting, stopped; GRT probe 115 % demand (grt_b4.txt)
+A4 try 2: post-CTS util 0.818 after hold repair, -3.760 ns after setup legalisation; stopped
+C4 try 2: CTS -4.141 ns pre-repair (spread over 3 110 um); stopped for CPU / time
+B5 = B4 place.odb + QB_IO_LAT 0.55: CTS legalisation DPL-0036 with the default window (398 cells: 174 top act-port
+   buffers, 107 S1 / S2, 107 line buffer) and again with {100 100}
+Wall: DC 24:48 (peak 3.8 GB); P&R place 25-32 min (incl. 2 DRV passes + incremental gpl), CTS + post-CTS repair 35-60 min
+   (DPL diamond search dominates), GRT probe 21 min; peak RSS 9.2 GB (B4 GRT)

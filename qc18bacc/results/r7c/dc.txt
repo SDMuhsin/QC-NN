@@ -1,0 +1,24 @@
+# R7c DC topographical qb_act2_blk (qb_act2 ACT_PIPE 2), tt 1.65 ns, hook impl/r7c/topo_act.tcl (util 0.60, aspect 2.3, IO budget), compile_ultra -no_autoungroup -gate_clock -spg [S]
+design qb_act2_blk top qb_act2_blk corner tt period_ns 1.65 topo 1 wire_load topo
+cell_area_um2 910475.640706 gate_eq_kGE 632.27 cells 258999 regs 56857
+setup_wns_ns 1.81794e-06 setup_tns_ns 0.000 setup_viol_endpoints 0
+setup_worst_path u_act/g_pipe_1__u_ap/q_reg_2305_/CP -> act[2305]
+hold_wns_ns -0.000968471 hold_tns_ns -0.050 hold_viol_endpoints 226
+hold_worst_path u_act/u_s2/act_reg_2043_/CP -> u_act/g_pipe_0__u_ap/q_reg_2043_/D
+dc_wall_s 1475
+wall 24:48.23 peak_rss_mb 3808
+# area split (DC qor): combinational 488 613 (buf/inv 118 611), non-combinational 421 863 um2
+# hierarchy (abs um2)
+u_act 903689.2804
+u_act/g_ctx_0__u_ctx 234302.3999
+u_act/g_ctx_0__u_ctx/u_lb 224686.0798
+u_act/g_ctx_1__u_ctx 234678.5999
+u_act/g_ctx_1__u_ctx/u_lb 225068.7597
+u_act/g_pipe_0__u_ap 31937.7604
+u_act/g_pipe_1__u_ap 40808.8788
+u_act/u_s1 237231.3600
+u_act/u_s2 84295.4414
+# pre-route PT (DC topo parasitics, IO 20 %, period 1.65)
+clock qb_clk period_ns 1.650 wns_ns -0.011 fmax_mhz 601.9 path u_act/g_ctx_0__u_ctx/ival_reg/CP -> u_act/g_ctx_0__u_ctx/nav_reg_2_/D
+clock qb_clk period_ns 1.650 wns_ns -0.948 fmax_mhz 384.9 path u_act/g_ctx_0__u_ctx/ival_reg/CP -> u_act/g_ctx_0__u_ctx/nav_reg_2_/D
+# DC DRV left (violators.rpt): max_transition nets 60083 (worst actp_1 pipe0->pipe1 2.13 ns, 0.37 pF), max_fanout 12629
