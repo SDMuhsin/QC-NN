@@ -69,10 +69,13 @@ def main():
     ap.add_argument("--n", type=int, default=100)
     ap.add_argument("--cache", required=True)
     ap.add_argument("--check", action="store_true")
+    ap.add_argument("--prm-col", action="store_true", help="R9c column-local params bank layout (QB_PRM_COL=1)")
     ap.add_argument("--fc", type=int, default=ROWB, choices=sorted(CAP), help="FC weight port b / cycle (qb_head FW)")
     a = ap.parse_args()
     if not a.check:
         sys.argv = [sys.argv[0], a.ckpt, a.out, "--cache", a.cache, "--n", str(a.n), "--images", *map(str, a.images)]
+        if a.prm_col:
+            sys.argv.append("--prm-col")
         ET2.main()
     prog, net, val, st, correct, mk = SU.load(a.ckpt, a.n, a.cache)
     xv, _ = val

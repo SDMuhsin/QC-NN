@@ -17,6 +17,8 @@ OUTDIR/prog/ (one per network / seed, image independent; compile/static_seq.py o
 OUTDIR/img<i>/: core/, act/, img.txt, s_final.txt as R3a; sched.txt from the static-order model (the bench's reference:
   'X pi tp ct ce' per array tile, 'M <static-order cycles> <free list-schedule cycles>').
 Imports export_top / export_core / export_act / static_seq (nothing copied).
+R9c: --prm-col writes p_rows.txt in the column-local layout of compile/prm_col.py (RTL QB_PRM_COL=1); export_top3.py
+  passes --prm-col through.  All other files unchanged.
 """
 import argparse
 import os
@@ -28,6 +30,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from qc18bacc.compile import cycles as Cy  # noqa: E402
 from qc18bacc.compile import static_seq as SS  # noqa: E402
 from qc18bacc.compile import supply as SU  # noqa: E402
+from qc18bacc.compile import prm_col as PC  # noqa: E402
 import export_act as EA  # noqa: E402
 import export_core as EC  # noqa: E402
 import export_top as ET  # noqa: E402
@@ -43,8 +46,8 @@ def consumer(p):
     return "w" if p.kind in ("wc1", "wsc", "wc2") else "f"
 
 
-def bank(prog, sets, sbase):
-    """params bank rows + row base per pass + common bits per pass."""
+def bank(prog, sets, sbase, col=False):
+    """params bank rows + row base per pass + common bits per pass (col: R9c column layout, compile/prm_col.py)."""
     rows, rbase, cmn = [], {}, {}
     for pi, p in enumerate(prog.passes):
         if not (p.k or p.kind == "hm"):
@@ -58,7 +61,7 @@ def bank(prog, sets, sbase):
             cm = v >> nb
             assert cmn.setdefault(pi, cm) == cm, p.name
             v &= (1 << nb) - 1
-            rows.extend((v >> (RW * r)) & ((1 << RW) - 1) for r in range(NR[c]))
+            rows.extend(PC.to_rows(c, v, col))
     assert len(rows) <= NROW, len(rows)
     return rows, rbase, cmn
 
@@ -130,6 +133,7 @@ def main():
     ap.add_argument("--images", type=int, nargs="+", default=[0, 1])
     ap.add_argument("--n", type=int, default=100)
     ap.add_argument("--cache", required=True)
+    ap.add_argument("--prm-col", action="store_true", help="R9c column-local params bank layout (RTL QB_PRM_COL=1)")
     a = ap.parse_args()
     dev = "cuda"
     prog, net, val, st, correct, mk = SU.load(a.ckpt, a.n, a.cache)
@@ -165,7 +169,7 @@ def main():
         print(f"img{i}: static-order model cycles {int(per2[i])} (free list schedule {int(per[i])}), {nit} items",
               flush=True)
     # ---- network program
-    rows, rbase, cmn = bank(prog, sets, sbase)
+    rows, rbase, cmn = bank(prog, sets, sbase, a.prm_col)
     lt, lbase, lcnt = load_perm(prog, desc, sup, a.n)
     wr, wbase, wrow = ET.weight_rows(prog)
     pt = ET.pass_table(prog, wbase, wrow, {pi: rbase.get(pi, 0) for pi in range(len(prog.passes))}, lbase, lcnt)

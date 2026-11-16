@@ -126,6 +126,11 @@
 `ifndef QB_PRM_NFT
 `define QB_PRM_NFT 256
 `endif
+// R9c (results/r9c.md): QB_PRM_COL 1 = column-local params bank layout (qb_prm COL, compile/prm_col.py); the program's
+// p_rows.txt must be in the column layout (prm_col.py convert / export_top2.py --prm-col).  Default 0 = as before.
+`ifndef QB_PRM_COL
+`define QB_PRM_COL 0
+`endif
 module qb_top #(parameter int DIST = 1, parameter int AP = 1, parameter bit R3B = 0, parameter bit HSEL = 0,
               parameter int HPW = 0) (
     input  logic          clk, rst_n,
@@ -1683,7 +1688,7 @@ module qb_top #(parameter int DIST = 1, parameter int AP = 1, parameter bit R3B 
 `endif
         assign seq_err = seq_err_rt | lk_err;
         end
-        qb_prm #(.HSEL(HSEL), .NFF(`QB_PRM_NFF), .NFW(`QB_PRM_NFW), .NFT(`QB_PRM_NFT), .HPW(HPW)) u_prm (
+        qb_prm #(.HSEL(HSEL), .NFF(`QB_PRM_NFF), .NFW(`QB_PRM_NFW), .NFT(`QB_PRM_NFT), .HPW(HPW), .COL(`QB_PRM_COL)) u_prm (
             .clk, .rst_n, .go, .h_we, .h_sel, .h_addr, .h_d(h_data[1295:0]),
             .u_early({ce_.v && ce_.cmp, we_.v && we_.k == 5'd0, fe_.v && (fe_.hm ? fe_.k == 5'd3 : fe_.k == 5'd0)}),
             .u_use({cu_.v && cu_.cmp, wp.v && wp.k == 5'd0, fp.v && (fp.hm ? fp.k == 5'd3 : fp.k == 5'd0)}),

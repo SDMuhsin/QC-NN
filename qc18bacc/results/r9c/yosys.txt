@@ -1,0 +1,16 @@
+# R9c Yosys generic synthesis of qb_prm (impl/r9c/syn.sh <tag> <COL>: NFF 160 / NFW 32 / NFT 112, HPW 144, HSEL 1, QB_PRM_BAR + QB_PRM_NUR, 9 macros black-boxed, flattened)
+cell | COL 0 (p0) | COL 1 (p1)
+cells | 69938 | 51692
+$_DFFE_PP_ | 24680 | 24680
+$_DFFE_PN0P_ | 174 | 174
+$_DFFE_PN1P_ | 3 | 3
+$_DFF_PN0_ | 10 | 10
+$_MUX_ | 13664 | 9601
+$_AND_ | 10861 | 5399
+$_NAND_ | 16111 | 7032
+$_OR_ | 1290 | 1161
+$_ORNOT_ | 2021 | 2216
+$_ANDNOT_ | 265 | 335
+$_NOR_ | 632 | 855
+flops: 24 867 both (staging 16 512 used + fetch lists 7 600 + HPW chain + control); COL moves only the staging D wiring.
+comb: COL 1 is -18 246 generic cells = coding artefact of COL 0's variable part-select stg[RW*p2_r +: RW] (Yosys shifter); both decode the same 13 enables (p2_c x p2_b x p2_r).

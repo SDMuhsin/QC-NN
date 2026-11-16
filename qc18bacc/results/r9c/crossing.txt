@@ -1,0 +1,11 @@
+# R9c crossing: distance macro -> consumer column in column pitches (390 um), per geometry; static taps
+# (Q bit, column) and per-read traffic (bits per row read, averaged over the f / w set rows; t = its one row)
+# geometry ideal = macro k at column k centre (macro 8 placement given per row); r9b = R9b mplace9 x positions
+ideal/m8=mid/default: taps by distance [0,1,..,7,8+ pitches] [1008, 1416, 1192, 1048, 832, 288, 288, 0, 0]  taps > 1 pitch 3648 / 6072;  per row read > 1 pitch: f 846 w 804 t 0 b, mean distance f 0.58 w 0.59 t 0.21 pitch
+ideal/m8=mid/COL: taps by distance [0,1,..,7,8+ pitches] [1152, 36, 36, 36, 36, 0, 0, 0, 0]  taps > 1 pitch 108 / 1296;  per row read > 1 pitch: f 108 w 84 t 0 b, mean distance f 0.06 w 0.04 t 0.00 pitch
+ideal/m8=east/default: taps by distance [0,1,..,7,8+ pitches] [1008, 1352, 1112, 952, 752, 432, 320, 144, 0]  taps > 1 pitch 3856 / 6072;  per row read > 1 pitch: f 882 w 840 t 0 b, mean distance f 0.64 w 0.65 t 0.21 pitch
+ideal/m8=east/COL: taps by distance [0,1,..,7,8+ pitches] [1152, 18, 18, 18, 18, 18, 18, 18, 18]  taps > 1 pitch 144 / 1296;  per row read > 1 pitch: f 144 w 112 t 0 b, mean distance f 0.13 w 0.10 t 0.00 pitch
+ideal/m8=nw/default: taps by distance [0,1,..,7,8+ pitches] [1008, 1208, 1016, 952, 720, 432, 352, 144, 240]  taps > 1 pitch 3856 / 6072;  per row read > 1 pitch: f 882 w 840 t 0 b, mean distance f 0.70 w 0.67 t 0.21 pitch
+ideal/m8=nw/COL: taps by distance [0,1,..,7,8+ pitches] [1152, 0, 18, 18, 18, 18, 18, 18, 36]  taps > 1 pitch 144 / 1296;  per row read > 1 pitch: f 144 w 112 t 0 b, mean distance f 0.16 w 0.12 t 0.00 pitch
+r9b/m8=r9b/default: taps by distance [0,1,..,7,8+ pitches] [784, 1184, 1128, 728, 752, 616, 352, 288, 240]  taps > 1 pitch 4656 / 6072;  per row read > 1 pitch: f 1044 w 1018 t 360 b, mean distance f 0.75 w 0.73 t 0.84 pitch
+r9b/m8=r9b/COL: taps by distance [0,1,..,7,8+ pitches] [432, 720, 18, 18, 18, 18, 18, 18, 36]  taps > 1 pitch 288 / 1296;  per row read > 1 pitch: f 288 w 256 t 136 b, mean distance f 0.29 w 0.26 t 0.60 pitch

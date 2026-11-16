@@ -1,0 +1,28 @@
+# R9c params bank bit map: macro m bit i (bank bit 144 m + i) -> consumers (consumer f = pf, w = pw, t = t2; column)
+# per macro: columns reached by its 144 Q bits (union over rows / sets); 'taps' = (Q bit, column) pairs
+# (= staging-slice destinations of that Q pin); other consumers of macro Q: none (common pf / pw bits come
+# from the pass table; the HPW write chain only drives the macro D / A pins)
+## layout default
+macro | f columns | w columns | t columns | taps f / w / t | Q bits used
+0 | [0, 2, 4, 6] | [0, 2, 4, 6] | [0, 1] | 576 / 576 / 144 | 144
+1 | [0, 2, 4, 6] | [0, 2, 4, 6] | [1, 2] | 576 / 576 / 144 | 144
+2 | [0, 2, 4, 6] | [0, 2, 4, 6] | [2, 3] | 576 / 576 / 144 | 144
+3 | [0, 2, 4, 6] | [0, 2, 4, 5, 6, 7] | [3, 4] | 576 / 576 / 144 | 144
+4 | [0, 1, 2, 3, 4, 5, 6, 7] | [0, 1, 2, 3, 5, 7] | [4, 5] | 576 / 576 / 144 | 144
+5 | [1, 3, 5, 7] | [1, 3, 5, 7] | [5, 6] | 576 / 576 / 144 | 144
+6 | [1, 3, 5, 7] | [1, 3, 5, 7] | [6, 7] | 576 / 576 / 144 | 144
+7 | [1, 3, 5, 7] | [1, 3, 5, 7] | [7] | 576 / 576 / 80 | 144
+8 | [1, 3, 5, 7] | [1, 2, 3, 4, 5, 6, 7] | [] | 576 / 448 / 0 | 144
+## layout COL (QB_PRM_COL)
+macro | f columns | w columns | t columns | taps f / w / t | Q bits used
+0 | [0] | [0] | [0] | 144 / 144 / 136 | 144
+1 | [1] | [1] | [1] | 144 / 144 / 136 | 144
+2 | [2] | [2] | [2] | 144 / 144 / 136 | 144
+3 | [3] | [3] | [3] | 144 / 144 / 136 | 144
+4 | [4] | [4] | [4] | 144 / 144 / 136 | 144
+5 | [5] | [5] | [5] | 144 / 144 / 136 | 144
+6 | [6] | [6] | [6] | 144 / 144 / 136 | 144
+7 | [7] | [7] | [7] | 144 / 144 / 136 | 144
+8 | [0, 1, 2, 3, 4, 5, 6, 7] | [0, 1, 2, 3, 4, 5, 6, 7] | [] | 144 / 144 / 0 | 144
+COL detail: macro c<8 bit i: f row r -> col c pf[648c+144r+i]; w row r -> col c pw[632c+144r+i]; t -> col c t2[136c+i] (i<136)
+            macro 8 bit 18c+j: f row r -> col c pf[648c+576+18r+j]; w row r -> col c pw[632c+576+18r+j] (18r+j<56); t unused

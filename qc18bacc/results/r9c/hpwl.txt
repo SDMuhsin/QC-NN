@@ -1,0 +1,11 @@
+# R9c params Q HPWL model (x only: span of {macro Q pin x, consumer column centres}; staging flops of column c
+# at its centre, as R9b's column-local pf / pw / t2 pins; y extent not modelled = same before / after).
+# R9b measured (longnets_gpl.txt, plain gpl): 1 296 params Q nets, 5.23 m HPWL (4.04 mm / net)
+ideal/m8=mid/default: params Q nets 1296, x-HPWL 3.076 m (mean 2374 um), of which macro 8 0.337 m
+ideal/m8=mid/COL: params Q nets 1296, x-HPWL 0.112 m (mean 87 um), of which macro 8 0.112 m
+ideal/m8=east/default: params Q nets 1296, x-HPWL 3.136 m (mean 2420 um), of which macro 8 0.397 m
+ideal/m8=east/COL: params Q nets 1296, x-HPWL 0.256 m (mean 198 um), of which macro 8 0.256 m
+ideal/m8=nw/default: params Q nets 1296, x-HPWL 3.251 m (mean 2509 um), of which macro 8 0.512 m
+ideal/m8=nw/COL: params Q nets 1296, x-HPWL 0.315 m (mean 243 um), of which macro 8 0.315 m
+r9b/m8=r9b/default: params Q nets 1296, x-HPWL 3.315 m (mean 2558 um), of which macro 8 0.512 m
+r9b/m8=r9b/COL: params Q nets 1296, x-HPWL 0.585 m (mean 452 um), of which macro 8 0.315 m

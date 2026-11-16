@@ -356,7 +356,8 @@ endmodule
 // R8a round 2: QB_PRM_NUR keeps the nuse of the set in use (fetch-list entry ruse) in a register (retire reads
 // entry ruse + 1, list writes bypassed): ruse -> list read -> last-use compare -> uu / vf cut to registers.
 module qb_prm #(parameter int NM = 9, parameter int MW = 144, parameter int DEP = 240, parameter bit HSEL = 0,
-                parameter int NFF = 256, parameter int NFW = 256, parameter int NFT = 256, parameter int HPW = 0) (
+                parameter int NFF = 256, parameter int NFW = 256, parameter int NFT = 256, parameter int HPW = 0,
+                parameter bit COL = 0) (
     input  logic         clk, rst_n, go,
     input  logic         h_we,
     input  logic [3:0]   h_sel,                   // 1 bank row, 12 / 13 / 14 fetch list f / w / t, 15 counts (8..10)
@@ -425,6 +426,17 @@ module qb_prm #(parameter int NM = 9, parameter int MW = 144, parameter int DEP 
             qbt_rfsp #(MW, DEP) u_m (.clk, .ren(b_ren), .we(hwm), .a(hwm ? pc_a[m / 3] : b_a), .wd(pc_d[m / 3]), .q(b_q[MW*m +: MW]));
         end
     end
+    // ---- R9c COL = 1 (define QB_PRM_COL, compile/prm_col.py): column-local bank layout.  stg_f / stg_w hold column c's
+    // 648-b slot at [648 c +: 648]; row r of a set lands macro c (under column c) at slot bits 144 r +: 144 and the
+    // 18-b share c of the 9th macro at slot bits 576 + 18 r +: 18.  pf = stg_f (slot order = record order), pw / t2
+    // take column c's 632 / 136 b from the slot / macro c.  Same flops and enables as COL = 0, only the D wiring moves.
+    localparam int CS = RW * 4 / 8, XW = MW / 8;       // 648, 18
+    initial if (COL && (NM != 9 || CS != 4 * MW + 4 * XW)) $fatal(1, "qb_prm: COL needs 9 x 144-b macros");
+`ifdef QBP_MUT_COL
+    localparam int MUTC = 1;                           // mutant: 9th-macro share of row r lands in row r ^ 1's place
+`else
+    localparam int MUTC = 0;
+`endif
     // ---- per consumer state
     logic [7:0] rf [3], rfree [3], ruse [3], uf [3], uu [3];
     logic [2:0] rowc [3];
@@ -486,6 +498,12 @@ module qb_prm #(parameter int NM = 9, parameter int MW = 144, parameter int DEP 
             // landing (macro q valid this cycle for the request of x = now - 2)
             if (p2_v) unique case (p2_c)
                 2'd0: begin
+                    if (COL) begin
+                        for (int c = 0; c < 8; c++) for (int r = 0; r < 4; r++) if (p2_r[1:0] == 2'(r)) begin
+                            stg_f[p2_b][CS * c + MW * r +: MW] <= b_q[MW * c +: MW];
+                            stg_f[p2_b][CS * c + 4 * MW + XW * (r ^ MUTC) +: XW] <= b_q[MW * 8 + XW * c +: XW];
+                        end
+                    end else
 `ifdef QBT_MUT_PRMR
                     stg_f[p2_b][RW * (p2_r ^ 3'd1) +: RW] <= b_q;           // mutant: rows of a fused set swapped
 `else
@@ -493,7 +511,15 @@ module qb_prm #(parameter int NM = 9, parameter int MW = 144, parameter int DEP 
 `endif
                     if (p2_l) begin vf[p2_b] <= 1'b1; tgf[p2_b] <= p2_t; end
                 end
-                2'd1: begin stg_w[RW * p2_r +: RW] <= b_q; if (p2_l) begin vw <= 1'b1; tgw <= p2_t; end end
+                2'd1: begin
+                    if (COL) begin
+                        for (int c = 0; c < 8; c++) for (int r = 0; r < 4; r++) if (p2_r[1:0] == 2'(r)) begin
+                            stg_w[CS * c + MW * r +: MW] <= b_q[MW * c +: MW];
+                            stg_w[CS * c + 4 * MW + XW * (r ^ MUTC) +: XW] <= b_q[MW * 8 + XW * c +: XW];
+                        end
+                    end else stg_w[RW * p2_r +: RW] <= b_q;
+                    if (p2_l) begin vw <= 1'b1; tgw <= p2_t; end
+                end
                 default: begin stg_t <= b_q; vt <= 1'b1; tgt <= p2_t; end
             endcase
             // early uses: free a staging register 2 cycles ahead of the set's last use
@@ -556,6 +582,13 @@ module qb_prm #(parameter int NM = 9, parameter int MW = 144, parameter int DEP 
 `endif
 `endif
     assign pf = stg_f[ruse[0][0]];
-    assign pw = stg_w[5055:0];
-    assign t2 = stg_t[1087:0];
+    if (COL) begin : g_col
+        for (genvar c = 0; c < 8; c++) begin : g_c
+            assign pw[632 * c +: 632] = stg_w[CS * c +: 632];
+            assign t2[136 * c +: 136] = stg_t[MW * c +: 136];
+        end
+    end else begin : g_ncol
+        assign pw = stg_w[5055:0];
+        assign t2 = stg_t[1087:0];
+    end
 endmodule

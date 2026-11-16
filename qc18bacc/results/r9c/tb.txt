@@ -1,0 +1,87 @@
+# R9c bench (Verilator 5.050, QBT_TECH=2; work /tmp/root/qc18bacc/r9c, vectors v/ = R8d (R7d) s0 / s1 copies; hw/tb/run_tb_chip.sh as results/r8d/tb.txt)
+# full = +define+QB_HEAD_FW=128+QB_HPW=144+QB_TOP_RSH=2+QB_HEAD_PCOL=1+QB_HEAD_IREG=2+QB_TOP_WBQ=2+QB_ACT_CTXR+QB_ACT_LDR+QB_ACT_CNT+QB_ACT_SRA+QB_SEQ_LPS+QB_SEQ_CMH+QB_SEQ_TKS+QB_PRM_BAR+QB_SEQ_DSP+QB_SEQ_TGO+QB_PRM_NUR+QB_SEQ_NXW+QB_SEQ_RAL+QB_ACT_S1M=1+QB_TOP_FPR=1+QB_TOP_WBK=1+QB_TOP_FFT=1+QB_SEQ_DEP+QB_ACT_S2M   (R8d 'new' set + QB_ACT_S2M)
+# col = full +QB_PRM_COL=1 on progc (p_rows.txt in the column layout: compile/prm_col.py convert prog progc; all other prog files identical)
+# mcol = col +QBP_MUT_COL (9th-macro 18-b share of row r lands in row r^1's slot); ref = full on prog (default layout); plain = base only
+## col s0
+QB_CHIP img 0 s0/img60 go 0 end +3780 interval 3780 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7032 (after end +3252) PASS
+QB_CHIP img 1 s0/img61 go 3780 end +3748 interval 3748 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7000 (after end +3252) PASS
+QB_CHIP img 2 s0/img0 go 7528 end +3748 interval 3748 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7000 (after end +3252) PASS
+QB_CHIP img 3 s0/img1 go 11276 end +3788 interval 3788 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7040 (after end +3252) PASS
+QB_CHIP img 4 s0/img2 go 15064 end +3812 interval - logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7064 (after end +3252) PASS
+## col s1
+QB_CHIP img 0 s1/img13 go 0 end +3836 interval 3836 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7088 (after end +3252) PASS
+QB_CHIP img 1 s1/img55 go 3836 end +3764 interval 3764 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7016 (after end +3252) PASS
+QB_CHIP img 2 s1/img7 go 7600 end +3732 interval 3732 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +6984 (after end +3252) PASS
+QB_CHIP img 3 s1/img42 go 11332 end +3796 interval 3796 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7048 (after end +3252) PASS
+QB_CHIP img 4 s1/img91 go 15128 end +3804 interval - logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7056 (after end +3252) PASS
+## ref s0
+QB_CHIP img 0 s0/img60 go 0 end +3780 interval 3780 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7032 (after end +3252) PASS
+QB_CHIP img 1 s0/img61 go 3780 end +3748 interval 3748 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7000 (after end +3252) PASS
+QB_CHIP img 2 s0/img0 go 7528 end +3748 interval 3748 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7000 (after end +3252) PASS
+QB_CHIP img 3 s0/img1 go 11276 end +3788 interval 3788 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7040 (after end +3252) PASS
+QB_CHIP img 4 s0/img2 go 15064 end +3812 interval - logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7064 (after end +3252) PASS
+## ref s1
+QB_CHIP img 0 s1/img13 go 0 end +3836 interval 3836 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7088 (after end +3252) PASS
+QB_CHIP img 1 s1/img55 go 3836 end +3764 interval 3764 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7016 (after end +3252) PASS
+QB_CHIP img 2 s1/img7 go 7600 end +3732 interval 3732 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +6984 (after end +3252) PASS
+QB_CHIP img 3 s1/img42 go 11332 end +3796 interval 3796 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7048 (after end +3252) PASS
+QB_CHIP img 4 s1/img91 go 15128 end +3804 interval - logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7056 (after end +3252) PASS
+## mcol s0
+QB_CHIP img 0 s0/img60 go 0 end +4068 interval 4068 logits 100/100 err 100 tiles 600 cycle_mismatch 40 last_logit +7320 (after end +3252) FAIL
+QB_CHIP img 1 s0/img61 go 4068 end +4068 interval 4068 logits 100/100 err 100 tiles 600 cycle_mismatch 40 last_logit +7320 (after end +3252) FAIL
+QB_CHIP img 2 s0/img0 go 8136 end +4060 interval 4060 logits 100/100 err 100 tiles 600 cycle_mismatch 40 last_logit +7312 (after end +3252) FAIL
+QB_CHIP img 3 s0/img1 go 12196 end +4060 interval 4060 logits 100/100 err 100 tiles 600 cycle_mismatch 40 last_logit +7312 (after end +3252) FAIL
+QB_CHIP img 4 s0/img2 go 16256 end +4068 interval - logits 100/100 err 100 tiles 600 cycle_mismatch 40 last_logit +7320 (after end +3252) FAIL
+## mcol s1
+QB_CHIP img 0 s1/img13 go 0 end +4108 interval 4108 logits 100/100 err 100 tiles 600 cycle_mismatch 40 last_logit +7360 (after end +3252) FAIL
+QB_CHIP img 1 s1/img55 go 4108 end +4092 interval 4092 logits 100/100 err 100 tiles 600 cycle_mismatch 40 last_logit +7344 (after end +3252) FAIL
+QB_CHIP img 2 s1/img7 go 8200 end +4092 interval 4092 logits 100/100 err 100 tiles 600 cycle_mismatch 40 last_logit +7344 (after end +3252) FAIL
+QB_CHIP img 3 s1/img42 go 12292 end +4100 interval 4100 logits 100/100 err 100 tiles 600 cycle_mismatch 40 last_logit +7352 (after end +3252) FAIL
+QB_CHIP img 4 s1/img91 go 16392 end +4100 interval - logits 100/100 err 100 tiles 600 cycle_mismatch 40 last_logit +7352 (after end +3252) FAIL
+## plain s0
+QB_CHIP img 0 s0/img60 go 0 end +3780 interval 3780 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7030 (after end +3250) PASS
+QB_CHIP img 1 s0/img61 go 3780 end +3748 interval 3748 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +6998 (after end +3250) PASS
+QB_CHIP img 2 s0/img0 go 7528 end +3748 interval 3748 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +6998 (after end +3250) PASS
+QB_CHIP img 3 s0/img1 go 11276 end +3788 interval 3788 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7038 (after end +3250) PASS
+QB_CHIP img 4 s0/img2 go 15064 end +3812 interval - logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7062 (after end +3250) PASS
+## plain s1
+QB_CHIP img 0 s1/img13 go 0 end +3836 interval 3836 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7086 (after end +3250) PASS
+QB_CHIP img 1 s1/img55 go 3836 end +3764 interval 3764 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7014 (after end +3250) PASS
+QB_CHIP img 2 s1/img7 go 7600 end +3732 interval 3732 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +6982 (after end +3250) PASS
+QB_CHIP img 3 s1/img42 go 11332 end +3796 interval 3796 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7046 (after end +3250) PASS
+QB_CHIP img 4 s1/img91 go 15128 end +3804 interval - logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7054 (after end +3250) PASS
+## colxdef s0
+QB_CHIP img 0 s0/img60 go 0 end +4108 interval 4108 logits 100/100 err 100 tiles 600 cycle_mismatch 40 last_logit +7360 (after end +3252) FAIL
+QB_CHIP img 1 s0/img61 go 4108 end +4108 interval 4108 logits 100/100 err 100 tiles 600 cycle_mismatch 40 last_logit +7360 (after end +3252) FAIL
+QB_CHIP img 2 s0/img0 go 8216 end +4108 interval 4108 logits 100/100 err 100 tiles 600 cycle_mismatch 40 last_logit +7360 (after end +3252) FAIL
+QB_CHIP img 3 s0/img1 go 12324 end +4108 interval 4108 logits 100/100 err 100 tiles 600 cycle_mismatch 40 last_logit +7360 (after end +3252) FAIL
+QB_CHIP img 4 s0/img2 go 16432 end +4108 interval - logits 100/100 err 100 tiles 600 cycle_mismatch 40 last_logit +7360 (after end +3252) FAIL
+## colxdef s1
+QB_CHIP img 0 s1/img13 go 0 end +4108 interval 4108 logits 100/100 err 100 tiles 600 cycle_mismatch 40 last_logit +7360 (after end +3252) FAIL
+QB_CHIP img 1 s1/img55 go 4108 end +4108 interval 4108 logits 100/100 err 100 tiles 600 cycle_mismatch 40 last_logit +7360 (after end +3252) FAIL
+QB_CHIP img 2 s1/img7 go 8216 end +4108 interval 4108 logits 100/100 err 100 tiles 600 cycle_mismatch 40 last_logit +7360 (after end +3252) FAIL
+QB_CHIP img 3 s1/img42 go 12324 end +4108 interval 4108 logits 100/100 err 100 tiles 600 cycle_mismatch 40 last_logit +7360 (after end +3252) FAIL
+QB_CHIP img 4 s1/img91 go 16432 end +4108 interval - logits 100/100 err 100 tiles 600 cycle_mismatch 40 last_logit +7360 (after end +3252) FAIL
+## refxcol s0
+QB_CHIP img 0 s0/img60 go 0 end +4108 interval 4108 logits 100/100 err 100 tiles 600 cycle_mismatch 40 last_logit +7360 (after end +3252) FAIL
+QB_CHIP img 1 s0/img61 go 4108 end +4108 interval 4108 logits 100/100 err 100 tiles 600 cycle_mismatch 40 last_logit +7360 (after end +3252) FAIL
+QB_CHIP img 2 s0/img0 go 8216 end +4108 interval 4108 logits 100/100 err 100 tiles 600 cycle_mismatch 40 last_logit +7360 (after end +3252) FAIL
+QB_CHIP img 3 s0/img1 go 12324 end +4108 interval 4108 logits 100/100 err 100 tiles 600 cycle_mismatch 40 last_logit +7360 (after end +3252) FAIL
+QB_CHIP img 4 s0/img2 go 16432 end +4108 interval - logits 100/100 err 100 tiles 600 cycle_mismatch 40 last_logit +7360 (after end +3252) FAIL
+## refxcol s1
+QB_CHIP img 0 s1/img13 go 0 end +4108 interval 4108 logits 100/100 err 100 tiles 600 cycle_mismatch 40 last_logit +7360 (after end +3252) FAIL
+QB_CHIP img 1 s1/img55 go 4108 end +4108 interval 4108 logits 100/100 err 100 tiles 600 cycle_mismatch 40 last_logit +7360 (after end +3252) FAIL
+QB_CHIP img 2 s1/img7 go 8216 end +4108 interval 4108 logits 100/100 err 100 tiles 600 cycle_mismatch 40 last_logit +7360 (after end +3252) FAIL
+QB_CHIP img 3 s1/img42 go 12324 end +4108 interval 4108 logits 100/100 err 100 tiles 600 cycle_mismatch 40 last_logit +7360 (after end +3252) FAIL
+QB_CHIP img 4 s1/img91 go 16432 end +4108 interval - logits 100/100 err 100 tiles 600 cycle_mismatch 40 last_logit +7360 (after end +3252) FAIL
+# colxdef = col RTL on the default-layout prog, refxcol = full (COL 0) RTL on the column-layout prog: negative controls (layout and RTL must match)
+## full-log diffs (Verilator cpu / walltime lines and paths stripped)
+s0 col vs ref: 0 lines; ref vs R8d new: 0 lines; plain vs R8d plain: 0 lines
+s1 col vs ref: 0 lines; ref vs R8d new: 0 lines; plain vs R8d plain: 0 lines
+logits files col == ref: 10 / 10 byte-identical
+## torch.equal (export_top3.py --check on chk_col/ chk_mcol/)
+col s0: 5 PASS / 0 FAIL
+col s1: 5 PASS / 0 FAIL
+mcol s0: 0 PASS / 5 FAIL
+mcol s1: 0 PASS / 5 FAIL
+## compile option: export_top3.py E6_s0 --images 60 --fc 128 --prm-col -> exp_s0/prog: all 14 files byte-identical to progc (convert); p_rows.txt differs from the default prog
