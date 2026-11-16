@@ -1,0 +1,38 @@
+# class | root nets (bits) | physical nets (incl. buffer-tree nets)
+act supply internal                                230658   234792
+sequencer                                          163594   167379
+write-back rotators (f_y/w_y/b2 -> S/map wr)        53517    65029
+head                                                46483    47750
+act chain blk->blk                                  36864    36864
+prm staging internal                                32591    37090
+glue other                                          30226    41043
+S-read rotator (s_q -> act)                         19648    25235
+clock                                               19200    36956
+rq_r -> s_rd/w_r mux                                13422    13423
+other (undriven)                                    11821    11821
+glue blk-out consumers (flags, b2f, other)           7968     8771
+weight Q                                             6912     6912
+prm -> blk pf                                        5059     5059
+prm -> blk pw                                        5028     5028
+act supply out (dist -> col0 act)                    4706     6647
+blk f_y out                                          4352    22197
+glue -> act supply (ctl)                             4263     4301
+glue -> blk s_rd                                     4144     4144
+S macro Q (s_mq)                                     4096     7640
+glue -> blk cd                                       2304     2305
+S write regs -> S macro (s_wd/wa/wm)                 2261     2611
+map mux (m_q -> act)                                 1797     2047
+map/img Q                                            1536     5737
+params Q -> prm                                      1296     3236
+map write regs -> map macro                          1141     1672
+prm -> blk t2                                        1088     5440
+blk b2 out                                           1024     2442
+blk w_y out                                           608     1148
+glue -> blk w_r                                       608     1137
+blk other out (f_b,w_b,vld)                           291     1385
+glue -> blk ctl/other                                 238      401
+chip IO in (host port)                                168      168
+seq desc Q                                            160      160
+head FC Q                                             128      129
+# S-read rotator nets by comb depth from S macro QA (1 = first glue gate output)
+d1:4685 d2:4174 d3:5290 d4:4305 d5:946 d6:212 d7:36

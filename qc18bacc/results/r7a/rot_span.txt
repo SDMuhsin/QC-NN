@@ -1,0 +1,11 @@
+# per root net H wire inside the south window, in lane pitches of 195 um (lane l under column l/2):
+#   H wire of nets spanning >= 1 lane: 2904.9 mm, < 1 lane: 16.0 mm
+S-read rotator (s_q -> act)                      nets   2957 H  2921.0 mm mean    988 um | 0:550 1:332 2:163 3:253 4:203 5:254 6:211 7:214 8:236 9:175 10:118 11:123 12:125
+#   H wire of nets spanning >= 1 lane: 3897.7 mm, < 1 lane: 710.2 mm
+write-back rotators (f_y/w_y/b2 -> S/map wr)     nets  40135 H  4607.9 mm mean    115 um | 0:34263 1:1976 2:1160 3:841 4:699 5:438 6:303 7:178 8:134 9:83 10:34 11:20 12:5 13:1
+#   H wire of nets spanning >= 1 lane: 1321.0 mm, < 1 lane: 47.6 mm
+S macro Q (s_mq)                                 nets   2305 H  1368.6 mm mean    594 um | 0:1112 1:213 2:108 3:146 4:60 5:109 6:119 7:112 8:96 9:88 10:68 11:52 12:21 13:1
+#   H wire of nets spanning >= 1 lane: 12.0 mm, < 1 lane: 69.0 mm
+rq_r -> s_rd/w_r mux                             nets   8066 H    81.0 mm mean     10 um | 0:8027 1:35 2:4
+#   H wire of nets spanning >= 1 lane: 73.0 mm, < 1 lane: 21.1 mm
+S write regs -> S macro (s_wd/wa/wm)             nets    791 H    94.1 mm mean    119 um | 0:611 1:94 2:57 3:28 4:1
