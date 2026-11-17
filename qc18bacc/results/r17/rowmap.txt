@@ -1,0 +1,2 @@
+row map current    : S1 crossings (act-unit rows, fixed lb order)  88096; any-permutation bound  66560 (worst layout 10b); per layout A 16896, 2 2880, 3 0, 4 11520, 5 51840, 6 8192, 7 59904, 10b 66560, 8i 3840, 9i 0, 10i 15360
+row map interleaved: S1 crossings (act-unit rows, fixed lb order)  93152; any-permutation bound  61440 (worst layout 10b); per layout A 16896, 2 2880, 3 0, 4 11520, 5 13312, 6 1024, 7 32768, 10b 61440, 8i 7424, 9i 0, 10i 15360

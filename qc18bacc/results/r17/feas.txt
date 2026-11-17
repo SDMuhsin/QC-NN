@@ -1,0 +1,42 @@
+== slot dependence of the reader rows (per layout L, in-slot index j)
+    A: j used 64, words 192, j with slot-dependent readers  0, multi-reader words  12; span over slots of j: mean 0.94 max 15
+    2: j used 64, words 192, j with slot-dependent readers 24, multi-reader words   0; span over slots of j: mean 0.38 max 1
+    3: j used 32, words  32, j with slot-dependent readers  0, multi-reader words   0; span over slots of j: mean 0.00 max 0
+    4: j used 64, words 192, j with slot-dependent readers  0, multi-reader words   0; span over slots of j: mean 0.00 max 0
+    5: j used 64, words 320, j with slot-dependent readers 64, multi-reader words  64; span over slots of j: mean 8.38 max 9
+    6: j used 32, words  64, j with slot-dependent readers 32, multi-reader words   0; span over slots of j: mean 8.12 max 9
+    7: j used 64, words 256, j with slot-dependent readers 64, multi-reader words 128; span over slots of j: mean 8.00 max 8
+  10b: j used 64, words 256, j with slot-dependent readers 64, multi-reader words 256; span over slots of j: mean 12.00 max 12
+   8i: j used 64, words  64, j with slot-dependent readers  0, multi-reader words  24; span over slots of j: mean 1.47 max 5
+   9i: j used 64, words 128, j with slot-dependent readers 26, multi-reader words   0; span over slots of j: mean 0.41 max 1
+  10i: j used 64, words  64, j with slot-dependent readers  0, multi-reader words  64; span over slots of j: mean 6.00 max 8
+== S1 crossings (32 b x rows spanned, summed over physical words)
+  current, PI metric (word free per slot)             78304
+  current, consistent (index j at one row)           80256
+  new LBP (P at row P // 4)                          88160   (+9.8 % vs consistent)
+  lower bound, any slot-independent permutation      57344   (layout 10b alone; 28.5 % below current)
+  lower bound, even slot-dependent placement         49152   (layout 10b: within-word spans)
+  per-layout own optimum (slot-independent) / within-word span: A 5760/5760, 2 768/0, 3 0/0, 4 0/0, 5 48768/16256, 6 8320/0, 7 49152/32768, 10b 57344/49152, 8i 3008/3008, 9i 832/0, 10i 12288/12288
+  residual by layout (new crossings of the words of one layout alone):
+      A:    5760
+      2:    2240
+      3:       0
+      4:       0
+      5:   48768
+      6:    8320
+      7:   49152
+    10b:   62976
+     8i:    3776
+     9i:     960
+    10i:   12288
+== write network (per context; both contexts share the rows)
+  current : crossings     736 (source free), with south pin at row -1 / 16: 31360 / 12896
+  LBP     : crossings   18816 (source free), with south pin at row -1 / 16: 31168 / 31168
+  candidates per physical word: current max 2 mean 2.00; LBP max 10 mean 7.38 (rdq groups + sdq groups, + zero)
+    LBP binary (rdq) candidates per P: max 7 mean 4.52; int8 (sdq): max 3 mean 2.86
+== S1 terms per register (row-homed S1 registers / S2 unchanged; source words renamed)
+  before: total 1470 mean 11.48 max 33; after: total 1584 mean 12.38 max 34  (x1.08 total, x1.03 max)
+== decision (S1 + write crossings)
+  S1 only: 80256 -> 88160 (-9.8 % drop); bound 28.5 %
+  current 80992 (PI-metric S1: 79040) -> LBP 106976: -32.1 % drop (-35.3 % vs PI-metric); fan-in x1.08
+  rule (>= 40 % drop and fan-in <= 1.3x): STOP
