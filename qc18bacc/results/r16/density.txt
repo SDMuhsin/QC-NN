@@ -1,0 +1,15 @@
+# R16 placement density at the route input (db/cts_rt.odb), impl/r13/cell_dump.tcl + impl/r13/m2_short.py '-' (10-um bins, deciles by
+# signal-pin density) [S].  before = R13 r13_c1r (delivered r13_c1d route input), after = R16 r16_se (post-CTS re-spread, respread.tcl)
+# column: decile  util  pins/um2  S1 share of cell area  (S2 share, lb_ff share)
+run       dec9 util  dec9 pins/um2  dec9 S1  dec9 S2  dec9 lb_ff   dec8 util  dec8 pins/um2  dec8 S1   top-1% AOI22D1   cell um2 (util)
+r13_c1r   0.79       0.976          0.326    0.136    0.148        0.77       0.785          0.165     1 997            1 124 875 (0.645)
+r16_se    0.77       0.924          0.060    0.157    0.279        0.73       0.751          0.112     1 670            1 170 846 (0.672)
+# variants (deciles after the re-spread + DRV repair, before the post-CTS repair; pre = r13_c1 CTS: dec9 0.78 / 0.970 / S1 0.346):
+# r16_sa  gpl incr. default penalty 8e-5 + r7c gpl_incr2 repair (2nd gpl @0.75):   dec9 0.86 / 1.046 / S1 0.243  +0.116 mm2 repair  -> worse
+# r16_sb  = sa + S1 inflation:                                                    dec9 0.86 / 1.053 / S1 0.227  +0.126 mm2         -> worse
+#   (incremental gpl at the default penalty first collapses to overflow 0.81 and re-spreads: repair-buffer structure lost, 30.9 k DRV)
+# r16_sc  penalty 0.01, overflow 0.05, lib DRV repair only:                       dec9 0.78 / 0.997 / S1 0.315  +0.035 mm2
+# r16_sd  = sc + S1 gpl inflation (31.5 k S1 cells swapped to next >= +2-site master during gpl only): dec9 0.76 / 0.926 / S1 0.070  +0.049 mm2
+#   sc / sd post-CTS repair: setup stuck at -0.338 @2.0 (reg2act: gpl moved the top CTS buffers, clkbuf_0 -> clkbuf_1_1_0 0.39 ns, act flop latency 0.98)
+# r16_se  = sd + clock tree (11 303 clkbuf / ICG cells) + 4 608 act edge chains FIRM in gpl: dec9 0.76 / 0.914 / S1 0.066  -> taken
+# post-CTS repair @2.0 tt (OpenROAD est.):  r13_c1r pre -0.351 / 1 273 ep -> -0.063 / 44;  r16_se pre -0.350 / 1 838 -> -0.079 / 948, hold -0.002 / 2 ep

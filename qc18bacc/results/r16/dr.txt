@@ -1,0 +1,12 @@
+# R16 detailed route of qb_act2_blk r16_se (post-CTS re-spread placement), OpenROAD 2.0-12381 drt, 16 threads, tau3 [S]
+# route_rt.tcl (impl/r9a): GRT adj 0.05, 10 congestion iterations, -allow_congestion, no GRT antenna repair, M2-M7
+# GRT: overflow 0, WL 24 617 703 um (R13 24.99 m), 115 s; usage M2 59.88 % M3 50.78 % M4 62.21 % M5 31.26 % M6 47.28 % M7 15.77 %
+# DR markers per iteration (r16_r: QB_DR_ITER 6, iterations 0-2 completed; identical iteration 0 in the run lost to the host reboot)
+iter  markers      vs prev    wall      peak RSS
+0     1 362 682    -          44:03     17.98 GB    (R13 r13_c1d: 1 720 737, 52:38; R9a: 2 205 122, 65 min)
+1     1 241 654    -8.9 %     46:22     18.95 GB
+2     1 274 390    +2.6 %     47:40     18.95 GB
+# stopped at iteration 3 start (04:54 UTC): no convergence at ~46 min / iteration, 6 iterations would end after the 07:00 stop
+# (tau3 was rebooted from the console at 02:25 UTC, killing the first route run r16_r_killed at iteration 1 / 80 %: -1.5 h).
+# r16_d (delivered db): same flow with QB_DR_ITER 0 -> iteration 0 = 1 362 682 (deterministic), drt 2 809 s, route.time 50:39 wall, peak RSS 18.7 GB;
+#   then run.sh post (SPEF tt/ss/ff, PT tt/ss) and run.sh abs -> $QC_BUILD/r9a_blk/r16_d (LEF, ring LEF, ETM tt/ss/ff 0 errors, routed netlist)

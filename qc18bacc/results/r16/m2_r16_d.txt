@@ -1,0 +1,14 @@
+# R16 r16_d DR iteration 0: M2 short markers vs placement (impl/r13/m2_short.py drt.drc.rpt cells(cts_rt of r16_se) 10), 10-um bins [S]
+# M2 shorts 742 536 in 15 391 of 16 936 bins (R13 r13_c1d: 859 799 in 14 475 of 15 858)
+# decile  shorts/bin  share  util  pins/um2  S1 share  S2 share  lb_ff  lb_logic
+     0         0.1  0.000  0.59     0.168     0.014     0.002    0.026  0.031
+     5        26.1  0.059  0.72     0.571     0.051     0.016    0.299  0.219
+     7        58.9  0.134  0.71     0.617     0.135     0.046    0.265  0.206
+     8        95.8  0.218  0.68     0.616     0.265     0.062    0.195  0.152
+     9       184.0  0.420  0.65     0.695     0.442     0.107    0.114  0.091
+# R13 r13_c1d decile 9: 250.0 shorts/bin, share 0.461, util 0.76, 0.823 pins/um2, S1 0.570; decile 8: 119.5, 0.77, 0.654, S1 0.238
+# top 1 % bins: AOI22D1 1 456 (R13 1 792), ND2D1 326, INVD1 224, OAI211D1 164, DFQD1 160
+# markers by type x layer (drc_hist.py): Short/M2 742 536, Short/M3 197 811, Short/M4 73 429, Recheck/M2 63 977, Metal Spacing/M2 62 806,
+#   Short/M5 54 373, Recheck/M3 48 890, Short/M6 35 346, Cut Spacing/VIA1 18 409, Short/M7 16 190  (R13 r13_c1d: M2 859 799, M3 281 635, M4 109 471)
+# marker y bins: peak y 900-1300 um (S1 / lb band), x 225-725 um; net classes: other 1.25 M, top_buf 0.39 M, clk 19 k
+# antenna (check_antennas on the iteration-0 wires): 0 nets / 0 pins

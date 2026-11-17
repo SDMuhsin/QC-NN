@@ -1,0 +1,8 @@
+# R16 PrimeTime of r16_d (re-spread placement r16_se, DR iteration 0: 1 362 682 markers -> parasitics of an unclean route) [S]
+# def2spef tt / ss / ff, propagated clock, IO budget shifted by L, period 2.0 ns (impl/r7c/pt_blk.tcl via impl/r9a/run.sh post); 30 998 of
+# 286 581 nets not annotated (same count as R13 r13_c1d)
+corner  L ns   reg2reg fmax MHz (slack @2.0)  worst reg2reg path                         din2reg              cin2reg              reg2act  reg2cout  hold r2r / ->out   viol ep setup / hold
+tt      0.785  441.6 (-0.265)                 s1c_r_reg_1 -> u_s1/s1_reg_990             -0.207 (s_q->sdq)    -0.283 (tgo->wer)    +0.108   +0.213    -0.004 / -0.070     3 223 / 4 062
+ss      1.140  282.1 (-1.544)                 g_ctx_0 ival_reg -> dsc_reg_16             -0.522 (m_q->rdq)    -1.000 (tgo->wer)    +0.029   -0.003    -0.025 / -0.063    31 340 / 1 977
+# all-paths tt worst = cin2reg tgo[0] -> g_ctx_0 wer_reg_12__2 (-0.283, 438.0 MHz).  R13 r13_c1d: tt 407.6 (-0.453), ss 264.5 (-1.780), viol ep 9 144 / 4 359 tt.
+# tt 200 worst reg2reg endpoints: lb_reg ctx 1 154, s1_reg 35, S2 act_reg 11 (R13: lb_reg 161, act_reg 22, s1_reg 17); 4 of the 5 reported paths start at s1c_r_reg_1.
