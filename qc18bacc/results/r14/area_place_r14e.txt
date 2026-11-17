@@ -1,0 +1,5 @@
+r14 area band        43779     230900 943382 util 0.24
+r14 area gap         64680     303322 1026000 util 0.30
+r14 area nw_high      5659      30862          -
+r14 area nw_low      29511     147079 271260 util 0.54
+r14 area weights      7705      62990          -

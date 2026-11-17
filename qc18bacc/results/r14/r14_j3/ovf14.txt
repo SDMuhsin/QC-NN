@@ -1,0 +1,8 @@
+OVF14 overflowed gcells 32655 of 2643024 = 1.236 %; overflow H 4250 V 33527 tracks
+region    ovf_gcell  %region     ovf_H     ovf_V  top source-net stems
+hub             219    0.03%       123       190  u_top_pt 579, u_top_g_r3b_g_rt_u_seq/n 78, u_top_n 69, u_top_s_rd 35, u_top_u_core_u_arr_n 8
+act           23826   12.09%         1     23852  q14s_t 66125, clknet_0_u_top_net 27, q14s_G 25, clknet_1_0_1_u_top_g_r3b_g_rt_u_seq/net 2
+array          3265    0.30%       573      3501  net 5093, q14s_t 3579, u_top_g_r3b_g_rt_u_seq/n 1658, q14s_N 155, clknet_1_0__leaf_u_top_g_r3b_g_rt_u_seq/net 150
+gap             274    0.24%       125       527  u_top_pt 3797, u_top_g_r3b_g_rt_u_seq/n 3281, u_top_s_q 1258, u_top_n 415, q14s_t 123
+NWcorner          1    0.00%         1         0  net 22, u_top_g_r3b_g_rt_u_seq/n 3, clknet_1_0__leaf_u_top_g_r3b_g_rt_u_seq/net 3, q14s_N 2, q14s_t 1
+north          5070    1.22%      3427      5457  net 107430, u_top_g_r3b_g_rt_u_seq/n 31394, u_top_g_r3b_g_rt_u_seq/stb 24716, clknet_1_1__leaf_u_top_g_r3b_g_rt_u_seq/net 7186, clknet_1_0__leaf_u_top_g_r3b_g_rt_u_seq/net 5884

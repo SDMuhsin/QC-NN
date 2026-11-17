@@ -1,0 +1,15 @@
+# R14 runs (tau4, OpenROAD 2.0-12381, impl/r14/top14.cfg; QB11_MAXFO 32, gpl density QB_DENS, QB_GPL_ARGS)
+run     NB   die mm2  abs   gpl (dens / args)                  outcome
+r14_a   120  23.079   abs   0.55 / -overflow 0.1               GPL-0307 divergence at overflow 0.27 (iter 460)
+r14_b   120  23.079   abs   0.62 / -overflow 0.3 (early stop)   placed to repair: std 1.05 mm2 after repair (poor gpl), killed
+r14_c   120  23.079   abs   0.62 / -overflow 0.15 max_phi_coef 1.02   GPL-0307 at overflow 0.28
+r14_f   200  23.402   abs   0.60 / -overflow 0.15              GPL-0307 at overflow 0.21
+r14_g   240  23.563   abs   0.60 / -overflow 0.15              GPL-0307 at overflow 0.18
+r14_d   300  23.804   abs   0.60 / -overflow 0.15, no split14  gpl converged; DPL-0036 on 2 repair "wire" buffers (> 1000 um from any row)
+r14_e   300  23.804   abs   0.60, split14                      placed 415 s, DPL ok (avg 3.7 um); CTS ok; GRT ERROR GRT-0076 (3 hub t2 pins pushed outside die by the strap search -> fixed)
+r14_h   300  23.804   abs   0.60, split14, t2 track bound      placed + CTS + bal + GRT (5 it) 0.269 % gcells overflowed; DR launched (r14_h)
+r14_i   300  23.804   abs2  as h + 31 buffered t2 hub pins traced onto tracks, block-only after remove_buffers, GRT-parasitic clock balancing: GRT 0.224 %; hub->col -5.5 ns (ctl broadcast unbuffered)
+r14_j   300  23.804   abs3  t2 every other track, split of multi-side block-only nets, trunks at driver x: GPL-0307 at overflow 0.17 (dens 0.60 / -overflow 0.15)
+r14_j2  300  23.804   abs3  as j, dens 0.62 / -overflow 0.15: placed + CTS (not routed: one GRT at a time next to DR for memory)
+r14_j3  300  23.804   abs3  as j, dens 0.58 / -overflow 0.20: placed + CTS + GRT 1.236 % (12 % over act: 500 trunks within +-200 um); clock 0.843 / 0.049 ns
+r14_k   300  23.804   abs3  as j3 + trunk crossing x spread over the act width by rank: 1st try DPL-0036 (3 wire buffers); 2nd (DPL window 3000) placed, CTS, GRT 0.838 %, clock 0.837 / 0.079 ns  <- final

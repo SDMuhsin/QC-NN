@@ -1,0 +1,61 @@
+class                                                      check   hpwl         nets sum_hpwl_mm  example
+top-only                                                   slew    hpwl<50     63976      764.2  u_top_g_r3b_g_rt_u_seq/n11545
+top-only                                                   slew    50-500       5519     1373.3  u_top_g_r3b_g_rt_u_seq/n5687
+top-only                                                   slew    500-1500     4563     4396.2  u_top_g_r3b_g_rt_u_seq/n94374
+top-only                                                   slew    >1500        1491     4241.8  u_top_n45705
+block-only (qb_col_blk+qb_hub)                             cap     >1500        1094     3586.5  u_top_u_core_u_arr_n70
+top-only                                                   cap     50-500        377       84.4  u_top_g_r3b_g_rt_u_seq/n55
+block-only (qb_col_blk+qb_hub)                             slew    hpwl<50       296        0.1  u_top_n36714
+block+top (qb_col_blk)                                     slew    50-500        288      108.8  u_top_n31715
+block+top (qb_col_blk)                                     slew    500-1500      213      169.8  u_top_n31510
+block+top (qb_hub)                                         slew    >1500         188      720.8  g_hpn_q_d[33]
+block+top (qb_hub)                                         cap     >1500         102      397.5  n5713
+block+top (qb_hub)                                         slew    50-500         71       15.4  u_top_n112674
+block+top (qb_hub)                                         cap     hpwl<50        41        0.0  lo_val[7]
+top-only                                                   cap     500-1500       39       29.1  u_top_g_r3b_g_rt_u_seq/n133
+block+top (qb_hub)                                         slew    500-1500       32       28.8  i_addr[0]
+block+top (qb_col_blk)                                     cap     50-500         29       10.4  u_top_cd_r[1381]
+block+top (qb_col_blk)                                     slew    >1500          16       35.6  u_top_ictl_4__6_
+block+top (qb_act2_blk)                                    cap     >1500          12       34.3  u_top_a_err
+block+top (qb_hub)                                         fanout  >1500          10       42.3  n5605
+block+top (qb_act2_blk)                                    slew    50-500          9        1.8  u_top_l_ok[1]
+top-only                                                   cap     >1500           6       18.7  u_top_g_r3b_g_rt_u_seq/n5
+block+top (qb_hub)                                         cap     500-1500        4        4.4  u_top_n14456
+block+top (qb_act2_blk)                                    cap     50-500          4        0.6  u_top_l_seq0[6]
+top-only                                                   fanout  50-500          3        1.0  u_top_g_r3b_g_rt_u_seq/eqf_0__5_
+block+top (qb_hub)                                         cap     50-500          3        0.4  N82
+block+top (qb_act2_blk+qb_hub)                             slew    >1500           2        7.8  u_top_p_fire[0]
+block+top (qb_act2_blk)                                    slew    500-1500        2        1.4  u_top_tgo[0]
+block+top (qb_col_blk+qb_hub)                              cap     >1500           2       12.2  n512
+top-only                                                   cap     hpwl<50         2        0.1  u_top_g_r3b_g_rt_u_seq/n41253
+block+top (qb_hub)                                         slew    hpwl<50         1        0.0  rst_n
+block+top (qb_col_blk+qb_hub)                              slew    500-1500        1        0.7  wb_fv
+block+top (qb_act2_blk+qb_hub)                             fanout  >1500           1        7.3  n507
+top-only                                                   fanout  >1500           1        4.6  u_top_g_r3b_g_rt_u_seq/n73788
+
+top drivers (class, driver master, pin):
+   49546  top-only AOI22D0 ZN
+    4797  top-only AOI22D1 ZN
+    4317  top-only ND4D0 ZN
+    4065  top-only ND4D1 ZN
+    2540  top-only DFQD1 Q
+    1041  top-only NR2XD0 ZN
+     900  top-only AO222D4 Z
+     686  block-only (qb_col_blk+qb_hub) qb_hub u_top_g_r3b_t2_s
+     596  top-only DFQD2 Q
+     479  top-only INVD0 ZN
+     450  top-only DFQD4 Q
+     445  top-only AO222D2 Z
+     403  top-only AO222D0 Z
+     385  top-only NR2XD3 ZN
+     368  top-only NR2XD8 ZN
+     363  top-only AO222D1 Z
+     354  top-only IAO21D0 ZN
+     336  top-only NR4D0 ZN
+     326  top-only NR2XD2 ZN
+     305  top-only NR2XD4 ZN
+     298  block+top (qb_col_blk) DFQD1 Q
+     296  block-only (qb_col_blk+qb_hub) qb_col_blk b2
+     253  top-only ND2D0 ZN
+     210  top-only OAI31D1 ZN
+     163  top-only NR2D3 ZN

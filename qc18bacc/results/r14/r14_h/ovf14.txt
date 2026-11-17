@@ -1,0 +1,8 @@
+OVF14 overflowed gcells 7109 of 2643024 = 0.269 %; overflow H 1188 V 7433 tracks
+region    ovf_gcell  %region     ovf_H     ovf_V  top source-net stems
+hub             112    0.02%        43        86  u_top_pt 214, u_top_s_rd 24, u_top_g_r3b_t2_s 16, u_top_g_r3b_g_rt_u_seq/n 10, u_top_u_core_u_arr_n 7
+act             263    0.13%         2       280  q14s_t 653, net 24, u_top_g_r3b_t2_s 9
+array          4157    0.38%       224      4428  u_top_g_r3b_t2_s 8785, net 2125, u_top_g_r3b_g_rt_u_seq/n 573, q14s_t 476, u_top_cd_r 82
+gap             112    0.10%        39       153  u_top_pt 1526, u_top_g_r3b_g_rt_u_seq/n 1373, u_top_s_q 500, u_top_n 82, q14s_t 51
+NWcorner          0    0.00%         0         0  
+north          2465    0.59%       880      2486  net 50787, u_top_g_r3b_g_rt_u_seq/n 12629, u_top_g_r3b_g_rt_u_seq/stb 10891, clknet_1_1__leaf_u_top_g_r3b_g_rt_u_seq/net 3593, clknet_1_0__leaf_u_top_g_r3b_g_rt_u_seq/net 2507

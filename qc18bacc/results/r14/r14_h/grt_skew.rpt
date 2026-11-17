@@ -1,0 +1,7 @@
+Clock qb_clk
+Latency      CRPR       Skew
+i_addr_reg_9_/CP ^
+   3.62
+u_hub/clk ^
+   1.88      0.00       1.74
+

@@ -1,0 +1,8 @@
+# R14 DRV at GRT parasitics (/tmp/ckp908/qc18bacc/build/pnr/r14_j3/rpt/drv_post.tmp): check/class violators worst_slack
+cap/blockpin         564   -1.220
+cap/q14               33   -0.570
+cap/t2              1062   -0.170
+cap/top             1267   -0.410
+slew/blockpin        755   -1.250
+slew/q14             129   -1.310
+slew/top           18392   -1.990

@@ -1,0 +1,6 @@
+# R14 split14: 1596 block-crossing nets split (1094 block-only), 2100 channel-end buffers (FIRM), trunks dont_touch
+GM:M              3
+GMN:M             1
+GN:G            293
+GN:N            210
+MN:M           1089

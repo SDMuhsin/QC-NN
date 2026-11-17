@@ -1,0 +1,7 @@
+# DRV-violating nets by block crossing (drv_nets.txt), max wire length 757 um: class nets sum_hpwl_mm [repair buffers ~ hpwl/MWL]
+top no crossing >MWL                            4128    5678.4     7501
+block-only no crossing >MWL                     1094    3586.5     4738
+top no crossing <=MWL                          71967    3374.6        0
+top crosses act >MWL                             815    3056.0     4037
+top crosses act+array >MWL                        98     404.6      535
+block-only no crossing <=MWL                     296       0.1        0
