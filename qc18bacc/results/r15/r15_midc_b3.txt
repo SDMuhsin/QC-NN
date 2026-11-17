@@ -1,0 +1,55 @@
+@@ r15_midc_b3
+gcell 3.0 um; overflowed gcells 7643 of 775390 = 0.99 %; records H 2153 V 5501; total overflow H 3237 V 8669 tracks
+REGION west  overflowed gcells     80 =   0.0 % of region; overflow H    235 V      0 tracks
+REGION col0  overflowed gcells   1894 =   2.5 % of region; overflow H   2745 V     66 tracks
+REGION col1  overflowed gcells    677 =   0.9 % of region; overflow H     28 V   1046 tracks
+REGION col2  overflowed gcells   1452 =   1.9 % of region; overflow H     51 V   2265 tracks
+REGION col3  overflowed gcells   1802 =   2.4 % of region; overflow H    161 V   2897 tracks
+REGION col4  overflowed gcells   1110 =   1.5 % of region; overflow H     14 V   1663 tracks
+REGION col5  overflowed gcells    484 =   0.6 % of region; overflow H      3 V    577 tracks
+REGION col6  overflowed gcells    133 =   0.2 % of region; overflow H      0 V    144 tracks
+REGION col7  overflowed gcells     11 =   0.0 % of region; overflow H      0 V     11 tracks
+YREGION south (params/B) y<361     H overflow       0 tracks, overflowed gcells 0
+YREGION south (params/B) y<361     V overflow       0 tracks, overflowed gcells 0
+YREGION S rows y 361-1300          H overflow     393 tracks, overflowed gcells 367
+YREGION S rows y 361-1300          V overflow     364 tracks, overflowed gcells 297
+YREGION band y>1300                H overflow    2844 tracks, overflowed gcells 1786
+YREGION band y>1300                V overflow    8305 tracks, overflowed gcells 5204
+LAYER M1 0 0 0.00% 0 / 0 / 0
+LAYER M2 3678431 1610285 43.78% 0 / 6 / 2168
+LAYER M3 3808728 2359362 61.95% 3 / 1 / 395
+LAYER M4 7284025 3863617 53.04% 0 / 5 / 3593
+LAYER M5 10084452 4193547 41.58% 5 / 1 / 1945
+LAYER M6 10046484 3508664 34.92% 0 / 5 / 2470
+LAYER M7 4868996 1382547 28.39% 5 / 0 / 634
+LAYER M8 1241050 347614 28.01% 0 / 2 / 435
+LAYER M9 1437941 305754 21.26% 3 / 0 / 266
+R10B grt tt setup_wns_ns -2.130 fmax_est_mhz 251.3
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 6:41.86
+	Maximum resident set size (kbytes): 6148740
+R15 gadj M2-M9 0.25
+R15 gadj M5-M9 0.10 (QB15_GADJ_L)
+R10B grt tt setup_wns_ns -2.130 fmax_est_mhz 251.3
+@@lay
+# R15 lay15: x 860-3200 (columns 0-5), die H 1751.0, GRT pitch M2 0.20 M3 0.20 M4 0.20 M5 0.20 M6 0.20 M7 0.37 M8 0.80 M9 0.80
+# use % = guide demand / nominal tracks x span (no derate / OBS); cut = H crossings at x 1055 1445 1835 2225 2615 3005 / band H tracks (sum of H layers)
+band          y0     y1    M2    M3    M4    M5    M6    M7    M8    M9  allH  allV | Htrk  cutH%% min-max | ovf H / V tracks (x-range H / V) gcells
+south          0    361   3.8  15.1  12.6  36.4   0.5   7.7   0.0   0.6  20.0   5.2 |  5043   13- 25 |      0 /      0 (     0 /      0) 0 / 0
+S0           361    566   1.6   2.2  20.5  22.1   1.5   3.7   0.1   0.0   9.4   7.3 |  2848    2- 21 |      0 /      0 (     0 /      0) 0 / 0
+ch           566    606   5.8  51.5  26.3  43.2   3.8   1.3   0.1   0.0  34.2  11.1 |   568   24- 46 |      0 /      0 (     0 /      0) 0 / 0
+S1           606    810   1.6   2.3  26.4  18.6   5.8   6.7   0.2   2.2   9.0  10.4 |  2848    7-  9 |      0 /      0 (     0 /      0) 0 / 0
+band_mid     810   1297  86.7  82.7  58.4  83.9  49.9  70.0  19.4  42.3  77.0  61.5 |  6796   77- 83 |    379 /    214 (   379 /    214) 353 / 187
+S2          1297   1502   4.0   3.4  65.6  66.2  83.4  48.0  37.9  17.8  35.9  50.0 |  2848   24- 50 |   1033 /   8444 (  1005 /   8289) 851 / 5305
+ch          1502   1540  12.0  54.7  62.7  58.3  84.2  38.0  35.6  12.6  49.0  51.6 |   543   23- 80 |    191 /      0 (   191 /      0) 129 / 0
+S3          1540   1744   4.6   3.5  62.1  36.7  78.3  21.8  31.8   6.6  19.2  47.1 |  2848    5- 46 |   1609 /     11 (  1403 /     11) 802 / 9
+ch          1744   1751  59.7  38.0  62.9  69.2  51.4  25.2  33.6   0.0  43.3  56.1 |    91   17- 66 |     25 /      0 (    24 /      0) 18 / 0
+CUT x   1055  H crossings  10722 of  24431 tracks (die height) =  43.9 % | over S rows   3568 (33.3 % of all crossings)
+CUT x   1445  H crossings  10059 of  24431 tracks (die height) =  41.2 % | over S rows   2708 (26.9 % of all crossings)
+CUT x   1835  H crossings   9064 of  24431 tracks (die height) =  37.1 % | over S rows   2056 (22.7 % of all crossings)
+CUT x   2225  H crossings   8708 of  24431 tracks (die height) =  35.6 % | over S rows   1825 (21.0 % of all crossings)
+CUT x   2615  H crossings   8421 of  24431 tracks (die height) =  34.5 % | over S rows   1538 (18.3 % of all crossings)
+CUT x   3005  H crossings   7700 of  24431 tracks (die height) =  31.5 % | over S rows   1112 (14.4 % of all crossings)
+LAYERH M3 use over S rows   2.9 % | in logic band(s)  82.7 %
+LAYERH M5 use over S rows  35.9 % | in logic band(s)  83.9 %
+LAYERH M7 use over S rows  20.1 % | in logic band(s)  70.0 %
+LAYERH M9 use over S rows   6.7 % | in logic band(s)  42.3 %

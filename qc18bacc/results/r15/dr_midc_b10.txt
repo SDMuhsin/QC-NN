@@ -1,0 +1,92 @@
+# R15 DR of r15_midc grt_b10 (impl/r15/drrun.sh): per-iteration DRT-0199 tables, progress lines, RSS log (killed at 01:30 UTC in iteration 3)
+[INFO DRT-0195] Start 0th optimization iteration.
+    Completing 10% with 31427 violations.
+    Completing 20% with 110623 violations.
+    Completing 30% with 131647 violations.
+    Completing 40% with 200715 violations.
+    Completing 50% with 235009 violations.
+[INFO DRT-0199]   Number of violations = 698130.
+Viol/Layer          M1   VIA1     M2   VIA2     M3   VIA3     M4   VIA4     M5   VIA5     M6   VIA6     M7   VIA7     M8   VIA8     M9
+Cut Spacing          0   6794      0    334      0    102      0    124      0     62      0      8      0      3      0      0      0
+Metal Spacing     2847      0  23502      0  11166      0    959      0    722      0   1074      0     22      0     47      0      8
+Min Hole             0      0     14      0     15      0      1      0      0      0      0      0      1      0      0      0      0
+Minimum Cut          0      0      0      0     14      0      2      0      0      0      0      0     66      0      0      0      0
+NS Metal             0      0      3      0     27      0      0      0      0      0      0      0      0      0      0      0      0
+Recheck             14      0  81257      0  67803      0  16719      0  30000      0   4146      0  12450      0    165      0   1914
+Short               34      5 214282    412  87766    149  25202    146  62603     46  42845      4   1966     38    236      1     10
+Total wire length = 53642634 um.
+[INFO DRT-0195] Start 1st optimization iteration.
+    Completing 10% with 669276 violations.
+    Completing 20% with 608826 violations.
+    Completing 30% with 590409 violations.
+    Completing 40% with 525015 violations.
+    Completing 50% with 492648 violations.
+[INFO DRT-0199]   Number of violations = 252146.
+Viol/Layer          M1   VIA1     M2   VIA2     M3   VIA3     M4   VIA4     M5   VIA5     M6   VIA6     M7   VIA7     M8     M9
+Cut Spacing          0   6093      0    212      0     41      0     35      0     34      0     46      0      1      0      0
+Metal Spacing     1103      0  17966      0   4584      0    511      0    741      0   1127      0     58      0     16     17
+Min Hole             0      0      5      0      1      0      2      0      0      0      0      0      0      0      0      0
+Minimum Cut          0      0      9      0      3      0      3      0      0      0      0      0     67      0      0      0
+NS Metal             0      0      0      0     23      0      0      0      0      0      0      0      0      0      0      0
+Recheck              0      0     10      0      2      0      2      0      0      0      0      0      0      0      0      0
+Short                0      0 126596     42  34627      5  13227      0  29578      1  13453      0   1763      0     99     43
+Total wire length = 53622812 um.
+[INFO DRT-0195] Start 2nd optimization iteration.
+    Completing 10% with 252606 violations.
+    Completing 20% with 253192 violations.
+    Completing 30% with 253293 violations.
+    Completing 40% with 250276 violations.
+    Completing 50% with 249504 violations.
+[INFO DRT-0199]   Number of violations = 242604.
+Viol/Layer          M1   VIA1     M2   VIA2     M3   VIA3     M4   VIA4     M5   VIA5     M6   VIA6     M7     M8     M9
+Cut Spacing          0   5886      0    212      0     33      0     51      0    108      0     81      0      0      0
+Metal Spacing     1031      0  17019      0   4221      0    478      0    853      0    926      0    108     27      8
+Min Hole             0      0      3      0      2      0      0      0      0      0      0      0      1      0      0
+Minimum Cut          0      0      9      0      2      0      0      0      0      0      0      0     57      0      0
+NS Metal             0      0      0      0     21      0      0      0      0      0      0      0      0      0      0
+Recheck              0      0     10      0      2      0      0      0      0      0      0      0      0      0      0
+Short                0      0 118781     21  33042      9  14114      3  30507      1  12849      0   2037     68     23
+Total wire length = 53611285 um.
+[INFO DRT-0195] Start 3rd optimization iteration.
+    Completing 10% with 235095 violations.
+    Completing 20% with 215720 violations.
+    Completing 30% with 209672 violations.
+    Completing 40% with 191760 violations.
+    Completing 10% with 31427 violations.
+    Completing 20% with 110623 violations.
+    Completing 30% with 131647 violations.
+    Completing 40% with 200715 violations.
+    Completing 50% with 235009 violations.
+    Completing 60% with 284212 violations.
+    Completing 70% with 355801 violations.
+    Completing 80% with 374693 violations.
+    Completing 90% with 438941 violations.
+    Completing 100% with 483662 violations.
+    Completing 10% with 669276 violations.
+    Completing 20% with 608826 violations.
+    Completing 30% with 590409 violations.
+    Completing 40% with 525015 violations.
+    Completing 50% with 492648 violations.
+    Completing 60% with 442626 violations.
+    Completing 70% with 383927 violations.
+    Completing 80% with 365765 violations.
+    Completing 90% with 303869 violations.
+    Completing 100% with 252132 violations.
+    Completing 10% with 252606 violations.
+    Completing 20% with 253192 violations.
+    Completing 30% with 253293 violations.
+    Completing 40% with 250276 violations.
+    Completing 50% with 249504 violations.
+    Completing 60% with 248849 violations.
+    Completing 70% with 247791 violations.
+    Completing 80% with 247250 violations.
+    Completing 90% with 243837 violations.
+    Completing 100% with 242592 violations.
+    Completing 10% with 235095 violations.
+    Completing 20% with 215720 violations.
+    Completing 30% with 209672 violations.
+    Completing 40% with 191760 violations.
+# rss (1/min): first, max, last
+17:20:56 rss_mb 5548 swap_mb 539
+18:19:57 rss_mb 21600 swap_mb 777
+19:29:58 rss_mb 21337 swap_mb 776
