@@ -20,6 +20,8 @@ R8c (opt-in QB_ACT_S2M with QB_ACT_S1M = 1, results/r8c.md): qba2_s1r / qba2_s2r
   gen_act2_s2m.py (appended to the same file).
 R19 (opt-in QB_ACT_S1P, results/r19.md): qba2_s1p (band-partitioned S1) + qba2_lb_p / qba2_s1p_bq of gen_act2_s1p.py
   (appended inside `ifdef QB_ACT_S1P).
+R20 (opt-in QB_ACT_S1T, results/r20.md): qba2_s1t (S1P with band-local selects, 4 pre-mux selects per band, paired
+  stops on the long register sides) of gen_act2_s1t.py (appended inside `ifdef QB_ACT_S1T).
     python3 qc18bacc/hw/tb/gen_act2.py
 """
 import os
@@ -188,12 +190,16 @@ def main():
     import gen_act2_s1p as SP                       # R19 (QB_ACT_S1P): band-partitioned S1, checked in gen_act2_s1p.py
     Lp, sp = SP.emit()
     L += Lp
+    import gen_act2_s1t as ST                       # R20 (QB_ACT_S1T): S1P timing variant, checked in gen_act2_s1t.py
+    Lt, stt = ST.emit()
+    L += Lt
     out = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "rtl", "qb_act2_net.sv")
     open(out, "w").write("\n".join(L))
     hist = {k: n.count(k) for k in sorted(set(n))}
     print(f"wrote {os.path.relpath(out)}: S1 {len(pos)} groups; LB candidates per context per bit max {max(n)} "
           f"hist {hist} (x 2 contexts); R8b qba2_pm / qba2_s1m / qba2_s1s (checked vs qba2_s1 for all {NSEL1} lines); R8c qba2_s1r / qba2_s2r: {nr} row-homed S1 regs, {nt1} / {nt2} "
-          f"S1 / S2 terms (checked vs qba_s2 o qba2_s1m); R19 qba2_s1p: {sp['nterm']} terms in {sp['npart']} band partials")
+          f"S1 / S2 terms (checked vs qba_s2 o qba2_s1m); R19 qba2_s1p: {sp['nterm']} terms in {sp['npart']} band partials; "
+          f"R20 qba2_s1t: {stt['nterm']} terms, {stt['nnets']} inter-band nets")
 
 
 if __name__ == "__main__":

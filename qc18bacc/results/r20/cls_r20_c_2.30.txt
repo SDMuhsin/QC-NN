@@ -1,0 +1,69 @@
+# R20 pt_cls corner tt period 2.300000 L 0.770 (latencies 0.88 0.66)
+violating endpoints 3305
+  dist->actout     n   3261 worst  -0.306 fmax  383.7  u_dist/q_reg_3548_/CP -> act[3548]
+  cin->shq         n      5 worst  -0.131 fmax  411.3  tgo[0] -> u_act/g_ctx_0__u_ctx/shqt_reg_5__2_/D
+  actreg->s1       n     24 worst  -0.127 fmax  412.1  u_act/selt_reg_1__14_/CP -> u_act/u_s1/u_b10/s1_reg_68_/D
+  cin->actreg      n     11 worst  -0.046 fmax  426.3  tgo[1] -> u_act/sel2t_reg_0__2_/D
+  ival->actreg     n      4 worst  -0.043 fmax  426.9  u_act/g_ctx_1__u_ctx/ival_reg/CP -> u_act/selt_reg_12__34_/D
+path actreg->s1       slack  -0.127 launch_lat 0.740 capture_lat 0.705 cell 1.981 (15 cells, 2 buf) net 0.143 maxfo 32  u_act/selt_reg_1__14_/CP -> u_act/u_s1/u_b10/s1_reg_68_/D
+path cin->actreg      slack  -0.046 launch_lat 0.000 capture_lat 0.750 cell 0.759 (15 cells, 6 buf) net 0.304 maxfo 16  tgo[1] -> u_act/sel2t_reg_0__2_/D
+path cin->shq         slack  -0.131 launch_lat 0.000 capture_lat 0.709 cell 0.697 (15 cells, 9 buf) net 0.433 maxfo 8  tgo[0] -> u_act/g_ctx_0__u_ctx/shqt_reg_5__2_/D
+path dist->actout     slack  -0.306 launch_lat 0.681 capture_lat 0.000 cell 0.603 (5 cells, 4 buf) net 0.022 maxfo 1  u_dist/q_reg_3548_/CP -> act[3548]
+path ival->actreg     slack  -0.043 launch_lat 0.780 capture_lat 0.664 cell 1.693 (25 cells, 5 buf) net 0.256 maxfo 17  u_act/g_ctx_1__u_ctx/ival_reg/CP -> u_act/selt_reg_12__34_/D
+lat s1c none
+lat s1    n   4096 min 0.659 p50 0.706 p90 0.742 max 0.814
+lat lb    n  32768 min 0.712 p50 0.789 p90 0.830 max 0.884
+lat wer   n    256 min 0.685 p50 0.770 p90 0.833 max 0.857
+lat sel2  n     11 min 0.765 p50 0.765 p90 0.765 max 0.765
+lat act   n   4608 min 0.659 p50 0.697 p90 0.716 max 0.752
+lat dist  n   4608 min 0.669 p50 0.694 p90 0.710 max 0.732
+pt_wall_s 32
+
+# R20 pt_cls corner ss period 2.300000 L 1.125 (latencies 1.30 0.95)
+violating endpoints 9989
+  actreg->s1       n   2646 worst  -1.821 fmax  242.7  u_act/selt_reg_2__18_/CP -> u_act/u_s1/u_b10/s1_reg_68_/D
+  ival->actreg     n     48 worst  -1.433 fmax  267.8  u_act/g_ctx_0__u_ctx/ival_reg/CP -> u_act/selt_reg_12__34_/D
+  ctx->actreg      n    277 worst  -1.371 fmax  272.4  u_act/g_ctx_0__u_ctx/lval_reg/CP -> u_act/m_ra_reg_6_/D
+  ctx->ctx         n    287 worst  -1.223 fmax  283.8  u_act/g_ctx_1__u_ctx/cfg_reg_0_/CP -> u_act/g_ctx_1__u_ctx/bgsing_reg_2_/D
+  ival->dsc        n      9 worst  -1.217 fmax  284.3  u_act/g_ctx_1__u_ctx/ival_reg/CP -> u_act/dsc_reg_15_/D
+  ctx->wer         n    256 worst  -1.161 fmax  288.9  u_act/g_ctx_1__u_ctx/cfg_reg_0_/CP -> u_act/g_ctx_1__u_ctx/wer_reg_10__2_/D
+  ctx->sel2        n     12 worst  -0.915 fmax  311.0  u_act/g_ctx_1__u_ctx/cfg_reg_2_/CP -> u_act/sel2_reg_2_/D
+  ctx->shq         n     93 worst  -0.896 fmax  312.9  u_act/g_ctx_0__u_ctx/cfg_reg_2_/CP -> u_act/g_ctx_0__u_ctx/shqt_reg_5__2_/D
+  dist->actout     n   4608 worst  -0.733 fmax  329.7  u_dist/q_reg_3548_/CP -> act[3548]
+  ctx->ival        n      2 worst  -0.707 fmax  332.6  u_act/g_ctx_1__u_ctx/cfg_reg_2_/CP -> u_act/g_ctx_1__u_ctx/ival_reg/D
+  cin->actreg      n    168 worst  -0.688 fmax  334.7  f_idx[2] -> u_act/f_z_reg_7_/D
+  ctx->dsc         n      5 worst  -0.598 fmax  345.1  u_act/g_ctx_1__u_ctx/cfg_reg_2_/CP -> u_act/dsc_reg_19_/D
+  ival->ctx        n     17 worst  -0.534 fmax  352.9  u_act/g_ctx_0__u_ctx/ival_reg/CP -> u_act/g_ctx_0__u_ctx/rgsing_reg_1_/D
+  shq->ctx         n     56 worst  -0.513 fmax  355.5  u_act/g_ctx_1__u_ctx/shqt_reg_5__2_/CP -> u_act/g_ctx_1__u_ctx/u_lb/clk_gate_lb_reg_1__27/latch/E
+  actreg->act      n    986 worst  -0.483 fmax  359.3  u_act/sel2_1_reg_0_/CP -> u_act/u_s2/act_reg_422_/D
+  ctx->lb          n    462 worst  -0.299 fmax  384.8  u_act/g_ctx_1__u_ctx/ev2_reg_zero_/CP -> u_act/g_ctx_1__u_ctx/u_lb/lb_reg_5__1939_/D
+  ctx->other       n     11 worst  -0.133 fmax  411.0  u_act/g_ctx_1__u_ctx/int8_reg/CP -> l_pos1[1]
+  wer->ctx         n     14 worst  -0.081 fmax  420.0  u_act/g_ctx_1__u_ctx/wer_reg_0__3_/CP -> u_act/g_ctx_1__u_ctx/u_lb/clk_gate_lb_reg_3__23/latch/E
+  wer->lb          n     32 worst  -0.077 fmax  420.7  u_act/g_ctx_0__u_ctx/wer_reg_15__4_/CP -> u_act/g_ctx_0__u_ctx/u_lb/lb_reg_4__2012_/D
+path actreg->act      slack  -0.483 launch_lat 1.063 capture_lat 1.013 cell 2.271 (9 cells, 4 buf) net 0.155 maxfo 32  u_act/sel2_1_reg_0_/CP -> u_act/u_s2/act_reg_422_/D
+path actreg->s1       slack  -1.821 launch_lat 1.090 capture_lat 1.037 cell 3.710 (16 cells, 2 buf) net 0.077 maxfo 32  u_act/selt_reg_2__18_/CP -> u_act/u_s1/u_b10/s1_reg_68_/D
+path cin->actreg      slack  -0.688 launch_lat 0.000 capture_lat 1.131 cell 1.610 (7 cells, 0 buf) net 0.057 maxfo 11  f_idx[2] -> u_act/f_z_reg_7_/D
+path ctx->actreg      slack  -1.371 launch_lat 1.143 capture_lat 1.086 cell 3.256 (27 cells, 1 buf) net 0.035 maxfo 26  u_act/g_ctx_0__u_ctx/lval_reg/CP -> u_act/m_ra_reg_6_/D
+path ctx->ctx         slack  -1.223 launch_lat 1.179 capture_lat 1.102 cell 3.158 (17 cells, 1 buf) net 0.021 maxfo 14  u_act/g_ctx_1__u_ctx/cfg_reg_0_/CP -> u_act/g_ctx_1__u_ctx/bgsing_reg_2_/D
+path ctx->dsc         slack  -0.598 launch_lat 1.179 capture_lat 1.046 cell 2.405 (13 cells, 2 buf) net 0.090 maxfo 12  u_act/g_ctx_1__u_ctx/cfg_reg_2_/CP -> u_act/dsc_reg_19_/D
+path ctx->ival        slack  -0.707 launch_lat 1.179 capture_lat 1.117 cell 2.585 (14 cells, 2 buf) net 0.091 maxfo 12  u_act/g_ctx_1__u_ctx/cfg_reg_2_/CP -> u_act/g_ctx_1__u_ctx/ival_reg/D
+path ctx->lb          slack  -0.299 launch_lat 1.104 capture_lat 1.151 cell 1.893 (14 cells, 9 buf) net 0.451 maxfo 32  u_act/g_ctx_1__u_ctx/ev2_reg_zero_/CP -> u_act/g_ctx_1__u_ctx/u_lb/lb_reg_5__1939_/D
+path ctx->other       slack  -0.133 launch_lat 1.179 capture_lat 0.000 cell 0.724 (3 cells, 1 buf) net 0.025 maxfo 24  u_act/g_ctx_1__u_ctx/int8_reg/CP -> l_pos1[1]
+path ctx->sel2        slack  -0.915 launch_lat 1.179 capture_lat 1.122 cell 2.629 (21 cells, 8 buf) net 0.221 maxfo 16  u_act/g_ctx_1__u_ctx/cfg_reg_2_/CP -> u_act/sel2_reg_2_/D
+path ctx->shq         slack  -0.896 launch_lat 1.094 capture_lat 1.032 cell 2.396 (20 cells, 10 buf) net 0.461 maxfo 12  u_act/g_ctx_0__u_ctx/cfg_reg_2_/CP -> u_act/g_ctx_0__u_ctx/shqt_reg_5__2_/D
+path ctx->wer         slack  -1.161 launch_lat 1.179 capture_lat 1.066 cell 2.866 (20 cells, 4 buf) net 0.199 maxfo 14  u_act/g_ctx_1__u_ctx/cfg_reg_0_/CP -> u_act/g_ctx_1__u_ctx/wer_reg_10__2_/D
+path dist->actout     slack  -0.733 launch_lat 0.990 capture_lat 0.000 cell 1.075 (5 cells, 4 buf) net 0.023 maxfo 1  u_dist/q_reg_3548_/CP -> act[3548]
+path ival->actreg     slack  -1.433 launch_lat 1.100 capture_lat 0.974 cell 3.100 (26 cells, 5 buf) net 0.207 maxfo 17  u_act/g_ctx_0__u_ctx/ival_reg/CP -> u_act/selt_reg_12__34_/D
+path ival->ctx        slack  -0.534 launch_lat 1.100 capture_lat 1.165 cell 2.579 (23 cells, 2 buf) net 0.015 maxfo 14  u_act/g_ctx_0__u_ctx/ival_reg/CP -> u_act/g_ctx_0__u_ctx/rgsing_reg_1_/D
+path ival->dsc        slack  -1.217 launch_lat 1.119 capture_lat 1.035 cell 3.085 (25 cells, 4 buf) net 0.092 maxfo 17  u_act/g_ctx_1__u_ctx/ival_reg/CP -> u_act/dsc_reg_15_/D
+path shq->ctx         slack  -0.513 launch_lat 1.033 capture_lat 0.881 cell 2.203 (6 cells, 1 buf) net 0.050 maxfo 25  u_act/g_ctx_1__u_ctx/shqt_reg_5__2_/CP -> u_act/g_ctx_1__u_ctx/u_lb/clk_gate_lb_reg_1__27/latch/E
+path wer->ctx         slack  -0.081 launch_lat 1.155 capture_lat 0.951 cell 1.710 (6 cells, 3 buf) net 0.092 maxfo 32  u_act/g_ctx_1__u_ctx/wer_reg_0__3_/CP -> u_act/g_ctx_1__u_ctx/u_lb/clk_gate_lb_reg_3__23/latch/E
+path wer->lb          slack  -0.077 launch_lat 1.237 capture_lat 1.164 cell 1.901 (8 cells, 2 buf) net 0.091 maxfo 32  u_act/g_ctx_0__u_ctx/wer_reg_15__4_/CP -> u_act/g_ctx_0__u_ctx/u_lb/lb_reg_4__2012_/D
+lat s1c none
+lat s1    n   4096 min 0.956 p50 1.033 p90 1.080 max 1.211
+lat lb    n  32768 min 1.045 p50 1.163 p90 1.213 max 1.302
+lat wer   n    256 min 1.000 p50 1.133 p90 1.208 max 1.270
+lat sel2  n     11 min 1.123 p50 1.123 p90 1.123 max 1.123
+lat act   n   4608 min 0.962 p50 1.016 p90 1.042 max 1.134
+lat dist  n   4608 min 0.972 p50 1.007 p90 1.032 max 1.067
+pt_wall_s 32

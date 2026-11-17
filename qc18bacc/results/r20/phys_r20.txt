@@ -1,0 +1,46 @@
+# r20_p (deleted after use; from its summary): place @2.20 tt -0.261 / TNS -20.5, cell 0.970 mm2 util 0.556; CTS tt -0.720, cell 1.041 mm2; 14 min
+# r20_s (post-CTS, R16 recipe, QB_IO_LAT 0.77)
+pnr_wall_s 850 wall 14:09.38 peak_rss_mb 2667
+r16 respread pre die_um 900.00 x 1970.00 core_um2 1742976.0 cell_um2 1041162.1 macro_um2 0.0 utilisation 0.597 fixed_cells 16127 (clock 11519) density 0.647 gpl_pad 0
+r16 respread s1_inflated 45132
+r16 respread drv_after_gpl 18686
+r16 respread post die_um 900.00 x 1970.00 core_um2 1742976.0 cell_um2 1071097.6 macro_um2 0.0 utilisation 0.615 respread_tt setup_wns_ns -0.688 setup_tns_ns -2451.654 hold_wns_ns -0.843 hold_tns_ns -1842.780 wall_s 306
+postcts_pre_repair tt setup_wns_ns -0.542 setup_viol_endpoints 502 hold_wns_ns -0.192 hold_viol_endpoints 5556 die_um 900.00 x 1970.00 core_um2 1742976.0 cell_um2 1071097.6 macro_um2 0.0 utilisation 0.615
+postcts_setup_repair tt setup_wns_ns -0.196 setup_viol_endpoints 68 hold_wns_ns -0.216 hold_viol_endpoints 5556 die_um 900.00 x 1970.00 core_um2 1742976.0 cell_um2 1072336.3 macro_um2 0.0 utilisation 0.615
+postcts_setup_legal tt setup_wns_ns -0.197 setup_viol_endpoints 88 hold_wns_ns -0.216 hold_viol_endpoints 5556 die_um 900.00 x 1970.00 core_um2 1742976.0 cell_um2 1072336.3 macro_um2 0.0 utilisation 0.615
+postcts_hold_repair_unlegal tt setup_wns_ns -0.180 setup_viol_endpoints 79 hold_wns_ns 0.020 hold_viol_endpoints 0 die_um 900.00 x 1970.00 core_um2 1742976.0 cell_um2 1095768.7 macro_um2 0.0 utilisation 0.629
+postcts_hold_legal tt setup_wns_ns -0.246 setup_viol_endpoints 1201 hold_wns_ns 0.018 hold_viol_endpoints 0 die_um 900.00 x 1970.00 core_um2 1742976.0 cell_um2 1095768.7 macro_um2 0.0 utilisation 0.629
+postcts_setup1_repair tt setup_wns_ns -0.172 setup_viol_endpoints 22 hold_wns_ns 0.018 hold_viol_endpoints 0 die_um 900.00 x 1970.00 core_um2 1742976.0 cell_um2 1096976.9 macro_um2 0.0 utilisation 0.629
+postcts_setup1_legal tt setup_wns_ns -0.253 setup_viol_endpoints 1858 hold_wns_ns 0.019 hold_viol_endpoints 0 die_um 900.00 x 1970.00 core_um2 1742976.0 cell_um2 1096976.9 macro_um2 0.0 utilisation 0.629
+pnr_wall_s 508 wall 8:28.35 peak_rss_mb 2809
+# r20_c (route_rt: GRT adj 0.25 10 it, antenna repair on, DR up to 64 it, 14 threads)
+r9a grt_s 83
+groute groute_tt setup_wns_ns -1.062 setup_tns_ns -3716.826 hold_wns_ns -0.786 hold_tns_ns -1937.960
+r9a drt_s 9016
+final die_um 900.00 x 1970.00 core_um2 1742976.0 cell_um2 1096976.9 macro_um2 0.0 utilisation 0.629
+[INFO GRT-0096] Final congestion report:
+Layer         Resource        Demand        Usage (%)    Max H / Max V / Total Overflow
+---------------------------------------------------------------------------------------
+M1                   0             0            0.00%             0 /  0 /  0
+M2             2160718       1389000           64.28%             0 /  0 /  0
+M3             2133197       1263376           59.22%             0 /  0 /  0
+M4             2044726       1314523           64.29%             0 /  0 /  0
+M5             2157989        988753           45.82%             0 /  0 /  0
+M6             2157522       1039144           48.16%             0 /  0 /  0
+M7             2042170        278930           13.66%             0 /  0 /  0
+---------------------------------------------------------------------------------------
+Total         12696322       6273726           49.41%             0 /  0 /  0
+
+DR markers per iteration:
+464331. 212074. 201237. 53397. 13559. 3474. 1163. 487. 284. 226. 102. 75. 61. 55. 46. 40. 38. 70. 16. 8. 7. 7. 6. 3. 2. 2. 2. 1. 1. 1. 1. 1. 0. 
+[INFO GRT-0012] Found 0 antenna violations.
+[INFO ANT-0002] Found 0 net violations.
+[INFO ANT-0001] Found 0 pin violations.
+drt.drc.rpt bytes 0
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 2:33:50
+	Maximum resident set size (kbytes): 21313148
+markers 0
+type x layer: 
+top y bins (um): 
+x bins (25 um): 
+net classes: 

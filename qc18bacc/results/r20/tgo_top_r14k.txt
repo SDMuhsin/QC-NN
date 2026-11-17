@@ -1,0 +1,14 @@
+# R20 top-level tgo probe (impl/r20/tgo_top.tcl on R14 r14_k GRT db, tau4; act block = R14 proxy): tgo[0] driver
+R20TGO driver u_top_g_r3b_g_rt_u_seq/U9011/ZN NR3D3
+Startpoint: u_act_blk (rising edge-triggered flip-flop clocked by qb_clk)
+Endpoint: u_top_g_r3b_g_rt_u_seq/U9011/ZN (internal pin)
+Path Type: min
+   0.080    1.360 ^ u_top_g_r3b_g_rt_u_seq/U9011/ZN (NR3D3)
+            1.360   data arrival time
+Startpoint: u_top_g_r3b_g_rt_u_seq/rwH_reg_6_
+Endpoint: u_top_g_r3b_g_rt_u_seq/U9011/ZN (internal pin)
+Path Type: max
+   0.042    2.916 ^ u_top_g_r3b_g_rt_u_seq/rwH_reg_6_/CP (DFQD1)
+   0.269    3.186 ^ u_top_g_r3b_g_rt_u_seq/rwH_reg_6_/Q (DFQD1)
+   0.076    4.051 ^ u_top_g_r3b_g_rt_u_seq/U9011/ZN (NR3D3)
+            4.051   data arrival time

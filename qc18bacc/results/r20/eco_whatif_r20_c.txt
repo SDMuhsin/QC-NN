@@ -1,0 +1,9 @@
+before reg2reg -0.127 (u_act/selt_reg_1__14_/CP -> u_act/u_s1/u_b10/s1_reg_68_/D) all -0.306 (u_dist/q_reg_3548_/CP -> act[3548]) hold -0.006
+margin 0.08 physical 0
+fix_eco_timing: 1
+after_size reg2reg 0.000 (u_act/s1t_c_reg_52_/CP -> u_act/u_s1/u_b0/s1_reg_32_/D) all -0.120 (tgo[0] -> u_act/g_ctx_0__u_ctx/shqt_reg_5__2_/D) hold -0.006
+9599
+before reg2reg -0.127 (u_act/selt_reg_1__14_/CP -> u_act/u_s1/u_b10/s1_reg_68_/D) all -0.306 (u_dist/q_reg_3548_/CP -> act[3548]) hold -0.006
+margin 0.08 physical 1
+fix_eco_timing: 1
+after_size reg2reg -0.127 (u_act/selt_reg_1__14_/CP -> u_act/u_s1/u_b10/s1_reg_68_/D) all -0.306 (u_dist/q_reg_3548_/CP -> act[3548]) hold -0.006

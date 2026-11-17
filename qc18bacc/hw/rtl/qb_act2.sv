@@ -182,6 +182,18 @@ module qb_act2 #(parameter int ACT_PIPE = 1) (
             s1c_r[5] <= is_v[0];
 `endif
         end
+`ifdef QB_ACT_S1T
+    // R20 (opt-in QB_ACT_S1T, with QB_ACT_S1P; results/r20.md): 4 pre-mux select copies per act-row band (s1t_c[4 b + q]
+    // selects pre-mux bits 256 q +: 256 of band b) and band-local copies of the S1 selects (selt[b] = sel1a | sel1b,
+    // sel2t[b] = sel2; loaded below with the same next-state values).  Bit- and cycle-exact; kept apart in synthesis
+    // (impl/r20/topo.tcl: no register merging of *s1t_c_reg* / *selt_reg* / *sel2t_reg*).
+    logic [63:0]       s1t_c;
+    logic [15:0][38:0] selt;
+    logic [15:0][10:0] sel2t;
+    always_ff @(posedge clk or negedge rst_n)
+        if (!rst_n) s1t_c <= '0;
+        else s1t_c <= {64{is_v[1]}};
+`endif
 `ifdef QB_ACT_S1P
     assign lbm = '0;                                               // R19 QB_ACT_S1P: the pre-mux is inside qba2_s1p (per band)
 `else
@@ -208,7 +220,12 @@ module qb_act2 #(parameter int ACT_PIPE = 1) (
     // R19 (opt-in, results/r19.md): the same S1 band-partitioned (gen_act2_s1p.py): lb word j (8 slots x 2 ctx + its
     // pre-mux, select s1c_r[b]) in act-row band pj[j]; per band the partial ORs of its terms, OR-ed band by band toward
     // the register's home row (cascade), s1 register in its home band.  Bit- and cycle-exact (same terms / registers).
+`ifdef QB_ACT_S1T
+    // R20 QB_ACT_S1T: band-local selects / pre-mux select copies, paired OR stops on the long register sides (gen_act2_s1t.py)
+    qba2_s1t u_s1 (.clk, .lb0(lbf[0]), .lb1(lbf[1]), .ctx(s1t_c), .sel(selt), .sel2(sel2t), .s1(s1r));
+`else
     qba2_s1p u_s1 (.clk, .lb0(lbf[0]), .lb1(lbf[1]), .ctx(s1c_r), .sel1a, .sel1b, .sel2, .s1(s1r));
+`endif
 `else
     qba2_s1r u_s1 (.clk, .m(lbm), .sel1a, .sel1b, .sel2, .s1(s1r));
 `endif
@@ -250,6 +267,37 @@ module qb_act2 #(parameter int ACT_PIPE = 1) (
             end
             dsc <= {|is_v, ic, is_dsc[ic]};
         end
+`ifdef QB_ACT_S1T
+    // R20 QB_ACT_S1T: band copies of sel1a | sel1b and sel2 (same next-state values as the always block above)
+    logic [38:0] s1t_sa, s1t_sb;
+`ifdef QBA2_MUT_CTX
+    assign s1t_sa = is_v[0] ? is_sel1[0] : (is_v[1] && is_dsc[1][6] ? {is_sel1[1][38:33], 33'd0} : '0);
+    assign s1t_sb = is_v[1] ? (is_dsc[1][6] ? {6'd0, is_sel1[1][32:0]} : is_sel1[1]) : '0;
+`elsif QB_ACT_CTXR
+    assign s1t_sa = is_sel1[0];
+    assign s1t_sb = is_sel1[1];
+`else
+    assign s1t_sa = is_v[0] ? is_sel1[0] : '0;
+    assign s1t_sb = is_v[1] ? is_sel1[1] : '0;
+`endif
+    always_ff @(posedge clk or negedge rst_n)
+        if (!rst_n) begin selt <= '0; sel2t <= {16{11'd1}}; end
+        else begin
+            selt <= {16{s1t_sa | s1t_sb}};
+            if (|is_v) for (int b = 0; b < 16; b++) begin
+                sel2t[b] <= '0;
+                sel2t[b][is_cfg2[ic]] <= 1'b1;
+            end
+        end
+`ifndef SYNTHESIS
+`ifndef QBA_S1T_NOCHK                                              // (off for the mutants' datapath check)
+    always_ff @(posedge clk)                                       // sim-only: copies equal the originals
+        if (rst_n) for (int b = 0; b < 16; b++)
+            if (selt[b] != (sel1a | sel1b) || sel2t[b] != sel2 || s1t_c[4 * b +: 4] != {4{s1c_r[0]}})
+                $error("QBA2_S1T_ERR band %0d", b);
+`endif
+`endif
+`endif
     assign {d_vld, d_ctx, d_first, d_eot, d_neg, d_stem, d_g3n, d_plane, d_chunk, d_ct, d_tile} =
         {dsc[DW+1], dsc[DW], dsc[DW-1:0] & {DW{dsc[DW+1]}}};
 
@@ -878,7 +926,40 @@ module qba2_ctx #(parameter int ACT_PIPE = 1) (
                 $error("QBA2_RPL_ERR wer[%0d][%0d] %b", r, s, wer[r][s]);
 `endif
 `endif
-`ifdef QB_ACT_S1P
+`ifdef QB_ACT_S1T
+    // R20 QB_ACT_S1T: shift select replicated per act-row band (shqt[b] loaded with shq's next-state value, from the same
+    // conditions as the sequencer above); qba2_lb_t shifts word j with shqt[pj[j]].  Mutant QBA_MUT_S1TQ: band 3 never shifts.
+    logic [2:0] shq_nx;
+    always_comb begin
+`ifdef QB_ACT_SRA
+        shq_nx = relgo ? {1'b0, irel == 2'd2, irel == 2'd1} : 3'd0;
+`else
+        shq_nx = '0;
+`endif
+        if (st == S_BIN && is_v && g == nchunk - 5'd1 && last_ct && (cfg != 4'd0 || tile[0]))
+            shq_nx = {adv == 3'd4, adv == 3'd2, adv == 3'd1};
+`ifndef QB_ACT_SRA
+        if (st == S_INT && is_v && !is_zero) shq_nx = {1'b0, irel == 2'd2, irel == 2'd1};
+`endif
+    end
+    logic [15:0][2:0] shqt;
+    always_ff @(posedge clk or negedge rst_n)
+        if (!rst_n) shqt <= '0;
+        else begin
+            shqt <= {16{shq_nx}};
+`ifdef QBA_MUT_S1TQ
+            shqt[3] <= '0;
+`endif
+        end
+`ifndef SYNTHESIS
+`ifndef QBA_S1T_NOCHK
+    always_ff @(posedge clk)
+        if (rst_n) for (int b = 0; b < 16; b++)
+            if (shqt[b] != shq) $error("QBA2_S1T_ERR shq band %0d", b);
+`endif
+`endif
+    qba2_lb_t u_lb (.clk, .shq(shqt), .wer, .wzero(ev2.zero), .ws(ev2.s), .rdq, .sdq, .lbf);
+`elsif QB_ACT_S1P
     qba2_lb_p u_lb (.clk, .shq, .wer, .wzero(ev2.zero), .ws(ev2.s), .rdq, .sdq, .lbf);   // R19: wer per act-row band
 `else
     qba2_lb_r u_lb (.clk, .shq, .wer, .wzero(ev2.zero), .ws(ev2.s), .rdq, .sdq, .lbf);
