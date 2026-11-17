@@ -1,0 +1,32 @@
+# r19_mc: final RTL r19_s1q, route_rt from r19_ms, GRT adj 0.25, QB_DR_ITER 64, 14 threads, QB9_ANT 0; markers after each DR iteration
+iter  0 markers 419118.
+iter  1 markers 180060.
+iter  2 markers 170123.
+iter  3 markers 40579.
+iter  4 markers 10339.
+iter  5 markers 2873.
+iter  6 markers 1041.
+iter  7 markers 369.
+iter  8 markers 153.
+iter  9 markers 120.
+iter 10 markers 88.
+iter 11 markers 71.
+iter 12 markers 55.
+iter 13 markers 48.
+iter 14 markers 42.
+iter 15 markers 37.
+iter 16 markers 33.
+iter 17 markers 47.
+iter 18 markers 9.
+iter 19 markers 7.
+iter 20 markers 6.
+iter 21 markers 6.
+iter 22 markers 6.
+iter 23 markers 0.
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 1:47:56
+	Maximum resident set size (kbytes): 19327856
+drt.drc.rpt violation records: 0
+[INFO GRT-0018] Total wirelength: 20604696 um
+groute groute_tt setup_wns_ns -0.755 setup_tns_ns -2058.225 hold_wns_ns -0.563 hold_tns_ns -1502.850
+r9a drt_s 6311
+final die_um 900.00 x 1970.00 core_um2 1742976.0 cell_um2 1140739.6 macro_um2 0.0 utilisation 0.654

@@ -984,3 +984,2268 @@ module qba2_s2r (
     assign act_d[4544 +: 32] = ({32{sel2[7]}} & s1[3712 +: 32]) | ({32{sel2[0] | sel2[1] | sel2[4]}} & s1[3776 +: 32]) | ({32{sel2[5]}} & s1[3904 +: 32]) | ({32{sel2[2] | sel2[8]}} & s1[3968 +: 32]) | ({32{sel2[9]}} & s1[4064 +: 32]);   // row 15 unit 7
     assign act_d[4576 +: 32] = ({32{sel2[0]}} & s1[3872 +: 32]) | ({32{sel2[5] | sel2[8]}} & s1[3936 +: 32]) | ({32{sel2[2]}} & s1[4000 +: 32]);   // row 15 unit 8
 endmodule
+
+`ifdef QB_ACT_S1P
+// R19 (QB_ACT_S1P, see gen_act2_s1p.py): band-partitioned S1.  Band map (word j -> act-row band): 0:4 1:1 2:1 3:1 4:4 5:4 6:8 7:12 8:4 9:8 10:8 11:1 12:12 13:8 14:12 15:12 16:6 17:2 18:2 19:2 20:6 21:6 22:11 23:14 24:6 25:11 26:11 27:2 28:14 29:11 30:14 31:14 32:5 33:0 34:0 35:0 36:5 37:5 38:9 39:13 40:5 41:9 42:9 43:0 44:13 45:9 46:13 47:13 48:7 49:3 50:3 51:3 52:3 53:7 54:10 55:15 56:7 57:10 58:10 59:7 60:15 61:10 62:15 63:15
+
+// quarter of the words of band b: bq[b] = wqm[Q(b)]
+module qba2_s1p_bq (
+    input  logic [3:0]  wqm,
+    output logic [15:0] bq);
+    assign bq[0] = wqm[2];
+    assign bq[1] = wqm[0];
+    assign bq[2] = wqm[1];
+    assign bq[3] = wqm[3];
+    assign bq[4] = wqm[0];
+    assign bq[5] = wqm[2];
+    assign bq[6] = wqm[1];
+    assign bq[7] = wqm[3];
+    assign bq[8] = wqm[0];
+    assign bq[9] = wqm[2];
+    assign bq[10] = wqm[3];
+    assign bq[11] = wqm[1];
+    assign bq[12] = wqm[0];
+    assign bq[13] = wqm[2];
+    assign bq[14] = wqm[1];
+    assign bq[15] = wqm[3];
+endmodule
+
+// line buffer of one context (as qba2_lb_r) with the write enables per band: wer[b][s] = slot s, words of band b
+module qba2_lb_p (
+    input  logic            clk,
+    input  logic [2:0]      shq,
+    input  logic [15:0][7:0] wer,
+    input  logic            wzero,
+    input  logic            ws,
+    input  logic [511:0]    rdq,
+    input  logic [2047:0]   sdq,
+    output logic [16383:0]  lbf);
+    localparam logic [255:0] PJ = 256'hffaf7aa7fa733337dd9d0995d9550005eebe2bb6eb662226cc8c1884c8441114;
+    logic [2047:0] lb [8];
+    logic [2047:0] wd;
+    always_comb for (int s = 0; s < 8; s++) lbf[2048 * s +: 2048] = lb[s];
+    always_comb wd = wzero ? 2048'd0 : ws ? sdq : {4{rdq}};
+    always_ff @(posedge clk) begin
+        for (int s = 0; s < 8; s++) begin
+            logic [2047:0] nx;
+            nx = lb[s];
+            if (shq[0] && s + 1 < 8) nx = lb[(s + 1) % 8];
+            if (shq[1] && s + 2 < 8) nx = lb[(s + 2) % 8];
+            if (shq[2] && s + 4 < 8) nx = lb[(s + 4) % 8];
+            for (int j = 0; j < 64; j++)
+                if (wer[PJ[4 * j +: 4]][s]) nx[32 * j +: 32] = wd[32 * j +: 32];
+            lb[s] <= nx;
+        end
+    end
+endmodule
+
+// band 0: pre-mux + partial ORs of words [33, 34, 35, 43] (quarter 2), S1 registers of home row 0
+module qba2_s1p_b0 (
+    input  logic                 clk,
+    input  logic [1023:0]        lb0, lb1,   // words [33, 34, 35, 43] of slots 0..7: bit 128 s + 32 i + k
+    input  logic                 ctx,   // s1c_r[b]
+    input  logic [38:0]          sel,
+    input  logic [10:0]          sel2,
+    input  logic [255:0]   dn_i,   // from band 1
+    output logic [1375:0]   up_o,   // to band 1
+    output logic [255:0]   s1   // registers homed at row 0
+);
+    logic [1023:0] m;
+    qba2_pm_r u_pm (.lb0, .lb1, .ctx, .m);   // R13 pre-mux module: kept as a 2:1 mux by synthesis (hierarchy)
+    logic [255:0] s1_d;
+    always_ff @(posedge clk) s1 <= s1_d;
+    assign up_o[0 +: 32] = ({32{(sel[1] & (sel2[0] | sel2[2])) | sel[4] | sel[10] | sel[22] | sel[37]}} & m[0 +: 32]) | ({32{sel[30]}} & m[32 +: 32]);   // reg 8 (home 1) up
+    assign up_o[32 +: 32] = ({32{sel[31]}} & m[32 +: 32]) | ({32{(sel[1] & (sel2[0] | sel2[2])) | sel[4] | sel[10] | sel[22]}} & m[128 +: 32]);   // reg 9 (home 1) up
+    assign up_o[64 +: 32] = ({32{sel[34]}} & m[0 +: 32]) | ({32{(sel[1] & (sel2[0] | sel2[2])) | sel[4] | sel[10]}} & m[256 +: 32]);   // reg 10 (home 1) up
+    assign up_o[96 +: 32] = ({32{(sel[1] & sel2[2]) | (sel[4] & sel2[5])}} & m[320 +: 32]);   // reg 11 (home 1) up
+    assign up_o[128 +: 32] = ({32{sel[34]}} & m[128 +: 32]);   // reg 13 (home 1) up
+    assign up_o[160 +: 32] = ({32{(sel[1] & sel2[0]) | (sel[4] & sel2[4]) | sel[10] | sel[22] | sel[37]}} & m[32 +: 32]) | ({32{(sel[1] & sel2[2]) | (sel[4] & sel2[5])}} & m[64 +: 32]);   // reg 15 (home 2) up
+    assign up_o[192 +: 32] = ({32{(sel[1] & sel2[0]) | (sel[4] & sel2[4]) | sel[10] | sel[22]}} & m[160 +: 32]) | ({32{(sel[1] & sel2[2]) | (sel[4] & sel2[5])}} & m[192 +: 32]);   // reg 16 (home 2) up
+    assign up_o[224 +: 32] = ({32{sel[34]}} & m[32 +: 32]) | ({32{(sel[1] & sel2[0]) | (sel[4] & sel2[4]) | sel[10]}} & m[288 +: 32]);   // reg 17 (home 2) up
+    assign up_o[256 +: 32] = ({32{sel[34]}} & m[160 +: 32]);   // reg 21 (home 2) up
+    assign up_o[288 +: 32] = ({32{(sel[1] & sel2[0]) | (sel[4] & sel2[4]) | sel[10] | sel[22] | sel[37]}} & m[64 +: 32]) | ({32{sel[11] | sel[24]}} & m[96 +: 32]);   // reg 23 (home 3) up
+    assign up_o[320 +: 32] = ({32{sel[34]}} & m[64 +: 32]) | ({32{(sel[1] & sel2[0]) | (sel[4] & sel2[4]) | sel[10] | sel[22]}} & m[192 +: 32]) | ({32{sel[11] | sel[24]}} & m[224 +: 32]);   // reg 24 (home 3) up
+    assign up_o[352 +: 32] = ({32{(sel[1] & sel2[0]) | (sel[4] & sel2[4]) | sel[10]}} & m[320 +: 32]) | ({32{sel[11]}} & m[352 +: 32]);   // reg 25 (home 3) up
+    assign up_o[384 +: 32] = ({32{sel[34]}} & m[192 +: 32]);   // reg 30 (home 4) up
+    assign up_o[416 +: 32] = ({32{sel[22] | sel[37]}} & m[0 +: 32]);   // reg 38 (home 5) up
+    assign up_o[448 +: 32] = ({32{sel[22]}} & m[128 +: 32]);   // reg 39 (home 5) up
+    assign up_o[480 +: 32] = ({32{sel[22]}} & m[256 +: 32]);   // reg 40 (home 5) up
+    assign up_o[512 +: 32] = ({32{sel[22] | sel[37]}} & m[32 +: 32]) | ({32{(sel[1] & sel2[2]) | (sel[4] & sel2[5])}} & m[96 +: 32]);   // reg 47 (home 6) up
+    assign up_o[544 +: 32] = ({32{sel[22]}} & m[160 +: 32]) | ({32{(sel[1] & sel2[2]) | (sel[4] & sel2[5])}} & m[224 +: 32]);   // reg 48 (home 6) up
+    assign up_o[576 +: 32] = ({32{sel[22]}} & m[288 +: 32]) | ({32{(sel[1] & sel2[2]) | (sel[4] & sel2[5])}} & m[352 +: 32]);   // reg 49 (home 6) up
+    assign up_o[608 +: 32] = ({32{sel[22] | sel[37]}} & m[64 +: 32]) | ({32{sel[24]}} & m[96 +: 32]);   // reg 55 (home 7) up
+    assign up_o[640 +: 32] = ({32{sel[22]}} & m[192 +: 32]) | ({32{sel[24]}} & m[224 +: 32]);   // reg 56 (home 7) up
+    assign up_o[672 +: 32] = ({32{sel[37]}} & m[96 +: 32]) | ({32{sel[22]}} & m[320 +: 32]) | ({32{sel[24]}} & m[352 +: 32]);   // reg 57 (home 7) up
+    assign up_o[704 +: 32] = ({32{(sel[4] & sel2[5])}} & m[512 +: 32]);   // reg 61 (home 8) up
+    assign up_o[736 +: 32] = ({32{(sel[4] & sel2[5]) | sel[10] | sel[22]}} & m[384 +: 32]);   // reg 70 (home 9) up
+    assign up_o[768 +: 32] = ({32{sel[33]}} & m[0 +: 32]) | ({32{sel[10] | sel[22]}} & m[128 +: 32]) | ({32{(sel[4] & sel2[5])}} & m[416 +: 32]);   // reg 71 (home 9) up
+    assign up_o[800 +: 32] = ({32{(sel[4] & sel2[5]) | sel[10] | sel[22]}} & m[256 +: 32]);   // reg 72 (home 9) up
+    assign up_o[832 +: 32] = ({32{sel[33]}} & m[96 +: 32]) | ({32{sel[31]}} & m[288 +: 32]) | ({32{(sel[4] & sel2[5])}} & m[320 +: 32]);   // reg 73 (home 9) up
+    assign up_o[864 +: 32] = ({32{sel[33]}} & m[32 +: 32]) | ({32{(sel[4] & sel2[5])}} & m[544 +: 32]);   // reg 75 (home 9) up
+    assign up_o[896 +: 32] = ({32{(sel[4] & sel2[5])}} & m[288 +: 32]);   // reg 76 (home 9) up
+    assign up_o[928 +: 32] = ({32{sel[10] | sel[22]}} & m[416 +: 32]) | ({32{(sel[4] & sel2[5])}} & m[576 +: 32]);   // reg 79 (home 10) up
+    assign up_o[960 +: 32] = ({32{sel[33]}} & m[64 +: 32]) | ({32{sel[10] | sel[22]}} & m[160 +: 32]) | ({32{(sel[4] & sel2[5])}} & m[448 +: 32]);   // reg 80 (home 10) up
+    assign up_o[992 +: 32] = ({32{sel[10] | sel[22]}} & m[288 +: 32]);   // reg 81 (home 10) up
+    assign up_o[1024 +: 32] = ({32{(sel[1] & sel2[0]) | (sel[4] & sel2[4])}} & m[96 +: 32]) | ({32{sel[10] | sel[22]}} & m[448 +: 32]) | ({32{sel[11] | sel[24]}} & m[480 +: 32]);   // reg 87 (home 11) up
+    assign up_o[1056 +: 32] = ({32{sel[34]}} & m[96 +: 32]) | ({32{sel[10] | sel[22]}} & m[192 +: 32]) | ({32{(sel[1] & sel2[0]) | (sel[4] & sel2[4]) | sel[11] | sel[24]}} & m[224 +: 32]);   // reg 88 (home 11) up
+    assign up_o[1088 +: 32] = ({32{sel[37]}} & m[96 +: 32]) | ({32{sel[10] | sel[22]}} & m[320 +: 32]) | ({32{(sel[1] & sel2[0]) | (sel[4] & sel2[4]) | sel[11] | sel[24]}} & m[352 +: 32]);   // reg 89 (home 11) up
+    assign up_o[1120 +: 32] = ({32{sel[34]}} & m[224 +: 32]);   // reg 93 (home 12) up
+    assign up_o[1152 +: 32] = ({32{sel[33]}} & m[96 +: 32]) | ({32{sel[22]}} & m[384 +: 32]);   // reg 102 (home 13) up
+    assign up_o[1184 +: 32] = ({32{(sel[4] & sel2[5])}} & m[480 +: 32]);   // reg 103 (home 13) up
+    assign up_o[1216 +: 32] = ({32{sel[22]}} & m[256 +: 32]);   // reg 104 (home 13) up
+    assign up_o[1248 +: 32] = ({32{sel[22]}} & m[416 +: 32]) | ({32{(sel[4] & sel2[5])}} & m[608 +: 32]);   // reg 110 (home 14) up
+    assign up_o[1280 +: 32] = ({32{sel[22]}} & m[288 +: 32]) | ({32{(sel[4] & sel2[5])}} & m[352 +: 32]);   // reg 112 (home 14) up
+    assign up_o[1312 +: 32] = ({32{sel[22]}} & m[448 +: 32]) | ({32{sel[24]}} & m[480 +: 32]);   // reg 116 (home 15) up
+    assign up_o[1344 +: 32] = ({32{sel[37]}} & m[96 +: 32]) | ({32{sel[22]}} & m[320 +: 32]) | ({32{sel[24]}} & m[352 +: 32]);   // reg 118 (home 15) up
+    assign s1_d[0 +: 32] = dn_i[0 +: 32];   // reg 0 (home 0)
+    assign s1_d[32 +: 32] = ({32{(sel[1] & sel2[2]) | (sel[4] & sel2[5])}} & m[32 +: 32]) | dn_i[32 +: 32];   // reg 1 (home 0)
+    assign s1_d[64 +: 32] = dn_i[64 +: 32];   // reg 2 (home 0)
+    assign s1_d[96 +: 32] = ({32{(sel[1] & sel2[2]) | (sel[4] & sel2[5])}} & m[160 +: 32]) | dn_i[96 +: 32];   // reg 3 (home 0)
+    assign s1_d[128 +: 32] = dn_i[128 +: 32];   // reg 4 (home 0)
+    assign s1_d[160 +: 32] = ({32{(sel[1] & sel2[2]) | (sel[4] & sel2[5])}} & m[288 +: 32]) | dn_i[160 +: 32];   // reg 5 (home 0)
+    assign s1_d[192 +: 32] = dn_i[192 +: 32];   // reg 6 (home 0)
+    assign s1_d[224 +: 32] = dn_i[224 +: 32];   // reg 7 (home 0)
+endmodule
+
+// band 1: pre-mux + partial ORs of words [1, 2, 3, 11] (quarter 0), S1 registers of home row 1
+module qba2_s1p_b1 (
+    input  logic                 clk,
+    input  logic [1023:0]        lb0, lb1,   // words [1, 2, 3, 11] of slots 0..7: bit 128 s + 32 i + k
+    input  logic                 ctx,   // s1c_r[b]
+    input  logic [38:0]          sel,
+    input  logic [10:0]          sel2,
+    input  logic [447:0]   dn_i,   // from band 2
+    input  logic [1375:0]   up_i,   // from band 0
+    output logic [255:0]   dn_o,   // to band 0
+    output logic [1343:0]   up_o,   // to band 2
+    output logic [223:0]   s1   // registers homed at row 1
+);
+    logic [1023:0] m;
+    qba2_pm_r u_pm (.lb0, .lb1, .ctx, .m);   // R13 pre-mux module: kept as a 2:1 mux by synthesis (hierarchy)
+    logic [223:0] s1_d;
+    always_ff @(posedge clk) s1 <= s1_d;
+    assign dn_o[0 +: 32] = dn_i[0 +: 32];   // reg 0 (home 0) down
+    assign dn_o[32 +: 32] = ({32{(sel[0] & sel2[2]) | (sel[2] & sel2[5]) | sel[33]}} & m[32 +: 32]) | dn_i[32 +: 32];   // reg 1 (home 0) down
+    assign dn_o[64 +: 32] = dn_i[64 +: 32];   // reg 2 (home 0) down
+    assign dn_o[96 +: 32] = ({32{(sel[0] & sel2[2]) | (sel[2] & sel2[5])}} & m[160 +: 32]) | dn_i[96 +: 32];   // reg 3 (home 0) down
+    assign dn_o[128 +: 32] = dn_i[128 +: 32];   // reg 4 (home 0) down
+    assign dn_o[160 +: 32] = ({32{(sel[0] & sel2[2]) | (sel[2] & sel2[5])}} & m[288 +: 32]) | dn_i[160 +: 32];   // reg 5 (home 0) down
+    assign dn_o[192 +: 32] = dn_i[192 +: 32];   // reg 6 (home 0) down
+    assign dn_o[224 +: 32] = dn_i[224 +: 32];   // reg 7 (home 0) down
+    assign up_o[0 +: 32] = ({32{(sel[0] & sel2[0]) | (sel[2] & sel2[4]) | sel[6] | sel[14] | sel[30] | sel[31] | sel[34] | sel[35]}} & m[32 +: 32]) | ({32{(sel[0] & sel2[2]) | (sel[2] & sel2[5]) | sel[33]}} & m[64 +: 32]) | up_i[160 +: 32];   // reg 15 (home 2) up
+    assign up_o[32 +: 32] = ({32{(sel[0] & sel2[0]) | (sel[2] & sel2[4]) | sel[6] | sel[14]}} & m[160 +: 32]) | ({32{(sel[0] & sel2[2]) | (sel[2] & sel2[5])}} & m[192 +: 32]) | up_i[192 +: 32];   // reg 16 (home 2) up
+    assign up_o[64 +: 32] = ({32{(sel[0] & sel2[0]) | (sel[2] & sel2[4]) | sel[6]}} & m[288 +: 32]) | up_i[224 +: 32];   // reg 17 (home 2) up
+    assign up_o[96 +: 32] = ({32{sel[34]}} & m[128 +: 32]);   // reg 18 (home 2) up
+    assign up_o[128 +: 32] = ({32{sel[34]}} & m[160 +: 32]);   // reg 20 (home 2) up
+    assign up_o[160 +: 32] = up_i[256 +: 32];   // reg 21 (home 2) up
+    assign up_o[192 +: 32] = ({32{(sel[0] & sel2[0]) | (sel[2] & sel2[4]) | sel[6] | sel[14] | sel[34] | sel[35]}} & m[64 +: 32]) | ({32{sel[7] | sel[16]}} & m[96 +: 32]) | up_i[288 +: 32];   // reg 23 (home 3) up
+    assign up_o[224 +: 32] = ({32{(sel[0] & sel2[0]) | (sel[2] & sel2[4]) | sel[6] | sel[14]}} & m[192 +: 32]) | ({32{sel[7] | sel[16]}} & m[224 +: 32]) | up_i[320 +: 32];   // reg 24 (home 3) up
+    assign up_o[256 +: 32] = ({32{(sel[0] & sel2[0]) | (sel[2] & sel2[4]) | sel[6]}} & m[320 +: 32]) | ({32{sel[7]}} & m[352 +: 32]) | up_i[352 +: 32];   // reg 25 (home 3) up
+    assign up_o[288 +: 32] = ({32{sel[34]}} & m[192 +: 32]);   // reg 26 (home 3) up
+    assign up_o[320 +: 32] = up_i[384 +: 32];   // reg 30 (home 4) up
+    assign up_o[352 +: 32] = ({32{sel[14] | sel[35]}} & m[0 +: 32]) | up_i[416 +: 32];   // reg 38 (home 5) up
+    assign up_o[384 +: 32] = ({32{sel[14]}} & m[128 +: 32]) | up_i[448 +: 32];   // reg 39 (home 5) up
+    assign up_o[416 +: 32] = ({32{sel[14]}} & m[256 +: 32]) | up_i[480 +: 32];   // reg 40 (home 5) up
+    assign up_o[448 +: 32] = ({32{sel[14] | sel[35]}} & m[32 +: 32]) | ({32{(sel[0] & sel2[2]) | (sel[2] & sel2[5]) | sel[33]}} & m[96 +: 32]) | up_i[512 +: 32];   // reg 47 (home 6) up
+    assign up_o[480 +: 32] = ({32{sel[14]}} & m[160 +: 32]) | ({32{(sel[0] & sel2[2]) | (sel[2] & sel2[5])}} & m[224 +: 32]) | up_i[544 +: 32];   // reg 48 (home 6) up
+    assign up_o[512 +: 32] = ({32{sel[14]}} & m[288 +: 32]) | ({32{(sel[0] & sel2[2]) | (sel[2] & sel2[5])}} & m[352 +: 32]) | up_i[576 +: 32];   // reg 49 (home 6) up
+    assign up_o[544 +: 32] = ({32{sel[14] | sel[35]}} & m[64 +: 32]) | ({32{sel[16]}} & m[96 +: 32]) | up_i[608 +: 32];   // reg 55 (home 7) up
+    assign up_o[576 +: 32] = ({32{sel[14]}} & m[192 +: 32]) | ({32{sel[16]}} & m[224 +: 32]) | up_i[640 +: 32];   // reg 56 (home 7) up
+    assign up_o[608 +: 32] = ({32{sel[35]}} & m[96 +: 32]) | ({32{sel[14]}} & m[320 +: 32]) | ({32{sel[16]}} & m[352 +: 32]) | up_i[672 +: 32];   // reg 57 (home 7) up
+    assign up_o[640 +: 32] = ({32{(sel[2] & sel2[5])}} & m[512 +: 32]) | up_i[704 +: 32];   // reg 61 (home 8) up
+    assign up_o[672 +: 32] = ({32{(sel[2] & sel2[5]) | sel[6] | sel[14]}} & m[384 +: 32]) | up_i[736 +: 32];   // reg 70 (home 9) up
+    assign up_o[704 +: 32] = ({32{sel[6] | sel[14]}} & m[128 +: 32]) | ({32{(sel[2] & sel2[5])}} & m[416 +: 32]) | up_i[768 +: 32];   // reg 71 (home 9) up
+    assign up_o[736 +: 32] = ({32{(sel[2] & sel2[5]) | sel[6] | sel[14]}} & m[256 +: 32]) | up_i[800 +: 32];   // reg 72 (home 9) up
+    assign up_o[768 +: 32] = ({32{(sel[2] & sel2[5])}} & m[320 +: 32]) | up_i[832 +: 32];   // reg 73 (home 9) up
+    assign up_o[800 +: 32] = ({32{(sel[2] & sel2[5])}} & m[544 +: 32]) | up_i[864 +: 32];   // reg 75 (home 9) up
+    assign up_o[832 +: 32] = ({32{(sel[2] & sel2[5]) | sel[31]}} & m[288 +: 32]) | up_i[896 +: 32];   // reg 76 (home 9) up
+    assign up_o[864 +: 32] = ({32{sel[6] | sel[14]}} & m[416 +: 32]) | ({32{(sel[2] & sel2[5])}} & m[576 +: 32]) | up_i[928 +: 32];   // reg 79 (home 10) up
+    assign up_o[896 +: 32] = ({32{sel[6] | sel[14]}} & m[160 +: 32]) | ({32{(sel[2] & sel2[5])}} & m[448 +: 32]) | up_i[960 +: 32];   // reg 80 (home 10) up
+    assign up_o[928 +: 32] = ({32{sel[6] | sel[14]}} & m[288 +: 32]) | up_i[992 +: 32];   // reg 81 (home 10) up
+    assign up_o[960 +: 32] = ({32{(sel[0] & sel2[0]) | (sel[2] & sel2[4]) | sel[34]}} & m[96 +: 32]) | ({32{sel[6] | sel[14]}} & m[448 +: 32]) | ({32{sel[7] | sel[16]}} & m[480 +: 32]) | up_i[1024 +: 32];   // reg 87 (home 11) up
+    assign up_o[992 +: 32] = ({32{sel[6] | sel[14]}} & m[192 +: 32]) | ({32{(sel[0] & sel2[0]) | (sel[2] & sel2[4]) | sel[7] | sel[16]}} & m[224 +: 32]) | up_i[1056 +: 32];   // reg 88 (home 11) up
+    assign up_o[1024 +: 32] = ({32{sel[35]}} & m[96 +: 32]) | ({32{sel[6] | sel[14]}} & m[320 +: 32]) | ({32{(sel[0] & sel2[0]) | (sel[2] & sel2[4]) | sel[7] | sel[16]}} & m[352 +: 32]) | up_i[1088 +: 32];   // reg 89 (home 11) up
+    assign up_o[1056 +: 32] = ({32{sel[34]}} & m[224 +: 32]);   // reg 91 (home 11) up
+    assign up_o[1088 +: 32] = up_i[1120 +: 32];   // reg 93 (home 12) up
+    assign up_o[1120 +: 32] = ({32{sel[14]}} & m[384 +: 32]) | up_i[1152 +: 32];   // reg 102 (home 13) up
+    assign up_o[1152 +: 32] = ({32{(sel[2] & sel2[5])}} & m[480 +: 32]) | up_i[1184 +: 32];   // reg 103 (home 13) up
+    assign up_o[1184 +: 32] = ({32{sel[14]}} & m[256 +: 32]) | up_i[1216 +: 32];   // reg 104 (home 13) up
+    assign up_o[1216 +: 32] = ({32{sel[14]}} & m[416 +: 32]) | ({32{(sel[2] & sel2[5])}} & m[608 +: 32]) | up_i[1248 +: 32];   // reg 110 (home 14) up
+    assign up_o[1248 +: 32] = ({32{sel[14]}} & m[288 +: 32]) | ({32{(sel[2] & sel2[5])}} & m[352 +: 32]) | up_i[1280 +: 32];   // reg 112 (home 14) up
+    assign up_o[1280 +: 32] = ({32{sel[14]}} & m[448 +: 32]) | ({32{sel[16]}} & m[480 +: 32]) | up_i[1312 +: 32];   // reg 116 (home 15) up
+    assign up_o[1312 +: 32] = ({32{sel[35]}} & m[96 +: 32]) | ({32{sel[14]}} & m[320 +: 32]) | ({32{sel[16]}} & m[352 +: 32]) | up_i[1344 +: 32];   // reg 118 (home 15) up
+    assign s1_d[0 +: 32] = ({32{(sel[0] & (sel2[0] | sel2[2])) | sel[2] | sel[6] | sel[14] | sel[33] | sel[34] | sel[35]}} & m[0 +: 32]) | dn_i[256 +: 32] | up_i[0 +: 32];   // reg 8 (home 1)
+    assign s1_d[32 +: 32] = ({32{(sel[0] & (sel2[0] | sel2[2])) | sel[2] | sel[6] | sel[14]}} & m[128 +: 32]) | dn_i[288 +: 32] | up_i[32 +: 32];   // reg 9 (home 1)
+    assign s1_d[64 +: 32] = ({32{(sel[0] & (sel2[0] | sel2[2])) | sel[2] | sel[6]}} & m[256 +: 32]) | dn_i[320 +: 32] | up_i[64 +: 32];   // reg 10 (home 1)
+    assign s1_d[96 +: 32] = ({32{sel[33]}} & m[96 +: 32]) | ({32{(sel[0] & sel2[2]) | (sel[2] & sel2[5])}} & m[320 +: 32]) | dn_i[352 +: 32] | up_i[96 +: 32];   // reg 11 (home 1)
+    assign s1_d[128 +: 32] = dn_i[384 +: 32];   // reg 12 (home 1)
+    assign s1_d[160 +: 32] = up_i[128 +: 32];   // reg 13 (home 1)
+    assign s1_d[192 +: 32] = dn_i[416 +: 32];   // reg 14 (home 1)
+endmodule
+
+// band 2: pre-mux + partial ORs of words [17, 18, 19, 27] (quarter 1), S1 registers of home row 2
+module qba2_s1p_b2 (
+    input  logic                 clk,
+    input  logic [1023:0]        lb0, lb1,   // words [17, 18, 19, 27] of slots 0..7: bit 128 s + 32 i + k
+    input  logic                 ctx,   // s1c_r[b]
+    input  logic [38:0]          sel,
+    input  logic [10:0]          sel2,
+    input  logic [639:0]   dn_i,   // from band 3
+    input  logic [1343:0]   up_i,   // from band 1
+    output logic [447:0]   dn_o,   // to band 1
+    output logic [1343:0]   up_o,   // to band 3
+    output logic [255:0]   s1   // registers homed at row 2
+);
+    logic [1023:0] m;
+    qba2_pm_r u_pm (.lb0, .lb1, .ctx, .m);   // R13 pre-mux module: kept as a 2:1 mux by synthesis (hierarchy)
+    logic [255:0] s1_d;
+    always_ff @(posedge clk) s1 <= s1_d;
+    assign dn_o[0 +: 32] = dn_i[0 +: 32];   // reg 0 (home 0) down
+    assign dn_o[32 +: 32] = ({32{(sel[3] & sel2[5])}} & m[32 +: 32]) | dn_i[32 +: 32];   // reg 1 (home 0) down
+    assign dn_o[64 +: 32] = dn_i[64 +: 32];   // reg 2 (home 0) down
+    assign dn_o[96 +: 32] = ({32{(sel[3] & sel2[5])}} & m[160 +: 32]) | dn_i[96 +: 32];   // reg 3 (home 0) down
+    assign dn_o[128 +: 32] = dn_i[128 +: 32];   // reg 4 (home 0) down
+    assign dn_o[160 +: 32] = ({32{(sel[3] & sel2[5])}} & m[288 +: 32]) | dn_i[160 +: 32];   // reg 5 (home 0) down
+    assign dn_o[192 +: 32] = dn_i[192 +: 32];   // reg 6 (home 0) down
+    assign dn_o[224 +: 32] = dn_i[224 +: 32];   // reg 7 (home 0) down
+    assign dn_o[256 +: 32] = ({32{(sel[0] & sel2[1]) | sel[3] | sel[8] | sel[18] | sel[36]}} & m[0 +: 32]) | ({32{sel[31]}} & m[32 +: 32]) | dn_i[256 +: 32];   // reg 8 (home 1) down
+    assign dn_o[288 +: 32] = ({32{sel[34]}} & m[0 +: 32]) | ({32{(sel[0] & sel2[1]) | sel[3] | sel[8] | sel[18]}} & m[128 +: 32]) | dn_i[288 +: 32];   // reg 9 (home 1) down
+    assign dn_o[320 +: 32] = ({32{(sel[0] & sel2[1]) | sel[3] | sel[8]}} & m[256 +: 32]) | dn_i[320 +: 32];   // reg 10 (home 1) down
+    assign dn_o[352 +: 32] = ({32{(sel[3] & sel2[5])}} & m[320 +: 32]) | dn_i[352 +: 32];   // reg 11 (home 1) down
+    assign dn_o[384 +: 32] = ({32{sel[34]}} & m[128 +: 32]);   // reg 12 (home 1) down
+    assign dn_o[416 +: 32] = dn_i[384 +: 32];   // reg 14 (home 1) down
+    assign up_o[0 +: 32] = ({32{(sel[0] & sel2[1]) | (sel[3] & sel2[4]) | sel[8] | sel[18] | sel[36]}} & m[64 +: 32]) | ({32{sel[9] | sel[20]}} & m[96 +: 32]) | up_i[192 +: 32];   // reg 23 (home 3) up
+    assign up_o[32 +: 32] = ({32{(sel[0] & sel2[1]) | (sel[3] & sel2[4]) | sel[8] | sel[18]}} & m[192 +: 32]) | ({32{sel[9] | sel[20]}} & m[224 +: 32]) | up_i[224 +: 32];   // reg 24 (home 3) up
+    assign up_o[64 +: 32] = ({32{(sel[0] & sel2[1]) | (sel[3] & sel2[4]) | sel[8]}} & m[320 +: 32]) | ({32{sel[9]}} & m[352 +: 32]) | up_i[256 +: 32];   // reg 25 (home 3) up
+    assign up_o[96 +: 32] = up_i[288 +: 32];   // reg 26 (home 3) up
+    assign up_o[128 +: 32] = ({32{sel[34]}} & m[160 +: 32]);   // reg 27 (home 3) up
+    assign up_o[160 +: 32] = ({32{sel[34]}} & m[64 +: 32]);   // reg 28 (home 4) up
+    assign up_o[192 +: 32] = ({32{sel[34]}} & m[192 +: 32]);   // reg 29 (home 4) up
+    assign up_o[224 +: 32] = up_i[320 +: 32];   // reg 30 (home 4) up
+    assign up_o[256 +: 32] = ({32{sel[18] | sel[36]}} & m[0 +: 32]) | up_i[352 +: 32];   // reg 38 (home 5) up
+    assign up_o[288 +: 32] = ({32{sel[33]}} & m[0 +: 32]) | ({32{sel[18]}} & m[128 +: 32]) | up_i[384 +: 32];   // reg 39 (home 5) up
+    assign up_o[320 +: 32] = ({32{sel[18]}} & m[256 +: 32]) | up_i[416 +: 32];   // reg 40 (home 5) up
+    assign up_o[352 +: 32] = ({32{sel[33]}} & m[32 +: 32]);   // reg 42 (home 5) up
+    assign up_o[384 +: 32] = ({32{sel[18] | sel[36]}} & m[32 +: 32]) | ({32{(sel[3] & sel2[5])}} & m[96 +: 32]) | up_i[448 +: 32];   // reg 47 (home 6) up
+    assign up_o[416 +: 32] = ({32{sel[33]}} & m[64 +: 32]) | ({32{sel[18]}} & m[160 +: 32]) | ({32{(sel[3] & sel2[5])}} & m[224 +: 32]) | up_i[480 +: 32];   // reg 48 (home 6) up
+    assign up_o[448 +: 32] = ({32{sel[33]}} & m[96 +: 32]) | ({32{sel[18]}} & m[288 +: 32]) | ({32{(sel[3] & sel2[5])}} & m[352 +: 32]) | up_i[512 +: 32];   // reg 49 (home 6) up
+    assign up_o[480 +: 32] = ({32{sel[18] | sel[36]}} & m[64 +: 32]) | ({32{sel[20]}} & m[96 +: 32]) | up_i[544 +: 32];   // reg 55 (home 7) up
+    assign up_o[512 +: 32] = ({32{sel[18]}} & m[192 +: 32]) | ({32{sel[20]}} & m[224 +: 32]) | up_i[576 +: 32];   // reg 56 (home 7) up
+    assign up_o[544 +: 32] = ({32{sel[36]}} & m[96 +: 32]) | ({32{sel[18]}} & m[320 +: 32]) | ({32{sel[20]}} & m[352 +: 32]) | up_i[608 +: 32];   // reg 57 (home 7) up
+    assign up_o[576 +: 32] = ({32{(sel[3] & sel2[5])}} & m[512 +: 32]) | up_i[640 +: 32];   // reg 61 (home 8) up
+    assign up_o[608 +: 32] = ({32{(sel[0] & sel2[2])}} & m[0 +: 32]) | ({32{(sel[3] & sel2[5]) | sel[8] | sel[18]}} & m[384 +: 32]) | up_i[672 +: 32];   // reg 70 (home 9) up
+    assign up_o[640 +: 32] = ({32{(sel[0] & sel2[2]) | sel[8] | sel[18]}} & m[128 +: 32]) | ({32{(sel[3] & sel2[5])}} & m[416 +: 32]) | up_i[704 +: 32];   // reg 71 (home 9) up
+    assign up_o[672 +: 32] = ({32{(sel[0] & sel2[2]) | (sel[3] & sel2[5]) | sel[8] | sel[18]}} & m[256 +: 32]) | up_i[736 +: 32];   // reg 72 (home 9) up
+    assign up_o[704 +: 32] = ({32{(sel[0] & sel2[2]) | (sel[3] & sel2[5])}} & m[320 +: 32]) | up_i[768 +: 32];   // reg 73 (home 9) up
+    assign up_o[736 +: 32] = ({32{(sel[0] & sel2[2]) | sel[30]}} & m[32 +: 32]);   // reg 74 (home 9) up
+    assign up_o[768 +: 32] = ({32{(sel[0] & sel2[2])}} & m[160 +: 32]) | ({32{(sel[3] & sel2[5])}} & m[544 +: 32]) | up_i[800 +: 32];   // reg 75 (home 9) up
+    assign up_o[800 +: 32] = ({32{(sel[0] & sel2[2]) | (sel[3] & sel2[5])}} & m[288 +: 32]) | up_i[832 +: 32];   // reg 76 (home 9) up
+    assign up_o[832 +: 32] = ({32{(sel[0] & sel2[2])}} & m[64 +: 32]) | ({32{sel[33]}} & m[96 +: 32]) | ({32{sel[8] | sel[18]}} & m[416 +: 32]) | ({32{(sel[3] & sel2[5])}} & m[576 +: 32]) | up_i[864 +: 32];   // reg 79 (home 10) up
+    assign up_o[864 +: 32] = ({32{sel[8] | sel[18]}} & m[160 +: 32]) | ({32{(sel[0] & sel2[2])}} & m[192 +: 32]) | ({32{(sel[3] & sel2[5])}} & m[448 +: 32]) | up_i[896 +: 32];   // reg 80 (home 10) up
+    assign up_o[896 +: 32] = ({32{sel[8] | sel[18] | sel[31]}} & m[288 +: 32]) | up_i[928 +: 32];   // reg 81 (home 10) up
+    assign up_o[928 +: 32] = ({32{(sel[0] & sel2[1]) | (sel[3] & sel2[4])}} & m[96 +: 32]) | ({32{sel[8] | sel[18]}} & m[448 +: 32]) | ({32{sel[9] | sel[20]}} & m[480 +: 32]) | up_i[960 +: 32];   // reg 87 (home 11) up
+    assign up_o[960 +: 32] = ({32{sel[8] | sel[18]}} & m[192 +: 32]) | ({32{(sel[0] & sel2[1]) | (sel[3] & sel2[4]) | sel[9] | sel[20]}} & m[224 +: 32]) | up_i[992 +: 32];   // reg 88 (home 11) up
+    assign up_o[992 +: 32] = ({32{sel[34] | sel[36]}} & m[96 +: 32]) | ({32{sel[8] | sel[18]}} & m[320 +: 32]) | ({32{(sel[0] & sel2[1]) | (sel[3] & sel2[4]) | sel[9] | sel[20]}} & m[352 +: 32]) | up_i[1024 +: 32];   // reg 89 (home 11) up
+    assign up_o[1024 +: 32] = up_i[1056 +: 32];   // reg 91 (home 11) up
+    assign up_o[1056 +: 32] = up_i[1088 +: 32];   // reg 93 (home 12) up
+    assign up_o[1088 +: 32] = ({32{sel[34]}} & m[224 +: 32]);   // reg 94 (home 12) up
+    assign up_o[1120 +: 32] = ({32{(sel[0] & sel2[2])}} & m[96 +: 32]) | ({32{sel[18]}} & m[384 +: 32]) | up_i[1120 +: 32];   // reg 102 (home 13) up
+    assign up_o[1152 +: 32] = ({32{(sel[0] & sel2[2])}} & m[224 +: 32]) | ({32{(sel[3] & sel2[5])}} & m[480 +: 32]) | up_i[1152 +: 32];   // reg 103 (home 13) up
+    assign up_o[1184 +: 32] = ({32{sel[18]}} & m[256 +: 32]) | up_i[1184 +: 32];   // reg 104 (home 13) up
+    assign up_o[1216 +: 32] = ({32{sel[18]}} & m[416 +: 32]) | ({32{(sel[3] & sel2[5])}} & m[608 +: 32]) | up_i[1216 +: 32];   // reg 110 (home 14) up
+    assign up_o[1248 +: 32] = ({32{sel[18]}} & m[288 +: 32]) | ({32{(sel[0] & sel2[2]) | (sel[3] & sel2[5])}} & m[352 +: 32]) | up_i[1248 +: 32];   // reg 112 (home 14) up
+    assign up_o[1280 +: 32] = ({32{sel[18]}} & m[448 +: 32]) | ({32{sel[20]}} & m[480 +: 32]) | up_i[1280 +: 32];   // reg 116 (home 15) up
+    assign up_o[1312 +: 32] = ({32{sel[36]}} & m[96 +: 32]) | ({32{sel[18]}} & m[320 +: 32]) | ({32{sel[20]}} & m[352 +: 32]) | up_i[1312 +: 32];   // reg 118 (home 15) up
+    assign s1_d[0 +: 32] = ({32{(sel[0] & sel2[1]) | (sel[3] & sel2[4]) | sel[8] | sel[18] | sel[36]}} & m[32 +: 32]) | ({32{(sel[3] & sel2[5])}} & m[64 +: 32]) | dn_i[416 +: 32] | up_i[0 +: 32];   // reg 15 (home 2)
+    assign s1_d[32 +: 32] = ({32{sel[34]}} & m[32 +: 32]) | ({32{(sel[0] & sel2[1]) | (sel[3] & sel2[4]) | sel[8] | sel[18]}} & m[160 +: 32]) | ({32{(sel[3] & sel2[5])}} & m[192 +: 32]) | dn_i[448 +: 32] | up_i[32 +: 32];   // reg 16 (home 2)
+    assign s1_d[64 +: 32] = ({32{(sel[0] & sel2[1]) | (sel[3] & sel2[4]) | sel[8]}} & m[288 +: 32]) | dn_i[480 +: 32] | up_i[64 +: 32];   // reg 17 (home 2)
+    assign s1_d[96 +: 32] = dn_i[512 +: 32] | up_i[96 +: 32];   // reg 18 (home 2)
+    assign s1_d[128 +: 32] = dn_i[544 +: 32];   // reg 19 (home 2)
+    assign s1_d[160 +: 32] = dn_i[576 +: 32] | up_i[128 +: 32];   // reg 20 (home 2)
+    assign s1_d[192 +: 32] = up_i[160 +: 32];   // reg 21 (home 2)
+    assign s1_d[224 +: 32] = dn_i[608 +: 32];   // reg 22 (home 2)
+endmodule
+
+// band 3: pre-mux + partial ORs of words [49, 50, 51, 52] (quarter 3), S1 registers of home row 3
+module qba2_s1p_b3 (
+    input  logic                 clk,
+    input  logic [1023:0]        lb0, lb1,   // words [49, 50, 51, 52] of slots 0..7: bit 128 s + 32 i + k
+    input  logic                 ctx,   // s1c_r[b]
+    input  logic [38:0]          sel,
+    input  logic [10:0]          sel2,
+    input  logic [703:0]   dn_i,   // from band 4
+    input  logic [1343:0]   up_i,   // from band 2
+    output logic [639:0]   dn_o,   // to band 2
+    output logic [1503:0]   up_o,   // to band 4
+    output logic [159:0]   s1   // registers homed at row 3
+);
+    logic [1023:0] m;
+    qba2_pm_r u_pm (.lb0, .lb1, .ctx, .m);   // R13 pre-mux module: kept as a 2:1 mux by synthesis (hierarchy)
+    logic [159:0] s1_d;
+    always_ff @(posedge clk) s1 <= s1_d;
+    assign dn_o[0 +: 32] = ({32{sel[27]}} & m[96 +: 32]) | dn_i[0 +: 32];   // reg 0 (home 0) down
+    assign dn_o[32 +: 32] = ({32{(sel[5] & sel2[5])}} & m[32 +: 32]) | ({32{sel[38]}} & m[96 +: 32]) | ({32{sel[27]}} & m[224 +: 32]) | dn_i[32 +: 32];   // reg 1 (home 0) down
+    assign dn_o[64 +: 32] = dn_i[64 +: 32];   // reg 2 (home 0) down
+    assign dn_o[96 +: 32] = ({32{(sel[5] & sel2[5])}} & m[160 +: 32]) | dn_i[96 +: 32];   // reg 3 (home 0) down
+    assign dn_o[128 +: 32] = dn_i[128 +: 32];   // reg 4 (home 0) down
+    assign dn_o[160 +: 32] = ({32{(sel[5] & sel2[5])}} & m[288 +: 32]) | dn_i[160 +: 32];   // reg 5 (home 0) down
+    assign dn_o[192 +: 32] = dn_i[192 +: 32];   // reg 6 (home 0) down
+    assign dn_o[224 +: 32] = dn_i[224 +: 32];   // reg 7 (home 0) down
+    assign dn_o[256 +: 32] = ({32{(sel[1] & sel2[1]) | sel[5] | sel[12] | sel[26] | sel[38]}} & m[0 +: 32]) | dn_i[256 +: 32];   // reg 8 (home 1) down
+    assign dn_o[288 +: 32] = ({32{(sel[1] & sel2[1]) | sel[5] | sel[12] | sel[26]}} & m[128 +: 32]) | dn_i[288 +: 32];   // reg 9 (home 1) down
+    assign dn_o[320 +: 32] = ({32{sel[31]}} & m[32 +: 32]) | ({32{(sel[1] & sel2[1]) | sel[5] | sel[12]}} & m[256 +: 32]) | dn_i[320 +: 32];   // reg 10 (home 1) down
+    assign dn_o[352 +: 32] = ({32{sel[34]}} & m[0 +: 32]) | ({32{(sel[5] & sel2[5])}} & m[320 +: 32]);   // reg 11 (home 1) down
+    assign dn_o[384 +: 32] = ({32{sel[34]}} & m[128 +: 32]);   // reg 14 (home 1) down
+    assign dn_o[416 +: 32] = ({32{(sel[1] & sel2[1]) | (sel[5] & sel2[4]) | sel[12] | sel[26] | sel[38]}} & m[32 +: 32]) | ({32{(sel[5] & sel2[5])}} & m[64 +: 32]) | dn_i[352 +: 32];   // reg 15 (home 2) down
+    assign dn_o[448 +: 32] = ({32{(sel[1] & sel2[1]) | (sel[5] & sel2[4]) | sel[12] | sel[26]}} & m[160 +: 32]) | ({32{(sel[5] & sel2[5])}} & m[192 +: 32]) | dn_i[384 +: 32];   // reg 16 (home 2) down
+    assign dn_o[480 +: 32] = ({32{(sel[1] & sel2[1]) | (sel[5] & sel2[4]) | sel[12]}} & m[288 +: 32]) | dn_i[416 +: 32];   // reg 17 (home 2) down
+    assign dn_o[512 +: 32] = ({32{(sel[5] & sel2[5])}} & m[96 +: 32]) | dn_i[448 +: 32];   // reg 18 (home 2) down
+    assign dn_o[544 +: 32] = ({32{sel[34]}} & m[32 +: 32]) | ({32{sel[31]}} & m[96 +: 32]) | ({32{(sel[5] & sel2[5])}} & m[224 +: 32]) | dn_i[480 +: 32];   // reg 19 (home 2) down
+    assign dn_o[576 +: 32] = ({32{(sel[5] & sel2[5])}} & m[352 +: 32]) | dn_i[512 +: 32];   // reg 20 (home 2) down
+    assign dn_o[608 +: 32] = ({32{sel[34]}} & m[160 +: 32]);   // reg 22 (home 2) down
+    assign up_o[0 +: 32] = ({32{(sel[1] & sel2[1]) | (sel[5] & sel2[4]) | sel[12] | sel[27]}} & m[96 +: 32]) | up_i[160 +: 32];   // reg 28 (home 4) up
+    assign up_o[32 +: 32] = ({32{sel[38]}} & m[96 +: 32]) | ({32{(sel[1] & sel2[1]) | (sel[5] & sel2[4]) | sel[12] | sel[27]}} & m[224 +: 32]) | up_i[192 +: 32];   // reg 29 (home 4) up
+    assign up_o[64 +: 32] = ({32{(sel[1] & sel2[1]) | (sel[5] & sel2[4]) | sel[12] | sel[27]}} & m[352 +: 32]) | up_i[224 +: 32];   // reg 30 (home 4) up
+    assign up_o[96 +: 32] = ({32{sel[34]}} & m[192 +: 32]);   // reg 31 (home 4) up
+    assign up_o[128 +: 32] = ({32{sel[34]}} & m[224 +: 32]);   // reg 37 (home 4) up
+    assign up_o[160 +: 32] = ({32{sel[26] | sel[38]}} & m[0 +: 32]) | up_i[256 +: 32];   // reg 38 (home 5) up
+    assign up_o[192 +: 32] = ({32{sel[26]}} & m[128 +: 32]) | up_i[288 +: 32];   // reg 39 (home 5) up
+    assign up_o[224 +: 32] = ({32{sel[26]}} & m[256 +: 32]) | up_i[320 +: 32];   // reg 40 (home 5) up
+    assign up_o[256 +: 32] = ({32{sel[34]}} & m[96 +: 32]) | up_i[352 +: 32];   // reg 42 (home 5) up
+    assign up_o[288 +: 32] = ({32{sel[26] | sel[38]}} & m[32 +: 32]) | up_i[384 +: 32];   // reg 47 (home 6) up
+    assign up_o[320 +: 32] = ({32{sel[26]}} & m[160 +: 32]) | up_i[416 +: 32];   // reg 48 (home 6) up
+    assign up_o[352 +: 32] = ({32{sel[26]}} & m[288 +: 32]) | up_i[448 +: 32];   // reg 49 (home 6) up
+    assign up_o[384 +: 32] = ({32{sel[26] | sel[38]}} & m[64 +: 32]) | up_i[480 +: 32];   // reg 55 (home 7) up
+    assign up_o[416 +: 32] = ({32{sel[26]}} & m[192 +: 32]) | up_i[512 +: 32];   // reg 56 (home 7) up
+    assign up_o[448 +: 32] = ({32{sel[26]}} & m[320 +: 32]) | up_i[544 +: 32];   // reg 57 (home 7) up
+    assign up_o[480 +: 32] = ({32{sel[27]}} & m[480 +: 32]) | ({32{(sel[5] & sel2[5])}} & m[512 +: 32]) | up_i[576 +: 32];   // reg 61 (home 8) up
+    assign up_o[512 +: 32] = ({32{sel[38]}} & m[96 +: 32]) | ({32{sel[27]}} & m[224 +: 32]);   // reg 62 (home 8) up
+    assign up_o[544 +: 32] = ({32{sel[27]}} & m[352 +: 32]);   // reg 63 (home 8) up
+    assign up_o[576 +: 32] = ({32{(sel[1] & sel2[2])}} & m[0 +: 32]) | ({32{sel[30]}} & m[32 +: 32]) | ({32{(sel[5] & sel2[5]) | sel[12] | sel[26]}} & m[384 +: 32]) | up_i[608 +: 32];   // reg 70 (home 9) up
+    assign up_o[608 +: 32] = ({32{(sel[1] & sel2[2]) | sel[12] | sel[26]}} & m[128 +: 32]) | ({32{sel[31]}} & m[288 +: 32]) | ({32{(sel[5] & sel2[5])}} & m[416 +: 32]) | up_i[640 +: 32];   // reg 71 (home 9) up
+    assign up_o[640 +: 32] = ({32{(sel[1] & sel2[2]) | (sel[5] & sel2[5]) | sel[12] | sel[26]}} & m[256 +: 32]) | up_i[672 +: 32];   // reg 72 (home 9) up
+    assign up_o[672 +: 32] = ({32{(sel[1] & sel2[2]) | (sel[5] & sel2[5])}} & m[320 +: 32]) | up_i[704 +: 32];   // reg 73 (home 9) up
+    assign up_o[704 +: 32] = ({32{(sel[1] & sel2[2])}} & m[32 +: 32]) | up_i[736 +: 32];   // reg 74 (home 9) up
+    assign up_o[736 +: 32] = ({32{(sel[1] & sel2[2])}} & m[160 +: 32]) | ({32{(sel[5] & sel2[5])}} & m[544 +: 32]) | up_i[768 +: 32];   // reg 75 (home 9) up
+    assign up_o[768 +: 32] = ({32{(sel[1] & sel2[2]) | (sel[5] & sel2[5])}} & m[288 +: 32]) | up_i[800 +: 32];   // reg 76 (home 9) up
+    assign up_o[800 +: 32] = ({32{(sel[1] & sel2[2])}} & m[64 +: 32]) | ({32{sel[30]}} & m[96 +: 32]) | ({32{sel[12] | sel[26]}} & m[416 +: 32]) | ({32{(sel[5] & sel2[5])}} & m[576 +: 32]) | up_i[832 +: 32];   // reg 79 (home 10) up
+    assign up_o[832 +: 32] = ({32{sel[12] | sel[26]}} & m[160 +: 32]) | ({32{(sel[1] & sel2[2])}} & m[192 +: 32]) | ({32{sel[31]}} & m[352 +: 32]) | ({32{(sel[5] & sel2[5])}} & m[448 +: 32]) | up_i[864 +: 32];   // reg 80 (home 10) up
+    assign up_o[864 +: 32] = ({32{sel[12] | sel[26]}} & m[288 +: 32]) | up_i[896 +: 32];   // reg 81 (home 10) up
+    assign up_o[896 +: 32] = ({32{(sel[1] & sel2[2])}} & m[96 +: 32]) | ({32{(sel[5] & sel2[5])}} & m[608 +: 32]);   // reg 82 (home 10) up
+    assign up_o[928 +: 32] = ({32{(sel[1] & sel2[2])}} & m[224 +: 32]) | ({32{(sel[5] & sel2[5])}} & m[480 +: 32]);   // reg 83 (home 10) up
+    assign up_o[960 +: 32] = ({32{(sel[1] & sel2[2]) | (sel[5] & sel2[5])}} & m[352 +: 32]);   // reg 84 (home 10) up
+    assign up_o[992 +: 32] = ({32{sel[12] | sel[26]}} & m[448 +: 32]) | up_i[928 +: 32];   // reg 87 (home 11) up
+    assign up_o[1024 +: 32] = ({32{sel[12] | sel[26]}} & m[192 +: 32]) | up_i[960 +: 32];   // reg 88 (home 11) up
+    assign up_o[1056 +: 32] = ({32{sel[12] | sel[26]}} & m[320 +: 32]) | up_i[992 +: 32];   // reg 89 (home 11) up
+    assign up_o[1088 +: 32] = up_i[1024 +: 32];   // reg 91 (home 11) up
+    assign up_o[1120 +: 32] = ({32{sel[33]}} & m[0 +: 32]) | ({32{sel[12] | sel[27]}} & m[480 +: 32]) | up_i[1056 +: 32];   // reg 93 (home 12) up
+    assign up_o[1152 +: 32] = ({32{sel[12]}} & m[224 +: 32]) | up_i[1088 +: 32];   // reg 94 (home 12) up
+    assign up_o[1184 +: 32] = ({32{sel[12] | sel[27]}} & m[352 +: 32]);   // reg 95 (home 12) up
+    assign up_o[1216 +: 32] = ({32{sel[26]}} & m[384 +: 32]) | up_i[1120 +: 32];   // reg 102 (home 13) up
+    assign up_o[1248 +: 32] = ({32{sel[33]}} & m[64 +: 32]) | up_i[1152 +: 32];   // reg 103 (home 13) up
+    assign up_o[1280 +: 32] = ({32{sel[26]}} & m[256 +: 32]) | up_i[1184 +: 32];   // reg 104 (home 13) up
+    assign up_o[1312 +: 32] = ({32{sel[33]}} & m[32 +: 32]);   // reg 105 (home 13) up
+    assign up_o[1344 +: 32] = ({32{sel[26]}} & m[416 +: 32]) | up_i[1216 +: 32];   // reg 110 (home 14) up
+    assign up_o[1376 +: 32] = ({32{sel[26]}} & m[288 +: 32]) | up_i[1248 +: 32];   // reg 112 (home 14) up
+    assign up_o[1408 +: 32] = ({32{sel[26]}} & m[448 +: 32]) | up_i[1280 +: 32];   // reg 116 (home 15) up
+    assign up_o[1440 +: 32] = ({32{sel[26]}} & m[320 +: 32]) | up_i[1312 +: 32];   // reg 118 (home 15) up
+    assign up_o[1472 +: 32] = ({32{sel[33]}} & m[96 +: 32]);   // reg 121 (home 15) up
+    assign s1_d[0 +: 32] = ({32{(sel[1] & sel2[1]) | (sel[5] & sel2[4]) | sel[12] | sel[26] | sel[38]}} & m[64 +: 32]) | dn_i[544 +: 32] | up_i[0 +: 32];   // reg 23 (home 3)
+    assign s1_d[32 +: 32] = ({32{(sel[1] & sel2[1]) | (sel[5] & sel2[4]) | sel[12] | sel[26]}} & m[192 +: 32]) | dn_i[576 +: 32] | up_i[32 +: 32];   // reg 24 (home 3)
+    assign s1_d[64 +: 32] = ({32{sel[34]}} & m[64 +: 32]) | ({32{(sel[1] & sel2[1]) | (sel[5] & sel2[4]) | sel[12]}} & m[320 +: 32]) | dn_i[608 +: 32] | up_i[64 +: 32];   // reg 25 (home 3)
+    assign s1_d[96 +: 32] = dn_i[640 +: 32] | up_i[96 +: 32];   // reg 26 (home 3)
+    assign s1_d[128 +: 32] = dn_i[672 +: 32] | up_i[128 +: 32];   // reg 27 (home 3)
+endmodule
+
+// band 4: pre-mux + partial ORs of words [0, 4, 5, 8] (quarter 0), S1 registers of home row 4
+module qba2_s1p_b4 (
+    input  logic                 clk,
+    input  logic [1023:0]        lb0, lb1,   // words [0, 4, 5, 8] of slots 0..7: bit 128 s + 32 i + k
+    input  logic                 ctx,   // s1c_r[b]
+    input  logic [38:0]          sel,
+    input  logic [10:0]          sel2,
+    input  logic [959:0]   dn_i,   // from band 5
+    input  logic [1503:0]   up_i,   // from band 3
+    output logic [703:0]   dn_o,   // to band 3
+    output logic [1471:0]   up_o,   // to band 5
+    output logic [319:0]   s1   // registers homed at row 4
+);
+    logic [1023:0] m;
+    qba2_pm_r u_pm (.lb0, .lb1, .ctx, .m);   // R13 pre-mux module: kept as a 2:1 mux by synthesis (hierarchy)
+    logic [319:0] s1_d;
+    always_ff @(posedge clk) s1 <= s1_d;
+`ifdef QBA_MUT_S1P
+    assign dn_o[0 +: 32] = ({32{sel[15]}} & m[32 +: 32]) | ({32{sel[7] | sel[16]}} & m[96 +: 32]) | dn_i[0 +: 32];   // reg 0 (home 0) down (mutant: term 0 dropped)
+`else
+    assign dn_o[0 +: 32] = ({32{(sel[0] & (sel2[0] | sel2[2])) | sel[2] | sel[6] | sel[14] | sel[30] | sel[31] | sel[33] | sel[34] | sel[35]}} & m[0 +: 32]) | ({32{sel[15]}} & m[32 +: 32]) | ({32{sel[7] | sel[16]}} & m[96 +: 32]) | dn_i[0 +: 32];   // reg 0 (home 0) down
+`endif
+    assign dn_o[32 +: 32] = ({32{sel[35]}} & m[32 +: 32]) | ({32{(sel[0] & sel2[0]) | (sel[2] & sel2[4]) | sel[6] | sel[14]}} & m[128 +: 32]) | ({32{sel[15]}} & m[160 +: 32]) | ({32{sel[7] | sel[16]}} & m[224 +: 32]) | dn_i[32 +: 32];   // reg 1 (home 0) down
+    assign dn_o[64 +: 32] = ({32{sel[33]}} & m[96 +: 32]) | ({32{(sel[0] & sel2[2]) | (sel[2] & sel2[5])}} & m[128 +: 32]) | ({32{(sel[0] & sel2[0]) | (sel[2] & sel2[4]) | sel[6]}} & m[256 +: 32]) | ({32{sel[7]}} & m[352 +: 32]) | dn_i[64 +: 32];   // reg 2 (home 0) down
+    assign dn_o[96 +: 32] = ({32{sel[34]}} & m[128 +: 32]) | dn_i[96 +: 32];   // reg 3 (home 0) down
+    assign dn_o[128 +: 32] = ({32{(sel[0] & sel2[2]) | (sel[2] & sel2[5])}} & m[256 +: 32]) | dn_i[128 +: 32];   // reg 4 (home 0) down
+    assign dn_o[160 +: 32] = dn_i[160 +: 32];   // reg 5 (home 0) down
+    assign dn_o[192 +: 32] = dn_i[192 +: 32];   // reg 6 (home 0) down
+    assign dn_o[224 +: 32] = dn_i[224 +: 32];   // reg 7 (home 0) down
+    assign dn_o[256 +: 32] = ({32{sel[15]}} & m[64 +: 32]) | dn_i[256 +: 32];   // reg 8 (home 1) down
+    assign dn_o[288 +: 32] = ({32{sel[35]}} & m[64 +: 32]) | ({32{sel[15]}} & m[192 +: 32]) | dn_i[288 +: 32];   // reg 9 (home 1) down
+    assign dn_o[320 +: 32] = dn_i[320 +: 32];   // reg 10 (home 1) down
+    assign dn_o[352 +: 32] = dn_i[352 +: 32];   // reg 15 (home 2) down
+    assign dn_o[384 +: 32] = dn_i[384 +: 32];   // reg 16 (home 2) down
+    assign dn_o[416 +: 32] = ({32{(sel[0] & sel2[2]) | (sel[2] & sel2[5])}} & m[192 +: 32]) | dn_i[416 +: 32];   // reg 17 (home 2) down
+    assign dn_o[448 +: 32] = ({32{(sel[0] & sel2[2]) | (sel[2] & sel2[5]) | sel[30] | sel[31] | sel[33]}} & m[32 +: 32]) | dn_i[448 +: 32];   // reg 18 (home 2) down
+    assign dn_o[480 +: 32] = ({32{(sel[0] & sel2[2]) | (sel[2] & sel2[5])}} & m[160 +: 32]) | dn_i[480 +: 32];   // reg 19 (home 2) down
+    assign dn_o[512 +: 32] = ({32{(sel[0] & sel2[2]) | (sel[2] & sel2[5])}} & m[288 +: 32]) | dn_i[512 +: 32];   // reg 20 (home 2) down
+    assign dn_o[544 +: 32] = ({32{(sel[0] & sel2[2]) | (sel[2] & sel2[5]) | sel[33]}} & m[64 +: 32]) | dn_i[544 +: 32];   // reg 23 (home 3) down
+    assign dn_o[576 +: 32] = dn_i[576 +: 32];   // reg 24 (home 3) down
+    assign dn_o[608 +: 32] = ({32{(sel[0] & sel2[2]) | (sel[2] & sel2[5])}} & m[320 +: 32]) | dn_i[608 +: 32];   // reg 25 (home 3) down
+    assign dn_o[640 +: 32] = dn_i[640 +: 32];   // reg 26 (home 3) down
+    assign dn_o[672 +: 32] = dn_i[672 +: 32];   // reg 27 (home 3) down
+    assign up_o[0 +: 32] = ({32{(sel[0] & sel2[0]) | (sel[2] & sel2[4]) | sel[6] | sel[15] | sel[34]}} & m[64 +: 32]) | up_i[160 +: 32];   // reg 38 (home 5) up
+    assign up_o[32 +: 32] = ({32{sel[35]}} & m[64 +: 32]) | ({32{(sel[0] & sel2[0]) | (sel[2] & sel2[4]) | sel[6] | sel[15]}} & m[192 +: 32]) | up_i[192 +: 32];   // reg 39 (home 5) up
+    assign up_o[64 +: 32] = ({32{(sel[0] & sel2[0]) | (sel[2] & sel2[4]) | sel[6] | sel[15]}} & m[320 +: 32]) | up_i[224 +: 32];   // reg 40 (home 5) up
+    assign up_o[96 +: 32] = up_i[256 +: 32];   // reg 42 (home 5) up
+    assign up_o[128 +: 32] = up_i[288 +: 32];   // reg 47 (home 6) up
+    assign up_o[160 +: 32] = up_i[320 +: 32];   // reg 48 (home 6) up
+    assign up_o[192 +: 32] = up_i[352 +: 32];   // reg 49 (home 6) up
+    assign up_o[224 +: 32] = ({32{sel[34]}} & m[192 +: 32]);   // reg 50 (home 6) up
+    assign up_o[256 +: 32] = up_i[384 +: 32];   // reg 55 (home 7) up
+    assign up_o[288 +: 32] = up_i[416 +: 32];   // reg 56 (home 7) up
+    assign up_o[320 +: 32] = up_i[448 +: 32];   // reg 57 (home 7) up
+    assign up_o[352 +: 32] = ({32{(sel[0] & sel2[0]) | (sel[2] & sel2[4])}} & m[96 +: 32]) | ({32{sel[6] | sel[14]}} & m[384 +: 32]) | ({32{sel[15]}} & m[416 +: 32]) | ({32{sel[7] | sel[16]}} & m[480 +: 32]) | up_i[480 +: 32];   // reg 61 (home 8) up
+    assign up_o[384 +: 32] = ({32{sel[35]}} & m[32 +: 32]) | ({32{sel[6] | sel[14]}} & m[128 +: 32]) | ({32{sel[15]}} & m[160 +: 32]) | ({32{(sel[0] & sel2[0]) | (sel[2] & sel2[4]) | sel[7] | sel[16]}} & m[224 +: 32]) | up_i[512 +: 32];   // reg 62 (home 8) up
+    assign up_o[416 +: 32] = ({32{sel[34] | sel[35]}} & m[96 +: 32]) | ({32{(sel[2] & sel2[5]) | sel[6] | sel[14] | sel[31]}} & m[256 +: 32]) | ({32{sel[15]}} & m[288 +: 32]) | ({32{(sel[0] & sel2[0]) | (sel[2] & sel2[4]) | sel[7] | sel[16]}} & m[352 +: 32]) | up_i[544 +: 32];   // reg 63 (home 8) up
+    assign up_o[448 +: 32] = ({32{(sel[2] & sel2[5])}} & m[384 +: 32]);   // reg 66 (home 8) up
+    assign up_o[480 +: 32] = ({32{sel[15]}} & m[448 +: 32]) | up_i[576 +: 32];   // reg 70 (home 9) up
+    assign up_o[512 +: 32] = ({32{sel[35]}} & m[64 +: 32]) | ({32{sel[15]}} & m[192 +: 32]) | up_i[608 +: 32];   // reg 71 (home 9) up
+    assign up_o[544 +: 32] = ({32{sel[15]}} & m[320 +: 32]) | up_i[640 +: 32];   // reg 72 (home 9) up
+    assign up_o[576 +: 32] = up_i[672 +: 32];   // reg 73 (home 9) up
+    assign up_o[608 +: 32] = ({32{(sel[2] & sel2[5])}} & m[512 +: 32]) | up_i[704 +: 32];   // reg 74 (home 9) up
+    assign up_o[640 +: 32] = ({32{sel[34]}} & m[224 +: 32]) | up_i[736 +: 32];   // reg 75 (home 9) up
+    assign up_o[672 +: 32] = up_i[768 +: 32];   // reg 76 (home 9) up
+    assign up_o[704 +: 32] = up_i[800 +: 32];   // reg 79 (home 10) up
+    assign up_o[736 +: 32] = up_i[832 +: 32];   // reg 80 (home 10) up
+    assign up_o[768 +: 32] = ({32{(sel[2] & sel2[5])}} & m[448 +: 32]) | up_i[864 +: 32];   // reg 81 (home 10) up
+    assign up_o[800 +: 32] = ({32{(sel[2] & sel2[5])}} & m[544 +: 32]) | up_i[896 +: 32];   // reg 82 (home 10) up
+    assign up_o[832 +: 32] = ({32{(sel[2] & sel2[5])}} & m[416 +: 32]) | up_i[928 +: 32];   // reg 83 (home 10) up
+    assign up_o[864 +: 32] = ({32{(sel[2] & sel2[5]) | sel[31]}} & m[288 +: 32]) | up_i[960 +: 32];   // reg 84 (home 10) up
+    assign up_o[896 +: 32] = up_i[992 +: 32];   // reg 87 (home 11) up
+    assign up_o[928 +: 32] = ({32{(sel[2] & sel2[5])}} & m[576 +: 32]) | up_i[1024 +: 32];   // reg 88 (home 11) up
+    assign up_o[960 +: 32] = ({32{(sel[2] & sel2[5])}} & m[320 +: 32]) | up_i[1056 +: 32];   // reg 89 (home 11) up
+    assign up_o[992 +: 32] = up_i[1088 +: 32];   // reg 91 (home 11) up
+    assign up_o[1024 +: 32] = ({32{sel[14]}} & m[384 +: 32]) | ({32{sel[6] | sel[15]}} & m[416 +: 32]) | ({32{sel[16]}} & m[480 +: 32]) | up_i[1120 +: 32];   // reg 93 (home 12) up
+    assign up_o[1056 +: 32] = ({32{sel[6]}} & m[160 +: 32]) | ({32{(sel[2] & sel2[5])}} & m[480 +: 32]) | up_i[1152 +: 32];   // reg 94 (home 12) up
+    assign up_o[1088 +: 32] = ({32{sel[35]}} & m[96 +: 32]) | ({32{sel[14]}} & m[256 +: 32]) | ({32{sel[6] | sel[15]}} & m[288 +: 32]) | ({32{sel[16] | sel[31]}} & m[352 +: 32]) | up_i[1184 +: 32];   // reg 95 (home 12) up
+    assign up_o[1120 +: 32] = ({32{(sel[2] & sel2[5])}} & m[608 +: 32]);   // reg 97 (home 12) up
+    assign up_o[1152 +: 32] = ({32{(sel[2] & sel2[5])}} & m[352 +: 32]);   // reg 99 (home 12) up
+    assign up_o[1184 +: 32] = ({32{sel[6] | sel[15]}} & m[448 +: 32]) | up_i[1216 +: 32];   // reg 102 (home 13) up
+    assign up_o[1216 +: 32] = ({32{sel[6]}} & m[192 +: 32]) | up_i[1248 +: 32];   // reg 103 (home 13) up
+    assign up_o[1248 +: 32] = ({32{sel[6] | sel[15]}} & m[320 +: 32]) | up_i[1280 +: 32];   // reg 104 (home 13) up
+    assign up_o[1280 +: 32] = up_i[1312 +: 32];   // reg 105 (home 13) up
+    assign up_o[1312 +: 32] = up_i[1344 +: 32];   // reg 110 (home 14) up
+    assign up_o[1344 +: 32] = up_i[1376 +: 32];   // reg 112 (home 14) up
+    assign up_o[1376 +: 32] = up_i[1408 +: 32];   // reg 116 (home 15) up
+    assign up_o[1408 +: 32] = up_i[1440 +: 32];   // reg 118 (home 15) up
+    assign up_o[1440 +: 32] = up_i[1472 +: 32];   // reg 121 (home 15) up
+    assign s1_d[0 +: 32] = ({32{sel[14] | sel[35]}} & m[0 +: 32]) | ({32{(sel[0] & sel2[0]) | (sel[2] & sel2[4]) | sel[6] | sel[15]}} & m[32 +: 32]) | ({32{sel[16]}} & m[96 +: 32]) | dn_i[704 +: 32] | up_i[0 +: 32];   // reg 28 (home 4)
+    assign s1_d[32 +: 32] = ({32{sel[35]}} & m[32 +: 32]) | ({32{sel[14]}} & m[128 +: 32]) | ({32{(sel[0] & sel2[0]) | (sel[2] & sel2[4]) | sel[6] | sel[15]}} & m[160 +: 32]) | ({32{sel[16]}} & m[224 +: 32]) | dn_i[736 +: 32] | up_i[32 +: 32];   // reg 29 (home 4)
+    assign s1_d[64 +: 32] = ({32{sel[30] | sel[31] | sel[35]}} & m[96 +: 32]) | ({32{sel[14]}} & m[256 +: 32]) | ({32{(sel[0] & sel2[0]) | (sel[2] & sel2[4]) | sel[6] | sel[15]}} & m[288 +: 32]) | ({32{sel[16]}} & m[352 +: 32]) | dn_i[768 +: 32] | up_i[64 +: 32];   // reg 30 (home 4)
+    assign s1_d[96 +: 32] = ({32{(sel[0] & sel2[2]) | (sel[2] & sel2[5]) | sel[33]}} & m[96 +: 32]) | dn_i[800 +: 32] | up_i[96 +: 32];   // reg 31 (home 4)
+    assign s1_d[128 +: 32] = ({32{sel[34]}} & m[32 +: 32]) | ({32{(sel[0] & sel2[2]) | (sel[2] & sel2[5])}} & m[224 +: 32]) | dn_i[832 +: 32];   // reg 32 (home 4)
+    assign s1_d[160 +: 32] = ({32{(sel[0] & sel2[2]) | (sel[2] & sel2[5])}} & m[352 +: 32]) | dn_i[864 +: 32];   // reg 33 (home 4)
+    assign s1_d[192 +: 32] = ({32{sel[34]}} & m[160 +: 32]);   // reg 34 (home 4)
+    assign s1_d[224 +: 32] = dn_i[896 +: 32];   // reg 35 (home 4)
+    assign s1_d[256 +: 32] = dn_i[928 +: 32];   // reg 36 (home 4)
+    assign s1_d[288 +: 32] = up_i[128 +: 32];   // reg 37 (home 4)
+endmodule
+
+// band 5: pre-mux + partial ORs of words [32, 36, 37, 40] (quarter 2), S1 registers of home row 5
+module qba2_s1p_b5 (
+    input  logic                 clk,
+    input  logic [1023:0]        lb0, lb1,   // words [32, 36, 37, 40] of slots 0..7: bit 128 s + 32 i + k
+    input  logic                 ctx,   // s1c_r[b]
+    input  logic [38:0]          sel,
+    input  logic [10:0]          sel2,
+    input  logic [1151:0]   dn_i,   // from band 6
+    input  logic [1471:0]   up_i,   // from band 4
+    output logic [959:0]   dn_o,   // to band 4
+    output logic [1407:0]   up_o,   // to band 6
+    output logic [287:0]   s1   // registers homed at row 5
+);
+    logic [1023:0] m;
+    qba2_pm_r u_pm (.lb0, .lb1, .ctx, .m);   // R13 pre-mux module: kept as a 2:1 mux by synthesis (hierarchy)
+    logic [287:0] s1_d;
+    always_ff @(posedge clk) s1 <= s1_d;
+    assign dn_o[0 +: 32] = ({32{(sel[1] & (sel2[0] | sel2[2])) | sel[4] | sel[10] | sel[22] | sel[37]}} & m[0 +: 32]) | ({32{sel[23]}} & m[32 +: 32]) | ({32{sel[11] | sel[24]}} & m[96 +: 32]) | dn_i[0 +: 32];   // reg 0 (home 0) down
+    assign dn_o[32 +: 32] = ({32{sel[30]}} & m[0 +: 32]) | ({32{sel[37]}} & m[32 +: 32]) | ({32{(sel[1] & sel2[0]) | (sel[4] & sel2[4]) | sel[10] | sel[22]}} & m[128 +: 32]) | ({32{sel[23]}} & m[160 +: 32]) | ({32{sel[11] | sel[24]}} & m[224 +: 32]) | dn_i[32 +: 32];   // reg 1 (home 0) down
+    assign dn_o[64 +: 32] = ({32{sel[31] | sel[34]}} & m[0 +: 32]) | ({32{(sel[1] & sel2[2]) | (sel[4] & sel2[5])}} & m[128 +: 32]) | ({32{(sel[1] & sel2[0]) | (sel[4] & sel2[4]) | sel[10]}} & m[256 +: 32]) | ({32{sel[11]}} & m[352 +: 32]) | dn_i[64 +: 32];   // reg 2 (home 0) down
+    assign dn_o[96 +: 32] = dn_i[96 +: 32];   // reg 3 (home 0) down
+    assign dn_o[128 +: 32] = ({32{(sel[1] & sel2[2]) | (sel[4] & sel2[5])}} & m[256 +: 32]) | dn_i[128 +: 32];   // reg 4 (home 0) down
+    assign dn_o[160 +: 32] = dn_i[160 +: 32];   // reg 5 (home 0) down
+    assign dn_o[192 +: 32] = ({32{sel[34]}} & m[128 +: 32]);   // reg 6 (home 0) down
+    assign dn_o[224 +: 32] = dn_i[192 +: 32];   // reg 7 (home 0) down
+    assign dn_o[256 +: 32] = ({32{sel[23]}} & m[64 +: 32]) | dn_i[224 +: 32];   // reg 8 (home 1) down
+    assign dn_o[288 +: 32] = ({32{sel[37]}} & m[64 +: 32]) | ({32{sel[23]}} & m[192 +: 32]) | dn_i[256 +: 32];   // reg 9 (home 1) down
+    assign dn_o[320 +: 32] = dn_i[288 +: 32];   // reg 10 (home 1) down
+    assign dn_o[352 +: 32] = dn_i[320 +: 32];   // reg 15 (home 2) down
+    assign dn_o[384 +: 32] = ({32{sel[30]}} & m[32 +: 32]) | dn_i[352 +: 32];   // reg 16 (home 2) down
+    assign dn_o[416 +: 32] = ({32{sel[31]}} & m[32 +: 32]) | ({32{(sel[1] & sel2[2]) | (sel[4] & sel2[5])}} & m[192 +: 32]) | dn_i[384 +: 32];   // reg 17 (home 2) down
+    assign dn_o[448 +: 32] = ({32{(sel[1] & sel2[2]) | (sel[4] & sel2[5])}} & m[32 +: 32]) | dn_i[416 +: 32];   // reg 18 (home 2) down
+    assign dn_o[480 +: 32] = ({32{(sel[1] & sel2[2]) | (sel[4] & sel2[5])}} & m[160 +: 32]) | dn_i[448 +: 32];   // reg 19 (home 2) down
+    assign dn_o[512 +: 32] = ({32{(sel[1] & sel2[2]) | (sel[4] & sel2[5])}} & m[288 +: 32]) | dn_i[480 +: 32];   // reg 20 (home 2) down
+    assign dn_o[544 +: 32] = ({32{(sel[1] & sel2[2]) | (sel[4] & sel2[5])}} & m[64 +: 32]) | dn_i[512 +: 32];   // reg 23 (home 3) down
+    assign dn_o[576 +: 32] = dn_i[544 +: 32];   // reg 24 (home 3) down
+    assign dn_o[608 +: 32] = ({32{(sel[1] & sel2[2]) | (sel[4] & sel2[5])}} & m[320 +: 32]) | dn_i[576 +: 32];   // reg 25 (home 3) down
+    assign dn_o[640 +: 32] = dn_i[608 +: 32];   // reg 26 (home 3) down
+    assign dn_o[672 +: 32] = dn_i[640 +: 32];   // reg 27 (home 3) down
+    assign dn_o[704 +: 32] = ({32{sel[22] | sel[37]}} & m[0 +: 32]) | ({32{(sel[1] & sel2[0]) | (sel[4] & sel2[4]) | sel[10] | sel[23]}} & m[32 +: 32]) | ({32{sel[24]}} & m[96 +: 32]) | dn_i[672 +: 32];   // reg 28 (home 4) down
+    assign dn_o[736 +: 32] = ({32{sel[37]}} & m[32 +: 32]) | ({32{sel[22]}} & m[128 +: 32]) | ({32{(sel[1] & sel2[0]) | (sel[4] & sel2[4]) | sel[10] | sel[23]}} & m[160 +: 32]) | ({32{sel[24]}} & m[224 +: 32]) | dn_i[704 +: 32];   // reg 29 (home 4) down
+    assign dn_o[768 +: 32] = ({32{sel[37]}} & m[96 +: 32]) | ({32{sel[22]}} & m[256 +: 32]) | ({32{(sel[1] & sel2[0]) | (sel[4] & sel2[4]) | sel[10] | sel[23]}} & m[288 +: 32]) | ({32{sel[24]}} & m[352 +: 32]) | dn_i[736 +: 32];   // reg 30 (home 4) down
+    assign dn_o[800 +: 32] = ({32{(sel[1] & sel2[2]) | (sel[4] & sel2[5]) | sel[30]}} & m[96 +: 32]) | dn_i[768 +: 32];   // reg 31 (home 4) down
+    assign dn_o[832 +: 32] = ({32{(sel[1] & sel2[2]) | (sel[4] & sel2[5])}} & m[224 +: 32]) | dn_i[800 +: 32];   // reg 32 (home 4) down
+    assign dn_o[864 +: 32] = ({32{(sel[1] & sel2[2]) | (sel[4] & sel2[5])}} & m[352 +: 32]) | dn_i[832 +: 32];   // reg 33 (home 4) down
+    assign dn_o[896 +: 32] = dn_i[864 +: 32];   // reg 35 (home 4) down
+    assign dn_o[928 +: 32] = ({32{sel[34]}} & m[160 +: 32]);   // reg 36 (home 4) down
+    assign up_o[0 +: 32] = up_i[128 +: 32];   // reg 47 (home 6) up
+    assign up_o[32 +: 32] = up_i[160 +: 32];   // reg 48 (home 6) up
+    assign up_o[64 +: 32] = up_i[192 +: 32];   // reg 49 (home 6) up
+    assign up_o[96 +: 32] = up_i[224 +: 32];   // reg 50 (home 6) up
+    assign up_o[128 +: 32] = up_i[256 +: 32];   // reg 55 (home 7) up
+    assign up_o[160 +: 32] = up_i[288 +: 32];   // reg 56 (home 7) up
+    assign up_o[192 +: 32] = up_i[320 +: 32];   // reg 57 (home 7) up
+    assign up_o[224 +: 32] = ({32{(sel[1] & sel2[0]) | (sel[4] & sel2[4])}} & m[96 +: 32]) | ({32{sel[10] | sel[22]}} & m[384 +: 32]) | ({32{sel[23]}} & m[416 +: 32]) | ({32{sel[11] | sel[24]}} & m[480 +: 32]) | up_i[352 +: 32];   // reg 61 (home 8) up
+    assign up_o[256 +: 32] = ({32{sel[37]}} & m[32 +: 32]) | ({32{sel[10] | sel[22]}} & m[128 +: 32]) | ({32{sel[23]}} & m[160 +: 32]) | ({32{(sel[1] & sel2[0]) | (sel[4] & sel2[4]) | sel[11] | sel[24]}} & m[224 +: 32]) | up_i[384 +: 32];   // reg 62 (home 8) up
+    assign up_o[288 +: 32] = ({32{sel[37]}} & m[96 +: 32]) | ({32{(sel[4] & sel2[5]) | sel[10] | sel[22]}} & m[256 +: 32]) | ({32{sel[23]}} & m[288 +: 32]) | ({32{(sel[1] & sel2[0]) | (sel[4] & sel2[4]) | sel[11] | sel[24]}} & m[352 +: 32]) | up_i[416 +: 32];   // reg 63 (home 8) up
+    assign up_o[320 +: 32] = ({32{sel[33]}} & m[0 +: 32]);   // reg 65 (home 8) up
+    assign up_o[352 +: 32] = ({32{sel[33]}} & m[96 +: 32]) | ({32{(sel[4] & sel2[5])}} & m[384 +: 32]) | up_i[448 +: 32];   // reg 66 (home 8) up
+    assign up_o[384 +: 32] = ({32{sel[34]}} & m[224 +: 32]);   // reg 68 (home 8) up
+    assign up_o[416 +: 32] = ({32{sel[31]}} & m[256 +: 32]) | ({32{sel[23]}} & m[448 +: 32]) | up_i[480 +: 32];   // reg 70 (home 9) up
+    assign up_o[448 +: 32] = ({32{sel[37]}} & m[64 +: 32]) | ({32{sel[34]}} & m[96 +: 32]) | ({32{sel[23]}} & m[192 +: 32]) | up_i[512 +: 32];   // reg 71 (home 9) up
+    assign up_o[480 +: 32] = ({32{sel[23]}} & m[320 +: 32]) | up_i[544 +: 32];   // reg 72 (home 9) up
+    assign up_o[512 +: 32] = up_i[576 +: 32];   // reg 73 (home 9) up
+    assign up_o[544 +: 32] = ({32{(sel[4] & sel2[5])}} & m[512 +: 32]) | up_i[608 +: 32];   // reg 74 (home 9) up
+    assign up_o[576 +: 32] = up_i[640 +: 32];   // reg 75 (home 9) up
+    assign up_o[608 +: 32] = up_i[672 +: 32];   // reg 76 (home 9) up
+    assign up_o[640 +: 32] = up_i[704 +: 32];   // reg 79 (home 10) up
+    assign up_o[672 +: 32] = up_i[736 +: 32];   // reg 80 (home 10) up
+    assign up_o[704 +: 32] = ({32{sel[33]}} & m[64 +: 32]) | ({32{(sel[4] & sel2[5])}} & m[448 +: 32]) | up_i[768 +: 32];   // reg 81 (home 10) up
+    assign up_o[736 +: 32] = ({32{(sel[4] & sel2[5])}} & m[544 +: 32]) | up_i[800 +: 32];   // reg 82 (home 10) up
+    assign up_o[768 +: 32] = ({32{sel[33]}} & m[32 +: 32]) | ({32{(sel[4] & sel2[5])}} & m[416 +: 32]) | up_i[832 +: 32];   // reg 83 (home 10) up
+    assign up_o[800 +: 32] = ({32{(sel[4] & sel2[5])}} & m[288 +: 32]) | up_i[864 +: 32];   // reg 84 (home 10) up
+    assign up_o[832 +: 32] = up_i[896 +: 32];   // reg 87 (home 11) up
+    assign up_o[864 +: 32] = ({32{sel[31]}} & m[288 +: 32]) | ({32{(sel[4] & sel2[5])}} & m[576 +: 32]) | up_i[928 +: 32];   // reg 88 (home 11) up
+    assign up_o[896 +: 32] = ({32{(sel[4] & sel2[5])}} & m[320 +: 32]) | up_i[960 +: 32];   // reg 89 (home 11) up
+    assign up_o[928 +: 32] = up_i[992 +: 32];   // reg 91 (home 11) up
+    assign up_o[960 +: 32] = ({32{sel[22]}} & m[384 +: 32]) | ({32{sel[10] | sel[23]}} & m[416 +: 32]) | ({32{sel[24]}} & m[480 +: 32]) | up_i[1024 +: 32];   // reg 93 (home 12) up
+    assign up_o[992 +: 32] = ({32{sel[10]}} & m[160 +: 32]) | ({32{(sel[4] & sel2[5])}} & m[480 +: 32]) | up_i[1056 +: 32];   // reg 94 (home 12) up
+    assign up_o[1024 +: 32] = ({32{sel[37]}} & m[96 +: 32]) | ({32{sel[22]}} & m[256 +: 32]) | ({32{sel[10] | sel[23]}} & m[288 +: 32]) | ({32{sel[24]}} & m[352 +: 32]) | up_i[1088 +: 32];   // reg 95 (home 12) up
+    assign up_o[1056 +: 32] = ({32{sel[33]}} & m[96 +: 32]) | ({32{(sel[4] & sel2[5])}} & m[608 +: 32]) | up_i[1120 +: 32];   // reg 97 (home 12) up
+    assign up_o[1088 +: 32] = ({32{(sel[4] & sel2[5])}} & m[352 +: 32]) | up_i[1152 +: 32];   // reg 99 (home 12) up
+    assign up_o[1120 +: 32] = ({32{sel[10] | sel[23]}} & m[448 +: 32]) | up_i[1184 +: 32];   // reg 102 (home 13) up
+    assign up_o[1152 +: 32] = ({32{sel[10]}} & m[192 +: 32]) | ({32{sel[31]}} & m[352 +: 32]) | up_i[1216 +: 32];   // reg 103 (home 13) up
+    assign up_o[1184 +: 32] = ({32{sel[10] | sel[23]}} & m[320 +: 32]) | up_i[1248 +: 32];   // reg 104 (home 13) up
+    assign up_o[1216 +: 32] = up_i[1280 +: 32];   // reg 105 (home 13) up
+    assign up_o[1248 +: 32] = up_i[1312 +: 32];   // reg 110 (home 14) up
+    assign up_o[1280 +: 32] = up_i[1344 +: 32];   // reg 112 (home 14) up
+    assign up_o[1312 +: 32] = up_i[1376 +: 32];   // reg 116 (home 15) up
+    assign up_o[1344 +: 32] = up_i[1408 +: 32];   // reg 118 (home 15) up
+    assign up_o[1376 +: 32] = up_i[1440 +: 32];   // reg 121 (home 15) up
+    assign s1_d[0 +: 32] = ({32{(sel[1] & sel2[0]) | (sel[4] & sel2[4]) | sel[10] | sel[23]}} & m[64 +: 32]) | ({32{sel[31]}} & m[96 +: 32]) | dn_i[896 +: 32] | up_i[0 +: 32];   // reg 38 (home 5)
+    assign s1_d[32 +: 32] = ({32{sel[37]}} & m[64 +: 32]) | ({32{(sel[1] & sel2[0]) | (sel[4] & sel2[4]) | sel[10] | sel[23]}} & m[192 +: 32]) | dn_i[928 +: 32] | up_i[32 +: 32];   // reg 39 (home 5)
+    assign s1_d[64 +: 32] = ({32{sel[34]}} & m[32 +: 32]) | ({32{(sel[1] & sel2[0]) | (sel[4] & sel2[4]) | sel[10] | sel[23]}} & m[320 +: 32]) | dn_i[960 +: 32] | up_i[64 +: 32];   // reg 40 (home 5)
+    assign s1_d[96 +: 32] = ({32{sel[34]}} & m[64 +: 32]) | dn_i[992 +: 32];   // reg 41 (home 5)
+    assign s1_d[128 +: 32] = dn_i[1024 +: 32] | up_i[96 +: 32];   // reg 42 (home 5)
+    assign s1_d[160 +: 32] = dn_i[1056 +: 32];   // reg 43 (home 5)
+    assign s1_d[192 +: 32] = dn_i[1088 +: 32];   // reg 44 (home 5)
+    assign s1_d[224 +: 32] = ({32{sel[34]}} & m[192 +: 32]);   // reg 45 (home 5)
+    assign s1_d[256 +: 32] = dn_i[1120 +: 32];   // reg 46 (home 5)
+endmodule
+
+// band 6: pre-mux + partial ORs of words [16, 20, 21, 24] (quarter 1), S1 registers of home row 6
+module qba2_s1p_b6 (
+    input  logic                 clk,
+    input  logic [1023:0]        lb0, lb1,   // words [16, 20, 21, 24] of slots 0..7: bit 128 s + 32 i + k
+    input  logic                 ctx,   // s1c_r[b]
+    input  logic [38:0]          sel,
+    input  logic [10:0]          sel2,
+    input  logic [1247:0]   dn_i,   // from band 7
+    input  logic [1407:0]   up_i,   // from band 5
+    output logic [1151:0]   dn_o,   // to band 5
+    output logic [1439:0]   up_o,   // to band 7
+    output logic [255:0]   s1   // registers homed at row 6
+);
+    logic [1023:0] m;
+    qba2_pm_r u_pm (.lb0, .lb1, .ctx, .m);   // R13 pre-mux module: kept as a 2:1 mux by synthesis (hierarchy)
+    logic [255:0] s1_d;
+    always_ff @(posedge clk) s1 <= s1_d;
+    assign dn_o[0 +: 32] = ({32{(sel[0] & sel2[1]) | sel[3] | sel[8] | sel[18] | sel[36]}} & m[0 +: 32]) | ({32{sel[19]}} & m[32 +: 32]) | ({32{sel[9] | sel[20]}} & m[96 +: 32]) | dn_i[0 +: 32];   // reg 0 (home 0) down
+    assign dn_o[32 +: 32] = ({32{sel[31] | sel[34]}} & m[0 +: 32]) | ({32{sel[36]}} & m[32 +: 32]) | ({32{(sel[0] & sel2[1]) | (sel[3] & sel2[4]) | sel[8] | sel[18]}} & m[128 +: 32]) | ({32{sel[19]}} & m[160 +: 32]) | ({32{sel[9] | sel[20]}} & m[224 +: 32]) | dn_i[32 +: 32];   // reg 1 (home 0) down
+    assign dn_o[64 +: 32] = ({32{(sel[3] & sel2[5])}} & m[128 +: 32]) | ({32{(sel[0] & sel2[1]) | (sel[3] & sel2[4]) | sel[8]}} & m[256 +: 32]) | ({32{sel[9]}} & m[352 +: 32]) | dn_i[64 +: 32];   // reg 2 (home 0) down
+    assign dn_o[96 +: 32] = dn_i[96 +: 32];   // reg 3 (home 0) down
+    assign dn_o[128 +: 32] = ({32{(sel[3] & sel2[5])}} & m[256 +: 32]) | dn_i[128 +: 32];   // reg 4 (home 0) down
+    assign dn_o[160 +: 32] = ({32{sel[34]}} & m[128 +: 32]) | dn_i[160 +: 32];   // reg 5 (home 0) down
+    assign dn_o[192 +: 32] = dn_i[192 +: 32];   // reg 7 (home 0) down
+    assign dn_o[224 +: 32] = ({32{sel[19]}} & m[64 +: 32]) | dn_i[224 +: 32];   // reg 8 (home 1) down
+    assign dn_o[256 +: 32] = ({32{sel[36]}} & m[64 +: 32]) | ({32{sel[19]}} & m[192 +: 32]) | dn_i[256 +: 32];   // reg 9 (home 1) down
+    assign dn_o[288 +: 32] = dn_i[288 +: 32];   // reg 10 (home 1) down
+    assign dn_o[320 +: 32] = dn_i[320 +: 32];   // reg 15 (home 2) down
+    assign dn_o[352 +: 32] = ({32{sel[31]}} & m[32 +: 32]) | dn_i[352 +: 32];   // reg 16 (home 2) down
+    assign dn_o[384 +: 32] = ({32{(sel[3] & sel2[5])}} & m[192 +: 32]) | dn_i[384 +: 32];   // reg 17 (home 2) down
+    assign dn_o[416 +: 32] = ({32{(sel[3] & sel2[5])}} & m[32 +: 32]);   // reg 18 (home 2) down
+    assign dn_o[448 +: 32] = ({32{(sel[3] & sel2[5])}} & m[160 +: 32]);   // reg 19 (home 2) down
+    assign dn_o[480 +: 32] = ({32{(sel[3] & sel2[5])}} & m[288 +: 32]);   // reg 20 (home 2) down
+    assign dn_o[512 +: 32] = ({32{(sel[3] & sel2[5])}} & m[64 +: 32]) | dn_i[416 +: 32];   // reg 23 (home 3) down
+    assign dn_o[544 +: 32] = dn_i[448 +: 32];   // reg 24 (home 3) down
+    assign dn_o[576 +: 32] = ({32{(sel[3] & sel2[5])}} & m[320 +: 32]) | dn_i[480 +: 32];   // reg 25 (home 3) down
+    assign dn_o[608 +: 32] = dn_i[512 +: 32];   // reg 26 (home 3) down
+    assign dn_o[640 +: 32] = dn_i[544 +: 32];   // reg 27 (home 3) down
+    assign dn_o[672 +: 32] = ({32{sel[18] | sel[36]}} & m[0 +: 32]) | ({32{(sel[0] & sel2[1]) | (sel[3] & sel2[4]) | sel[8] | sel[19]}} & m[32 +: 32]) | ({32{sel[20]}} & m[96 +: 32]) | dn_i[576 +: 32];   // reg 28 (home 4) down
+    assign dn_o[704 +: 32] = ({32{sel[33]}} & m[0 +: 32]) | ({32{sel[36]}} & m[32 +: 32]) | ({32{sel[18]}} & m[128 +: 32]) | ({32{(sel[0] & sel2[1]) | (sel[3] & sel2[4]) | sel[8] | sel[19]}} & m[160 +: 32]) | ({32{sel[20]}} & m[224 +: 32]) | dn_i[608 +: 32];   // reg 29 (home 4) down
+    assign dn_o[736 +: 32] = ({32{sel[36]}} & m[96 +: 32]) | ({32{sel[18]}} & m[256 +: 32]) | ({32{(sel[0] & sel2[1]) | (sel[3] & sel2[4]) | sel[8] | sel[19]}} & m[288 +: 32]) | ({32{sel[20]}} & m[352 +: 32]) | dn_i[640 +: 32];   // reg 30 (home 4) down
+    assign dn_o[768 +: 32] = ({32{(sel[3] & sel2[5]) | sel[31]}} & m[96 +: 32]) | dn_i[672 +: 32];   // reg 31 (home 4) down
+    assign dn_o[800 +: 32] = ({32{(sel[3] & sel2[5])}} & m[224 +: 32]) | dn_i[704 +: 32];   // reg 32 (home 4) down
+    assign dn_o[832 +: 32] = ({32{sel[34]}} & m[32 +: 32]) | ({32{sel[33]}} & m[96 +: 32]) | ({32{(sel[3] & sel2[5])}} & m[352 +: 32]) | dn_i[736 +: 32];   // reg 33 (home 4) down
+    assign dn_o[864 +: 32] = ({32{sel[34]}} & m[160 +: 32]);   // reg 35 (home 4) down
+    assign dn_o[896 +: 32] = ({32{(sel[0] & sel2[1]) | (sel[3] & sel2[4]) | sel[8] | sel[19]}} & m[64 +: 32]) | dn_i[768 +: 32];   // reg 38 (home 5) down
+    assign dn_o[928 +: 32] = ({32{sel[34] | sel[36]}} & m[64 +: 32]) | ({32{(sel[0] & sel2[1]) | (sel[3] & sel2[4]) | sel[8] | sel[19]}} & m[192 +: 32]) | dn_i[800 +: 32];   // reg 39 (home 5) down
+    assign dn_o[960 +: 32] = ({32{(sel[0] & sel2[1]) | (sel[3] & sel2[4]) | sel[8] | sel[19]}} & m[320 +: 32]) | dn_i[832 +: 32];   // reg 40 (home 5) down
+    assign dn_o[992 +: 32] = dn_i[864 +: 32];   // reg 41 (home 5) down
+    assign dn_o[1024 +: 32] = dn_i[896 +: 32];   // reg 42 (home 5) down
+    assign dn_o[1056 +: 32] = dn_i[928 +: 32];   // reg 43 (home 5) down
+    assign dn_o[1088 +: 32] = ({32{sel[34]}} & m[192 +: 32]);   // reg 44 (home 5) down
+    assign dn_o[1120 +: 32] = dn_i[960 +: 32];   // reg 46 (home 5) down
+    assign up_o[0 +: 32] = up_i[128 +: 32];   // reg 55 (home 7) up
+    assign up_o[32 +: 32] = ({32{sel[33]}} & m[64 +: 32]) | up_i[160 +: 32];   // reg 56 (home 7) up
+    assign up_o[64 +: 32] = up_i[192 +: 32];   // reg 57 (home 7) up
+    assign up_o[96 +: 32] = ({32{(sel[0] & sel2[1]) | (sel[3] & sel2[4]) | sel[33]}} & m[96 +: 32]) | ({32{sel[8] | sel[18]}} & m[384 +: 32]) | ({32{sel[19]}} & m[416 +: 32]) | ({32{sel[9] | sel[20]}} & m[480 +: 32]) | up_i[224 +: 32];   // reg 61 (home 8) up
+    assign up_o[128 +: 32] = ({32{sel[36]}} & m[32 +: 32]) | ({32{sel[8] | sel[18]}} & m[128 +: 32]) | ({32{sel[19]}} & m[160 +: 32]) | ({32{(sel[0] & sel2[1]) | (sel[3] & sel2[4]) | sel[9] | sel[20]}} & m[224 +: 32]) | up_i[256 +: 32];   // reg 62 (home 8) up
+    assign up_o[160 +: 32] = ({32{sel[36]}} & m[96 +: 32]) | ({32{(sel[3] & sel2[5]) | sel[8] | sel[18]}} & m[256 +: 32]) | ({32{sel[19]}} & m[288 +: 32]) | ({32{(sel[0] & sel2[1]) | (sel[3] & sel2[4]) | sel[9] | sel[20]}} & m[352 +: 32]) | up_i[288 +: 32];   // reg 63 (home 8) up
+    assign up_o[192 +: 32] = ({32{(sel[0] & sel2[2]) | sel[30]}} & m[0 +: 32]);   // reg 64 (home 8) up
+    assign up_o[224 +: 32] = ({32{(sel[0] & sel2[2])}} & m[128 +: 32]) | up_i[320 +: 32];   // reg 65 (home 8) up
+    assign up_o[256 +: 32] = ({32{sel[34]}} & m[96 +: 32]) | ({32{(sel[0] & sel2[2]) | sel[31]}} & m[256 +: 32]) | ({32{(sel[3] & sel2[5])}} & m[384 +: 32]) | up_i[352 +: 32];   // reg 66 (home 8) up
+    assign up_o[288 +: 32] = ({32{sel[34]}} & m[224 +: 32]);   // reg 67 (home 8) up
+    assign up_o[320 +: 32] = up_i[384 +: 32];   // reg 68 (home 8) up
+    assign up_o[352 +: 32] = ({32{sel[19]}} & m[448 +: 32]) | up_i[416 +: 32];   // reg 70 (home 9) up
+    assign up_o[384 +: 32] = ({32{sel[36]}} & m[64 +: 32]) | ({32{sel[19]}} & m[192 +: 32]) | up_i[448 +: 32];   // reg 71 (home 9) up
+    assign up_o[416 +: 32] = ({32{sel[19]}} & m[320 +: 32]) | up_i[480 +: 32];   // reg 72 (home 9) up
+    assign up_o[448 +: 32] = up_i[512 +: 32];   // reg 73 (home 9) up
+    assign up_o[480 +: 32] = ({32{(sel[3] & sel2[5])}} & m[512 +: 32]) | up_i[544 +: 32];   // reg 74 (home 9) up
+    assign up_o[512 +: 32] = up_i[576 +: 32];   // reg 75 (home 9) up
+    assign up_o[544 +: 32] = up_i[608 +: 32];   // reg 76 (home 9) up
+    assign up_o[576 +: 32] = ({32{sel[31]}} & m[288 +: 32]) | up_i[640 +: 32];   // reg 79 (home 10) up
+    assign up_o[608 +: 32] = up_i[672 +: 32];   // reg 80 (home 10) up
+    assign up_o[640 +: 32] = ({32{(sel[0] & sel2[2])}} & m[192 +: 32]) | ({32{(sel[3] & sel2[5])}} & m[448 +: 32]) | up_i[704 +: 32];   // reg 81 (home 10) up
+    assign up_o[672 +: 32] = ({32{(sel[0] & sel2[2]) | sel[30]}} & m[32 +: 32]) | ({32{(sel[3] & sel2[5])}} & m[544 +: 32]) | up_i[736 +: 32];   // reg 82 (home 10) up
+    assign up_o[704 +: 32] = ({32{(sel[0] & sel2[2])}} & m[160 +: 32]) | ({32{(sel[3] & sel2[5])}} & m[416 +: 32]) | up_i[768 +: 32];   // reg 83 (home 10) up
+    assign up_o[736 +: 32] = ({32{(sel[0] & sel2[2]) | (sel[3] & sel2[5])}} & m[288 +: 32]) | up_i[800 +: 32];   // reg 84 (home 10) up
+    assign up_o[768 +: 32] = ({32{(sel[0] & sel2[2])}} & m[64 +: 32]) | up_i[832 +: 32];   // reg 87 (home 11) up
+    assign up_o[800 +: 32] = ({32{(sel[3] & sel2[5])}} & m[576 +: 32]) | up_i[864 +: 32];   // reg 88 (home 11) up
+    assign up_o[832 +: 32] = ({32{(sel[0] & sel2[2]) | (sel[3] & sel2[5])}} & m[320 +: 32]) | up_i[896 +: 32];   // reg 89 (home 11) up
+    assign up_o[864 +: 32] = up_i[928 +: 32];   // reg 91 (home 11) up
+    assign up_o[896 +: 32] = ({32{sel[18]}} & m[384 +: 32]) | ({32{sel[8] | sel[19]}} & m[416 +: 32]) | ({32{sel[20]}} & m[480 +: 32]) | up_i[960 +: 32];   // reg 93 (home 12) up
+    assign up_o[928 +: 32] = ({32{sel[8]}} & m[160 +: 32]) | ({32{(sel[3] & sel2[5])}} & m[480 +: 32]) | up_i[992 +: 32];   // reg 94 (home 12) up
+    assign up_o[960 +: 32] = ({32{sel[30] | sel[36]}} & m[96 +: 32]) | ({32{sel[18]}} & m[256 +: 32]) | ({32{sel[8] | sel[19]}} & m[288 +: 32]) | ({32{sel[20]}} & m[352 +: 32]) | up_i[1024 +: 32];   // reg 95 (home 12) up
+    assign up_o[992 +: 32] = ({32{(sel[0] & sel2[2])}} & m[96 +: 32]) | ({32{(sel[3] & sel2[5])}} & m[608 +: 32]) | up_i[1056 +: 32];   // reg 97 (home 12) up
+    assign up_o[1024 +: 32] = ({32{(sel[0] & sel2[2])}} & m[224 +: 32]);   // reg 98 (home 12) up
+    assign up_o[1056 +: 32] = ({32{(sel[0] & sel2[2]) | (sel[3] & sel2[5]) | sel[31]}} & m[352 +: 32]) | up_i[1088 +: 32];   // reg 99 (home 12) up
+    assign up_o[1088 +: 32] = ({32{sel[8] | sel[19]}} & m[448 +: 32]) | up_i[1120 +: 32];   // reg 102 (home 13) up
+    assign up_o[1120 +: 32] = ({32{sel[8]}} & m[192 +: 32]) | up_i[1152 +: 32];   // reg 103 (home 13) up
+    assign up_o[1152 +: 32] = ({32{sel[8] | sel[19]}} & m[320 +: 32]) | up_i[1184 +: 32];   // reg 104 (home 13) up
+    assign up_o[1184 +: 32] = up_i[1216 +: 32];   // reg 105 (home 13) up
+    assign up_o[1216 +: 32] = up_i[1248 +: 32];   // reg 110 (home 14) up
+    assign up_o[1248 +: 32] = up_i[1280 +: 32];   // reg 112 (home 14) up
+    assign up_o[1280 +: 32] = up_i[1312 +: 32];   // reg 116 (home 15) up
+    assign up_o[1312 +: 32] = up_i[1344 +: 32];   // reg 118 (home 15) up
+    assign up_o[1344 +: 32] = ({32{(sel[0] & sel2[0])}} & m[0 +: 32]);   // reg 119 (home 15) up
+    assign up_o[1376 +: 32] = ({32{(sel[0] & sel2[0])}} & m[128 +: 32]);   // reg 120 (home 15) up
+    assign up_o[1408 +: 32] = ({32{(sel[0] & sel2[0])}} & m[256 +: 32]) | up_i[1376 +: 32];   // reg 121 (home 15) up
+    assign s1_d[0 +: 32] = dn_i[992 +: 32] | up_i[0 +: 32];   // reg 47 (home 6)
+    assign s1_d[32 +: 32] = dn_i[1024 +: 32] | up_i[32 +: 32];   // reg 48 (home 6)
+    assign s1_d[64 +: 32] = dn_i[1056 +: 32] | up_i[64 +: 32];   // reg 49 (home 6)
+    assign s1_d[96 +: 32] = dn_i[1088 +: 32] | up_i[96 +: 32];   // reg 50 (home 6)
+    assign s1_d[128 +: 32] = ({32{sel[33]}} & m[32 +: 32]) | dn_i[1120 +: 32];   // reg 51 (home 6)
+    assign s1_d[160 +: 32] = dn_i[1152 +: 32];   // reg 52 (home 6)
+    assign s1_d[192 +: 32] = dn_i[1184 +: 32];   // reg 53 (home 6)
+    assign s1_d[224 +: 32] = dn_i[1216 +: 32];   // reg 54 (home 6)
+endmodule
+
+// band 7: pre-mux + partial ORs of words [48, 53, 56, 59] (quarter 3), S1 registers of home row 7
+module qba2_s1p_b7 (
+    input  logic                 clk,
+    input  logic [1023:0]        lb0, lb1,   // words [48, 53, 56, 59] of slots 0..7: bit 128 s + 32 i + k
+    input  logic                 ctx,   // s1c_r[b]
+    input  logic [38:0]          sel,
+    input  logic [10:0]          sel2,
+    input  logic [1247:0]   dn_i,   // from band 8
+    input  logic [1439:0]   up_i,   // from band 6
+    output logic [1247:0]   dn_o,   // to band 6
+    output logic [1407:0]   up_o,   // to band 8
+    output logic [191:0]   s1   // registers homed at row 7
+);
+    logic [1023:0] m;
+    qba2_pm_r u_pm (.lb0, .lb1, .ctx, .m);   // R13 pre-mux module: kept as a 2:1 mux by synthesis (hierarchy)
+    logic [191:0] s1_d;
+    always_ff @(posedge clk) s1 <= s1_d;
+    assign dn_o[0 +: 32] = ({32{(sel[1] & sel2[1]) | sel[5] | sel[12] | sel[26] | sel[38]}} & m[0 +: 32]) | ({32{sel[13] | sel[28]}} & m[64 +: 32]) | dn_i[0 +: 32];   // reg 0 (home 0) down
+    assign dn_o[32 +: 32] = ({32{(sel[1] & sel2[1]) | (sel[5] & sel2[4]) | sel[12] | sel[26]}} & m[128 +: 32]) | ({32{sel[13] | sel[28]}} & m[192 +: 32]) | dn_i[32 +: 32];   // reg 1 (home 0) down
+    assign dn_o[64 +: 32] = ({32{(sel[5] & sel2[5])}} & m[128 +: 32]) | ({32{(sel[1] & sel2[1]) | (sel[5] & sel2[4]) | sel[12]}} & m[256 +: 32]) | ({32{sel[13]}} & m[320 +: 32]);   // reg 2 (home 0) down
+    assign dn_o[96 +: 32] = dn_i[64 +: 32];   // reg 3 (home 0) down
+    assign dn_o[128 +: 32] = ({32{sel[31] | sel[34]}} & m[0 +: 32]) | ({32{(sel[5] & sel2[5])}} & m[256 +: 32]) | dn_i[96 +: 32];   // reg 4 (home 0) down
+    assign dn_o[160 +: 32] = dn_i[128 +: 32];   // reg 5 (home 0) down
+    assign dn_o[192 +: 32] = ({32{sel[34]}} & m[128 +: 32]);   // reg 7 (home 0) down
+    assign dn_o[224 +: 32] = ({32{sel[27]}} & m[32 +: 32]) | dn_i[160 +: 32];   // reg 8 (home 1) down
+    assign dn_o[256 +: 32] = ({32{sel[38]}} & m[32 +: 32]) | ({32{sel[27]}} & m[160 +: 32]) | dn_i[192 +: 32];   // reg 9 (home 1) down
+    assign dn_o[288 +: 32] = dn_i[224 +: 32];   // reg 10 (home 1) down
+    assign dn_o[320 +: 32] = dn_i[256 +: 32];   // reg 15 (home 2) down
+    assign dn_o[352 +: 32] = dn_i[288 +: 32];   // reg 16 (home 2) down
+    assign dn_o[384 +: 32] = ({32{(sel[5] & sel2[5])}} & m[160 +: 32]) | dn_i[320 +: 32];   // reg 17 (home 2) down
+    assign dn_o[416 +: 32] = ({32{(sel[5] & sel2[5])}} & m[32 +: 32]) | ({32{sel[13] | sel[28]}} & m[96 +: 32]) | dn_i[352 +: 32];   // reg 23 (home 3) down
+    assign dn_o[448 +: 32] = ({32{sel[13] | sel[28]}} & m[224 +: 32]) | dn_i[384 +: 32];   // reg 24 (home 3) down
+    assign dn_o[480 +: 32] = ({32{(sel[5] & sel2[5])}} & m[288 +: 32]) | ({32{sel[13]}} & m[352 +: 32]) | dn_i[416 +: 32];   // reg 25 (home 3) down
+    assign dn_o[512 +: 32] = dn_i[448 +: 32];   // reg 26 (home 3) down
+    assign dn_o[544 +: 32] = dn_i[480 +: 32];   // reg 27 (home 3) down
+    assign dn_o[576 +: 32] = ({32{sel[26] | sel[38]}} & m[0 +: 32]) | ({32{sel[28]}} & m[64 +: 32]) | dn_i[512 +: 32];   // reg 28 (home 4) down
+    assign dn_o[608 +: 32] = ({32{sel[31]}} & m[64 +: 32]) | ({32{sel[26]}} & m[128 +: 32]) | ({32{sel[28]}} & m[192 +: 32]) | dn_i[544 +: 32];   // reg 29 (home 4) down
+    assign dn_o[640 +: 32] = ({32{sel[38]}} & m[64 +: 32]) | ({32{sel[26]}} & m[256 +: 32]) | ({32{sel[28]}} & m[320 +: 32]) | dn_i[576 +: 32];   // reg 30 (home 4) down
+    assign dn_o[672 +: 32] = ({32{(sel[5] & sel2[5])}} & m[64 +: 32]);   // reg 31 (home 4) down
+    assign dn_o[704 +: 32] = ({32{(sel[5] & sel2[5])}} & m[192 +: 32]);   // reg 32 (home 4) down
+    assign dn_o[736 +: 32] = ({32{(sel[5] & sel2[5])}} & m[320 +: 32]);   // reg 33 (home 4) down
+    assign dn_o[768 +: 32] = ({32{(sel[1] & sel2[1]) | (sel[5] & sel2[4]) | sel[12] | sel[27]}} & m[32 +: 32]) | dn_i[608 +: 32];   // reg 38 (home 5) down
+    assign dn_o[800 +: 32] = ({32{sel[38]}} & m[32 +: 32]) | ({32{(sel[1] & sel2[1]) | (sel[5] & sel2[4]) | sel[12] | sel[27]}} & m[160 +: 32]) | dn_i[640 +: 32];   // reg 39 (home 5) down
+    assign dn_o[832 +: 32] = ({32{(sel[1] & sel2[1]) | (sel[5] & sel2[4]) | sel[12] | sel[27]}} & m[288 +: 32]) | dn_i[672 +: 32];   // reg 40 (home 5) down
+    assign dn_o[864 +: 32] = dn_i[704 +: 32];   // reg 41 (home 5) down
+    assign dn_o[896 +: 32] = dn_i[736 +: 32];   // reg 42 (home 5) down
+    assign dn_o[928 +: 32] = ({32{sel[34]}} & m[32 +: 32]) | dn_i[768 +: 32];   // reg 43 (home 5) down
+    assign dn_o[960 +: 32] = ({32{sel[34]}} & m[160 +: 32]);   // reg 46 (home 5) down
+    assign dn_o[992 +: 32] = ({32{(sel[5] & sel2[5])}} & m[96 +: 32]) | dn_i[800 +: 32];   // reg 47 (home 6) down
+    assign dn_o[1024 +: 32] = ({32{(sel[5] & sel2[5])}} & m[224 +: 32]) | dn_i[832 +: 32];   // reg 48 (home 6) down
+    assign dn_o[1056 +: 32] = ({32{(sel[5] & sel2[5])}} & m[352 +: 32]) | dn_i[864 +: 32];   // reg 49 (home 6) down
+    assign dn_o[1088 +: 32] = dn_i[896 +: 32];   // reg 50 (home 6) down
+    assign dn_o[1120 +: 32] = dn_i[928 +: 32];   // reg 51 (home 6) down
+    assign dn_o[1152 +: 32] = dn_i[960 +: 32];   // reg 52 (home 6) down
+    assign dn_o[1184 +: 32] = dn_i[992 +: 32];   // reg 53 (home 6) down
+    assign dn_o[1216 +: 32] = dn_i[1024 +: 32];   // reg 54 (home 6) down
+    assign up_o[0 +: 32] = ({32{sel[30]}} & m[0 +: 32]) | ({32{(sel[1] & sel2[1]) | (sel[5] & sel2[4])}} & m[64 +: 32]) | ({32{sel[12] | sel[26]}} & m[384 +: 32]) | ({32{sel[13] | sel[28]}} & m[448 +: 32]) | up_i[96 +: 32];   // reg 61 (home 8) up
+    assign up_o[32 +: 32] = ({32{sel[12] | sel[26]}} & m[128 +: 32]) | ({32{(sel[1] & sel2[1]) | (sel[5] & sel2[4]) | sel[13] | sel[28]}} & m[192 +: 32]) | ({32{sel[31]}} & m[256 +: 32]) | up_i[128 +: 32];   // reg 62 (home 8) up
+    assign up_o[64 +: 32] = ({32{sel[38]}} & m[64 +: 32]) | ({32{(sel[5] & sel2[5]) | sel[12] | sel[26]}} & m[256 +: 32]) | ({32{(sel[1] & sel2[1]) | (sel[5] & sel2[4]) | sel[13] | sel[28]}} & m[320 +: 32]) | up_i[160 +: 32];   // reg 63 (home 8) up
+    assign up_o[96 +: 32] = ({32{(sel[1] & sel2[2])}} & m[0 +: 32]) | up_i[192 +: 32];   // reg 64 (home 8) up
+    assign up_o[128 +: 32] = ({32{sel[34]}} & m[64 +: 32]) | ({32{(sel[1] & sel2[2])}} & m[128 +: 32]) | up_i[224 +: 32];   // reg 65 (home 8) up
+    assign up_o[160 +: 32] = ({32{(sel[1] & sel2[2])}} & m[256 +: 32]) | ({32{(sel[5] & sel2[5])}} & m[384 +: 32]) | up_i[256 +: 32];   // reg 66 (home 8) up
+    assign up_o[192 +: 32] = up_i[288 +: 32];   // reg 67 (home 8) up
+    assign up_o[224 +: 32] = up_i[320 +: 32];   // reg 68 (home 8) up
+    assign up_o[256 +: 32] = ({32{sel[34]}} & m[192 +: 32]);   // reg 69 (home 8) up
+    assign up_o[288 +: 32] = ({32{sel[27]}} & m[416 +: 32]) | up_i[352 +: 32];   // reg 70 (home 9) up
+    assign up_o[320 +: 32] = ({32{sel[38]}} & m[32 +: 32]) | ({32{sel[27]}} & m[160 +: 32]) | up_i[384 +: 32];   // reg 71 (home 9) up
+    assign up_o[352 +: 32] = ({32{sel[27]}} & m[288 +: 32]) | up_i[416 +: 32];   // reg 72 (home 9) up
+    assign up_o[384 +: 32] = up_i[448 +: 32];   // reg 73 (home 9) up
+    assign up_o[416 +: 32] = ({32{(sel[5] & sel2[5])}} & m[512 +: 32]) | up_i[480 +: 32];   // reg 74 (home 9) up
+    assign up_o[448 +: 32] = up_i[512 +: 32];   // reg 75 (home 9) up
+    assign up_o[480 +: 32] = up_i[544 +: 32];   // reg 76 (home 9) up
+    assign up_o[512 +: 32] = up_i[576 +: 32];   // reg 79 (home 10) up
+    assign up_o[544 +: 32] = up_i[608 +: 32];   // reg 80 (home 10) up
+    assign up_o[576 +: 32] = ({32{(sel[1] & sel2[2])}} & m[160 +: 32]) | ({32{(sel[5] & sel2[5])}} & m[416 +: 32]) | up_i[640 +: 32];   // reg 81 (home 10) up
+    assign up_o[608 +: 32] = up_i[672 +: 32];   // reg 82 (home 10) up
+    assign up_o[640 +: 32] = up_i[704 +: 32];   // reg 83 (home 10) up
+    assign up_o[672 +: 32] = up_i[736 +: 32];   // reg 84 (home 10) up
+    assign up_o[704 +: 32] = ({32{(sel[1] & sel2[2])}} & m[32 +: 32]) | ({32{(sel[1] & sel2[1]) | (sel[5] & sel2[4])}} & m[96 +: 32]) | ({32{sel[13] | sel[28]}} & m[480 +: 32]) | up_i[768 +: 32];   // reg 87 (home 11) up
+    assign up_o[736 +: 32] = ({32{(sel[1] & sel2[1]) | (sel[5] & sel2[4]) | sel[13] | sel[28]}} & m[224 +: 32]) | ({32{(sel[5] & sel2[5])}} & m[544 +: 32]) | up_i[800 +: 32];   // reg 88 (home 11) up
+    assign up_o[768 +: 32] = ({32{sel[38]}} & m[96 +: 32]) | ({32{(sel[1] & sel2[2]) | (sel[5] & sel2[5])}} & m[288 +: 32]) | ({32{(sel[1] & sel2[1]) | (sel[5] & sel2[4]) | sel[13] | sel[28]}} & m[352 +: 32]) | up_i[832 +: 32];   // reg 89 (home 11) up
+    assign up_o[800 +: 32] = ({32{sel[34]}} & m[96 +: 32]);   // reg 90 (home 11) up
+    assign up_o[832 +: 32] = up_i[864 +: 32];   // reg 91 (home 11) up
+    assign up_o[864 +: 32] = ({32{sel[26]}} & m[384 +: 32]) | ({32{sel[28]}} & m[448 +: 32]) | up_i[896 +: 32];   // reg 93 (home 12) up
+    assign up_o[896 +: 32] = ({32{sel[31]}} & m[320 +: 32]) | ({32{(sel[5] & sel2[5])}} & m[448 +: 32]) | up_i[928 +: 32];   // reg 94 (home 12) up
+    assign up_o[928 +: 32] = ({32{sel[38]}} & m[64 +: 32]) | ({32{sel[34]}} & m[224 +: 32]) | ({32{sel[26]}} & m[256 +: 32]) | ({32{sel[28]}} & m[320 +: 32]) | up_i[960 +: 32];   // reg 95 (home 12) up
+    assign up_o[960 +: 32] = ({32{(sel[1] & sel2[2]) | sel[30]}} & m[64 +: 32]) | ({32{(sel[5] & sel2[5])}} & m[576 +: 32]) | up_i[992 +: 32];   // reg 97 (home 12) up
+    assign up_o[992 +: 32] = ({32{sel[33]}} & m[0 +: 32]) | ({32{(sel[1] & sel2[2])}} & m[192 +: 32]) | up_i[1024 +: 32];   // reg 98 (home 12) up
+    assign up_o[1024 +: 32] = ({32{sel[33]}} & m[64 +: 32]) | ({32{(sel[1] & sel2[2]) | (sel[5] & sel2[5])}} & m[320 +: 32]) | up_i[1056 +: 32];   // reg 99 (home 12) up
+    assign up_o[1056 +: 32] = ({32{(sel[1] & sel2[2])}} & m[96 +: 32]) | ({32{sel[12] | sel[27]}} & m[416 +: 32]) | up_i[1088 +: 32];   // reg 102 (home 13) up
+    assign up_o[1088 +: 32] = ({32{sel[12]}} & m[160 +: 32]) | ({32{(sel[1] & sel2[2])}} & m[224 +: 32]) | ({32{(sel[5] & sel2[5])}} & m[480 +: 32]) | up_i[1120 +: 32];   // reg 103 (home 13) up
+    assign up_o[1120 +: 32] = ({32{sel[12] | sel[27]}} & m[288 +: 32]) | up_i[1152 +: 32];   // reg 104 (home 13) up
+    assign up_o[1152 +: 32] = up_i[1184 +: 32];   // reg 105 (home 13) up
+    assign up_o[1184 +: 32] = ({32{(sel[5] & sel2[5])}} & m[608 +: 32]) | up_i[1216 +: 32];   // reg 110 (home 14) up
+    assign up_o[1216 +: 32] = ({32{sel[33]}} & m[96 +: 32]) | ({32{(sel[1] & sel2[2]) | (sel[5] & sel2[5])}} & m[352 +: 32]) | up_i[1248 +: 32];   // reg 112 (home 14) up
+    assign up_o[1248 +: 32] = ({32{sel[33]}} & m[32 +: 32]) | ({32{sel[28]}} & m[480 +: 32]) | up_i[1280 +: 32];   // reg 116 (home 15) up
+    assign up_o[1280 +: 32] = ({32{sel[38]}} & m[96 +: 32]) | ({32{sel[28]}} & m[352 +: 32]) | up_i[1312 +: 32];   // reg 118 (home 15) up
+    assign up_o[1312 +: 32] = ({32{(sel[1] & sel2[0])}} & m[0 +: 32]) | up_i[1344 +: 32];   // reg 119 (home 15) up
+    assign up_o[1344 +: 32] = ({32{(sel[1] & sel2[0])}} & m[128 +: 32]) | up_i[1376 +: 32];   // reg 120 (home 15) up
+    assign up_o[1376 +: 32] = ({32{(sel[1] & sel2[0])}} & m[256 +: 32]) | up_i[1408 +: 32];   // reg 121 (home 15) up
+    assign s1_d[0 +: 32] = ({32{sel[28]}} & m[96 +: 32]) | dn_i[1056 +: 32] | up_i[0 +: 32];   // reg 55 (home 7)
+    assign s1_d[32 +: 32] = ({32{sel[28]}} & m[224 +: 32]) | dn_i[1088 +: 32] | up_i[32 +: 32];   // reg 56 (home 7)
+    assign s1_d[64 +: 32] = ({32{sel[38]}} & m[96 +: 32]) | ({32{sel[28]}} & m[352 +: 32]) | dn_i[1120 +: 32] | up_i[64 +: 32];   // reg 57 (home 7)
+    assign s1_d[96 +: 32] = dn_i[1152 +: 32];   // reg 58 (home 7)
+    assign s1_d[128 +: 32] = dn_i[1184 +: 32];   // reg 59 (home 7)
+    assign s1_d[160 +: 32] = dn_i[1216 +: 32];   // reg 60 (home 7)
+endmodule
+
+// band 8: pre-mux + partial ORs of words [6, 9, 10, 13] (quarter 0), S1 registers of home row 8
+module qba2_s1p_b8 (
+    input  logic                 clk,
+    input  logic [1023:0]        lb0, lb1,   // words [6, 9, 10, 13] of slots 0..7: bit 128 s + 32 i + k
+    input  logic                 ctx,   // s1c_r[b]
+    input  logic [38:0]          sel,
+    input  logic [10:0]          sel2,
+    input  logic [1407:0]   dn_i,   // from band 9
+    input  logic [1407:0]   up_i,   // from band 7
+    output logic [1247:0]   dn_o,   // to band 7
+    output logic [1247:0]   up_o,   // to band 9
+    output logic [287:0]   s1   // registers homed at row 8
+);
+    logic [1023:0] m;
+    qba2_pm_r u_pm (.lb0, .lb1, .ctx, .m);   // R13 pre-mux module: kept as a 2:1 mux by synthesis (hierarchy)
+    logic [287:0] s1_d;
+    always_ff @(posedge clk) s1 <= s1_d;
+    assign dn_o[0 +: 32] = dn_i[0 +: 32];   // reg 0 (home 0) down
+    assign dn_o[32 +: 32] = dn_i[32 +: 32];   // reg 1 (home 0) down
+    assign dn_o[64 +: 32] = dn_i[64 +: 32];   // reg 3 (home 0) down
+    assign dn_o[96 +: 32] = dn_i[96 +: 32];   // reg 4 (home 0) down
+    assign dn_o[128 +: 32] = dn_i[128 +: 32];   // reg 5 (home 0) down
+    assign dn_o[160 +: 32] = ({32{sel[7] | sel[16]}} & m[32 +: 32]) | ({32{sel[17]}} & m[96 +: 32]) | dn_i[160 +: 32];   // reg 8 (home 1) down
+    assign dn_o[192 +: 32] = ({32{sel[33]}} & m[64 +: 32]) | ({32{sel[7] | sel[16]}} & m[160 +: 32]) | ({32{sel[17]}} & m[224 +: 32]) | dn_i[192 +: 32];   // reg 9 (home 1) down
+    assign dn_o[224 +: 32] = ({32{sel[33]}} & m[32 +: 32]) | ({32{sel[7]}} & m[288 +: 32]) | dn_i[224 +: 32];   // reg 10 (home 1) down
+    assign dn_o[256 +: 32] = ({32{sel[15]}} & m[0 +: 32]) | ({32{sel[7] | sel[16]}} & m[64 +: 32]) | dn_i[256 +: 32];   // reg 15 (home 2) down
+    assign dn_o[288 +: 32] = ({32{sel[35]}} & m[0 +: 32]) | ({32{sel[15]}} & m[128 +: 32]) | ({32{sel[7] | sel[16]}} & m[192 +: 32]) | dn_i[288 +: 32];   // reg 16 (home 2) down
+    assign dn_o[320 +: 32] = ({32{sel[7]}} & m[320 +: 32]) | dn_i[320 +: 32];   // reg 17 (home 2) down
+    assign dn_o[352 +: 32] = dn_i[352 +: 32];   // reg 23 (home 3) down
+    assign dn_o[384 +: 32] = dn_i[384 +: 32];   // reg 24 (home 3) down
+    assign dn_o[416 +: 32] = ({32{sel[33]}} & m[96 +: 32]) | dn_i[416 +: 32];   // reg 25 (home 3) down
+    assign dn_o[448 +: 32] = ({32{(sel[0] & sel2[2]) | (sel[2] & sel2[5])}} & m[128 +: 32]) | dn_i[448 +: 32];   // reg 26 (home 3) down
+    assign dn_o[480 +: 32] = ({32{(sel[0] & sel2[2]) | (sel[2] & sel2[5])}} & m[256 +: 32]) | dn_i[480 +: 32];   // reg 27 (home 3) down
+    assign dn_o[512 +: 32] = ({32{(sel[0] & sel2[2]) | (sel[2] & sel2[5]) | sel[30] | sel[31] | sel[33]}} & m[0 +: 32]) | dn_i[512 +: 32];   // reg 28 (home 4) down
+    assign dn_o[544 +: 32] = dn_i[544 +: 32];   // reg 29 (home 4) down
+    assign dn_o[576 +: 32] = dn_i[576 +: 32];   // reg 30 (home 4) down
+    assign dn_o[608 +: 32] = ({32{(sel[0] & sel2[2]) | (sel[2] & sel2[5]) | sel[16] | sel[33]}} & m[32 +: 32]) | ({32{sel[7] | sel[17]}} & m[96 +: 32]) | dn_i[608 +: 32];   // reg 38 (home 5) down
+    assign dn_o[640 +: 32] = ({32{(sel[0] & sel2[2]) | (sel[2] & sel2[5]) | sel[16]}} & m[160 +: 32]) | ({32{sel[7] | sel[17]}} & m[224 +: 32]) | dn_i[640 +: 32];   // reg 39 (home 5) down
+    assign dn_o[672 +: 32] = ({32{sel[35]}} & m[32 +: 32]) | ({32{(sel[0] & sel2[2]) | (sel[2] & sel2[5]) | sel[16]}} & m[288 +: 32]) | ({32{sel[7] | sel[17]}} & m[352 +: 32]) | dn_i[672 +: 32];   // reg 40 (home 5) down
+    assign dn_o[704 +: 32] = ({32{(sel[0] & sel2[2]) | (sel[2] & sel2[5]) | sel[30] | sel[31] | sel[33]}} & m[64 +: 32]) | dn_i[704 +: 32];   // reg 41 (home 5) down
+    assign dn_o[736 +: 32] = ({32{(sel[0] & sel2[2]) | (sel[2] & sel2[5])}} & m[192 +: 32]) | dn_i[736 +: 32];   // reg 42 (home 5) down
+    assign dn_o[768 +: 32] = ({32{(sel[0] & sel2[2]) | (sel[2] & sel2[5])}} & m[320 +: 32]) | dn_i[768 +: 32];   // reg 43 (home 5) down
+    assign dn_o[800 +: 32] = ({32{(sel[0] & sel2[0]) | (sel[2] & sel2[4]) | sel[6] | sel[15] | sel[34]}} & m[0 +: 32]) | ({32{sel[16]}} & m[64 +: 32]) | dn_i[800 +: 32];   // reg 47 (home 6) down
+    assign dn_o[832 +: 32] = ({32{sel[35]}} & m[0 +: 32]) | ({32{(sel[0] & sel2[0]) | (sel[2] & sel2[4]) | sel[6] | sel[15]}} & m[128 +: 32]) | ({32{sel[16]}} & m[192 +: 32]) | dn_i[832 +: 32];   // reg 48 (home 6) down
+    assign dn_o[864 +: 32] = ({32{sel[35]}} & m[64 +: 32]) | ({32{(sel[0] & sel2[0]) | (sel[2] & sel2[4]) | sel[6] | sel[15]}} & m[256 +: 32]) | ({32{sel[16]}} & m[320 +: 32]) | dn_i[864 +: 32];   // reg 49 (home 6) down
+    assign dn_o[896 +: 32] = dn_i[896 +: 32];   // reg 50 (home 6) down
+    assign dn_o[928 +: 32] = dn_i[928 +: 32];   // reg 51 (home 6) down
+    assign dn_o[960 +: 32] = ({32{sel[34]}} & m[128 +: 32]) | dn_i[960 +: 32];   // reg 52 (home 6) down
+    assign dn_o[992 +: 32] = dn_i[992 +: 32];   // reg 53 (home 6) down
+    assign dn_o[1024 +: 32] = dn_i[1024 +: 32];   // reg 54 (home 6) down
+    assign dn_o[1056 +: 32] = ({32{(sel[0] & sel2[2]) | (sel[2] & sel2[5]) | sel[33]}} & m[96 +: 32]) | dn_i[1056 +: 32];   // reg 55 (home 7) down
+    assign dn_o[1088 +: 32] = ({32{(sel[0] & sel2[2]) | (sel[2] & sel2[5])}} & m[224 +: 32]) | dn_i[1088 +: 32];   // reg 56 (home 7) down
+    assign dn_o[1120 +: 32] = ({32{(sel[0] & sel2[2]) | (sel[2] & sel2[5])}} & m[352 +: 32]) | dn_i[1120 +: 32];   // reg 57 (home 7) down
+    assign dn_o[1152 +: 32] = dn_i[1152 +: 32];   // reg 58 (home 7) down
+    assign dn_o[1184 +: 32] = dn_i[1184 +: 32];   // reg 59 (home 7) down
+    assign dn_o[1216 +: 32] = dn_i[1216 +: 32];   // reg 60 (home 7) down
+    assign up_o[0 +: 32] = ({32{(sel[0] & sel2[0]) | (sel[2] & sel2[4]) | sel[34]}} & m[32 +: 32]) | ({32{sel[35]}} & m[96 +: 32]) | ({32{sel[7] | sel[16]}} & m[416 +: 32]) | ({32{sel[17]}} & m[480 +: 32]) | up_i[288 +: 32];   // reg 70 (home 9) up
+    assign up_o[32 +: 32] = ({32{(sel[0] & sel2[0]) | (sel[2] & sel2[4]) | sel[7] | sel[16]}} & m[160 +: 32]) | ({32{sel[17]}} & m[224 +: 32]) | up_i[320 +: 32];   // reg 71 (home 9) up
+    assign up_o[64 +: 32] = ({32{sel[35]}} & m[32 +: 32]) | ({32{(sel[0] & sel2[0]) | (sel[2] & sel2[4]) | sel[7] | sel[16]}} & m[288 +: 32]) | ({32{sel[17]}} & m[352 +: 32]) | up_i[352 +: 32];   // reg 72 (home 9) up
+    assign up_o[96 +: 32] = up_i[384 +: 32];   // reg 73 (home 9) up
+    assign up_o[128 +: 32] = up_i[416 +: 32];   // reg 74 (home 9) up
+    assign up_o[160 +: 32] = up_i[448 +: 32];   // reg 75 (home 9) up
+    assign up_o[192 +: 32] = up_i[480 +: 32];   // reg 76 (home 9) up
+    assign up_o[224 +: 32] = ({32{(sel[0] & sel2[0]) | (sel[2] & sel2[4]) | sel[34]}} & m[64 +: 32]) | ({32{sel[15]}} & m[384 +: 32]) | ({32{sel[7] | sel[16]}} & m[448 +: 32]) | up_i[512 +: 32];   // reg 79 (home 10) up
+    assign up_o[256 +: 32] = ({32{sel[35]}} & m[0 +: 32]) | ({32{sel[15]}} & m[128 +: 32]) | ({32{(sel[0] & sel2[0]) | (sel[2] & sel2[4]) | sel[7] | sel[16]}} & m[192 +: 32]) | up_i[544 +: 32];   // reg 80 (home 10) up
+    assign up_o[288 +: 32] = ({32{sel[35]}} & m[64 +: 32]) | ({32{sel[15]}} & m[256 +: 32]) | ({32{(sel[0] & sel2[0]) | (sel[2] & sel2[4]) | sel[7] | sel[16]}} & m[320 +: 32]) | up_i[576 +: 32];   // reg 81 (home 10) up
+    assign up_o[320 +: 32] = ({32{sel[34]}} & m[160 +: 32]) | up_i[608 +: 32];   // reg 82 (home 10) up
+    assign up_o[352 +: 32] = ({32{sel[34]}} & m[192 +: 32]) | up_i[640 +: 32];   // reg 83 (home 10) up
+    assign up_o[384 +: 32] = up_i[672 +: 32];   // reg 84 (home 10) up
+    assign up_o[416 +: 32] = up_i[704 +: 32];   // reg 87 (home 11) up
+    assign up_o[448 +: 32] = up_i[736 +: 32];   // reg 88 (home 11) up
+    assign up_o[480 +: 32] = up_i[768 +: 32];   // reg 89 (home 11) up
+    assign up_o[512 +: 32] = ({32{(sel[2] & sel2[5])}} & m[512 +: 32]) | up_i[800 +: 32];   // reg 90 (home 11) up
+    assign up_o[544 +: 32] = ({32{(sel[2] & sel2[5])}} & m[384 +: 32]) | up_i[832 +: 32];   // reg 91 (home 11) up
+    assign up_o[576 +: 32] = ({32{(sel[2] & sel2[5]) | sel[31]}} & m[256 +: 32]);   // reg 92 (home 11) up
+    assign up_o[608 +: 32] = up_i[864 +: 32];   // reg 93 (home 12) up
+    assign up_o[640 +: 32] = up_i[896 +: 32];   // reg 94 (home 12) up
+    assign up_o[672 +: 32] = up_i[928 +: 32];   // reg 95 (home 12) up
+    assign up_o[704 +: 32] = ({32{(sel[2] & sel2[5])}} & m[544 +: 32]);   // reg 96 (home 12) up
+    assign up_o[736 +: 32] = up_i[960 +: 32];   // reg 97 (home 12) up
+    assign up_o[768 +: 32] = ({32{(sel[2] & sel2[5])}} & m[576 +: 32]) | up_i[992 +: 32];   // reg 98 (home 12) up
+    assign up_o[800 +: 32] = up_i[1024 +: 32];   // reg 99 (home 12) up
+    assign up_o[832 +: 32] = ({32{(sel[0] & sel2[0]) | (sel[2] & sel2[4]) | sel[34] | sel[35]}} & m[96 +: 32]) | ({32{(sel[2] & sel2[5]) | sel[16]}} & m[416 +: 32]) | ({32{sel[7] | sel[17]}} & m[480 +: 32]) | up_i[1056 +: 32];   // reg 102 (home 13) up
+    assign up_o[864 +: 32] = ({32{(sel[0] & sel2[0]) | (sel[2] & sel2[4]) | sel[7]}} & m[224 +: 32]) | up_i[1088 +: 32];   // reg 103 (home 13) up
+    assign up_o[896 +: 32] = ({32{sel[35]}} & m[32 +: 32]) | ({32{(sel[2] & sel2[5]) | sel[16]}} & m[288 +: 32]) | ({32{(sel[0] & sel2[0]) | (sel[2] & sel2[4]) | sel[7] | sel[17]}} & m[352 +: 32]) | up_i[1120 +: 32];   // reg 104 (home 13) up
+    assign up_o[928 +: 32] = ({32{(sel[2] & sel2[5])}} & m[448 +: 32]) | up_i[1152 +: 32];   // reg 105 (home 13) up
+    assign up_o[960 +: 32] = ({32{sel[34]}} & m[224 +: 32]) | ({32{(sel[2] & sel2[5]) | sel[31]}} & m[320 +: 32]);   // reg 106 (home 13) up
+    assign up_o[992 +: 32] = ({32{sel[6] | sel[15]}} & m[384 +: 32]) | ({32{sel[16]}} & m[448 +: 32]) | up_i[1184 +: 32];   // reg 110 (home 14) up
+    assign up_o[1024 +: 32] = ({32{sel[6]}} & m[128 +: 32]) | ({32{(sel[2] & sel2[5])}} & m[608 +: 32]);   // reg 111 (home 14) up
+    assign up_o[1056 +: 32] = ({32{sel[35]}} & m[64 +: 32]) | ({32{sel[6] | sel[15]}} & m[256 +: 32]) | ({32{sel[16]}} & m[320 +: 32]) | up_i[1216 +: 32];   // reg 112 (home 14) up
+    assign up_o[1088 +: 32] = ({32{(sel[2] & sel2[5])}} & m[480 +: 32]) | up_i[1248 +: 32];   // reg 116 (home 15) up
+    assign up_o[1120 +: 32] = ({32{(sel[2] & sel2[5])}} & m[352 +: 32]) | up_i[1280 +: 32];   // reg 118 (home 15) up
+    assign up_o[1152 +: 32] = up_i[1312 +: 32];   // reg 119 (home 15) up
+    assign up_o[1184 +: 32] = up_i[1344 +: 32];   // reg 120 (home 15) up
+    assign up_o[1216 +: 32] = up_i[1376 +: 32];   // reg 121 (home 15) up
+    assign s1_d[0 +: 32] = dn_i[1248 +: 32] | up_i[0 +: 32];   // reg 61 (home 8)
+    assign s1_d[32 +: 32] = dn_i[1280 +: 32] | up_i[32 +: 32];   // reg 62 (home 8)
+    assign s1_d[64 +: 32] = dn_i[1312 +: 32] | up_i[64 +: 32];   // reg 63 (home 8)
+    assign s1_d[96 +: 32] = dn_i[1344 +: 32] | up_i[96 +: 32];   // reg 64 (home 8)
+    assign s1_d[128 +: 32] = dn_i[1376 +: 32] | up_i[128 +: 32];   // reg 65 (home 8)
+    assign s1_d[160 +: 32] = up_i[160 +: 32];   // reg 66 (home 8)
+    assign s1_d[192 +: 32] = up_i[192 +: 32];   // reg 67 (home 8)
+    assign s1_d[224 +: 32] = up_i[224 +: 32];   // reg 68 (home 8)
+    assign s1_d[256 +: 32] = up_i[256 +: 32];   // reg 69 (home 8)
+endmodule
+
+// band 9: pre-mux + partial ORs of words [38, 41, 42, 45] (quarter 2), S1 registers of home row 9
+module qba2_s1p_b9 (
+    input  logic                 clk,
+    input  logic [1023:0]        lb0, lb1,   // words [38, 41, 42, 45] of slots 0..7: bit 128 s + 32 i + k
+    input  logic                 ctx,   // s1c_r[b]
+    input  logic [38:0]          sel,
+    input  logic [10:0]          sel2,
+    input  logic [1535:0]   dn_i,   // from band 10
+    input  logic [1247:0]   up_i,   // from band 8
+    output logic [1407:0]   dn_o,   // to band 8
+    output logic [1087:0]   up_o,   // to band 10
+    output logic [287:0]   s1   // registers homed at row 9
+);
+    logic [1023:0] m;
+    qba2_pm_r u_pm (.lb0, .lb1, .ctx, .m);   // R13 pre-mux module: kept as a 2:1 mux by synthesis (hierarchy)
+    logic [287:0] s1_d;
+    always_ff @(posedge clk) s1 <= s1_d;
+    assign dn_o[0 +: 32] = dn_i[0 +: 32];   // reg 0 (home 0) down
+    assign dn_o[32 +: 32] = dn_i[32 +: 32];   // reg 1 (home 0) down
+    assign dn_o[64 +: 32] = dn_i[64 +: 32];   // reg 3 (home 0) down
+    assign dn_o[96 +: 32] = dn_i[96 +: 32];   // reg 4 (home 0) down
+    assign dn_o[128 +: 32] = dn_i[128 +: 32];   // reg 5 (home 0) down
+    assign dn_o[160 +: 32] = ({32{sel[11] | sel[24]}} & m[32 +: 32]) | ({32{sel[25]}} & m[96 +: 32]) | dn_i[160 +: 32];   // reg 8 (home 1) down
+    assign dn_o[192 +: 32] = ({32{sel[11] | sel[24]}} & m[160 +: 32]) | ({32{sel[25]}} & m[224 +: 32]) | dn_i[192 +: 32];   // reg 9 (home 1) down
+    assign dn_o[224 +: 32] = ({32{sel[11]}} & m[288 +: 32]) | dn_i[224 +: 32];   // reg 10 (home 1) down
+    assign dn_o[256 +: 32] = ({32{sel[23]}} & m[0 +: 32]) | ({32{sel[11] | sel[24]}} & m[64 +: 32]) | dn_i[256 +: 32];   // reg 15 (home 2) down
+    assign dn_o[288 +: 32] = ({32{sel[37]}} & m[0 +: 32]) | ({32{sel[23]}} & m[128 +: 32]) | ({32{sel[11] | sel[24]}} & m[192 +: 32]) | dn_i[288 +: 32];   // reg 16 (home 2) down
+    assign dn_o[320 +: 32] = ({32{sel[11]}} & m[320 +: 32]) | dn_i[320 +: 32];   // reg 17 (home 2) down
+    assign dn_o[352 +: 32] = ({32{sel[30]}} & m[0 +: 32]) | dn_i[352 +: 32];   // reg 23 (home 3) down
+    assign dn_o[384 +: 32] = ({32{sel[31]}} & m[0 +: 32]) | dn_i[384 +: 32];   // reg 24 (home 3) down
+    assign dn_o[416 +: 32] = dn_i[416 +: 32];   // reg 25 (home 3) down
+    assign dn_o[448 +: 32] = ({32{(sel[1] & sel2[2]) | (sel[4] & sel2[5])}} & m[128 +: 32]) | dn_i[448 +: 32];   // reg 26 (home 3) down
+    assign dn_o[480 +: 32] = ({32{(sel[1] & sel2[2]) | (sel[4] & sel2[5])}} & m[256 +: 32]) | dn_i[480 +: 32];   // reg 27 (home 3) down
+    assign dn_o[512 +: 32] = ({32{(sel[1] & sel2[2]) | (sel[4] & sel2[5])}} & m[0 +: 32]) | dn_i[512 +: 32];   // reg 28 (home 4) down
+    assign dn_o[544 +: 32] = dn_i[544 +: 32];   // reg 29 (home 4) down
+    assign dn_o[576 +: 32] = dn_i[576 +: 32];   // reg 30 (home 4) down
+    assign dn_o[608 +: 32] = ({32{(sel[1] & sel2[2]) | (sel[4] & sel2[5]) | sel[24]}} & m[32 +: 32]) | ({32{sel[11] | sel[25]}} & m[96 +: 32]) | dn_i[608 +: 32];   // reg 38 (home 5) down
+    assign dn_o[640 +: 32] = ({32{sel[31]}} & m[64 +: 32]) | ({32{(sel[1] & sel2[2]) | (sel[4] & sel2[5]) | sel[24]}} & m[160 +: 32]) | ({32{sel[11] | sel[25]}} & m[224 +: 32]) | dn_i[640 +: 32];   // reg 39 (home 5) down
+    assign dn_o[672 +: 32] = ({32{sel[37]}} & m[32 +: 32]) | ({32{(sel[1] & sel2[2]) | (sel[4] & sel2[5]) | sel[24]}} & m[288 +: 32]) | ({32{sel[11] | sel[25]}} & m[352 +: 32]) | dn_i[672 +: 32];   // reg 40 (home 5) down
+    assign dn_o[704 +: 32] = ({32{(sel[1] & sel2[2]) | (sel[4] & sel2[5])}} & m[64 +: 32]) | dn_i[704 +: 32];   // reg 41 (home 5) down
+    assign dn_o[736 +: 32] = ({32{(sel[1] & sel2[2]) | (sel[4] & sel2[5])}} & m[192 +: 32]) | dn_i[736 +: 32];   // reg 42 (home 5) down
+    assign dn_o[768 +: 32] = ({32{(sel[1] & sel2[2]) | (sel[4] & sel2[5])}} & m[320 +: 32]) | dn_i[768 +: 32];   // reg 43 (home 5) down
+    assign dn_o[800 +: 32] = ({32{(sel[1] & sel2[0]) | (sel[4] & sel2[4]) | sel[10] | sel[23]}} & m[0 +: 32]) | ({32{sel[24]}} & m[64 +: 32]) | dn_i[800 +: 32];   // reg 47 (home 6) down
+    assign dn_o[832 +: 32] = ({32{sel[37]}} & m[0 +: 32]) | ({32{(sel[1] & sel2[0]) | (sel[4] & sel2[4]) | sel[10] | sel[23]}} & m[128 +: 32]) | ({32{sel[24]}} & m[192 +: 32]) | dn_i[832 +: 32];   // reg 48 (home 6) down
+    assign dn_o[864 +: 32] = ({32{sel[34]}} & m[0 +: 32]) | ({32{sel[30] | sel[37]}} & m[64 +: 32]) | ({32{(sel[1] & sel2[0]) | (sel[4] & sel2[4]) | sel[10] | sel[23]}} & m[256 +: 32]) | ({32{sel[24]}} & m[320 +: 32]) | dn_i[864 +: 32];   // reg 49 (home 6) down
+    assign dn_o[896 +: 32] = dn_i[896 +: 32];   // reg 50 (home 6) down
+    assign dn_o[928 +: 32] = dn_i[928 +: 32];   // reg 51 (home 6) down
+    assign dn_o[960 +: 32] = dn_i[960 +: 32];   // reg 52 (home 6) down
+    assign dn_o[992 +: 32] = ({32{sel[34]}} & m[128 +: 32]);   // reg 53 (home 6) down
+    assign dn_o[1024 +: 32] = dn_i[992 +: 32];   // reg 54 (home 6) down
+    assign dn_o[1056 +: 32] = ({32{(sel[1] & sel2[2]) | (sel[4] & sel2[5])}} & m[96 +: 32]) | dn_i[1024 +: 32];   // reg 55 (home 7) down
+    assign dn_o[1088 +: 32] = ({32{(sel[1] & sel2[2]) | (sel[4] & sel2[5])}} & m[224 +: 32]) | dn_i[1056 +: 32];   // reg 56 (home 7) down
+    assign dn_o[1120 +: 32] = ({32{(sel[1] & sel2[2]) | (sel[4] & sel2[5])}} & m[352 +: 32]) | dn_i[1088 +: 32];   // reg 57 (home 7) down
+    assign dn_o[1152 +: 32] = dn_i[1120 +: 32];   // reg 58 (home 7) down
+    assign dn_o[1184 +: 32] = dn_i[1152 +: 32];   // reg 59 (home 7) down
+    assign dn_o[1216 +: 32] = dn_i[1184 +: 32];   // reg 60 (home 7) down
+    assign dn_o[1248 +: 32] = dn_i[1216 +: 32];   // reg 61 (home 8) down
+    assign dn_o[1280 +: 32] = dn_i[1248 +: 32];   // reg 62 (home 8) down
+    assign dn_o[1312 +: 32] = dn_i[1280 +: 32];   // reg 63 (home 8) down
+    assign dn_o[1344 +: 32] = dn_i[1312 +: 32];   // reg 64 (home 8) down
+    assign dn_o[1376 +: 32] = dn_i[1344 +: 32];   // reg 65 (home 8) down
+    assign up_o[0 +: 32] = ({32{(sel[1] & sel2[0]) | (sel[4] & sel2[4])}} & m[64 +: 32]) | ({32{sel[23]}} & m[384 +: 32]) | ({32{sel[11] | sel[24]}} & m[448 +: 32]) | up_i[224 +: 32];   // reg 79 (home 10) up
+    assign up_o[32 +: 32] = ({32{sel[37]}} & m[0 +: 32]) | ({32{sel[23]}} & m[128 +: 32]) | ({32{(sel[1] & sel2[0]) | (sel[4] & sel2[4]) | sel[11] | sel[24]}} & m[192 +: 32]) | up_i[256 +: 32];   // reg 80 (home 10) up
+    assign up_o[64 +: 32] = ({32{sel[37]}} & m[64 +: 32]) | ({32{sel[23]}} & m[256 +: 32]) | ({32{(sel[1] & sel2[0]) | (sel[4] & sel2[4]) | sel[11] | sel[24]}} & m[320 +: 32]) | up_i[288 +: 32];   // reg 81 (home 10) up
+    assign up_o[96 +: 32] = up_i[320 +: 32];   // reg 82 (home 10) up
+    assign up_o[128 +: 32] = up_i[352 +: 32];   // reg 83 (home 10) up
+    assign up_o[160 +: 32] = up_i[384 +: 32];   // reg 84 (home 10) up
+    assign up_o[192 +: 32] = ({32{sel[34]}} & m[192 +: 32]);   // reg 85 (home 10) up
+    assign up_o[224 +: 32] = up_i[416 +: 32];   // reg 87 (home 11) up
+    assign up_o[256 +: 32] = ({32{sel[33]}} & m[96 +: 32]) | up_i[448 +: 32];   // reg 88 (home 11) up
+    assign up_o[288 +: 32] = ({32{sel[33]}} & m[0 +: 32]) | up_i[480 +: 32];   // reg 89 (home 11) up
+    assign up_o[320 +: 32] = ({32{(sel[4] & sel2[5])}} & m[512 +: 32]) | up_i[512 +: 32];   // reg 90 (home 11) up
+    assign up_o[352 +: 32] = ({32{(sel[4] & sel2[5])}} & m[384 +: 32]) | up_i[544 +: 32];   // reg 91 (home 11) up
+    assign up_o[384 +: 32] = ({32{(sel[4] & sel2[5])}} & m[256 +: 32]) | up_i[576 +: 32];   // reg 92 (home 11) up
+    assign up_o[416 +: 32] = ({32{sel[31]}} & m[256 +: 32]) | up_i[608 +: 32];   // reg 93 (home 12) up
+    assign up_o[448 +: 32] = up_i[640 +: 32];   // reg 94 (home 12) up
+    assign up_o[480 +: 32] = up_i[672 +: 32];   // reg 95 (home 12) up
+    assign up_o[512 +: 32] = ({32{(sel[4] & sel2[5])}} & m[544 +: 32]) | up_i[704 +: 32];   // reg 96 (home 12) up
+    assign up_o[544 +: 32] = up_i[736 +: 32];   // reg 97 (home 12) up
+    assign up_o[576 +: 32] = ({32{(sel[4] & sel2[5])}} & m[576 +: 32]) | up_i[768 +: 32];   // reg 98 (home 12) up
+    assign up_o[608 +: 32] = up_i[800 +: 32];   // reg 99 (home 12) up
+    assign up_o[640 +: 32] = ({32{(sel[1] & sel2[0]) | (sel[4] & sel2[4]) | sel[37]}} & m[96 +: 32]) | ({32{(sel[4] & sel2[5]) | sel[24]}} & m[416 +: 32]) | ({32{sel[11] | sel[25]}} & m[480 +: 32]) | up_i[832 +: 32];   // reg 102 (home 13) up
+    assign up_o[672 +: 32] = ({32{(sel[1] & sel2[0]) | (sel[4] & sel2[4]) | sel[11]}} & m[224 +: 32]) | up_i[864 +: 32];   // reg 103 (home 13) up
+    assign up_o[704 +: 32] = ({32{sel[33] | sel[37]}} & m[32 +: 32]) | ({32{(sel[4] & sel2[5]) | sel[24]}} & m[288 +: 32]) | ({32{(sel[1] & sel2[0]) | (sel[4] & sel2[4]) | sel[11] | sel[25]}} & m[352 +: 32]) | up_i[896 +: 32];   // reg 104 (home 13) up
+    assign up_o[736 +: 32] = ({32{(sel[4] & sel2[5])}} & m[448 +: 32]) | up_i[928 +: 32];   // reg 105 (home 13) up
+    assign up_o[768 +: 32] = ({32{sel[33]}} & m[64 +: 32]) | ({32{(sel[4] & sel2[5])}} & m[320 +: 32]) | up_i[960 +: 32];   // reg 106 (home 13) up
+    assign up_o[800 +: 32] = ({32{sel[34]}} & m[224 +: 32]);   // reg 108 (home 13) up
+    assign up_o[832 +: 32] = ({32{sel[33]}} & m[96 +: 32]) | ({32{sel[10] | sel[23]}} & m[384 +: 32]) | ({32{sel[24]}} & m[448 +: 32]) | up_i[992 +: 32];   // reg 110 (home 14) up
+    assign up_o[864 +: 32] = ({32{sel[34]}} & m[96 +: 32]) | ({32{sel[10]}} & m[128 +: 32]) | ({32{sel[31]}} & m[320 +: 32]) | ({32{(sel[4] & sel2[5])}} & m[608 +: 32]) | up_i[1024 +: 32];   // reg 111 (home 14) up
+    assign up_o[896 +: 32] = ({32{sel[37]}} & m[64 +: 32]) | ({32{sel[10] | sel[23]}} & m[256 +: 32]) | ({32{sel[24]}} & m[320 +: 32]) | up_i[1056 +: 32];   // reg 112 (home 14) up
+    assign up_o[928 +: 32] = ({32{(sel[4] & sel2[5])}} & m[480 +: 32]) | up_i[1088 +: 32];   // reg 116 (home 15) up
+    assign up_o[960 +: 32] = ({32{(sel[4] & sel2[5])}} & m[352 +: 32]) | up_i[1120 +: 32];   // reg 118 (home 15) up
+    assign up_o[992 +: 32] = up_i[1152 +: 32];   // reg 119 (home 15) up
+    assign up_o[1024 +: 32] = up_i[1184 +: 32];   // reg 120 (home 15) up
+    assign up_o[1056 +: 32] = up_i[1216 +: 32];   // reg 121 (home 15) up
+    assign s1_d[0 +: 32] = ({32{(sel[1] & sel2[0]) | (sel[4] & sel2[4])}} & m[32 +: 32]) | ({32{sel[37]}} & m[96 +: 32]) | ({32{sel[11] | sel[24]}} & m[416 +: 32]) | ({32{sel[25]}} & m[480 +: 32]) | dn_i[1376 +: 32] | up_i[0 +: 32];   // reg 70 (home 9)
+    assign s1_d[32 +: 32] = ({32{(sel[1] & sel2[0]) | (sel[4] & sel2[4]) | sel[11] | sel[24]}} & m[160 +: 32]) | ({32{sel[25]}} & m[224 +: 32]) | dn_i[1408 +: 32] | up_i[32 +: 32];   // reg 71 (home 9)
+    assign s1_d[64 +: 32] = ({32{sel[33] | sel[37]}} & m[32 +: 32]) | ({32{(sel[1] & sel2[0]) | (sel[4] & sel2[4]) | sel[11] | sel[24]}} & m[288 +: 32]) | ({32{sel[25]}} & m[352 +: 32]) | dn_i[1440 +: 32] | up_i[64 +: 32];   // reg 72 (home 9)
+    assign s1_d[96 +: 32] = ({32{sel[34]}} & m[32 +: 32]) | up_i[96 +: 32];   // reg 73 (home 9)
+    assign s1_d[128 +: 32] = dn_i[1472 +: 32] | up_i[128 +: 32];   // reg 74 (home 9)
+    assign s1_d[160 +: 32] = up_i[160 +: 32];   // reg 75 (home 9)
+    assign s1_d[192 +: 32] = ({32{sel[33] | sel[34]}} & m[64 +: 32]) | up_i[192 +: 32];   // reg 76 (home 9)
+    assign s1_d[224 +: 32] = ({32{sel[34]}} & m[160 +: 32]);   // reg 77 (home 9)
+    assign s1_d[256 +: 32] = dn_i[1504 +: 32];   // reg 78 (home 9)
+endmodule
+
+// band 10: pre-mux + partial ORs of words [54, 57, 58, 61] (quarter 3), S1 registers of home row 10
+module qba2_s1p_b10 (
+    input  logic                 clk,
+    input  logic [1023:0]        lb0, lb1,   // words [54, 57, 58, 61] of slots 0..7: bit 128 s + 32 i + k
+    input  logic                 ctx,   // s1c_r[b]
+    input  logic [38:0]          sel,
+    input  logic [10:0]          sel2,
+    input  logic [1599:0]   dn_i,   // from band 11
+    input  logic [1087:0]   up_i,   // from band 9
+    output logic [1535:0]   dn_o,   // to band 9
+    output logic [927:0]   up_o,   // to band 11
+    output logic [255:0]   s1   // registers homed at row 10
+);
+    logic [1023:0] m;
+    qba2_pm_r u_pm (.lb0, .lb1, .ctx, .m);   // R13 pre-mux module: kept as a 2:1 mux by synthesis (hierarchy)
+    logic [255:0] s1_d;
+    always_ff @(posedge clk) s1 <= s1_d;
+    assign dn_o[0 +: 32] = dn_i[0 +: 32];   // reg 0 (home 0) down
+    assign dn_o[32 +: 32] = dn_i[32 +: 32];   // reg 1 (home 0) down
+    assign dn_o[64 +: 32] = dn_i[64 +: 32];   // reg 3 (home 0) down
+    assign dn_o[96 +: 32] = dn_i[96 +: 32];   // reg 4 (home 0) down
+    assign dn_o[128 +: 32] = dn_i[128 +: 32];   // reg 5 (home 0) down
+    assign dn_o[160 +: 32] = ({32{sel[13] | sel[28]}} & m[32 +: 32]) | ({32{sel[29]}} & m[96 +: 32]) | dn_i[160 +: 32];   // reg 8 (home 1) down
+    assign dn_o[192 +: 32] = ({32{sel[13] | sel[28]}} & m[160 +: 32]) | ({32{sel[29]}} & m[224 +: 32]) | dn_i[192 +: 32];   // reg 9 (home 1) down
+    assign dn_o[224 +: 32] = ({32{sel[13]}} & m[288 +: 32]) | dn_i[224 +: 32];   // reg 10 (home 1) down
+    assign dn_o[256 +: 32] = ({32{sel[27]}} & m[0 +: 32]) | ({32{sel[13] | sel[28]}} & m[64 +: 32]) | dn_i[256 +: 32];   // reg 15 (home 2) down
+    assign dn_o[288 +: 32] = ({32{sel[38]}} & m[0 +: 32]) | ({32{sel[27]}} & m[128 +: 32]) | ({32{sel[13] | sel[28]}} & m[192 +: 32]) | dn_i[288 +: 32];   // reg 16 (home 2) down
+    assign dn_o[320 +: 32] = ({32{sel[13]}} & m[320 +: 32]) | dn_i[320 +: 32];   // reg 17 (home 2) down
+    assign dn_o[352 +: 32] = dn_i[352 +: 32];   // reg 23 (home 3) down
+    assign dn_o[384 +: 32] = dn_i[384 +: 32];   // reg 24 (home 3) down
+    assign dn_o[416 +: 32] = ({32{sel[31]}} & m[0 +: 32]);   // reg 25 (home 3) down
+    assign dn_o[448 +: 32] = ({32{(sel[5] & sel2[5])}} & m[128 +: 32]) | dn_i[416 +: 32];   // reg 26 (home 3) down
+    assign dn_o[480 +: 32] = ({32{(sel[5] & sel2[5])}} & m[256 +: 32]) | dn_i[448 +: 32];   // reg 27 (home 3) down
+    assign dn_o[512 +: 32] = ({32{(sel[5] & sel2[5])}} & m[0 +: 32]) | dn_i[480 +: 32];   // reg 28 (home 4) down
+    assign dn_o[544 +: 32] = dn_i[512 +: 32];   // reg 29 (home 4) down
+    assign dn_o[576 +: 32] = dn_i[544 +: 32];   // reg 30 (home 4) down
+    assign dn_o[608 +: 32] = ({32{(sel[5] & sel2[5]) | sel[28]}} & m[32 +: 32]) | ({32{sel[13] | sel[29]}} & m[96 +: 32]) | dn_i[576 +: 32];   // reg 38 (home 5) down
+    assign dn_o[640 +: 32] = ({32{(sel[5] & sel2[5]) | sel[28]}} & m[160 +: 32]) | ({32{sel[13] | sel[29]}} & m[224 +: 32]) | dn_i[608 +: 32];   // reg 39 (home 5) down
+    assign dn_o[672 +: 32] = ({32{sel[38]}} & m[32 +: 32]) | ({32{sel[31]}} & m[64 +: 32]) | ({32{(sel[5] & sel2[5]) | sel[28]}} & m[288 +: 32]) | ({32{sel[13] | sel[29]}} & m[352 +: 32]) | dn_i[640 +: 32];   // reg 40 (home 5) down
+    assign dn_o[704 +: 32] = ({32{(sel[5] & sel2[5])}} & m[64 +: 32]) | dn_i[672 +: 32];   // reg 41 (home 5) down
+    assign dn_o[736 +: 32] = ({32{(sel[5] & sel2[5])}} & m[192 +: 32]) | dn_i[704 +: 32];   // reg 42 (home 5) down
+    assign dn_o[768 +: 32] = ({32{(sel[5] & sel2[5])}} & m[320 +: 32]) | dn_i[736 +: 32];   // reg 43 (home 5) down
+    assign dn_o[800 +: 32] = ({32{(sel[1] & sel2[1]) | (sel[5] & sel2[4]) | sel[12] | sel[27]}} & m[0 +: 32]) | ({32{sel[28]}} & m[64 +: 32]) | dn_i[768 +: 32];   // reg 47 (home 6) down
+    assign dn_o[832 +: 32] = ({32{sel[38]}} & m[0 +: 32]) | ({32{(sel[1] & sel2[1]) | (sel[5] & sel2[4]) | sel[12] | sel[27]}} & m[128 +: 32]) | ({32{sel[28]}} & m[192 +: 32]) | dn_i[800 +: 32];   // reg 48 (home 6) down
+    assign dn_o[864 +: 32] = ({32{sel[38]}} & m[64 +: 32]) | ({32{(sel[1] & sel2[1]) | (sel[5] & sel2[4]) | sel[12] | sel[27]}} & m[256 +: 32]) | ({32{sel[28]}} & m[320 +: 32]) | dn_i[832 +: 32];   // reg 49 (home 6) down
+    assign dn_o[896 +: 32] = dn_i[864 +: 32];   // reg 50 (home 6) down
+    assign dn_o[928 +: 32] = ({32{sel[34]}} & m[0 +: 32]) | dn_i[896 +: 32];   // reg 51 (home 6) down
+    assign dn_o[960 +: 32] = dn_i[928 +: 32];   // reg 52 (home 6) down
+    assign dn_o[992 +: 32] = ({32{sel[34]}} & m[128 +: 32]);   // reg 54 (home 6) down
+    assign dn_o[1024 +: 32] = ({32{(sel[5] & sel2[5])}} & m[96 +: 32]) | dn_i[960 +: 32];   // reg 55 (home 7) down
+    assign dn_o[1056 +: 32] = ({32{(sel[5] & sel2[5])}} & m[224 +: 32]) | dn_i[992 +: 32];   // reg 56 (home 7) down
+    assign dn_o[1088 +: 32] = ({32{(sel[5] & sel2[5])}} & m[352 +: 32]) | dn_i[1024 +: 32];   // reg 57 (home 7) down
+    assign dn_o[1120 +: 32] = dn_i[1056 +: 32];   // reg 58 (home 7) down
+    assign dn_o[1152 +: 32] = dn_i[1088 +: 32];   // reg 59 (home 7) down
+    assign dn_o[1184 +: 32] = dn_i[1120 +: 32];   // reg 60 (home 7) down
+    assign dn_o[1216 +: 32] = dn_i[1152 +: 32];   // reg 61 (home 8) down
+    assign dn_o[1248 +: 32] = dn_i[1184 +: 32];   // reg 62 (home 8) down
+    assign dn_o[1280 +: 32] = dn_i[1216 +: 32];   // reg 63 (home 8) down
+    assign dn_o[1312 +: 32] = dn_i[1248 +: 32];   // reg 64 (home 8) down
+    assign dn_o[1344 +: 32] = dn_i[1280 +: 32];   // reg 65 (home 8) down
+    assign dn_o[1376 +: 32] = ({32{(sel[1] & sel2[1]) | (sel[5] & sel2[4])}} & m[32 +: 32]) | ({32{sel[38]}} & m[96 +: 32]) | ({32{sel[13] | sel[28]}} & m[416 +: 32]) | ({32{sel[29]}} & m[480 +: 32]) | dn_i[1312 +: 32];   // reg 70 (home 9) down
+    assign dn_o[1408 +: 32] = ({32{(sel[1] & sel2[1]) | (sel[5] & sel2[4]) | sel[13] | sel[28]}} & m[160 +: 32]) | ({32{sel[29]}} & m[224 +: 32]) | dn_i[1344 +: 32];   // reg 71 (home 9) down
+    assign dn_o[1440 +: 32] = ({32{sel[38]}} & m[32 +: 32]) | ({32{(sel[1] & sel2[1]) | (sel[5] & sel2[4]) | sel[13] | sel[28]}} & m[288 +: 32]) | ({32{sel[29]}} & m[352 +: 32]) | dn_i[1376 +: 32];   // reg 72 (home 9) down
+    assign dn_o[1472 +: 32] = ({32{sel[34]}} & m[32 +: 32]) | dn_i[1408 +: 32];   // reg 74 (home 9) down
+    assign dn_o[1504 +: 32] = ({32{sel[34]}} & m[160 +: 32]);   // reg 78 (home 9) down
+    assign up_o[0 +: 32] = up_i[224 +: 32];   // reg 87 (home 11) up
+    assign up_o[32 +: 32] = up_i[256 +: 32];   // reg 88 (home 11) up
+    assign up_o[64 +: 32] = ({32{sel[31]}} & m[256 +: 32]) | up_i[288 +: 32];   // reg 89 (home 11) up
+    assign up_o[96 +: 32] = ({32{(sel[1] & sel2[2]) | sel[30]}} & m[0 +: 32]) | ({32{(sel[5] & sel2[5])}} & m[512 +: 32]) | up_i[320 +: 32];   // reg 90 (home 11) up
+    assign up_o[128 +: 32] = ({32{(sel[1] & sel2[2])}} & m[128 +: 32]) | ({32{(sel[5] & sel2[5])}} & m[384 +: 32]) | up_i[352 +: 32];   // reg 91 (home 11) up
+    assign up_o[160 +: 32] = ({32{(sel[1] & sel2[2]) | (sel[5] & sel2[5])}} & m[256 +: 32]) | up_i[384 +: 32];   // reg 92 (home 11) up
+    assign up_o[192 +: 32] = ({32{(sel[1] & sel2[2])}} & m[160 +: 32]) | up_i[416 +: 32];   // reg 93 (home 12) up
+    assign up_o[224 +: 32] = up_i[448 +: 32];   // reg 94 (home 12) up
+    assign up_o[256 +: 32] = up_i[480 +: 32];   // reg 95 (home 12) up
+    assign up_o[288 +: 32] = ({32{sel[33]}} & m[32 +: 32]) | ({32{(sel[1] & sel2[2])}} & m[288 +: 32]) | ({32{(sel[5] & sel2[5])}} & m[544 +: 32]) | up_i[512 +: 32];   // reg 96 (home 12) up
+    assign up_o[320 +: 32] = up_i[544 +: 32];   // reg 97 (home 12) up
+    assign up_o[352 +: 32] = ({32{(sel[5] & sel2[5])}} & m[576 +: 32]) | up_i[576 +: 32];   // reg 98 (home 12) up
+    assign up_o[384 +: 32] = up_i[608 +: 32];   // reg 99 (home 12) up
+    assign up_o[416 +: 32] = ({32{(sel[1] & sel2[1]) | (sel[5] & sel2[4]) | sel[38]}} & m[96 +: 32]) | ({32{(sel[5] & sel2[5]) | sel[28]}} & m[416 +: 32]) | ({32{sel[13] | sel[29]}} & m[480 +: 32]) | up_i[640 +: 32];   // reg 102 (home 13) up
+    assign up_o[448 +: 32] = ({32{(sel[1] & sel2[1]) | (sel[5] & sel2[4]) | sel[13]}} & m[224 +: 32]) | up_i[672 +: 32];   // reg 103 (home 13) up
+    assign up_o[480 +: 32] = ({32{(sel[1] & sel2[2]) | sel[38]}} & m[32 +: 32]) | ({32{(sel[5] & sel2[5]) | sel[28]}} & m[288 +: 32]) | ({32{sel[31]}} & m[320 +: 32]) | ({32{(sel[1] & sel2[1]) | (sel[5] & sel2[4]) | sel[13] | sel[29]}} & m[352 +: 32]) | up_i[704 +: 32];   // reg 104 (home 13) up
+    assign up_o[512 +: 32] = ({32{sel[34]}} & m[96 +: 32]) | ({32{(sel[1] & sel2[2])}} & m[192 +: 32]) | ({32{(sel[5] & sel2[5])}} & m[448 +: 32]) | up_i[736 +: 32];   // reg 105 (home 13) up
+    assign up_o[544 +: 32] = ({32{(sel[1] & sel2[2]) | (sel[5] & sel2[5])}} & m[320 +: 32]) | up_i[768 +: 32];   // reg 106 (home 13) up
+    assign up_o[576 +: 32] = ({32{sel[30] | sel[33]}} & m[64 +: 32]);   // reg 107 (home 13) up
+    assign up_o[608 +: 32] = up_i[800 +: 32];   // reg 108 (home 13) up
+    assign up_o[640 +: 32] = ({32{sel[34]}} & m[224 +: 32]);   // reg 109 (home 13) up
+    assign up_o[672 +: 32] = ({32{(sel[1] & sel2[2])}} & m[96 +: 32]) | ({32{sel[12] | sel[27]}} & m[384 +: 32]) | ({32{sel[28]}} & m[448 +: 32]) | up_i[832 +: 32];   // reg 110 (home 14) up
+    assign up_o[704 +: 32] = ({32{(sel[1] & sel2[2])}} & m[64 +: 32]) | ({32{sel[33]}} & m[96 +: 32]) | ({32{sel[12]}} & m[128 +: 32]) | ({32{(sel[5] & sel2[5])}} & m[608 +: 32]) | up_i[864 +: 32];   // reg 111 (home 14) up
+    assign up_o[736 +: 32] = ({32{sel[38]}} & m[64 +: 32]) | ({32{sel[12] | sel[27]}} & m[256 +: 32]) | ({32{sel[28]}} & m[320 +: 32]) | up_i[896 +: 32];   // reg 112 (home 14) up
+    assign up_o[768 +: 32] = ({32{(sel[1] & sel2[2])}} & m[224 +: 32]) | ({32{(sel[5] & sel2[5])}} & m[480 +: 32]) | up_i[928 +: 32];   // reg 116 (home 15) up
+    assign up_o[800 +: 32] = ({32{sel[33]}} & m[0 +: 32]) | ({32{(sel[1] & sel2[2]) | (sel[5] & sel2[5])}} & m[352 +: 32]) | up_i[960 +: 32];   // reg 118 (home 15) up
+    assign up_o[832 +: 32] = up_i[992 +: 32];   // reg 119 (home 15) up
+    assign up_o[864 +: 32] = up_i[1024 +: 32];   // reg 120 (home 15) up
+    assign up_o[896 +: 32] = up_i[1056 +: 32];   // reg 121 (home 15) up
+    assign s1_d[0 +: 32] = ({32{(sel[1] & sel2[1]) | (sel[5] & sel2[4])}} & m[64 +: 32]) | ({32{sel[27]}} & m[384 +: 32]) | ({32{sel[13] | sel[28]}} & m[448 +: 32]) | dn_i[1440 +: 32] | up_i[0 +: 32];   // reg 79 (home 10)
+    assign s1_d[32 +: 32] = ({32{sel[38]}} & m[0 +: 32]) | ({32{sel[34]}} & m[64 +: 32]) | ({32{sel[27]}} & m[128 +: 32]) | ({32{(sel[1] & sel2[1]) | (sel[5] & sel2[4]) | sel[13] | sel[28]}} & m[192 +: 32]) | dn_i[1472 +: 32] | up_i[32 +: 32];   // reg 80 (home 10)
+    assign s1_d[64 +: 32] = ({32{sel[38]}} & m[64 +: 32]) | ({32{sel[27]}} & m[256 +: 32]) | ({32{(sel[1] & sel2[1]) | (sel[5] & sel2[4]) | sel[13] | sel[28]}} & m[320 +: 32]) | dn_i[1504 +: 32] | up_i[64 +: 32];   // reg 81 (home 10)
+    assign s1_d[96 +: 32] = dn_i[1536 +: 32] | up_i[96 +: 32];   // reg 82 (home 10)
+    assign s1_d[128 +: 32] = up_i[128 +: 32];   // reg 83 (home 10)
+    assign s1_d[160 +: 32] = dn_i[1568 +: 32] | up_i[160 +: 32];   // reg 84 (home 10)
+    assign s1_d[192 +: 32] = up_i[192 +: 32];   // reg 85 (home 10)
+    assign s1_d[224 +: 32] = ({32{sel[34]}} & m[192 +: 32]);   // reg 86 (home 10)
+endmodule
+
+// band 11: pre-mux + partial ORs of words [22, 25, 26, 29] (quarter 1), S1 registers of home row 11
+module qba2_s1p_b11 (
+    input  logic                 clk,
+    input  logic [1023:0]        lb0, lb1,   // words [22, 25, 26, 29] of slots 0..7: bit 128 s + 32 i + k
+    input  logic                 ctx,   // s1c_r[b]
+    input  logic [38:0]          sel,
+    input  logic [10:0]          sel2,
+    input  logic [1311:0]   dn_i,   // from band 12
+    input  logic [927:0]   up_i,   // from band 10
+    output logic [1599:0]   dn_o,   // to band 10
+    output logic [767:0]   up_o,   // to band 12
+    output logic [191:0]   s1   // registers homed at row 11
+);
+    logic [1023:0] m;
+    qba2_pm_r u_pm (.lb0, .lb1, .ctx, .m);   // R13 pre-mux module: kept as a 2:1 mux by synthesis (hierarchy)
+    logic [191:0] s1_d;
+    always_ff @(posedge clk) s1 <= s1_d;
+    assign dn_o[0 +: 32] = dn_i[0 +: 32];   // reg 0 (home 0) down
+    assign dn_o[32 +: 32] = dn_i[32 +: 32];   // reg 1 (home 0) down
+    assign dn_o[64 +: 32] = dn_i[64 +: 32];   // reg 3 (home 0) down
+    assign dn_o[96 +: 32] = dn_i[96 +: 32];   // reg 4 (home 0) down
+    assign dn_o[128 +: 32] = dn_i[128 +: 32];   // reg 5 (home 0) down
+    assign dn_o[160 +: 32] = ({32{sel[9] | sel[20]}} & m[32 +: 32]) | ({32{sel[21]}} & m[96 +: 32]);   // reg 8 (home 1) down
+    assign dn_o[192 +: 32] = ({32{sel[9] | sel[20]}} & m[160 +: 32]) | ({32{sel[21]}} & m[224 +: 32]);   // reg 9 (home 1) down
+    assign dn_o[224 +: 32] = ({32{sel[9]}} & m[288 +: 32]);   // reg 10 (home 1) down
+    assign dn_o[256 +: 32] = ({32{sel[19]}} & m[0 +: 32]) | ({32{sel[9] | sel[20]}} & m[64 +: 32]) | dn_i[160 +: 32];   // reg 15 (home 2) down
+    assign dn_o[288 +: 32] = ({32{sel[36]}} & m[0 +: 32]) | ({32{sel[19]}} & m[128 +: 32]) | ({32{sel[9] | sel[20]}} & m[192 +: 32]) | dn_i[192 +: 32];   // reg 16 (home 2) down
+    assign dn_o[320 +: 32] = ({32{sel[9]}} & m[320 +: 32]);   // reg 17 (home 2) down
+    assign dn_o[352 +: 32] = ({32{sel[31]}} & m[0 +: 32]) | dn_i[224 +: 32];   // reg 23 (home 3) down
+    assign dn_o[384 +: 32] = dn_i[256 +: 32];   // reg 24 (home 3) down
+    assign dn_o[416 +: 32] = ({32{(sel[3] & sel2[5])}} & m[128 +: 32]);   // reg 26 (home 3) down
+    assign dn_o[448 +: 32] = ({32{(sel[3] & sel2[5])}} & m[256 +: 32]) | dn_i[288 +: 32];   // reg 27 (home 3) down
+    assign dn_o[480 +: 32] = ({32{(sel[3] & sel2[5])}} & m[0 +: 32]) | dn_i[320 +: 32];   // reg 28 (home 4) down
+    assign dn_o[512 +: 32] = dn_i[352 +: 32];   // reg 29 (home 4) down
+    assign dn_o[544 +: 32] = dn_i[384 +: 32];   // reg 30 (home 4) down
+    assign dn_o[576 +: 32] = ({32{(sel[3] & sel2[5]) | sel[20]}} & m[32 +: 32]) | ({32{sel[9] | sel[21]}} & m[96 +: 32]);   // reg 38 (home 5) down
+    assign dn_o[608 +: 32] = ({32{(sel[3] & sel2[5]) | sel[20]}} & m[160 +: 32]) | ({32{sel[9] | sel[21]}} & m[224 +: 32]);   // reg 39 (home 5) down
+    assign dn_o[640 +: 32] = ({32{sel[33] | sel[36]}} & m[32 +: 32]) | ({32{(sel[3] & sel2[5]) | sel[20]}} & m[288 +: 32]) | ({32{sel[9] | sel[21]}} & m[352 +: 32]);   // reg 40 (home 5) down
+    assign dn_o[672 +: 32] = ({32{(sel[3] & sel2[5])}} & m[64 +: 32]);   // reg 41 (home 5) down
+    assign dn_o[704 +: 32] = ({32{(sel[3] & sel2[5])}} & m[192 +: 32]);   // reg 42 (home 5) down
+    assign dn_o[736 +: 32] = ({32{sel[33]}} & m[64 +: 32]) | ({32{(sel[3] & sel2[5])}} & m[320 +: 32]);   // reg 43 (home 5) down
+    assign dn_o[768 +: 32] = ({32{(sel[0] & sel2[1]) | (sel[3] & sel2[4]) | sel[8] | sel[19]}} & m[0 +: 32]) | ({32{sel[20]}} & m[64 +: 32]) | dn_i[416 +: 32];   // reg 47 (home 6) down
+    assign dn_o[800 +: 32] = ({32{sel[34] | sel[36]}} & m[0 +: 32]) | ({32{(sel[0] & sel2[1]) | (sel[3] & sel2[4]) | sel[8] | sel[19]}} & m[128 +: 32]) | ({32{sel[20]}} & m[192 +: 32]) | dn_i[448 +: 32];   // reg 48 (home 6) down
+    assign dn_o[832 +: 32] = ({32{sel[31] | sel[36]}} & m[64 +: 32]) | ({32{(sel[0] & sel2[1]) | (sel[3] & sel2[4]) | sel[8] | sel[19]}} & m[256 +: 32]) | ({32{sel[20]}} & m[320 +: 32]) | dn_i[480 +: 32];   // reg 49 (home 6) down
+    assign dn_o[864 +: 32] = dn_i[512 +: 32];   // reg 50 (home 6) down
+    assign dn_o[896 +: 32] = dn_i[544 +: 32];   // reg 51 (home 6) down
+    assign dn_o[928 +: 32] = dn_i[576 +: 32];   // reg 52 (home 6) down
+    assign dn_o[960 +: 32] = ({32{(sel[3] & sel2[5])}} & m[96 +: 32]) | dn_i[608 +: 32];   // reg 55 (home 7) down
+    assign dn_o[992 +: 32] = ({32{(sel[3] & sel2[5])}} & m[224 +: 32]) | dn_i[640 +: 32];   // reg 56 (home 7) down
+    assign dn_o[1024 +: 32] = ({32{sel[33]}} & m[96 +: 32]) | ({32{(sel[3] & sel2[5])}} & m[352 +: 32]) | dn_i[672 +: 32];   // reg 57 (home 7) down
+    assign dn_o[1056 +: 32] = ({32{sel[34]}} & m[128 +: 32]) | dn_i[704 +: 32];   // reg 58 (home 7) down
+    assign dn_o[1088 +: 32] = dn_i[736 +: 32];   // reg 59 (home 7) down
+    assign dn_o[1120 +: 32] = ({32{sel[33]}} & m[0 +: 32]) | dn_i[768 +: 32];   // reg 60 (home 7) down
+    assign dn_o[1152 +: 32] = dn_i[800 +: 32];   // reg 61 (home 8) down
+    assign dn_o[1184 +: 32] = dn_i[832 +: 32];   // reg 62 (home 8) down
+    assign dn_o[1216 +: 32] = dn_i[864 +: 32];   // reg 63 (home 8) down
+    assign dn_o[1248 +: 32] = dn_i[896 +: 32];   // reg 64 (home 8) down
+    assign dn_o[1280 +: 32] = dn_i[928 +: 32];   // reg 65 (home 8) down
+    assign dn_o[1312 +: 32] = ({32{(sel[0] & sel2[1]) | (sel[3] & sel2[4]) | sel[33]}} & m[32 +: 32]) | ({32{sel[36]}} & m[96 +: 32]) | ({32{sel[9] | sel[20]}} & m[416 +: 32]) | ({32{sel[21]}} & m[480 +: 32]);   // reg 70 (home 9) down
+    assign dn_o[1344 +: 32] = ({32{(sel[0] & sel2[1]) | (sel[3] & sel2[4]) | sel[9] | sel[20]}} & m[160 +: 32]) | ({32{sel[21]}} & m[224 +: 32]);   // reg 71 (home 9) down
+    assign dn_o[1376 +: 32] = ({32{sel[34] | sel[36]}} & m[32 +: 32]) | ({32{(sel[0] & sel2[1]) | (sel[3] & sel2[4]) | sel[9] | sel[20]}} & m[288 +: 32]) | ({32{sel[21]}} & m[352 +: 32]);   // reg 72 (home 9) down
+    assign dn_o[1408 +: 32] = ({32{sel[33]}} & m[64 +: 32]);   // reg 74 (home 9) down
+    assign dn_o[1440 +: 32] = ({32{(sel[0] & sel2[1]) | (sel[3] & sel2[4])}} & m[64 +: 32]) | ({32{sel[19]}} & m[384 +: 32]) | ({32{sel[9] | sel[20]}} & m[448 +: 32]) | dn_i[960 +: 32];   // reg 79 (home 10) down
+    assign dn_o[1472 +: 32] = ({32{sel[30] | sel[36]}} & m[0 +: 32]) | ({32{sel[19]}} & m[128 +: 32]) | ({32{(sel[0] & sel2[1]) | (sel[3] & sel2[4]) | sel[9] | sel[20]}} & m[192 +: 32]) | dn_i[992 +: 32];   // reg 80 (home 10) down
+    assign dn_o[1504 +: 32] = ({32{sel[34] | sel[36]}} & m[64 +: 32]) | ({32{sel[19]}} & m[256 +: 32]) | ({32{(sel[0] & sel2[1]) | (sel[3] & sel2[4]) | sel[9] | sel[20]}} & m[320 +: 32]) | dn_i[1024 +: 32];   // reg 81 (home 10) down
+    assign dn_o[1536 +: 32] = dn_i[1056 +: 32];   // reg 82 (home 10) down
+    assign dn_o[1568 +: 32] = ({32{sel[34]}} & m[160 +: 32]) | dn_i[1088 +: 32];   // reg 84 (home 10) down
+    assign up_o[0 +: 32] = ({32{(sel[0] & sel2[2])}} & m[160 +: 32]) | up_i[192 +: 32];   // reg 93 (home 12) up
+    assign up_o[32 +: 32] = up_i[224 +: 32];   // reg 94 (home 12) up
+    assign up_o[64 +: 32] = up_i[256 +: 32];   // reg 95 (home 12) up
+    assign up_o[96 +: 32] = ({32{(sel[0] & sel2[2])}} & m[288 +: 32]) | ({32{(sel[3] & sel2[5])}} & m[544 +: 32]) | up_i[288 +: 32];   // reg 96 (home 12) up
+    assign up_o[128 +: 32] = up_i[320 +: 32];   // reg 97 (home 12) up
+    assign up_o[160 +: 32] = ({32{(sel[3] & sel2[5])}} & m[576 +: 32]) | up_i[352 +: 32];   // reg 98 (home 12) up
+    assign up_o[192 +: 32] = up_i[384 +: 32];   // reg 99 (home 12) up
+    assign up_o[224 +: 32] = ({32{(sel[0] & sel2[1]) | (sel[3] & sel2[4]) | sel[36]}} & m[96 +: 32]) | ({32{sel[31]}} & m[320 +: 32]) | ({32{(sel[3] & sel2[5]) | sel[20]}} & m[416 +: 32]) | ({32{sel[9] | sel[21]}} & m[480 +: 32]) | up_i[416 +: 32];   // reg 102 (home 13) up
+    assign up_o[256 +: 32] = ({32{sel[34]}} & m[96 +: 32]) | ({32{(sel[0] & sel2[1]) | (sel[3] & sel2[4]) | sel[9]}} & m[224 +: 32]) | up_i[448 +: 32];   // reg 103 (home 13) up
+    assign up_o[288 +: 32] = ({32{(sel[0] & sel2[2]) | sel[36]}} & m[32 +: 32]) | ({32{(sel[3] & sel2[5]) | sel[20]}} & m[288 +: 32]) | ({32{(sel[0] & sel2[1]) | (sel[3] & sel2[4]) | sel[9] | sel[21]}} & m[352 +: 32]) | up_i[480 +: 32];   // reg 104 (home 13) up
+    assign up_o[320 +: 32] = ({32{(sel[0] & sel2[2])}} & m[192 +: 32]) | ({32{(sel[3] & sel2[5])}} & m[448 +: 32]) | up_i[512 +: 32];   // reg 105 (home 13) up
+    assign up_o[352 +: 32] = ({32{(sel[0] & sel2[2]) | (sel[3] & sel2[5])}} & m[320 +: 32]) | up_i[544 +: 32];   // reg 106 (home 13) up
+    assign up_o[384 +: 32] = up_i[576 +: 32];   // reg 107 (home 13) up
+    assign up_o[416 +: 32] = up_i[608 +: 32];   // reg 108 (home 13) up
+    assign up_o[448 +: 32] = up_i[640 +: 32];   // reg 109 (home 13) up
+    assign up_o[480 +: 32] = ({32{(sel[0] & sel2[2])}} & m[96 +: 32]) | ({32{sel[8] | sel[19]}} & m[384 +: 32]) | ({32{sel[20]}} & m[448 +: 32]) | up_i[672 +: 32];   // reg 110 (home 14) up
+    assign up_o[512 +: 32] = ({32{(sel[0] & sel2[2]) | sel[30]}} & m[64 +: 32]) | ({32{sel[8]}} & m[128 +: 32]) | ({32{(sel[3] & sel2[5])}} & m[608 +: 32]) | up_i[704 +: 32];   // reg 111 (home 14) up
+    assign up_o[544 +: 32] = ({32{sel[36]}} & m[64 +: 32]) | ({32{sel[8] | sel[19]}} & m[256 +: 32]) | ({32{sel[20]}} & m[320 +: 32]) | up_i[736 +: 32];   // reg 112 (home 14) up
+    assign up_o[576 +: 32] = ({32{sel[34]}} & m[224 +: 32]);   // reg 113 (home 14) up
+    assign up_o[608 +: 32] = ({32{(sel[0] & sel2[2])}} & m[224 +: 32]) | ({32{(sel[3] & sel2[5])}} & m[480 +: 32]) | up_i[768 +: 32];   // reg 116 (home 15) up
+    assign up_o[640 +: 32] = ({32{(sel[0] & sel2[2]) | (sel[3] & sel2[5])}} & m[352 +: 32]) | up_i[800 +: 32];   // reg 118 (home 15) up
+    assign up_o[672 +: 32] = up_i[832 +: 32];   // reg 119 (home 15) up
+    assign up_o[704 +: 32] = up_i[864 +: 32];   // reg 120 (home 15) up
+    assign up_o[736 +: 32] = up_i[896 +: 32];   // reg 121 (home 15) up
+    assign s1_d[0 +: 32] = ({32{sel[33]}} & m[96 +: 32]) | ({32{sel[31]}} & m[256 +: 32]) | dn_i[1120 +: 32] | up_i[0 +: 32];   // reg 87 (home 11)
+    assign s1_d[32 +: 32] = dn_i[1152 +: 32] | up_i[32 +: 32];   // reg 88 (home 11)
+    assign s1_d[64 +: 32] = dn_i[1184 +: 32] | up_i[64 +: 32];   // reg 89 (home 11)
+    assign s1_d[96 +: 32] = ({32{(sel[0] & sel2[2])}} & m[0 +: 32]) | ({32{(sel[3] & sel2[5])}} & m[512 +: 32]) | dn_i[1216 +: 32] | up_i[96 +: 32];   // reg 90 (home 11)
+    assign s1_d[128 +: 32] = ({32{(sel[0] & sel2[2])}} & m[128 +: 32]) | ({32{(sel[3] & sel2[5])}} & m[384 +: 32]) | dn_i[1248 +: 32] | up_i[128 +: 32];   // reg 91 (home 11)
+    assign s1_d[160 +: 32] = ({32{sel[34]}} & m[192 +: 32]) | ({32{(sel[0] & sel2[2]) | (sel[3] & sel2[5])}} & m[256 +: 32]) | dn_i[1280 +: 32] | up_i[160 +: 32];   // reg 92 (home 11)
+endmodule
+
+// band 12: pre-mux + partial ORs of words [7, 12, 14, 15] (quarter 0), S1 registers of home row 12
+module qba2_s1p_b12 (
+    input  logic                 clk,
+    input  logic [1023:0]        lb0, lb1,   // words [7, 12, 14, 15] of slots 0..7: bit 128 s + 32 i + k
+    input  logic                 ctx,   // s1c_r[b]
+    input  logic [38:0]          sel,
+    input  logic [10:0]          sel2,
+    input  logic [1503:0]   dn_i,   // from band 13
+    input  logic [767:0]   up_i,   // from band 11
+    output logic [1311:0]   dn_o,   // to band 11
+    output logic [703:0]   up_o,   // to band 13
+    output logic [287:0]   s1   // registers homed at row 12
+);
+    logic [1023:0] m;
+    qba2_pm_r u_pm (.lb0, .lb1, .ctx, .m);   // R13 pre-mux module: kept as a 2:1 mux by synthesis (hierarchy)
+    logic [287:0] s1_d;
+    always_ff @(posedge clk) s1 <= s1_d;
+    assign dn_o[0 +: 32] = ({32{sel[17]}} & m[32 +: 32]) | dn_i[0 +: 32];   // reg 0 (home 0) down
+    assign dn_o[32 +: 32] = ({32{sel[17]}} & m[160 +: 32]) | dn_i[32 +: 32];   // reg 1 (home 0) down
+    assign dn_o[64 +: 32] = ({32{(sel[0] & sel2[1])}} & m[96 +: 32]) | dn_i[64 +: 32];   // reg 3 (home 0) down
+    assign dn_o[96 +: 32] = ({32{(sel[0] & sel2[1])}} & m[224 +: 32]) | dn_i[96 +: 32];   // reg 4 (home 0) down
+    assign dn_o[128 +: 32] = ({32{(sel[0] & sel2[1])}} & m[352 +: 32]) | dn_i[128 +: 32];   // reg 5 (home 0) down
+    assign dn_o[160 +: 32] = ({32{sel[17]}} & m[64 +: 32]) | dn_i[160 +: 32];   // reg 15 (home 2) down
+    assign dn_o[192 +: 32] = ({32{sel[33]}} & m[32 +: 32]) | ({32{sel[17]}} & m[192 +: 32]) | dn_i[192 +: 32];   // reg 16 (home 2) down
+    assign dn_o[224 +: 32] = ({32{sel[15]}} & m[0 +: 32]) | ({32{sel[17]}} & m[96 +: 32]) | dn_i[224 +: 32];   // reg 23 (home 3) down
+    assign dn_o[256 +: 32] = ({32{(sel[0] & sel2[2]) | (sel[2] & sel2[5]) | sel[33] | sel[35]}} & m[0 +: 32]) | ({32{sel[15]}} & m[128 +: 32]) | ({32{sel[17]}} & m[224 +: 32]) | dn_i[256 +: 32];   // reg 24 (home 3) down
+    assign dn_o[288 +: 32] = ({32{sel[33]}} & m[64 +: 32]);   // reg 27 (home 3) down
+    assign dn_o[320 +: 32] = ({32{sel[7] | sel[17]}} & m[32 +: 32]) | dn_i[288 +: 32];   // reg 28 (home 4) down
+    assign dn_o[352 +: 32] = ({32{(sel[0] & sel2[2]) | (sel[2] & sel2[5])}} & m[128 +: 32]) | ({32{sel[7] | sel[17]}} & m[160 +: 32]) | dn_i[320 +: 32];   // reg 29 (home 4) down
+    assign dn_o[384 +: 32] = ({32{sel[33]}} & m[96 +: 32]) | ({32{(sel[0] & sel2[2]) | (sel[2] & sel2[5])}} & m[256 +: 32]) | ({32{sel[7] | sel[17]}} & m[288 +: 32]) | dn_i[352 +: 32];   // reg 30 (home 4) down
+    assign dn_o[416 +: 32] = ({32{sel[7] | sel[17] | sel[30] | sel[31]}} & m[64 +: 32]) | dn_i[384 +: 32];   // reg 47 (home 6) down
+    assign dn_o[448 +: 32] = ({32{sel[7] | sel[17]}} & m[192 +: 32]) | dn_i[416 +: 32];   // reg 48 (home 6) down
+    assign dn_o[480 +: 32] = ({32{sel[7] | sel[17]}} & m[320 +: 32]) | dn_i[448 +: 32];   // reg 49 (home 6) down
+    assign dn_o[512 +: 32] = ({32{(sel[0] & sel2[2]) | (sel[2] & sel2[5]) | sel[30] | sel[31] | sel[33]}} & m[32 +: 32]) | dn_i[480 +: 32];   // reg 50 (home 6) down
+    assign dn_o[544 +: 32] = ({32{(sel[0] & sel2[2]) | (sel[2] & sel2[5])}} & m[160 +: 32]) | dn_i[512 +: 32];   // reg 51 (home 6) down
+    assign dn_o[576 +: 32] = ({32{(sel[0] & sel2[2]) | (sel[2] & sel2[5])}} & m[288 +: 32]) | dn_i[544 +: 32];   // reg 52 (home 6) down
+    assign dn_o[608 +: 32] = ({32{(sel[0] & sel2[0]) | (sel[2] & sel2[4]) | sel[6] | sel[15] | sel[34]}} & m[0 +: 32]) | ({32{sel[7] | sel[17]}} & m[96 +: 32]) | dn_i[576 +: 32];   // reg 55 (home 7) down
+    assign dn_o[640 +: 32] = ({32{sel[35]}} & m[0 +: 32]) | ({32{(sel[0] & sel2[0]) | (sel[2] & sel2[4]) | sel[6] | sel[15]}} & m[128 +: 32]) | ({32{sel[7] | sel[17]}} & m[224 +: 32]) | dn_i[608 +: 32];   // reg 56 (home 7) down
+    assign dn_o[672 +: 32] = ({32{(sel[0] & sel2[0]) | (sel[2] & sel2[4]) | sel[6] | sel[15]}} & m[256 +: 32]) | ({32{sel[7] | sel[17]}} & m[352 +: 32]) | dn_i[640 +: 32];   // reg 57 (home 7) down
+    assign dn_o[704 +: 32] = ({32{(sel[0] & sel2[2]) | (sel[2] & sel2[5]) | sel[33]}} & m[64 +: 32]) | dn_i[672 +: 32];   // reg 58 (home 7) down
+    assign dn_o[736 +: 32] = ({32{(sel[2] & sel2[5]) | sel[33]}} & m[96 +: 32]) | ({32{(sel[0] & sel2[2])}} & m[192 +: 32]) | dn_i[704 +: 32];   // reg 59 (home 7) down
+    assign dn_o[768 +: 32] = ({32{sel[34]}} & m[128 +: 32]) | ({32{(sel[2] & sel2[5])}} & m[192 +: 32]) | ({32{(sel[0] & sel2[2])}} & m[320 +: 32]) | dn_i[736 +: 32];   // reg 60 (home 7) down
+    assign dn_o[800 +: 32] = ({32{sel[35]}} & m[32 +: 32]) | ({32{(sel[0] & sel2[2])}} & m[96 +: 32]) | ({32{sel[17]}} & m[416 +: 32]) | dn_i[768 +: 32];   // reg 61 (home 8) down
+    assign dn_o[832 +: 32] = ({32{sel[17]}} & m[160 +: 32]) | ({32{(sel[0] & sel2[2]) | (sel[2] & sel2[5])}} & m[224 +: 32]) | dn_i[800 +: 32];   // reg 62 (home 8) down
+    assign dn_o[864 +: 32] = ({32{sel[17]}} & m[288 +: 32]) | ({32{(sel[0] & sel2[2])}} & m[352 +: 32]) | dn_i[832 +: 32];   // reg 63 (home 8) down
+    assign dn_o[896 +: 32] = ({32{(sel[2] & sel2[5])}} & m[320 +: 32]) | dn_i[864 +: 32];   // reg 64 (home 8) down
+    assign dn_o[928 +: 32] = ({32{(sel[2] & sel2[5])}} & m[352 +: 32]) | dn_i[896 +: 32];   // reg 65 (home 8) down
+    assign dn_o[960 +: 32] = ({32{sel[35]}} & m[64 +: 32]) | ({32{sel[17]}} & m[448 +: 32]) | dn_i[928 +: 32];   // reg 79 (home 10) down
+    assign dn_o[992 +: 32] = ({32{sel[17]}} & m[192 +: 32]) | dn_i[960 +: 32];   // reg 80 (home 10) down
+    assign dn_o[1024 +: 32] = ({32{sel[17]}} & m[320 +: 32]) | dn_i[992 +: 32];   // reg 81 (home 10) down
+    assign dn_o[1056 +: 32] = dn_i[1024 +: 32];   // reg 82 (home 10) down
+    assign dn_o[1088 +: 32] = dn_i[1056 +: 32];   // reg 84 (home 10) down
+    assign dn_o[1120 +: 32] = ({32{sel[35]}} & m[96 +: 32]) | ({32{(sel[2] & sel2[5]) | sel[15]}} & m[384 +: 32]) | ({32{sel[17]}} & m[480 +: 32]) | dn_i[1088 +: 32];   // reg 87 (home 11) down
+    assign dn_o[1152 +: 32] = ({32{sel[35]}} & m[0 +: 32]) | ({32{sel[15]}} & m[128 +: 32]) | ({32{sel[17]}} & m[224 +: 32]) | dn_i[1120 +: 32];   // reg 88 (home 11) down
+    assign dn_o[1184 +: 32] = ({32{sel[15]}} & m[256 +: 32]) | ({32{sel[17]}} & m[352 +: 32]) | dn_i[1152 +: 32];   // reg 89 (home 11) down
+    assign dn_o[1216 +: 32] = dn_i[1184 +: 32];   // reg 90 (home 11) down
+    assign dn_o[1248 +: 32] = dn_i[1216 +: 32];   // reg 91 (home 11) down
+    assign dn_o[1280 +: 32] = dn_i[1248 +: 32];   // reg 92 (home 11) down
+    assign up_o[0 +: 32] = up_i[224 +: 32];   // reg 102 (home 13) up
+    assign up_o[32 +: 32] = up_i[256 +: 32];   // reg 103 (home 13) up
+    assign up_o[64 +: 32] = up_i[288 +: 32];   // reg 104 (home 13) up
+    assign up_o[96 +: 32] = up_i[320 +: 32];   // reg 105 (home 13) up
+    assign up_o[128 +: 32] = up_i[352 +: 32];   // reg 106 (home 13) up
+    assign up_o[160 +: 32] = up_i[384 +: 32];   // reg 107 (home 13) up
+    assign up_o[192 +: 32] = up_i[416 +: 32];   // reg 108 (home 13) up
+    assign up_o[224 +: 32] = up_i[448 +: 32];   // reg 109 (home 13) up
+    assign up_o[256 +: 32] = ({32{(sel[0] & sel2[0]) | (sel[2] & sel2[4]) | sel[34] | sel[35]}} & m[64 +: 32]) | ({32{sel[7] | sel[17]}} & m[448 +: 32]) | up_i[480 +: 32];   // reg 110 (home 14) up
+    assign up_o[288 +: 32] = ({32{(sel[0] & sel2[0]) | (sel[2] & sel2[4]) | sel[7]}} & m[192 +: 32]) | up_i[512 +: 32];   // reg 111 (home 14) up
+    assign up_o[320 +: 32] = ({32{sel[34]}} & m[192 +: 32]) | ({32{(sel[0] & sel2[0]) | (sel[2] & sel2[4]) | sel[7] | sel[17] | sel[31]}} & m[320 +: 32]) | up_i[544 +: 32];   // reg 112 (home 14) up
+    assign up_o[352 +: 32] = ({32{(sel[2] & sel2[5]) | sel[31]}} & m[288 +: 32]) | up_i[576 +: 32];   // reg 113 (home 14) up
+    assign up_o[384 +: 32] = ({32{(sel[0] & sel2[0]) | (sel[2] & sel2[4]) | sel[34] | sel[35]}} & m[96 +: 32]) | ({32{sel[6] | sel[15]}} & m[384 +: 32]) | ({32{sel[7] | sel[17]}} & m[480 +: 32]) | up_i[608 +: 32];   // reg 116 (home 15) up
+    assign up_o[416 +: 32] = ({32{sel[6]}} & m[128 +: 32]) | ({32{(sel[0] & sel2[0]) | (sel[2] & sel2[4]) | sel[7]}} & m[224 +: 32]) | ({32{(sel[2] & sel2[5])}} & m[448 +: 32]);   // reg 117 (home 15) up
+    assign up_o[448 +: 32] = ({32{sel[34]}} & m[224 +: 32]) | ({32{sel[6] | sel[15]}} & m[256 +: 32]) | ({32{(sel[0] & sel2[0]) | (sel[2] & sel2[4]) | sel[7] | sel[17]}} & m[352 +: 32]) | up_i[640 +: 32];   // reg 118 (home 15) up
+    assign up_o[480 +: 32] = ({32{(sel[2] & sel2[5])}} & m[544 +: 32]) | up_i[672 +: 32];   // reg 119 (home 15) up
+    assign up_o[512 +: 32] = ({32{(sel[2] & sel2[5])}} & m[480 +: 32]) | up_i[704 +: 32];   // reg 120 (home 15) up
+    assign up_o[544 +: 32] = ({32{(sel[2] & sel2[5])}} & m[416 +: 32]) | up_i[736 +: 32];   // reg 121 (home 15) up
+    assign up_o[576 +: 32] = ({32{(sel[2] & sel2[5])}} & m[576 +: 32]);   // reg 122 (home 15) up
+    assign up_o[608 +: 32] = ({32{(sel[2] & sel2[5])}} & m[608 +: 32]);   // reg 123 (home 15) up
+    assign up_o[640 +: 32] = ({32{(sel[2] & sel2[5])}} & m[320 +: 32]);   // reg 124 (home 15) up
+    assign up_o[672 +: 32] = ({32{(sel[2] & sel2[5])}} & m[352 +: 32]);   // reg 125 (home 15) up
+    assign s1_d[0 +: 32] = ({32{(sel[0] & sel2[0]) | (sel[2] & sel2[4]) | sel[35]}} & m[32 +: 32]) | ({32{sel[7] | sel[17]}} & m[416 +: 32]) | ({32{(sel[2] & sel2[5])}} & m[512 +: 32]) | dn_i[1280 +: 32] | up_i[0 +: 32];   // reg 93 (home 12)
+    assign s1_d[32 +: 32] = ({32{(sel[0] & sel2[0]) | (sel[2] & sel2[4]) | sel[7]}} & m[160 +: 32]) | dn_i[1312 +: 32] | up_i[32 +: 32];   // reg 94 (home 12)
+    assign s1_d[64 +: 32] = ({32{(sel[2] & sel2[5])}} & m[256 +: 32]) | ({32{(sel[0] & sel2[0]) | (sel[2] & sel2[4]) | sel[7] | sel[17]}} & m[288 +: 32]) | dn_i[1344 +: 32] | up_i[64 +: 32];   // reg 95 (home 12)
+    assign s1_d[96 +: 32] = ({32{sel[34]}} & m[32 +: 32]) | up_i[96 +: 32];   // reg 96 (home 12)
+    assign s1_d[128 +: 32] = dn_i[1376 +: 32] | up_i[128 +: 32];   // reg 97 (home 12)
+    assign s1_d[160 +: 32] = dn_i[1408 +: 32] | up_i[160 +: 32];   // reg 98 (home 12)
+    assign s1_d[192 +: 32] = ({32{sel[34]}} & m[160 +: 32]) | up_i[192 +: 32];   // reg 99 (home 12)
+    assign s1_d[224 +: 32] = dn_i[1440 +: 32];   // reg 100 (home 12)
+    assign s1_d[256 +: 32] = dn_i[1472 +: 32];   // reg 101 (home 12)
+endmodule
+
+// band 13: pre-mux + partial ORs of words [39, 44, 46, 47] (quarter 2), S1 registers of home row 13
+module qba2_s1p_b13 (
+    input  logic                 clk,
+    input  logic [1023:0]        lb0, lb1,   // words [39, 44, 46, 47] of slots 0..7: bit 128 s + 32 i + k
+    input  logic                 ctx,   // s1c_r[b]
+    input  logic [38:0]          sel,
+    input  logic [10:0]          sel2,
+    input  logic [1311:0]   dn_i,   // from band 14
+    input  logic [703:0]   up_i,   // from band 12
+    output logic [1503:0]   dn_o,   // to band 12
+    output logic [511:0]   up_o,   // to band 14
+    output logic [255:0]   s1   // registers homed at row 13
+);
+    logic [1023:0] m;
+    qba2_pm_r u_pm (.lb0, .lb1, .ctx, .m);   // R13 pre-mux module: kept as a 2:1 mux by synthesis (hierarchy)
+    logic [255:0] s1_d;
+    always_ff @(posedge clk) s1 <= s1_d;
+    assign dn_o[0 +: 32] = ({32{sel[25]}} & m[32 +: 32]) | dn_i[0 +: 32];   // reg 0 (home 0) down
+    assign dn_o[32 +: 32] = ({32{sel[25]}} & m[160 +: 32]) | dn_i[32 +: 32];   // reg 1 (home 0) down
+    assign dn_o[64 +: 32] = ({32{(sel[1] & sel2[1])}} & m[96 +: 32]);   // reg 3 (home 0) down
+    assign dn_o[96 +: 32] = ({32{(sel[1] & sel2[1])}} & m[224 +: 32]);   // reg 4 (home 0) down
+    assign dn_o[128 +: 32] = ({32{(sel[1] & sel2[1])}} & m[352 +: 32]);   // reg 5 (home 0) down
+    assign dn_o[160 +: 32] = ({32{sel[25]}} & m[64 +: 32]) | dn_i[64 +: 32];   // reg 15 (home 2) down
+    assign dn_o[192 +: 32] = ({32{sel[25]}} & m[192 +: 32]) | dn_i[96 +: 32];   // reg 16 (home 2) down
+    assign dn_o[224 +: 32] = ({32{sel[23]}} & m[0 +: 32]) | ({32{sel[25]}} & m[96 +: 32]) | dn_i[128 +: 32];   // reg 23 (home 3) down
+    assign dn_o[256 +: 32] = ({32{(sel[1] & sel2[2]) | (sel[4] & sel2[5]) | sel[37]}} & m[0 +: 32]) | ({32{sel[23]}} & m[128 +: 32]) | ({32{sel[25]}} & m[224 +: 32]) | dn_i[160 +: 32];   // reg 24 (home 3) down
+    assign dn_o[288 +: 32] = ({32{sel[11] | sel[25]}} & m[32 +: 32]) | dn_i[192 +: 32];   // reg 28 (home 4) down
+    assign dn_o[320 +: 32] = ({32{(sel[1] & sel2[2]) | (sel[4] & sel2[5])}} & m[128 +: 32]) | ({32{sel[11] | sel[25]}} & m[160 +: 32]) | dn_i[224 +: 32];   // reg 29 (home 4) down
+    assign dn_o[352 +: 32] = ({32{(sel[1] & sel2[2]) | (sel[4] & sel2[5])}} & m[256 +: 32]) | ({32{sel[11] | sel[25]}} & m[288 +: 32]) | dn_i[256 +: 32];   // reg 30 (home 4) down
+    assign dn_o[384 +: 32] = ({32{sel[11] | sel[25]}} & m[64 +: 32]) | dn_i[288 +: 32];   // reg 47 (home 6) down
+    assign dn_o[416 +: 32] = ({32{sel[30] | sel[31]}} & m[32 +: 32]) | ({32{sel[11] | sel[25]}} & m[192 +: 32]) | dn_i[320 +: 32];   // reg 48 (home 6) down
+    assign dn_o[448 +: 32] = ({32{sel[11] | sel[25]}} & m[320 +: 32]) | dn_i[352 +: 32];   // reg 49 (home 6) down
+    assign dn_o[480 +: 32] = ({32{(sel[1] & sel2[2]) | (sel[4] & sel2[5])}} & m[32 +: 32]) | dn_i[384 +: 32];   // reg 50 (home 6) down
+    assign dn_o[512 +: 32] = ({32{(sel[1] & sel2[2]) | (sel[4] & sel2[5])}} & m[160 +: 32]) | dn_i[416 +: 32];   // reg 51 (home 6) down
+    assign dn_o[544 +: 32] = ({32{(sel[1] & sel2[2]) | (sel[4] & sel2[5])}} & m[288 +: 32]) | dn_i[448 +: 32];   // reg 52 (home 6) down
+    assign dn_o[576 +: 32] = ({32{(sel[1] & sel2[0]) | (sel[4] & sel2[4]) | sel[10] | sel[23]}} & m[0 +: 32]) | ({32{sel[11] | sel[25]}} & m[96 +: 32]) | dn_i[480 +: 32];   // reg 55 (home 7) down
+    assign dn_o[608 +: 32] = ({32{sel[37]}} & m[0 +: 32]) | ({32{(sel[1] & sel2[0]) | (sel[4] & sel2[4]) | sel[10] | sel[23]}} & m[128 +: 32]) | ({32{sel[11] | sel[25]}} & m[224 +: 32]) | dn_i[512 +: 32];   // reg 56 (home 7) down
+    assign dn_o[640 +: 32] = ({32{(sel[1] & sel2[0]) | (sel[4] & sel2[4]) | sel[10] | sel[23]}} & m[256 +: 32]) | ({32{sel[11] | sel[25]}} & m[352 +: 32]) | dn_i[544 +: 32];   // reg 57 (home 7) down
+    assign dn_o[672 +: 32] = ({32{(sel[1] & sel2[2]) | (sel[4] & sel2[5]) | sel[30]}} & m[64 +: 32]) | dn_i[576 +: 32];   // reg 58 (home 7) down
+    assign dn_o[704 +: 32] = ({32{sel[34]}} & m[0 +: 32]) | ({32{sel[31]}} & m[64 +: 32]) | ({32{(sel[4] & sel2[5])}} & m[96 +: 32]) | ({32{(sel[1] & sel2[2])}} & m[192 +: 32]) | dn_i[608 +: 32];   // reg 59 (home 7) down
+    assign dn_o[736 +: 32] = ({32{(sel[4] & sel2[5])}} & m[192 +: 32]) | ({32{(sel[1] & sel2[2])}} & m[320 +: 32]) | dn_i[640 +: 32];   // reg 60 (home 7) down
+    assign dn_o[768 +: 32] = ({32{sel[37]}} & m[32 +: 32]) | ({32{(sel[1] & sel2[2])}} & m[96 +: 32]) | ({32{sel[34]}} & m[128 +: 32]) | ({32{sel[25]}} & m[416 +: 32]) | dn_i[672 +: 32];   // reg 61 (home 8) down
+    assign dn_o[800 +: 32] = ({32{sel[25]}} & m[160 +: 32]) | ({32{(sel[1] & sel2[2]) | (sel[4] & sel2[5])}} & m[224 +: 32]) | dn_i[704 +: 32];   // reg 62 (home 8) down
+    assign dn_o[832 +: 32] = ({32{sel[25]}} & m[288 +: 32]) | ({32{(sel[1] & sel2[2])}} & m[352 +: 32]) | dn_i[736 +: 32];   // reg 63 (home 8) down
+    assign dn_o[864 +: 32] = ({32{(sel[4] & sel2[5])}} & m[320 +: 32]) | dn_i[768 +: 32];   // reg 64 (home 8) down
+    assign dn_o[896 +: 32] = ({32{(sel[4] & sel2[5])}} & m[352 +: 32]) | dn_i[800 +: 32];   // reg 65 (home 8) down
+    assign dn_o[928 +: 32] = ({32{sel[37]}} & m[64 +: 32]) | ({32{sel[25]}} & m[448 +: 32]) | dn_i[832 +: 32];   // reg 79 (home 10) down
+    assign dn_o[960 +: 32] = ({32{sel[25]}} & m[192 +: 32]) | dn_i[864 +: 32];   // reg 80 (home 10) down
+    assign dn_o[992 +: 32] = ({32{sel[25]}} & m[320 +: 32]) | dn_i[896 +: 32];   // reg 81 (home 10) down
+    assign dn_o[1024 +: 32] = dn_i[928 +: 32];   // reg 82 (home 10) down
+    assign dn_o[1056 +: 32] = ({32{sel[33]}} & m[32 +: 32]);   // reg 84 (home 10) down
+    assign dn_o[1088 +: 32] = ({32{sel[37]}} & m[96 +: 32]) | ({32{(sel[4] & sel2[5]) | sel[23]}} & m[384 +: 32]) | ({32{sel[25]}} & m[480 +: 32]) | dn_i[960 +: 32];   // reg 87 (home 11) down
+    assign dn_o[1120 +: 32] = ({32{sel[37]}} & m[0 +: 32]) | ({32{sel[23]}} & m[128 +: 32]) | ({32{sel[25]}} & m[224 +: 32]) | dn_i[992 +: 32];   // reg 88 (home 11) down
+    assign dn_o[1152 +: 32] = ({32{sel[23]}} & m[256 +: 32]) | ({32{sel[25]}} & m[352 +: 32]) | dn_i[1024 +: 32];   // reg 89 (home 11) down
+    assign dn_o[1184 +: 32] = dn_i[1056 +: 32];   // reg 90 (home 11) down
+    assign dn_o[1216 +: 32] = ({32{sel[33]}} & m[96 +: 32]);   // reg 91 (home 11) down
+    assign dn_o[1248 +: 32] = ({32{sel[33]}} & m[64 +: 32]);   // reg 92 (home 11) down
+    assign dn_o[1280 +: 32] = ({32{(sel[1] & sel2[0]) | (sel[4] & sel2[4]) | sel[37]}} & m[32 +: 32]) | ({32{sel[11] | sel[25]}} & m[416 +: 32]) | ({32{(sel[4] & sel2[5])}} & m[512 +: 32]) | dn_i[1088 +: 32];   // reg 93 (home 12) down
+    assign dn_o[1312 +: 32] = ({32{(sel[1] & sel2[0]) | (sel[4] & sel2[4]) | sel[11]}} & m[160 +: 32]) | dn_i[1120 +: 32];   // reg 94 (home 12) down
+    assign dn_o[1344 +: 32] = ({32{sel[33]}} & m[0 +: 32]) | ({32{(sel[4] & sel2[5])}} & m[256 +: 32]) | ({32{(sel[1] & sel2[0]) | (sel[4] & sel2[4]) | sel[11] | sel[25]}} & m[288 +: 32]) | dn_i[1152 +: 32];   // reg 95 (home 12) down
+    assign dn_o[1376 +: 32] = dn_i[1184 +: 32];   // reg 97 (home 12) down
+    assign dn_o[1408 +: 32] = dn_i[1216 +: 32];   // reg 98 (home 12) down
+    assign dn_o[1440 +: 32] = ({32{sel[34]}} & m[160 +: 32]);   // reg 100 (home 12) down
+    assign dn_o[1472 +: 32] = dn_i[1248 +: 32];   // reg 101 (home 12) down
+    assign up_o[0 +: 32] = ({32{(sel[1] & sel2[0]) | (sel[4] & sel2[4]) | sel[37]}} & m[64 +: 32]) | ({32{sel[11] | sel[25]}} & m[448 +: 32]) | up_i[256 +: 32];   // reg 110 (home 14) up
+    assign up_o[32 +: 32] = ({32{(sel[1] & sel2[0]) | (sel[4] & sel2[4]) | sel[11]}} & m[192 +: 32]) | up_i[288 +: 32];   // reg 111 (home 14) up
+    assign up_o[64 +: 32] = ({32{(sel[1] & sel2[0]) | (sel[4] & sel2[4]) | sel[11] | sel[25]}} & m[320 +: 32]) | up_i[320 +: 32];   // reg 112 (home 14) up
+    assign up_o[96 +: 32] = ({32{sel[33]}} & m[32 +: 32]) | ({32{(sel[4] & sel2[5])}} & m[288 +: 32]) | up_i[352 +: 32];   // reg 113 (home 14) up
+    assign up_o[128 +: 32] = ({32{sel[34]}} & m[192 +: 32]);   // reg 114 (home 14) up
+    assign up_o[160 +: 32] = ({32{(sel[1] & sel2[0]) | (sel[4] & sel2[4]) | sel[37]}} & m[96 +: 32]) | ({32{sel[31]}} & m[288 +: 32]) | ({32{sel[10] | sel[23]}} & m[384 +: 32]) | ({32{sel[11] | sel[25]}} & m[480 +: 32]) | up_i[384 +: 32];   // reg 116 (home 15) up
+    assign up_o[192 +: 32] = ({32{sel[33] | sel[34]}} & m[64 +: 32]) | ({32{sel[10]}} & m[128 +: 32]) | ({32{(sel[1] & sel2[0]) | (sel[4] & sel2[4]) | sel[11]}} & m[224 +: 32]) | ({32{(sel[4] & sel2[5])}} & m[448 +: 32]) | up_i[416 +: 32];   // reg 117 (home 15) up
+    assign up_o[224 +: 32] = ({32{sel[10] | sel[23]}} & m[256 +: 32]) | ({32{(sel[1] & sel2[0]) | (sel[4] & sel2[4]) | sel[11] | sel[25]}} & m[352 +: 32]) | up_i[448 +: 32];   // reg 118 (home 15) up
+    assign up_o[256 +: 32] = ({32{sel[33]}} & m[96 +: 32]) | ({32{sel[31]}} & m[320 +: 32]) | ({32{(sel[4] & sel2[5])}} & m[544 +: 32]) | up_i[480 +: 32];   // reg 119 (home 15) up
+    assign up_o[288 +: 32] = ({32{(sel[4] & sel2[5])}} & m[480 +: 32]) | up_i[512 +: 32];   // reg 120 (home 15) up
+    assign up_o[320 +: 32] = ({32{(sel[4] & sel2[5])}} & m[416 +: 32]) | up_i[544 +: 32];   // reg 121 (home 15) up
+    assign up_o[352 +: 32] = ({32{(sel[4] & sel2[5])}} & m[576 +: 32]) | up_i[576 +: 32];   // reg 122 (home 15) up
+    assign up_o[384 +: 32] = ({32{(sel[4] & sel2[5])}} & m[608 +: 32]) | up_i[608 +: 32];   // reg 123 (home 15) up
+    assign up_o[416 +: 32] = ({32{(sel[4] & sel2[5])}} & m[320 +: 32]) | up_i[640 +: 32];   // reg 124 (home 15) up
+    assign up_o[448 +: 32] = ({32{sel[34]}} & m[96 +: 32]) | ({32{(sel[4] & sel2[5])}} & m[352 +: 32]) | up_i[672 +: 32];   // reg 125 (home 15) up
+    assign up_o[480 +: 32] = ({32{sel[34]}} & m[224 +: 32]);   // reg 126 (home 15) up
+    assign s1_d[0 +: 32] = up_i[0 +: 32];   // reg 102 (home 13)
+    assign s1_d[32 +: 32] = up_i[32 +: 32];   // reg 103 (home 13)
+    assign s1_d[64 +: 32] = ({32{sel[34]}} & m[32 +: 32]) | up_i[64 +: 32];   // reg 104 (home 13)
+    assign s1_d[96 +: 32] = up_i[96 +: 32];   // reg 105 (home 13)
+    assign s1_d[128 +: 32] = up_i[128 +: 32];   // reg 106 (home 13)
+    assign s1_d[160 +: 32] = dn_i[1280 +: 32] | up_i[160 +: 32];   // reg 107 (home 13)
+    assign s1_d[192 +: 32] = up_i[192 +: 32];   // reg 108 (home 13)
+    assign s1_d[224 +: 32] = up_i[224 +: 32];   // reg 109 (home 13)
+endmodule
+
+// band 14: pre-mux + partial ORs of words [23, 28, 30, 31] (quarter 1), S1 registers of home row 14
+module qba2_s1p_b14 (
+    input  logic                 clk,
+    input  logic [1023:0]        lb0, lb1,   // words [23, 28, 30, 31] of slots 0..7: bit 128 s + 32 i + k
+    input  logic                 ctx,   // s1c_r[b]
+    input  logic [38:0]          sel,
+    input  logic [10:0]          sel2,
+    input  logic [1343:0]   dn_i,   // from band 15
+    input  logic [511:0]   up_i,   // from band 13
+    output logic [1311:0]   dn_o,   // to band 13
+    output logic [351:0]   up_o,   // to band 15
+    output logic [191:0]   s1   // registers homed at row 14
+);
+    logic [1023:0] m;
+    qba2_pm_r u_pm (.lb0, .lb1, .ctx, .m);   // R13 pre-mux module: kept as a 2:1 mux by synthesis (hierarchy)
+    logic [191:0] s1_d;
+    always_ff @(posedge clk) s1 <= s1_d;
+    assign dn_o[0 +: 32] = ({32{sel[21]}} & m[32 +: 32]) | dn_i[0 +: 32];   // reg 0 (home 0) down
+    assign dn_o[32 +: 32] = ({32{sel[21]}} & m[160 +: 32]) | dn_i[32 +: 32];   // reg 1 (home 0) down
+    assign dn_o[64 +: 32] = ({32{sel[21]}} & m[64 +: 32]) | dn_i[64 +: 32];   // reg 15 (home 2) down
+    assign dn_o[96 +: 32] = ({32{sel[21]}} & m[192 +: 32]) | dn_i[96 +: 32];   // reg 16 (home 2) down
+    assign dn_o[128 +: 32] = ({32{sel[19]}} & m[0 +: 32]) | ({32{sel[21]}} & m[96 +: 32]) | dn_i[128 +: 32];   // reg 23 (home 3) down
+    assign dn_o[160 +: 32] = ({32{(sel[3] & sel2[5]) | sel[36]}} & m[0 +: 32]) | ({32{sel[19]}} & m[128 +: 32]) | ({32{sel[21]}} & m[224 +: 32]) | dn_i[160 +: 32];   // reg 24 (home 3) down
+    assign dn_o[192 +: 32] = ({32{sel[9] | sel[21]}} & m[32 +: 32]) | dn_i[192 +: 32];   // reg 28 (home 4) down
+    assign dn_o[224 +: 32] = ({32{(sel[3] & sel2[5])}} & m[128 +: 32]) | ({32{sel[9] | sel[21]}} & m[160 +: 32]) | dn_i[224 +: 32];   // reg 29 (home 4) down
+    assign dn_o[256 +: 32] = ({32{(sel[3] & sel2[5])}} & m[256 +: 32]) | ({32{sel[9] | sel[21]}} & m[288 +: 32]) | dn_i[256 +: 32];   // reg 30 (home 4) down
+    assign dn_o[288 +: 32] = ({32{sel[9] | sel[21]}} & m[64 +: 32]) | dn_i[288 +: 32];   // reg 47 (home 6) down
+    assign dn_o[320 +: 32] = ({32{sel[9] | sel[21]}} & m[192 +: 32]) | dn_i[320 +: 32];   // reg 48 (home 6) down
+    assign dn_o[352 +: 32] = ({32{sel[9] | sel[21]}} & m[320 +: 32]) | dn_i[352 +: 32];   // reg 49 (home 6) down
+    assign dn_o[384 +: 32] = ({32{(sel[3] & sel2[5])}} & m[32 +: 32]) | dn_i[384 +: 32];   // reg 50 (home 6) down
+    assign dn_o[416 +: 32] = ({32{(sel[3] & sel2[5])}} & m[160 +: 32]) | dn_i[416 +: 32];   // reg 51 (home 6) down
+    assign dn_o[448 +: 32] = ({32{sel[31] | sel[33]}} & m[32 +: 32]) | ({32{(sel[3] & sel2[5])}} & m[288 +: 32]) | dn_i[448 +: 32];   // reg 52 (home 6) down
+    assign dn_o[480 +: 32] = ({32{(sel[0] & sel2[1]) | (sel[3] & sel2[4]) | sel[8] | sel[19]}} & m[0 +: 32]) | ({32{sel[9] | sel[21]}} & m[96 +: 32]) | dn_i[480 +: 32];   // reg 55 (home 7) down
+    assign dn_o[512 +: 32] = ({32{sel[34] | sel[36]}} & m[0 +: 32]) | ({32{(sel[0] & sel2[1]) | (sel[3] & sel2[4]) | sel[8] | sel[19]}} & m[128 +: 32]) | ({32{sel[9] | sel[21]}} & m[224 +: 32]) | dn_i[512 +: 32];   // reg 56 (home 7) down
+    assign dn_o[544 +: 32] = ({32{(sel[0] & sel2[1]) | (sel[3] & sel2[4]) | sel[8] | sel[19]}} & m[256 +: 32]) | ({32{sel[9] | sel[21]}} & m[352 +: 32]) | dn_i[544 +: 32];   // reg 57 (home 7) down
+    assign dn_o[576 +: 32] = ({32{(sel[3] & sel2[5]) | sel[31]}} & m[64 +: 32]) | dn_i[576 +: 32];   // reg 58 (home 7) down
+    assign dn_o[608 +: 32] = ({32{(sel[3] & sel2[5])}} & m[96 +: 32]) | dn_i[608 +: 32];   // reg 59 (home 7) down
+    assign dn_o[640 +: 32] = ({32{(sel[3] & sel2[5])}} & m[192 +: 32]) | dn_i[640 +: 32];   // reg 60 (home 7) down
+    assign dn_o[672 +: 32] = ({32{sel[36]}} & m[32 +: 32]) | ({32{sel[21]}} & m[416 +: 32]) | dn_i[672 +: 32];   // reg 61 (home 8) down
+    assign dn_o[704 +: 32] = ({32{sel[33]}} & m[0 +: 32]) | ({32{sel[34]}} & m[128 +: 32]) | ({32{sel[21]}} & m[160 +: 32]) | ({32{(sel[3] & sel2[5])}} & m[224 +: 32]) | dn_i[704 +: 32];   // reg 62 (home 8) down
+    assign dn_o[736 +: 32] = ({32{sel[33]}} & m[96 +: 32]) | ({32{sel[21]}} & m[288 +: 32]) | dn_i[736 +: 32];   // reg 63 (home 8) down
+    assign dn_o[768 +: 32] = ({32{sel[33]}} & m[64 +: 32]) | ({32{(sel[3] & sel2[5])}} & m[320 +: 32]) | dn_i[768 +: 32];   // reg 64 (home 8) down
+    assign dn_o[800 +: 32] = ({32{(sel[3] & sel2[5])}} & m[352 +: 32]) | dn_i[800 +: 32];   // reg 65 (home 8) down
+    assign dn_o[832 +: 32] = ({32{sel[36]}} & m[64 +: 32]) | ({32{sel[21]}} & m[448 +: 32]) | dn_i[832 +: 32];   // reg 79 (home 10) down
+    assign dn_o[864 +: 32] = ({32{sel[21]}} & m[192 +: 32]) | dn_i[864 +: 32];   // reg 80 (home 10) down
+    assign dn_o[896 +: 32] = ({32{sel[21]}} & m[320 +: 32]) | dn_i[896 +: 32];   // reg 81 (home 10) down
+    assign dn_o[928 +: 32] = ({32{sel[33]}} & m[32 +: 32]);   // reg 82 (home 10) down
+    assign dn_o[960 +: 32] = ({32{sel[36]}} & m[96 +: 32]) | ({32{(sel[3] & sel2[5]) | sel[19]}} & m[384 +: 32]) | ({32{sel[21]}} & m[480 +: 32]) | dn_i[928 +: 32];   // reg 87 (home 11) down
+    assign dn_o[992 +: 32] = ({32{(sel[0] & sel2[2]) | sel[36]}} & m[0 +: 32]) | ({32{sel[19]}} & m[128 +: 32]) | ({32{sel[21]}} & m[224 +: 32]) | dn_i[960 +: 32];   // reg 88 (home 11) down
+    assign dn_o[1024 +: 32] = ({32{sel[19]}} & m[256 +: 32]) | ({32{sel[21]}} & m[352 +: 32]) | dn_i[992 +: 32];   // reg 89 (home 11) down
+    assign dn_o[1056 +: 32] = ({32{sel[33]}} & m[64 +: 32]);   // reg 90 (home 11) down
+    assign dn_o[1088 +: 32] = ({32{(sel[0] & sel2[1]) | (sel[3] & sel2[4]) | sel[36]}} & m[32 +: 32]) | ({32{sel[9] | sel[21]}} & m[416 +: 32]) | ({32{(sel[3] & sel2[5])}} & m[512 +: 32]) | dn_i[1024 +: 32];   // reg 93 (home 12) down
+    assign dn_o[1120 +: 32] = ({32{sel[33]}} & m[96 +: 32]) | ({32{(sel[0] & sel2[2])}} & m[128 +: 32]) | ({32{(sel[0] & sel2[1]) | (sel[3] & sel2[4]) | sel[9]}} & m[160 +: 32]) | dn_i[1056 +: 32];   // reg 94 (home 12) down
+    assign dn_o[1152 +: 32] = ({32{(sel[0] & sel2[2]) | (sel[3] & sel2[5])}} & m[256 +: 32]) | ({32{(sel[0] & sel2[1]) | (sel[3] & sel2[4]) | sel[9] | sel[21]}} & m[288 +: 32]) | dn_i[1088 +: 32];   // reg 95 (home 12) down
+    assign dn_o[1184 +: 32] = ({32{sel[34]}} & m[32 +: 32]);   // reg 97 (home 12) down
+    assign dn_o[1216 +: 32] = dn_i[1120 +: 32];   // reg 98 (home 12) down
+    assign dn_o[1248 +: 32] = dn_i[1152 +: 32];   // reg 101 (home 12) down
+    assign dn_o[1280 +: 32] = ({32{sel[34]}} & m[160 +: 32]);   // reg 107 (home 13) down
+    assign up_o[0 +: 32] = ({32{(sel[0] & sel2[1]) | (sel[3] & sel2[4]) | sel[36]}} & m[96 +: 32]) | ({32{sel[8] | sel[19]}} & m[384 +: 32]) | ({32{sel[9] | sel[21]}} & m[480 +: 32]) | up_i[160 +: 32];   // reg 116 (home 15) up
+    assign up_o[32 +: 32] = ({32{(sel[0] & sel2[2]) | sel[30]}} & m[32 +: 32]) | ({32{sel[8]}} & m[128 +: 32]) | ({32{(sel[0] & sel2[1]) | (sel[3] & sel2[4]) | sel[9]}} & m[224 +: 32]) | ({32{(sel[3] & sel2[5])}} & m[448 +: 32]) | up_i[192 +: 32];   // reg 117 (home 15) up
+    assign up_o[64 +: 32] = ({32{sel[8] | sel[19]}} & m[256 +: 32]) | ({32{(sel[0] & sel2[1]) | (sel[3] & sel2[4]) | sel[9] | sel[21]}} & m[352 +: 32]) | up_i[224 +: 32];   // reg 118 (home 15) up
+    assign up_o[96 +: 32] = ({32{(sel[0] & sel2[2]) | sel[34]}} & m[64 +: 32]) | ({32{(sel[3] & sel2[5])}} & m[544 +: 32]) | up_i[256 +: 32];   // reg 119 (home 15) up
+    assign up_o[128 +: 32] = ({32{(sel[0] & sel2[2]) | sel[34]}} & m[96 +: 32]) | ({32{(sel[3] & sel2[5])}} & m[480 +: 32]) | up_i[288 +: 32];   // reg 120 (home 15) up
+    assign up_o[160 +: 32] = ({32{(sel[0] & sel2[2])}} & m[160 +: 32]) | ({32{sel[34]}} & m[224 +: 32]) | ({32{(sel[3] & sel2[5])}} & m[416 +: 32]) | up_i[320 +: 32];   // reg 121 (home 15) up
+    assign up_o[192 +: 32] = ({32{(sel[0] & sel2[2]) | sel[34]}} & m[192 +: 32]) | ({32{(sel[3] & sel2[5])}} & m[576 +: 32]) | up_i[352 +: 32];   // reg 122 (home 15) up
+    assign up_o[224 +: 32] = ({32{(sel[0] & sel2[2])}} & m[224 +: 32]) | ({32{(sel[3] & sel2[5])}} & m[608 +: 32]) | up_i[384 +: 32];   // reg 123 (home 15) up
+    assign up_o[256 +: 32] = ({32{(sel[0] & sel2[2]) | (sel[3] & sel2[5]) | sel[31]}} & m[320 +: 32]) | up_i[416 +: 32];   // reg 124 (home 15) up
+    assign up_o[288 +: 32] = ({32{(sel[0] & sel2[2]) | (sel[3] & sel2[5])}} & m[352 +: 32]) | up_i[448 +: 32];   // reg 125 (home 15) up
+    assign up_o[320 +: 32] = up_i[480 +: 32];   // reg 126 (home 15) up
+    assign s1_d[0 +: 32] = ({32{(sel[0] & sel2[1]) | (sel[3] & sel2[4]) | sel[30] | sel[36]}} & m[64 +: 32]) | ({32{sel[31]}} & m[288 +: 32]) | ({32{sel[9] | sel[21]}} & m[448 +: 32]) | dn_i[1184 +: 32] | up_i[0 +: 32];   // reg 110 (home 14)
+    assign s1_d[32 +: 32] = ({32{(sel[0] & sel2[1]) | (sel[3] & sel2[4]) | sel[9]}} & m[192 +: 32]) | dn_i[1216 +: 32] | up_i[32 +: 32];   // reg 111 (home 14)
+    assign s1_d[64 +: 32] = ({32{(sel[0] & sel2[1]) | (sel[3] & sel2[4]) | sel[9] | sel[21]}} & m[320 +: 32]) | dn_i[1248 +: 32] | up_i[64 +: 32];   // reg 112 (home 14)
+    assign s1_d[96 +: 32] = ({32{(sel[0] & sel2[2]) | (sel[3] & sel2[5])}} & m[288 +: 32]) | dn_i[1280 +: 32] | up_i[96 +: 32];   // reg 113 (home 14)
+    assign s1_d[128 +: 32] = up_i[128 +: 32];   // reg 114 (home 14)
+    assign s1_d[160 +: 32] = dn_i[1312 +: 32];   // reg 115 (home 14)
+endmodule
+
+// band 15: pre-mux + partial ORs of words [55, 60, 62, 63] (quarter 3), S1 registers of home row 15
+module qba2_s1p_b15 (
+    input  logic                 clk,
+    input  logic [1023:0]        lb0, lb1,   // words [55, 60, 62, 63] of slots 0..7: bit 128 s + 32 i + k
+    input  logic                 ctx,   // s1c_r[b]
+    input  logic [38:0]          sel,
+    input  logic [10:0]          sel2,
+    input  logic [351:0]   up_i,   // from band 14
+    output logic [1343:0]   dn_o,   // to band 14
+    output logic [383:0]   s1   // registers homed at row 15
+);
+    logic [1023:0] m;
+    qba2_pm_r u_pm (.lb0, .lb1, .ctx, .m);   // R13 pre-mux module: kept as a 2:1 mux by synthesis (hierarchy)
+    logic [383:0] s1_d;
+    always_ff @(posedge clk) s1 <= s1_d;
+    assign dn_o[0 +: 32] = ({32{sel[29]}} & m[32 +: 32]);   // reg 0 (home 0) down
+    assign dn_o[32 +: 32] = ({32{sel[29]}} & m[160 +: 32]);   // reg 1 (home 0) down
+    assign dn_o[64 +: 32] = ({32{sel[29]}} & m[64 +: 32]);   // reg 15 (home 2) down
+    assign dn_o[96 +: 32] = ({32{sel[29]}} & m[192 +: 32]);   // reg 16 (home 2) down
+    assign dn_o[128 +: 32] = ({32{sel[27]}} & m[0 +: 32]) | ({32{sel[29]}} & m[96 +: 32]);   // reg 23 (home 3) down
+    assign dn_o[160 +: 32] = ({32{(sel[5] & sel2[5]) | sel[38]}} & m[0 +: 32]) | ({32{sel[27]}} & m[128 +: 32]) | ({32{sel[29]}} & m[224 +: 32]);   // reg 24 (home 3) down
+    assign dn_o[192 +: 32] = ({32{sel[13] | sel[29]}} & m[32 +: 32]);   // reg 28 (home 4) down
+    assign dn_o[224 +: 32] = ({32{(sel[5] & sel2[5])}} & m[128 +: 32]) | ({32{sel[13] | sel[29]}} & m[160 +: 32]);   // reg 29 (home 4) down
+    assign dn_o[256 +: 32] = ({32{(sel[5] & sel2[5])}} & m[256 +: 32]) | ({32{sel[13] | sel[29]}} & m[288 +: 32]);   // reg 30 (home 4) down
+    assign dn_o[288 +: 32] = ({32{sel[13] | sel[29]}} & m[64 +: 32]);   // reg 47 (home 6) down
+    assign dn_o[320 +: 32] = ({32{sel[13] | sel[29]}} & m[192 +: 32]);   // reg 48 (home 6) down
+    assign dn_o[352 +: 32] = ({32{sel[13] | sel[29]}} & m[320 +: 32]);   // reg 49 (home 6) down
+    assign dn_o[384 +: 32] = ({32{(sel[5] & sel2[5])}} & m[32 +: 32]);   // reg 50 (home 6) down
+    assign dn_o[416 +: 32] = ({32{sel[31]}} & m[32 +: 32]) | ({32{(sel[5] & sel2[5])}} & m[160 +: 32]);   // reg 51 (home 6) down
+    assign dn_o[448 +: 32] = ({32{(sel[5] & sel2[5])}} & m[288 +: 32]);   // reg 52 (home 6) down
+    assign dn_o[480 +: 32] = ({32{(sel[1] & sel2[1]) | (sel[5] & sel2[4]) | sel[12] | sel[27]}} & m[0 +: 32]) | ({32{sel[13] | sel[29]}} & m[96 +: 32]);   // reg 55 (home 7) down
+    assign dn_o[512 +: 32] = ({32{sel[38]}} & m[0 +: 32]) | ({32{sel[31]}} & m[64 +: 32]) | ({32{(sel[1] & sel2[1]) | (sel[5] & sel2[4]) | sel[12] | sel[27]}} & m[128 +: 32]) | ({32{sel[13] | sel[29]}} & m[224 +: 32]);   // reg 56 (home 7) down
+    assign dn_o[544 +: 32] = ({32{sel[34]}} & m[0 +: 32]) | ({32{(sel[1] & sel2[1]) | (sel[5] & sel2[4]) | sel[12] | sel[27]}} & m[256 +: 32]) | ({32{sel[13] | sel[29]}} & m[352 +: 32]);   // reg 57 (home 7) down
+    assign dn_o[576 +: 32] = ({32{(sel[5] & sel2[5])}} & m[64 +: 32]);   // reg 58 (home 7) down
+    assign dn_o[608 +: 32] = ({32{(sel[5] & sel2[5])}} & m[96 +: 32]);   // reg 59 (home 7) down
+    assign dn_o[640 +: 32] = ({32{(sel[5] & sel2[5])}} & m[192 +: 32]);   // reg 60 (home 7) down
+    assign dn_o[672 +: 32] = ({32{sel[38]}} & m[32 +: 32]) | ({32{sel[29]}} & m[416 +: 32]);   // reg 61 (home 8) down
+    assign dn_o[704 +: 32] = ({32{sel[29]}} & m[160 +: 32]) | ({32{(sel[5] & sel2[5])}} & m[224 +: 32]);   // reg 62 (home 8) down
+    assign dn_o[736 +: 32] = ({32{sel[29]}} & m[288 +: 32]);   // reg 63 (home 8) down
+    assign dn_o[768 +: 32] = ({32{sel[34]}} & m[128 +: 32]) | ({32{(sel[5] & sel2[5])}} & m[320 +: 32]);   // reg 64 (home 8) down
+    assign dn_o[800 +: 32] = ({32{(sel[5] & sel2[5])}} & m[352 +: 32]);   // reg 65 (home 8) down
+    assign dn_o[832 +: 32] = ({32{sel[38]}} & m[64 +: 32]) | ({32{sel[29]}} & m[448 +: 32]);   // reg 79 (home 10) down
+    assign dn_o[864 +: 32] = ({32{sel[29]}} & m[192 +: 32]);   // reg 80 (home 10) down
+    assign dn_o[896 +: 32] = ({32{sel[29]}} & m[320 +: 32]);   // reg 81 (home 10) down
+    assign dn_o[928 +: 32] = ({32{sel[38]}} & m[96 +: 32]) | ({32{(sel[5] & sel2[5]) | sel[27]}} & m[384 +: 32]) | ({32{sel[29]}} & m[480 +: 32]);   // reg 87 (home 11) down
+    assign dn_o[960 +: 32] = ({32{(sel[1] & sel2[2]) | sel[38]}} & m[0 +: 32]) | ({32{sel[27]}} & m[128 +: 32]) | ({32{sel[29]}} & m[224 +: 32]);   // reg 88 (home 11) down
+    assign dn_o[992 +: 32] = ({32{sel[27]}} & m[256 +: 32]) | ({32{sel[29]}} & m[352 +: 32]);   // reg 89 (home 11) down
+    assign dn_o[1024 +: 32] = ({32{(sel[1] & sel2[1]) | (sel[5] & sel2[4]) | sel[38]}} & m[32 +: 32]) | ({32{sel[13] | sel[29]}} & m[416 +: 32]) | ({32{(sel[5] & sel2[5])}} & m[512 +: 32]);   // reg 93 (home 12) down
+    assign dn_o[1056 +: 32] = ({32{(sel[1] & sel2[2])}} & m[128 +: 32]) | ({32{(sel[1] & sel2[1]) | (sel[5] & sel2[4]) | sel[13]}} & m[160 +: 32]);   // reg 94 (home 12) down
+    assign dn_o[1088 +: 32] = ({32{(sel[1] & sel2[2]) | (sel[5] & sel2[5])}} & m[256 +: 32]) | ({32{(sel[1] & sel2[1]) | (sel[5] & sel2[4]) | sel[13] | sel[29]}} & m[288 +: 32]);   // reg 95 (home 12) down
+    assign dn_o[1120 +: 32] = ({32{sel[34]}} & m[32 +: 32]);   // reg 98 (home 12) down
+    assign dn_o[1152 +: 32] = ({32{sel[34]}} & m[160 +: 32]);   // reg 101 (home 12) down
+    assign dn_o[1184 +: 32] = ({32{(sel[1] & sel2[1]) | (sel[5] & sel2[4]) | sel[38]}} & m[64 +: 32]) | ({32{sel[13] | sel[29]}} & m[448 +: 32]);   // reg 110 (home 14) down
+    assign dn_o[1216 +: 32] = ({32{(sel[1] & sel2[1]) | (sel[5] & sel2[4]) | sel[13]}} & m[192 +: 32]);   // reg 111 (home 14) down
+    assign dn_o[1248 +: 32] = ({32{(sel[1] & sel2[1]) | (sel[5] & sel2[4]) | sel[13] | sel[29]}} & m[320 +: 32]);   // reg 112 (home 14) down
+    assign dn_o[1280 +: 32] = ({32{(sel[1] & sel2[2]) | (sel[5] & sel2[5])}} & m[288 +: 32]);   // reg 113 (home 14) down
+    assign dn_o[1312 +: 32] = ({32{sel[34]}} & m[192 +: 32]);   // reg 115 (home 14) down
+    assign s1_d[0 +: 32] = ({32{(sel[1] & sel2[1]) | (sel[5] & sel2[4]) | sel[38]}} & m[96 +: 32]) | ({32{sel[12] | sel[27]}} & m[384 +: 32]) | ({32{sel[13] | sel[29]}} & m[480 +: 32]) | up_i[0 +: 32];   // reg 116 (home 15)
+    assign s1_d[32 +: 32] = ({32{(sel[1] & sel2[2])}} & m[32 +: 32]) | ({32{sel[12]}} & m[128 +: 32]) | ({32{(sel[1] & sel2[1]) | (sel[5] & sel2[4]) | sel[13]}} & m[224 +: 32]) | ({32{sel[31]}} & m[288 +: 32]) | ({32{(sel[5] & sel2[5])}} & m[448 +: 32]) | up_i[32 +: 32];   // reg 117 (home 15)
+    assign s1_d[64 +: 32] = ({32{sel[12] | sel[27]}} & m[256 +: 32]) | ({32{sel[31]}} & m[320 +: 32]) | ({32{(sel[1] & sel2[1]) | (sel[5] & sel2[4]) | sel[13] | sel[29]}} & m[352 +: 32]) | up_i[64 +: 32];   // reg 118 (home 15)
+    assign s1_d[96 +: 32] = ({32{(sel[1] & sel2[2]) | sel[30]}} & m[64 +: 32]) | ({32{(sel[5] & sel2[5])}} & m[544 +: 32]) | up_i[96 +: 32];   // reg 119 (home 15)
+    assign s1_d[128 +: 32] = ({32{sel[33]}} & m[0 +: 32]) | ({32{(sel[1] & sel2[2])}} & m[96 +: 32]) | ({32{(sel[5] & sel2[5])}} & m[480 +: 32]) | up_i[128 +: 32];   // reg 120 (home 15)
+    assign s1_d[160 +: 32] = ({32{(sel[1] & sel2[2])}} & m[160 +: 32]) | ({32{(sel[5] & sel2[5])}} & m[416 +: 32]) | up_i[160 +: 32];   // reg 121 (home 15)
+    assign s1_d[192 +: 32] = ({32{sel[30] | sel[33]}} & m[32 +: 32]) | ({32{(sel[1] & sel2[2])}} & m[192 +: 32]) | ({32{(sel[5] & sel2[5])}} & m[576 +: 32]) | up_i[192 +: 32];   // reg 122 (home 15)
+    assign s1_d[224 +: 32] = ({32{sel[33] | sel[34]}} & m[96 +: 32]) | ({32{(sel[1] & sel2[2])}} & m[224 +: 32]) | ({32{(sel[5] & sel2[5])}} & m[608 +: 32]) | up_i[224 +: 32];   // reg 123 (home 15)
+    assign s1_d[256 +: 32] = ({32{sel[33] | sel[34]}} & m[64 +: 32]) | ({32{(sel[1] & sel2[2]) | (sel[5] & sel2[5])}} & m[320 +: 32]) | up_i[256 +: 32];   // reg 124 (home 15)
+    assign s1_d[288 +: 32] = ({32{(sel[1] & sel2[2]) | (sel[5] & sel2[5])}} & m[352 +: 32]) | up_i[288 +: 32];   // reg 125 (home 15)
+    assign s1_d[320 +: 32] = up_i[320 +: 32];   // reg 126 (home 15)
+    assign s1_d[352 +: 32] = ({32{sel[34]}} & m[224 +: 32]);   // reg 127 (home 15)
+endmodule
+
+// QB_ACT_S1P S1: one qba2_s1p_b<b> per act-row band; s1 in the qba2_s1r register order
+module qba2_s1p (
+    input  logic          clk,
+    input  logic [16383:0] lb0, lb1,
+    input  logic [15:0]   ctx,       // s1c_r
+    input  logic [38:0]   sel1a, sel1b,
+    input  logic [10:0]   sel2,
+    output logic [4095:0] s1);
+    wire [38:0] sel = sel1a | sel1b;
+    logic [255:0] dn_0;   // cut 0: band 1 -> 0
+    logic [1375:0] up_0;   // cut 0: band 0 -> 1
+    logic [447:0] dn_1;   // cut 1: band 2 -> 1
+    logic [1343:0] up_1;   // cut 1: band 1 -> 2
+    logic [639:0] dn_2;   // cut 2: band 3 -> 2
+    logic [1343:0] up_2;   // cut 2: band 2 -> 3
+    logic [703:0] dn_3;   // cut 3: band 4 -> 3
+    logic [1503:0] up_3;   // cut 3: band 3 -> 4
+    logic [959:0] dn_4;   // cut 4: band 5 -> 4
+    logic [1471:0] up_4;   // cut 4: band 4 -> 5
+    logic [1151:0] dn_5;   // cut 5: band 6 -> 5
+    logic [1407:0] up_5;   // cut 5: band 5 -> 6
+    logic [1247:0] dn_6;   // cut 6: band 7 -> 6
+    logic [1439:0] up_6;   // cut 6: band 6 -> 7
+    logic [1247:0] dn_7;   // cut 7: band 8 -> 7
+    logic [1407:0] up_7;   // cut 7: band 7 -> 8
+    logic [1407:0] dn_8;   // cut 8: band 9 -> 8
+    logic [1247:0] up_8;   // cut 8: band 8 -> 9
+    logic [1535:0] dn_9;   // cut 9: band 10 -> 9
+    logic [1087:0] up_9;   // cut 9: band 9 -> 10
+    logic [1599:0] dn_10;   // cut 10: band 11 -> 10
+    logic [927:0] up_10;   // cut 10: band 10 -> 11
+    logic [1311:0] dn_11;   // cut 11: band 12 -> 11
+    logic [767:0] up_11;   // cut 11: band 11 -> 12
+    logic [1503:0] dn_12;   // cut 12: band 13 -> 12
+    logic [703:0] up_12;   // cut 12: band 12 -> 13
+    logic [1311:0] dn_13;   // cut 13: band 14 -> 13
+    logic [511:0] up_13;   // cut 13: band 13 -> 14
+    logic [1343:0] dn_14;   // cut 14: band 15 -> 14
+    logic [351:0] up_14;   // cut 14: band 14 -> 15
+    logic [1023:0] w0_0, w1_0;
+    assign w0_0[0 +: 32] = lb0[1056 +: 32];  assign w1_0[0 +: 32] = lb1[1056 +: 32];
+    assign w0_0[32 +: 32] = lb0[1088 +: 32];  assign w1_0[32 +: 32] = lb1[1088 +: 32];
+    assign w0_0[64 +: 32] = lb0[1120 +: 32];  assign w1_0[64 +: 32] = lb1[1120 +: 32];
+    assign w0_0[96 +: 32] = lb0[1376 +: 32];  assign w1_0[96 +: 32] = lb1[1376 +: 32];
+    assign w0_0[128 +: 32] = lb0[3104 +: 32];  assign w1_0[128 +: 32] = lb1[3104 +: 32];
+    assign w0_0[160 +: 32] = lb0[3136 +: 32];  assign w1_0[160 +: 32] = lb1[3136 +: 32];
+    assign w0_0[192 +: 32] = lb0[3168 +: 32];  assign w1_0[192 +: 32] = lb1[3168 +: 32];
+    assign w0_0[224 +: 32] = lb0[3424 +: 32];  assign w1_0[224 +: 32] = lb1[3424 +: 32];
+    assign w0_0[256 +: 32] = lb0[5152 +: 32];  assign w1_0[256 +: 32] = lb1[5152 +: 32];
+    assign w0_0[288 +: 32] = lb0[5184 +: 32];  assign w1_0[288 +: 32] = lb1[5184 +: 32];
+    assign w0_0[320 +: 32] = lb0[5216 +: 32];  assign w1_0[320 +: 32] = lb1[5216 +: 32];
+    assign w0_0[352 +: 32] = lb0[5472 +: 32];  assign w1_0[352 +: 32] = lb1[5472 +: 32];
+    assign w0_0[384 +: 32] = lb0[7200 +: 32];  assign w1_0[384 +: 32] = lb1[7200 +: 32];
+    assign w0_0[416 +: 32] = lb0[7232 +: 32];  assign w1_0[416 +: 32] = lb1[7232 +: 32];
+    assign w0_0[448 +: 32] = lb0[7264 +: 32];  assign w1_0[448 +: 32] = lb1[7264 +: 32];
+    assign w0_0[480 +: 32] = lb0[7520 +: 32];  assign w1_0[480 +: 32] = lb1[7520 +: 32];
+    assign w0_0[512 +: 32] = lb0[9248 +: 32];  assign w1_0[512 +: 32] = lb1[9248 +: 32];
+    assign w0_0[544 +: 32] = lb0[9280 +: 32];  assign w1_0[544 +: 32] = lb1[9280 +: 32];
+    assign w0_0[576 +: 32] = lb0[9312 +: 32];  assign w1_0[576 +: 32] = lb1[9312 +: 32];
+    assign w0_0[608 +: 32] = lb0[9568 +: 32];  assign w1_0[608 +: 32] = lb1[9568 +: 32];
+    assign w0_0[640 +: 32] = lb0[11296 +: 32];  assign w1_0[640 +: 32] = lb1[11296 +: 32];
+    assign w0_0[672 +: 32] = lb0[11328 +: 32];  assign w1_0[672 +: 32] = lb1[11328 +: 32];
+    assign w0_0[704 +: 32] = lb0[11360 +: 32];  assign w1_0[704 +: 32] = lb1[11360 +: 32];
+    assign w0_0[736 +: 32] = lb0[11616 +: 32];  assign w1_0[736 +: 32] = lb1[11616 +: 32];
+    assign w0_0[768 +: 32] = lb0[13344 +: 32];  assign w1_0[768 +: 32] = lb1[13344 +: 32];
+    assign w0_0[800 +: 32] = lb0[13376 +: 32];  assign w1_0[800 +: 32] = lb1[13376 +: 32];
+    assign w0_0[832 +: 32] = lb0[13408 +: 32];  assign w1_0[832 +: 32] = lb1[13408 +: 32];
+    assign w0_0[864 +: 32] = lb0[13664 +: 32];  assign w1_0[864 +: 32] = lb1[13664 +: 32];
+    assign w0_0[896 +: 32] = lb0[15392 +: 32];  assign w1_0[896 +: 32] = lb1[15392 +: 32];
+    assign w0_0[928 +: 32] = lb0[15424 +: 32];  assign w1_0[928 +: 32] = lb1[15424 +: 32];
+    assign w0_0[960 +: 32] = lb0[15456 +: 32];  assign w1_0[960 +: 32] = lb1[15456 +: 32];
+    assign w0_0[992 +: 32] = lb0[15712 +: 32];  assign w1_0[992 +: 32] = lb1[15712 +: 32];
+    logic [255:0] s1_0;
+    assign s1[0 +: 32] = s1_0[0 +: 32];
+    assign s1[32 +: 32] = s1_0[32 +: 32];
+    assign s1[64 +: 32] = s1_0[64 +: 32];
+    assign s1[96 +: 32] = s1_0[96 +: 32];
+    assign s1[128 +: 32] = s1_0[128 +: 32];
+    assign s1[160 +: 32] = s1_0[160 +: 32];
+    assign s1[192 +: 32] = s1_0[192 +: 32];
+    assign s1[224 +: 32] = s1_0[224 +: 32];
+    qba2_s1p_b0 u_b0 (.clk, .lb0(w0_0), .lb1(w1_0), .ctx(ctx[0]), .sel, .sel2, .dn_i(dn_0), .up_o(up_0), .s1(s1_0));
+    logic [1023:0] w0_1, w1_1;
+    assign w0_1[0 +: 32] = lb0[32 +: 32];  assign w1_1[0 +: 32] = lb1[32 +: 32];
+    assign w0_1[32 +: 32] = lb0[64 +: 32];  assign w1_1[32 +: 32] = lb1[64 +: 32];
+    assign w0_1[64 +: 32] = lb0[96 +: 32];  assign w1_1[64 +: 32] = lb1[96 +: 32];
+    assign w0_1[96 +: 32] = lb0[352 +: 32];  assign w1_1[96 +: 32] = lb1[352 +: 32];
+    assign w0_1[128 +: 32] = lb0[2080 +: 32];  assign w1_1[128 +: 32] = lb1[2080 +: 32];
+    assign w0_1[160 +: 32] = lb0[2112 +: 32];  assign w1_1[160 +: 32] = lb1[2112 +: 32];
+    assign w0_1[192 +: 32] = lb0[2144 +: 32];  assign w1_1[192 +: 32] = lb1[2144 +: 32];
+    assign w0_1[224 +: 32] = lb0[2400 +: 32];  assign w1_1[224 +: 32] = lb1[2400 +: 32];
+    assign w0_1[256 +: 32] = lb0[4128 +: 32];  assign w1_1[256 +: 32] = lb1[4128 +: 32];
+    assign w0_1[288 +: 32] = lb0[4160 +: 32];  assign w1_1[288 +: 32] = lb1[4160 +: 32];
+    assign w0_1[320 +: 32] = lb0[4192 +: 32];  assign w1_1[320 +: 32] = lb1[4192 +: 32];
+    assign w0_1[352 +: 32] = lb0[4448 +: 32];  assign w1_1[352 +: 32] = lb1[4448 +: 32];
+    assign w0_1[384 +: 32] = lb0[6176 +: 32];  assign w1_1[384 +: 32] = lb1[6176 +: 32];
+    assign w0_1[416 +: 32] = lb0[6208 +: 32];  assign w1_1[416 +: 32] = lb1[6208 +: 32];
+    assign w0_1[448 +: 32] = lb0[6240 +: 32];  assign w1_1[448 +: 32] = lb1[6240 +: 32];
+    assign w0_1[480 +: 32] = lb0[6496 +: 32];  assign w1_1[480 +: 32] = lb1[6496 +: 32];
+    assign w0_1[512 +: 32] = lb0[8224 +: 32];  assign w1_1[512 +: 32] = lb1[8224 +: 32];
+    assign w0_1[544 +: 32] = lb0[8256 +: 32];  assign w1_1[544 +: 32] = lb1[8256 +: 32];
+    assign w0_1[576 +: 32] = lb0[8288 +: 32];  assign w1_1[576 +: 32] = lb1[8288 +: 32];
+    assign w0_1[608 +: 32] = lb0[8544 +: 32];  assign w1_1[608 +: 32] = lb1[8544 +: 32];
+    assign w0_1[640 +: 32] = lb0[10272 +: 32];  assign w1_1[640 +: 32] = lb1[10272 +: 32];
+    assign w0_1[672 +: 32] = lb0[10304 +: 32];  assign w1_1[672 +: 32] = lb1[10304 +: 32];
+    assign w0_1[704 +: 32] = lb0[10336 +: 32];  assign w1_1[704 +: 32] = lb1[10336 +: 32];
+    assign w0_1[736 +: 32] = lb0[10592 +: 32];  assign w1_1[736 +: 32] = lb1[10592 +: 32];
+    assign w0_1[768 +: 32] = lb0[12320 +: 32];  assign w1_1[768 +: 32] = lb1[12320 +: 32];
+    assign w0_1[800 +: 32] = lb0[12352 +: 32];  assign w1_1[800 +: 32] = lb1[12352 +: 32];
+    assign w0_1[832 +: 32] = lb0[12384 +: 32];  assign w1_1[832 +: 32] = lb1[12384 +: 32];
+    assign w0_1[864 +: 32] = lb0[12640 +: 32];  assign w1_1[864 +: 32] = lb1[12640 +: 32];
+    assign w0_1[896 +: 32] = lb0[14368 +: 32];  assign w1_1[896 +: 32] = lb1[14368 +: 32];
+    assign w0_1[928 +: 32] = lb0[14400 +: 32];  assign w1_1[928 +: 32] = lb1[14400 +: 32];
+    assign w0_1[960 +: 32] = lb0[14432 +: 32];  assign w1_1[960 +: 32] = lb1[14432 +: 32];
+    assign w0_1[992 +: 32] = lb0[14688 +: 32];  assign w1_1[992 +: 32] = lb1[14688 +: 32];
+    logic [223:0] s1_1;
+    assign s1[256 +: 32] = s1_1[0 +: 32];
+    assign s1[288 +: 32] = s1_1[32 +: 32];
+    assign s1[320 +: 32] = s1_1[64 +: 32];
+    assign s1[352 +: 32] = s1_1[96 +: 32];
+    assign s1[384 +: 32] = s1_1[128 +: 32];
+    assign s1[416 +: 32] = s1_1[160 +: 32];
+    assign s1[448 +: 32] = s1_1[192 +: 32];
+    qba2_s1p_b1 u_b1 (.clk, .lb0(w0_1), .lb1(w1_1), .ctx(ctx[1]), .sel, .sel2, .dn_i(dn_1), .up_i(up_0), .dn_o(dn_0), .up_o(up_1), .s1(s1_1));
+    logic [1023:0] w0_2, w1_2;
+    assign w0_2[0 +: 32] = lb0[544 +: 32];  assign w1_2[0 +: 32] = lb1[544 +: 32];
+    assign w0_2[32 +: 32] = lb0[576 +: 32];  assign w1_2[32 +: 32] = lb1[576 +: 32];
+    assign w0_2[64 +: 32] = lb0[608 +: 32];  assign w1_2[64 +: 32] = lb1[608 +: 32];
+    assign w0_2[96 +: 32] = lb0[864 +: 32];  assign w1_2[96 +: 32] = lb1[864 +: 32];
+    assign w0_2[128 +: 32] = lb0[2592 +: 32];  assign w1_2[128 +: 32] = lb1[2592 +: 32];
+    assign w0_2[160 +: 32] = lb0[2624 +: 32];  assign w1_2[160 +: 32] = lb1[2624 +: 32];
+    assign w0_2[192 +: 32] = lb0[2656 +: 32];  assign w1_2[192 +: 32] = lb1[2656 +: 32];
+    assign w0_2[224 +: 32] = lb0[2912 +: 32];  assign w1_2[224 +: 32] = lb1[2912 +: 32];
+    assign w0_2[256 +: 32] = lb0[4640 +: 32];  assign w1_2[256 +: 32] = lb1[4640 +: 32];
+    assign w0_2[288 +: 32] = lb0[4672 +: 32];  assign w1_2[288 +: 32] = lb1[4672 +: 32];
+    assign w0_2[320 +: 32] = lb0[4704 +: 32];  assign w1_2[320 +: 32] = lb1[4704 +: 32];
+    assign w0_2[352 +: 32] = lb0[4960 +: 32];  assign w1_2[352 +: 32] = lb1[4960 +: 32];
+    assign w0_2[384 +: 32] = lb0[6688 +: 32];  assign w1_2[384 +: 32] = lb1[6688 +: 32];
+    assign w0_2[416 +: 32] = lb0[6720 +: 32];  assign w1_2[416 +: 32] = lb1[6720 +: 32];
+    assign w0_2[448 +: 32] = lb0[6752 +: 32];  assign w1_2[448 +: 32] = lb1[6752 +: 32];
+    assign w0_2[480 +: 32] = lb0[7008 +: 32];  assign w1_2[480 +: 32] = lb1[7008 +: 32];
+    assign w0_2[512 +: 32] = lb0[8736 +: 32];  assign w1_2[512 +: 32] = lb1[8736 +: 32];
+    assign w0_2[544 +: 32] = lb0[8768 +: 32];  assign w1_2[544 +: 32] = lb1[8768 +: 32];
+    assign w0_2[576 +: 32] = lb0[8800 +: 32];  assign w1_2[576 +: 32] = lb1[8800 +: 32];
+    assign w0_2[608 +: 32] = lb0[9056 +: 32];  assign w1_2[608 +: 32] = lb1[9056 +: 32];
+    assign w0_2[640 +: 32] = lb0[10784 +: 32];  assign w1_2[640 +: 32] = lb1[10784 +: 32];
+    assign w0_2[672 +: 32] = lb0[10816 +: 32];  assign w1_2[672 +: 32] = lb1[10816 +: 32];
+    assign w0_2[704 +: 32] = lb0[10848 +: 32];  assign w1_2[704 +: 32] = lb1[10848 +: 32];
+    assign w0_2[736 +: 32] = lb0[11104 +: 32];  assign w1_2[736 +: 32] = lb1[11104 +: 32];
+    assign w0_2[768 +: 32] = lb0[12832 +: 32];  assign w1_2[768 +: 32] = lb1[12832 +: 32];
+    assign w0_2[800 +: 32] = lb0[12864 +: 32];  assign w1_2[800 +: 32] = lb1[12864 +: 32];
+    assign w0_2[832 +: 32] = lb0[12896 +: 32];  assign w1_2[832 +: 32] = lb1[12896 +: 32];
+    assign w0_2[864 +: 32] = lb0[13152 +: 32];  assign w1_2[864 +: 32] = lb1[13152 +: 32];
+    assign w0_2[896 +: 32] = lb0[14880 +: 32];  assign w1_2[896 +: 32] = lb1[14880 +: 32];
+    assign w0_2[928 +: 32] = lb0[14912 +: 32];  assign w1_2[928 +: 32] = lb1[14912 +: 32];
+    assign w0_2[960 +: 32] = lb0[14944 +: 32];  assign w1_2[960 +: 32] = lb1[14944 +: 32];
+    assign w0_2[992 +: 32] = lb0[15200 +: 32];  assign w1_2[992 +: 32] = lb1[15200 +: 32];
+    logic [255:0] s1_2;
+    assign s1[480 +: 32] = s1_2[0 +: 32];
+    assign s1[512 +: 32] = s1_2[32 +: 32];
+    assign s1[544 +: 32] = s1_2[64 +: 32];
+    assign s1[576 +: 32] = s1_2[96 +: 32];
+    assign s1[608 +: 32] = s1_2[128 +: 32];
+    assign s1[640 +: 32] = s1_2[160 +: 32];
+    assign s1[672 +: 32] = s1_2[192 +: 32];
+    assign s1[704 +: 32] = s1_2[224 +: 32];
+    qba2_s1p_b2 u_b2 (.clk, .lb0(w0_2), .lb1(w1_2), .ctx(ctx[2]), .sel, .sel2, .dn_i(dn_2), .up_i(up_1), .dn_o(dn_1), .up_o(up_2), .s1(s1_2));
+    logic [1023:0] w0_3, w1_3;
+    assign w0_3[0 +: 32] = lb0[1568 +: 32];  assign w1_3[0 +: 32] = lb1[1568 +: 32];
+    assign w0_3[32 +: 32] = lb0[1600 +: 32];  assign w1_3[32 +: 32] = lb1[1600 +: 32];
+    assign w0_3[64 +: 32] = lb0[1632 +: 32];  assign w1_3[64 +: 32] = lb1[1632 +: 32];
+    assign w0_3[96 +: 32] = lb0[1664 +: 32];  assign w1_3[96 +: 32] = lb1[1664 +: 32];
+    assign w0_3[128 +: 32] = lb0[3616 +: 32];  assign w1_3[128 +: 32] = lb1[3616 +: 32];
+    assign w0_3[160 +: 32] = lb0[3648 +: 32];  assign w1_3[160 +: 32] = lb1[3648 +: 32];
+    assign w0_3[192 +: 32] = lb0[3680 +: 32];  assign w1_3[192 +: 32] = lb1[3680 +: 32];
+    assign w0_3[224 +: 32] = lb0[3712 +: 32];  assign w1_3[224 +: 32] = lb1[3712 +: 32];
+    assign w0_3[256 +: 32] = lb0[5664 +: 32];  assign w1_3[256 +: 32] = lb1[5664 +: 32];
+    assign w0_3[288 +: 32] = lb0[5696 +: 32];  assign w1_3[288 +: 32] = lb1[5696 +: 32];
+    assign w0_3[320 +: 32] = lb0[5728 +: 32];  assign w1_3[320 +: 32] = lb1[5728 +: 32];
+    assign w0_3[352 +: 32] = lb0[5760 +: 32];  assign w1_3[352 +: 32] = lb1[5760 +: 32];
+    assign w0_3[384 +: 32] = lb0[7712 +: 32];  assign w1_3[384 +: 32] = lb1[7712 +: 32];
+    assign w0_3[416 +: 32] = lb0[7744 +: 32];  assign w1_3[416 +: 32] = lb1[7744 +: 32];
+    assign w0_3[448 +: 32] = lb0[7776 +: 32];  assign w1_3[448 +: 32] = lb1[7776 +: 32];
+    assign w0_3[480 +: 32] = lb0[7808 +: 32];  assign w1_3[480 +: 32] = lb1[7808 +: 32];
+    assign w0_3[512 +: 32] = lb0[9760 +: 32];  assign w1_3[512 +: 32] = lb1[9760 +: 32];
+    assign w0_3[544 +: 32] = lb0[9792 +: 32];  assign w1_3[544 +: 32] = lb1[9792 +: 32];
+    assign w0_3[576 +: 32] = lb0[9824 +: 32];  assign w1_3[576 +: 32] = lb1[9824 +: 32];
+    assign w0_3[608 +: 32] = lb0[9856 +: 32];  assign w1_3[608 +: 32] = lb1[9856 +: 32];
+    assign w0_3[640 +: 32] = lb0[11808 +: 32];  assign w1_3[640 +: 32] = lb1[11808 +: 32];
+    assign w0_3[672 +: 32] = lb0[11840 +: 32];  assign w1_3[672 +: 32] = lb1[11840 +: 32];
+    assign w0_3[704 +: 32] = lb0[11872 +: 32];  assign w1_3[704 +: 32] = lb1[11872 +: 32];
+    assign w0_3[736 +: 32] = lb0[11904 +: 32];  assign w1_3[736 +: 32] = lb1[11904 +: 32];
+    assign w0_3[768 +: 32] = lb0[13856 +: 32];  assign w1_3[768 +: 32] = lb1[13856 +: 32];
+    assign w0_3[800 +: 32] = lb0[13888 +: 32];  assign w1_3[800 +: 32] = lb1[13888 +: 32];
+    assign w0_3[832 +: 32] = lb0[13920 +: 32];  assign w1_3[832 +: 32] = lb1[13920 +: 32];
+    assign w0_3[864 +: 32] = lb0[13952 +: 32];  assign w1_3[864 +: 32] = lb1[13952 +: 32];
+    assign w0_3[896 +: 32] = lb0[15904 +: 32];  assign w1_3[896 +: 32] = lb1[15904 +: 32];
+    assign w0_3[928 +: 32] = lb0[15936 +: 32];  assign w1_3[928 +: 32] = lb1[15936 +: 32];
+    assign w0_3[960 +: 32] = lb0[15968 +: 32];  assign w1_3[960 +: 32] = lb1[15968 +: 32];
+    assign w0_3[992 +: 32] = lb0[16000 +: 32];  assign w1_3[992 +: 32] = lb1[16000 +: 32];
+    logic [159:0] s1_3;
+    assign s1[736 +: 32] = s1_3[0 +: 32];
+    assign s1[768 +: 32] = s1_3[32 +: 32];
+    assign s1[800 +: 32] = s1_3[64 +: 32];
+    assign s1[832 +: 32] = s1_3[96 +: 32];
+    assign s1[864 +: 32] = s1_3[128 +: 32];
+    qba2_s1p_b3 u_b3 (.clk, .lb0(w0_3), .lb1(w1_3), .ctx(ctx[3]), .sel, .sel2, .dn_i(dn_3), .up_i(up_2), .dn_o(dn_2), .up_o(up_3), .s1(s1_3));
+    logic [1023:0] w0_4, w1_4;
+    assign w0_4[0 +: 32] = lb0[0 +: 32];  assign w1_4[0 +: 32] = lb1[0 +: 32];
+    assign w0_4[32 +: 32] = lb0[128 +: 32];  assign w1_4[32 +: 32] = lb1[128 +: 32];
+    assign w0_4[64 +: 32] = lb0[160 +: 32];  assign w1_4[64 +: 32] = lb1[160 +: 32];
+    assign w0_4[96 +: 32] = lb0[256 +: 32];  assign w1_4[96 +: 32] = lb1[256 +: 32];
+    assign w0_4[128 +: 32] = lb0[2048 +: 32];  assign w1_4[128 +: 32] = lb1[2048 +: 32];
+    assign w0_4[160 +: 32] = lb0[2176 +: 32];  assign w1_4[160 +: 32] = lb1[2176 +: 32];
+    assign w0_4[192 +: 32] = lb0[2208 +: 32];  assign w1_4[192 +: 32] = lb1[2208 +: 32];
+    assign w0_4[224 +: 32] = lb0[2304 +: 32];  assign w1_4[224 +: 32] = lb1[2304 +: 32];
+    assign w0_4[256 +: 32] = lb0[4096 +: 32];  assign w1_4[256 +: 32] = lb1[4096 +: 32];
+    assign w0_4[288 +: 32] = lb0[4224 +: 32];  assign w1_4[288 +: 32] = lb1[4224 +: 32];
+    assign w0_4[320 +: 32] = lb0[4256 +: 32];  assign w1_4[320 +: 32] = lb1[4256 +: 32];
+    assign w0_4[352 +: 32] = lb0[4352 +: 32];  assign w1_4[352 +: 32] = lb1[4352 +: 32];
+    assign w0_4[384 +: 32] = lb0[6144 +: 32];  assign w1_4[384 +: 32] = lb1[6144 +: 32];
+    assign w0_4[416 +: 32] = lb0[6272 +: 32];  assign w1_4[416 +: 32] = lb1[6272 +: 32];
+    assign w0_4[448 +: 32] = lb0[6304 +: 32];  assign w1_4[448 +: 32] = lb1[6304 +: 32];
+    assign w0_4[480 +: 32] = lb0[6400 +: 32];  assign w1_4[480 +: 32] = lb1[6400 +: 32];
+    assign w0_4[512 +: 32] = lb0[8192 +: 32];  assign w1_4[512 +: 32] = lb1[8192 +: 32];
+    assign w0_4[544 +: 32] = lb0[8320 +: 32];  assign w1_4[544 +: 32] = lb1[8320 +: 32];
+    assign w0_4[576 +: 32] = lb0[8352 +: 32];  assign w1_4[576 +: 32] = lb1[8352 +: 32];
+    assign w0_4[608 +: 32] = lb0[8448 +: 32];  assign w1_4[608 +: 32] = lb1[8448 +: 32];
+    assign w0_4[640 +: 32] = lb0[10240 +: 32];  assign w1_4[640 +: 32] = lb1[10240 +: 32];
+    assign w0_4[672 +: 32] = lb0[10368 +: 32];  assign w1_4[672 +: 32] = lb1[10368 +: 32];
+    assign w0_4[704 +: 32] = lb0[10400 +: 32];  assign w1_4[704 +: 32] = lb1[10400 +: 32];
+    assign w0_4[736 +: 32] = lb0[10496 +: 32];  assign w1_4[736 +: 32] = lb1[10496 +: 32];
+    assign w0_4[768 +: 32] = lb0[12288 +: 32];  assign w1_4[768 +: 32] = lb1[12288 +: 32];
+    assign w0_4[800 +: 32] = lb0[12416 +: 32];  assign w1_4[800 +: 32] = lb1[12416 +: 32];
+    assign w0_4[832 +: 32] = lb0[12448 +: 32];  assign w1_4[832 +: 32] = lb1[12448 +: 32];
+    assign w0_4[864 +: 32] = lb0[12544 +: 32];  assign w1_4[864 +: 32] = lb1[12544 +: 32];
+    assign w0_4[896 +: 32] = lb0[14336 +: 32];  assign w1_4[896 +: 32] = lb1[14336 +: 32];
+    assign w0_4[928 +: 32] = lb0[14464 +: 32];  assign w1_4[928 +: 32] = lb1[14464 +: 32];
+    assign w0_4[960 +: 32] = lb0[14496 +: 32];  assign w1_4[960 +: 32] = lb1[14496 +: 32];
+    assign w0_4[992 +: 32] = lb0[14592 +: 32];  assign w1_4[992 +: 32] = lb1[14592 +: 32];
+    logic [319:0] s1_4;
+    assign s1[896 +: 32] = s1_4[0 +: 32];
+    assign s1[928 +: 32] = s1_4[32 +: 32];
+    assign s1[960 +: 32] = s1_4[64 +: 32];
+    assign s1[992 +: 32] = s1_4[96 +: 32];
+    assign s1[1024 +: 32] = s1_4[128 +: 32];
+    assign s1[1056 +: 32] = s1_4[160 +: 32];
+    assign s1[1088 +: 32] = s1_4[192 +: 32];
+    assign s1[1120 +: 32] = s1_4[224 +: 32];
+    assign s1[1152 +: 32] = s1_4[256 +: 32];
+    assign s1[1184 +: 32] = s1_4[288 +: 32];
+    qba2_s1p_b4 u_b4 (.clk, .lb0(w0_4), .lb1(w1_4), .ctx(ctx[4]), .sel, .sel2, .dn_i(dn_4), .up_i(up_3), .dn_o(dn_3), .up_o(up_4), .s1(s1_4));
+    logic [1023:0] w0_5, w1_5;
+    assign w0_5[0 +: 32] = lb0[1024 +: 32];  assign w1_5[0 +: 32] = lb1[1024 +: 32];
+    assign w0_5[32 +: 32] = lb0[1152 +: 32];  assign w1_5[32 +: 32] = lb1[1152 +: 32];
+    assign w0_5[64 +: 32] = lb0[1184 +: 32];  assign w1_5[64 +: 32] = lb1[1184 +: 32];
+    assign w0_5[96 +: 32] = lb0[1280 +: 32];  assign w1_5[96 +: 32] = lb1[1280 +: 32];
+    assign w0_5[128 +: 32] = lb0[3072 +: 32];  assign w1_5[128 +: 32] = lb1[3072 +: 32];
+    assign w0_5[160 +: 32] = lb0[3200 +: 32];  assign w1_5[160 +: 32] = lb1[3200 +: 32];
+    assign w0_5[192 +: 32] = lb0[3232 +: 32];  assign w1_5[192 +: 32] = lb1[3232 +: 32];
+    assign w0_5[224 +: 32] = lb0[3328 +: 32];  assign w1_5[224 +: 32] = lb1[3328 +: 32];
+    assign w0_5[256 +: 32] = lb0[5120 +: 32];  assign w1_5[256 +: 32] = lb1[5120 +: 32];
+    assign w0_5[288 +: 32] = lb0[5248 +: 32];  assign w1_5[288 +: 32] = lb1[5248 +: 32];
+    assign w0_5[320 +: 32] = lb0[5280 +: 32];  assign w1_5[320 +: 32] = lb1[5280 +: 32];
+    assign w0_5[352 +: 32] = lb0[5376 +: 32];  assign w1_5[352 +: 32] = lb1[5376 +: 32];
+    assign w0_5[384 +: 32] = lb0[7168 +: 32];  assign w1_5[384 +: 32] = lb1[7168 +: 32];
+    assign w0_5[416 +: 32] = lb0[7296 +: 32];  assign w1_5[416 +: 32] = lb1[7296 +: 32];
+    assign w0_5[448 +: 32] = lb0[7328 +: 32];  assign w1_5[448 +: 32] = lb1[7328 +: 32];
+    assign w0_5[480 +: 32] = lb0[7424 +: 32];  assign w1_5[480 +: 32] = lb1[7424 +: 32];
+    assign w0_5[512 +: 32] = lb0[9216 +: 32];  assign w1_5[512 +: 32] = lb1[9216 +: 32];
+    assign w0_5[544 +: 32] = lb0[9344 +: 32];  assign w1_5[544 +: 32] = lb1[9344 +: 32];
+    assign w0_5[576 +: 32] = lb0[9376 +: 32];  assign w1_5[576 +: 32] = lb1[9376 +: 32];
+    assign w0_5[608 +: 32] = lb0[9472 +: 32];  assign w1_5[608 +: 32] = lb1[9472 +: 32];
+    assign w0_5[640 +: 32] = lb0[11264 +: 32];  assign w1_5[640 +: 32] = lb1[11264 +: 32];
+    assign w0_5[672 +: 32] = lb0[11392 +: 32];  assign w1_5[672 +: 32] = lb1[11392 +: 32];
+    assign w0_5[704 +: 32] = lb0[11424 +: 32];  assign w1_5[704 +: 32] = lb1[11424 +: 32];
+    assign w0_5[736 +: 32] = lb0[11520 +: 32];  assign w1_5[736 +: 32] = lb1[11520 +: 32];
+    assign w0_5[768 +: 32] = lb0[13312 +: 32];  assign w1_5[768 +: 32] = lb1[13312 +: 32];
+    assign w0_5[800 +: 32] = lb0[13440 +: 32];  assign w1_5[800 +: 32] = lb1[13440 +: 32];
+    assign w0_5[832 +: 32] = lb0[13472 +: 32];  assign w1_5[832 +: 32] = lb1[13472 +: 32];
+    assign w0_5[864 +: 32] = lb0[13568 +: 32];  assign w1_5[864 +: 32] = lb1[13568 +: 32];
+    assign w0_5[896 +: 32] = lb0[15360 +: 32];  assign w1_5[896 +: 32] = lb1[15360 +: 32];
+    assign w0_5[928 +: 32] = lb0[15488 +: 32];  assign w1_5[928 +: 32] = lb1[15488 +: 32];
+    assign w0_5[960 +: 32] = lb0[15520 +: 32];  assign w1_5[960 +: 32] = lb1[15520 +: 32];
+    assign w0_5[992 +: 32] = lb0[15616 +: 32];  assign w1_5[992 +: 32] = lb1[15616 +: 32];
+    logic [287:0] s1_5;
+    assign s1[1216 +: 32] = s1_5[0 +: 32];
+    assign s1[1248 +: 32] = s1_5[32 +: 32];
+    assign s1[1280 +: 32] = s1_5[64 +: 32];
+    assign s1[1312 +: 32] = s1_5[96 +: 32];
+    assign s1[1344 +: 32] = s1_5[128 +: 32];
+    assign s1[1376 +: 32] = s1_5[160 +: 32];
+    assign s1[1408 +: 32] = s1_5[192 +: 32];
+    assign s1[1440 +: 32] = s1_5[224 +: 32];
+    assign s1[1472 +: 32] = s1_5[256 +: 32];
+    qba2_s1p_b5 u_b5 (.clk, .lb0(w0_5), .lb1(w1_5), .ctx(ctx[5]), .sel, .sel2, .dn_i(dn_5), .up_i(up_4), .dn_o(dn_4), .up_o(up_5), .s1(s1_5));
+    logic [1023:0] w0_6, w1_6;
+    assign w0_6[0 +: 32] = lb0[512 +: 32];  assign w1_6[0 +: 32] = lb1[512 +: 32];
+    assign w0_6[32 +: 32] = lb0[640 +: 32];  assign w1_6[32 +: 32] = lb1[640 +: 32];
+    assign w0_6[64 +: 32] = lb0[672 +: 32];  assign w1_6[64 +: 32] = lb1[672 +: 32];
+    assign w0_6[96 +: 32] = lb0[768 +: 32];  assign w1_6[96 +: 32] = lb1[768 +: 32];
+    assign w0_6[128 +: 32] = lb0[2560 +: 32];  assign w1_6[128 +: 32] = lb1[2560 +: 32];
+    assign w0_6[160 +: 32] = lb0[2688 +: 32];  assign w1_6[160 +: 32] = lb1[2688 +: 32];
+    assign w0_6[192 +: 32] = lb0[2720 +: 32];  assign w1_6[192 +: 32] = lb1[2720 +: 32];
+    assign w0_6[224 +: 32] = lb0[2816 +: 32];  assign w1_6[224 +: 32] = lb1[2816 +: 32];
+    assign w0_6[256 +: 32] = lb0[4608 +: 32];  assign w1_6[256 +: 32] = lb1[4608 +: 32];
+    assign w0_6[288 +: 32] = lb0[4736 +: 32];  assign w1_6[288 +: 32] = lb1[4736 +: 32];
+    assign w0_6[320 +: 32] = lb0[4768 +: 32];  assign w1_6[320 +: 32] = lb1[4768 +: 32];
+    assign w0_6[352 +: 32] = lb0[4864 +: 32];  assign w1_6[352 +: 32] = lb1[4864 +: 32];
+    assign w0_6[384 +: 32] = lb0[6656 +: 32];  assign w1_6[384 +: 32] = lb1[6656 +: 32];
+    assign w0_6[416 +: 32] = lb0[6784 +: 32];  assign w1_6[416 +: 32] = lb1[6784 +: 32];
+    assign w0_6[448 +: 32] = lb0[6816 +: 32];  assign w1_6[448 +: 32] = lb1[6816 +: 32];
+    assign w0_6[480 +: 32] = lb0[6912 +: 32];  assign w1_6[480 +: 32] = lb1[6912 +: 32];
+    assign w0_6[512 +: 32] = lb0[8704 +: 32];  assign w1_6[512 +: 32] = lb1[8704 +: 32];
+    assign w0_6[544 +: 32] = lb0[8832 +: 32];  assign w1_6[544 +: 32] = lb1[8832 +: 32];
+    assign w0_6[576 +: 32] = lb0[8864 +: 32];  assign w1_6[576 +: 32] = lb1[8864 +: 32];
+    assign w0_6[608 +: 32] = lb0[8960 +: 32];  assign w1_6[608 +: 32] = lb1[8960 +: 32];
+    assign w0_6[640 +: 32] = lb0[10752 +: 32];  assign w1_6[640 +: 32] = lb1[10752 +: 32];
+    assign w0_6[672 +: 32] = lb0[10880 +: 32];  assign w1_6[672 +: 32] = lb1[10880 +: 32];
+    assign w0_6[704 +: 32] = lb0[10912 +: 32];  assign w1_6[704 +: 32] = lb1[10912 +: 32];
+    assign w0_6[736 +: 32] = lb0[11008 +: 32];  assign w1_6[736 +: 32] = lb1[11008 +: 32];
+    assign w0_6[768 +: 32] = lb0[12800 +: 32];  assign w1_6[768 +: 32] = lb1[12800 +: 32];
+    assign w0_6[800 +: 32] = lb0[12928 +: 32];  assign w1_6[800 +: 32] = lb1[12928 +: 32];
+    assign w0_6[832 +: 32] = lb0[12960 +: 32];  assign w1_6[832 +: 32] = lb1[12960 +: 32];
+    assign w0_6[864 +: 32] = lb0[13056 +: 32];  assign w1_6[864 +: 32] = lb1[13056 +: 32];
+    assign w0_6[896 +: 32] = lb0[14848 +: 32];  assign w1_6[896 +: 32] = lb1[14848 +: 32];
+    assign w0_6[928 +: 32] = lb0[14976 +: 32];  assign w1_6[928 +: 32] = lb1[14976 +: 32];
+    assign w0_6[960 +: 32] = lb0[15008 +: 32];  assign w1_6[960 +: 32] = lb1[15008 +: 32];
+    assign w0_6[992 +: 32] = lb0[15104 +: 32];  assign w1_6[992 +: 32] = lb1[15104 +: 32];
+    logic [255:0] s1_6;
+    assign s1[1504 +: 32] = s1_6[0 +: 32];
+    assign s1[1536 +: 32] = s1_6[32 +: 32];
+    assign s1[1568 +: 32] = s1_6[64 +: 32];
+    assign s1[1600 +: 32] = s1_6[96 +: 32];
+    assign s1[1632 +: 32] = s1_6[128 +: 32];
+    assign s1[1664 +: 32] = s1_6[160 +: 32];
+    assign s1[1696 +: 32] = s1_6[192 +: 32];
+    assign s1[1728 +: 32] = s1_6[224 +: 32];
+    qba2_s1p_b6 u_b6 (.clk, .lb0(w0_6), .lb1(w1_6), .ctx(ctx[6]), .sel, .sel2, .dn_i(dn_6), .up_i(up_5), .dn_o(dn_5), .up_o(up_6), .s1(s1_6));
+    logic [1023:0] w0_7, w1_7;
+    assign w0_7[0 +: 32] = lb0[1536 +: 32];  assign w1_7[0 +: 32] = lb1[1536 +: 32];
+    assign w0_7[32 +: 32] = lb0[1696 +: 32];  assign w1_7[32 +: 32] = lb1[1696 +: 32];
+    assign w0_7[64 +: 32] = lb0[1792 +: 32];  assign w1_7[64 +: 32] = lb1[1792 +: 32];
+    assign w0_7[96 +: 32] = lb0[1888 +: 32];  assign w1_7[96 +: 32] = lb1[1888 +: 32];
+    assign w0_7[128 +: 32] = lb0[3584 +: 32];  assign w1_7[128 +: 32] = lb1[3584 +: 32];
+    assign w0_7[160 +: 32] = lb0[3744 +: 32];  assign w1_7[160 +: 32] = lb1[3744 +: 32];
+    assign w0_7[192 +: 32] = lb0[3840 +: 32];  assign w1_7[192 +: 32] = lb1[3840 +: 32];
+    assign w0_7[224 +: 32] = lb0[3936 +: 32];  assign w1_7[224 +: 32] = lb1[3936 +: 32];
+    assign w0_7[256 +: 32] = lb0[5632 +: 32];  assign w1_7[256 +: 32] = lb1[5632 +: 32];
+    assign w0_7[288 +: 32] = lb0[5792 +: 32];  assign w1_7[288 +: 32] = lb1[5792 +: 32];
+    assign w0_7[320 +: 32] = lb0[5888 +: 32];  assign w1_7[320 +: 32] = lb1[5888 +: 32];
+    assign w0_7[352 +: 32] = lb0[5984 +: 32];  assign w1_7[352 +: 32] = lb1[5984 +: 32];
+    assign w0_7[384 +: 32] = lb0[7680 +: 32];  assign w1_7[384 +: 32] = lb1[7680 +: 32];
+    assign w0_7[416 +: 32] = lb0[7840 +: 32];  assign w1_7[416 +: 32] = lb1[7840 +: 32];
+    assign w0_7[448 +: 32] = lb0[7936 +: 32];  assign w1_7[448 +: 32] = lb1[7936 +: 32];
+    assign w0_7[480 +: 32] = lb0[8032 +: 32];  assign w1_7[480 +: 32] = lb1[8032 +: 32];
+    assign w0_7[512 +: 32] = lb0[9728 +: 32];  assign w1_7[512 +: 32] = lb1[9728 +: 32];
+    assign w0_7[544 +: 32] = lb0[9888 +: 32];  assign w1_7[544 +: 32] = lb1[9888 +: 32];
+    assign w0_7[576 +: 32] = lb0[9984 +: 32];  assign w1_7[576 +: 32] = lb1[9984 +: 32];
+    assign w0_7[608 +: 32] = lb0[10080 +: 32];  assign w1_7[608 +: 32] = lb1[10080 +: 32];
+    assign w0_7[640 +: 32] = lb0[11776 +: 32];  assign w1_7[640 +: 32] = lb1[11776 +: 32];
+    assign w0_7[672 +: 32] = lb0[11936 +: 32];  assign w1_7[672 +: 32] = lb1[11936 +: 32];
+    assign w0_7[704 +: 32] = lb0[12032 +: 32];  assign w1_7[704 +: 32] = lb1[12032 +: 32];
+    assign w0_7[736 +: 32] = lb0[12128 +: 32];  assign w1_7[736 +: 32] = lb1[12128 +: 32];
+    assign w0_7[768 +: 32] = lb0[13824 +: 32];  assign w1_7[768 +: 32] = lb1[13824 +: 32];
+    assign w0_7[800 +: 32] = lb0[13984 +: 32];  assign w1_7[800 +: 32] = lb1[13984 +: 32];
+    assign w0_7[832 +: 32] = lb0[14080 +: 32];  assign w1_7[832 +: 32] = lb1[14080 +: 32];
+    assign w0_7[864 +: 32] = lb0[14176 +: 32];  assign w1_7[864 +: 32] = lb1[14176 +: 32];
+    assign w0_7[896 +: 32] = lb0[15872 +: 32];  assign w1_7[896 +: 32] = lb1[15872 +: 32];
+    assign w0_7[928 +: 32] = lb0[16032 +: 32];  assign w1_7[928 +: 32] = lb1[16032 +: 32];
+    assign w0_7[960 +: 32] = lb0[16128 +: 32];  assign w1_7[960 +: 32] = lb1[16128 +: 32];
+    assign w0_7[992 +: 32] = lb0[16224 +: 32];  assign w1_7[992 +: 32] = lb1[16224 +: 32];
+    logic [191:0] s1_7;
+    assign s1[1760 +: 32] = s1_7[0 +: 32];
+    assign s1[1792 +: 32] = s1_7[32 +: 32];
+    assign s1[1824 +: 32] = s1_7[64 +: 32];
+    assign s1[1856 +: 32] = s1_7[96 +: 32];
+    assign s1[1888 +: 32] = s1_7[128 +: 32];
+    assign s1[1920 +: 32] = s1_7[160 +: 32];
+    qba2_s1p_b7 u_b7 (.clk, .lb0(w0_7), .lb1(w1_7), .ctx(ctx[7]), .sel, .sel2, .dn_i(dn_7), .up_i(up_6), .dn_o(dn_6), .up_o(up_7), .s1(s1_7));
+    logic [1023:0] w0_8, w1_8;
+    assign w0_8[0 +: 32] = lb0[192 +: 32];  assign w1_8[0 +: 32] = lb1[192 +: 32];
+    assign w0_8[32 +: 32] = lb0[288 +: 32];  assign w1_8[32 +: 32] = lb1[288 +: 32];
+    assign w0_8[64 +: 32] = lb0[320 +: 32];  assign w1_8[64 +: 32] = lb1[320 +: 32];
+    assign w0_8[96 +: 32] = lb0[416 +: 32];  assign w1_8[96 +: 32] = lb1[416 +: 32];
+    assign w0_8[128 +: 32] = lb0[2240 +: 32];  assign w1_8[128 +: 32] = lb1[2240 +: 32];
+    assign w0_8[160 +: 32] = lb0[2336 +: 32];  assign w1_8[160 +: 32] = lb1[2336 +: 32];
+    assign w0_8[192 +: 32] = lb0[2368 +: 32];  assign w1_8[192 +: 32] = lb1[2368 +: 32];
+    assign w0_8[224 +: 32] = lb0[2464 +: 32];  assign w1_8[224 +: 32] = lb1[2464 +: 32];
+    assign w0_8[256 +: 32] = lb0[4288 +: 32];  assign w1_8[256 +: 32] = lb1[4288 +: 32];
+    assign w0_8[288 +: 32] = lb0[4384 +: 32];  assign w1_8[288 +: 32] = lb1[4384 +: 32];
+    assign w0_8[320 +: 32] = lb0[4416 +: 32];  assign w1_8[320 +: 32] = lb1[4416 +: 32];
+    assign w0_8[352 +: 32] = lb0[4512 +: 32];  assign w1_8[352 +: 32] = lb1[4512 +: 32];
+    assign w0_8[384 +: 32] = lb0[6336 +: 32];  assign w1_8[384 +: 32] = lb1[6336 +: 32];
+    assign w0_8[416 +: 32] = lb0[6432 +: 32];  assign w1_8[416 +: 32] = lb1[6432 +: 32];
+    assign w0_8[448 +: 32] = lb0[6464 +: 32];  assign w1_8[448 +: 32] = lb1[6464 +: 32];
+    assign w0_8[480 +: 32] = lb0[6560 +: 32];  assign w1_8[480 +: 32] = lb1[6560 +: 32];
+    assign w0_8[512 +: 32] = lb0[8384 +: 32];  assign w1_8[512 +: 32] = lb1[8384 +: 32];
+    assign w0_8[544 +: 32] = lb0[8480 +: 32];  assign w1_8[544 +: 32] = lb1[8480 +: 32];
+    assign w0_8[576 +: 32] = lb0[8512 +: 32];  assign w1_8[576 +: 32] = lb1[8512 +: 32];
+    assign w0_8[608 +: 32] = lb0[8608 +: 32];  assign w1_8[608 +: 32] = lb1[8608 +: 32];
+    assign w0_8[640 +: 32] = lb0[10432 +: 32];  assign w1_8[640 +: 32] = lb1[10432 +: 32];
+    assign w0_8[672 +: 32] = lb0[10528 +: 32];  assign w1_8[672 +: 32] = lb1[10528 +: 32];
+    assign w0_8[704 +: 32] = lb0[10560 +: 32];  assign w1_8[704 +: 32] = lb1[10560 +: 32];
+    assign w0_8[736 +: 32] = lb0[10656 +: 32];  assign w1_8[736 +: 32] = lb1[10656 +: 32];
+    assign w0_8[768 +: 32] = lb0[12480 +: 32];  assign w1_8[768 +: 32] = lb1[12480 +: 32];
+    assign w0_8[800 +: 32] = lb0[12576 +: 32];  assign w1_8[800 +: 32] = lb1[12576 +: 32];
+    assign w0_8[832 +: 32] = lb0[12608 +: 32];  assign w1_8[832 +: 32] = lb1[12608 +: 32];
+    assign w0_8[864 +: 32] = lb0[12704 +: 32];  assign w1_8[864 +: 32] = lb1[12704 +: 32];
+    assign w0_8[896 +: 32] = lb0[14528 +: 32];  assign w1_8[896 +: 32] = lb1[14528 +: 32];
+    assign w0_8[928 +: 32] = lb0[14624 +: 32];  assign w1_8[928 +: 32] = lb1[14624 +: 32];
+    assign w0_8[960 +: 32] = lb0[14656 +: 32];  assign w1_8[960 +: 32] = lb1[14656 +: 32];
+    assign w0_8[992 +: 32] = lb0[14752 +: 32];  assign w1_8[992 +: 32] = lb1[14752 +: 32];
+    logic [287:0] s1_8;
+    assign s1[1952 +: 32] = s1_8[0 +: 32];
+    assign s1[1984 +: 32] = s1_8[32 +: 32];
+    assign s1[2016 +: 32] = s1_8[64 +: 32];
+    assign s1[2048 +: 32] = s1_8[96 +: 32];
+    assign s1[2080 +: 32] = s1_8[128 +: 32];
+    assign s1[2112 +: 32] = s1_8[160 +: 32];
+    assign s1[2144 +: 32] = s1_8[192 +: 32];
+    assign s1[2176 +: 32] = s1_8[224 +: 32];
+    assign s1[2208 +: 32] = s1_8[256 +: 32];
+    qba2_s1p_b8 u_b8 (.clk, .lb0(w0_8), .lb1(w1_8), .ctx(ctx[8]), .sel, .sel2, .dn_i(dn_8), .up_i(up_7), .dn_o(dn_7), .up_o(up_8), .s1(s1_8));
+    logic [1023:0] w0_9, w1_9;
+    assign w0_9[0 +: 32] = lb0[1216 +: 32];  assign w1_9[0 +: 32] = lb1[1216 +: 32];
+    assign w0_9[32 +: 32] = lb0[1312 +: 32];  assign w1_9[32 +: 32] = lb1[1312 +: 32];
+    assign w0_9[64 +: 32] = lb0[1344 +: 32];  assign w1_9[64 +: 32] = lb1[1344 +: 32];
+    assign w0_9[96 +: 32] = lb0[1440 +: 32];  assign w1_9[96 +: 32] = lb1[1440 +: 32];
+    assign w0_9[128 +: 32] = lb0[3264 +: 32];  assign w1_9[128 +: 32] = lb1[3264 +: 32];
+    assign w0_9[160 +: 32] = lb0[3360 +: 32];  assign w1_9[160 +: 32] = lb1[3360 +: 32];
+    assign w0_9[192 +: 32] = lb0[3392 +: 32];  assign w1_9[192 +: 32] = lb1[3392 +: 32];
+    assign w0_9[224 +: 32] = lb0[3488 +: 32];  assign w1_9[224 +: 32] = lb1[3488 +: 32];
+    assign w0_9[256 +: 32] = lb0[5312 +: 32];  assign w1_9[256 +: 32] = lb1[5312 +: 32];
+    assign w0_9[288 +: 32] = lb0[5408 +: 32];  assign w1_9[288 +: 32] = lb1[5408 +: 32];
+    assign w0_9[320 +: 32] = lb0[5440 +: 32];  assign w1_9[320 +: 32] = lb1[5440 +: 32];
+    assign w0_9[352 +: 32] = lb0[5536 +: 32];  assign w1_9[352 +: 32] = lb1[5536 +: 32];
+    assign w0_9[384 +: 32] = lb0[7360 +: 32];  assign w1_9[384 +: 32] = lb1[7360 +: 32];
+    assign w0_9[416 +: 32] = lb0[7456 +: 32];  assign w1_9[416 +: 32] = lb1[7456 +: 32];
+    assign w0_9[448 +: 32] = lb0[7488 +: 32];  assign w1_9[448 +: 32] = lb1[7488 +: 32];
+    assign w0_9[480 +: 32] = lb0[7584 +: 32];  assign w1_9[480 +: 32] = lb1[7584 +: 32];
+    assign w0_9[512 +: 32] = lb0[9408 +: 32];  assign w1_9[512 +: 32] = lb1[9408 +: 32];
+    assign w0_9[544 +: 32] = lb0[9504 +: 32];  assign w1_9[544 +: 32] = lb1[9504 +: 32];
+    assign w0_9[576 +: 32] = lb0[9536 +: 32];  assign w1_9[576 +: 32] = lb1[9536 +: 32];
+    assign w0_9[608 +: 32] = lb0[9632 +: 32];  assign w1_9[608 +: 32] = lb1[9632 +: 32];
+    assign w0_9[640 +: 32] = lb0[11456 +: 32];  assign w1_9[640 +: 32] = lb1[11456 +: 32];
+    assign w0_9[672 +: 32] = lb0[11552 +: 32];  assign w1_9[672 +: 32] = lb1[11552 +: 32];
+    assign w0_9[704 +: 32] = lb0[11584 +: 32];  assign w1_9[704 +: 32] = lb1[11584 +: 32];
+    assign w0_9[736 +: 32] = lb0[11680 +: 32];  assign w1_9[736 +: 32] = lb1[11680 +: 32];
+    assign w0_9[768 +: 32] = lb0[13504 +: 32];  assign w1_9[768 +: 32] = lb1[13504 +: 32];
+    assign w0_9[800 +: 32] = lb0[13600 +: 32];  assign w1_9[800 +: 32] = lb1[13600 +: 32];
+    assign w0_9[832 +: 32] = lb0[13632 +: 32];  assign w1_9[832 +: 32] = lb1[13632 +: 32];
+    assign w0_9[864 +: 32] = lb0[13728 +: 32];  assign w1_9[864 +: 32] = lb1[13728 +: 32];
+    assign w0_9[896 +: 32] = lb0[15552 +: 32];  assign w1_9[896 +: 32] = lb1[15552 +: 32];
+    assign w0_9[928 +: 32] = lb0[15648 +: 32];  assign w1_9[928 +: 32] = lb1[15648 +: 32];
+    assign w0_9[960 +: 32] = lb0[15680 +: 32];  assign w1_9[960 +: 32] = lb1[15680 +: 32];
+    assign w0_9[992 +: 32] = lb0[15776 +: 32];  assign w1_9[992 +: 32] = lb1[15776 +: 32];
+    logic [287:0] s1_9;
+    assign s1[2240 +: 32] = s1_9[0 +: 32];
+    assign s1[2272 +: 32] = s1_9[32 +: 32];
+    assign s1[2304 +: 32] = s1_9[64 +: 32];
+    assign s1[2336 +: 32] = s1_9[96 +: 32];
+    assign s1[2368 +: 32] = s1_9[128 +: 32];
+    assign s1[2400 +: 32] = s1_9[160 +: 32];
+    assign s1[2432 +: 32] = s1_9[192 +: 32];
+    assign s1[2464 +: 32] = s1_9[224 +: 32];
+    assign s1[2496 +: 32] = s1_9[256 +: 32];
+    qba2_s1p_b9 u_b9 (.clk, .lb0(w0_9), .lb1(w1_9), .ctx(ctx[9]), .sel, .sel2, .dn_i(dn_9), .up_i(up_8), .dn_o(dn_8), .up_o(up_9), .s1(s1_9));
+    logic [1023:0] w0_10, w1_10;
+    assign w0_10[0 +: 32] = lb0[1728 +: 32];  assign w1_10[0 +: 32] = lb1[1728 +: 32];
+    assign w0_10[32 +: 32] = lb0[1824 +: 32];  assign w1_10[32 +: 32] = lb1[1824 +: 32];
+    assign w0_10[64 +: 32] = lb0[1856 +: 32];  assign w1_10[64 +: 32] = lb1[1856 +: 32];
+    assign w0_10[96 +: 32] = lb0[1952 +: 32];  assign w1_10[96 +: 32] = lb1[1952 +: 32];
+    assign w0_10[128 +: 32] = lb0[3776 +: 32];  assign w1_10[128 +: 32] = lb1[3776 +: 32];
+    assign w0_10[160 +: 32] = lb0[3872 +: 32];  assign w1_10[160 +: 32] = lb1[3872 +: 32];
+    assign w0_10[192 +: 32] = lb0[3904 +: 32];  assign w1_10[192 +: 32] = lb1[3904 +: 32];
+    assign w0_10[224 +: 32] = lb0[4000 +: 32];  assign w1_10[224 +: 32] = lb1[4000 +: 32];
+    assign w0_10[256 +: 32] = lb0[5824 +: 32];  assign w1_10[256 +: 32] = lb1[5824 +: 32];
+    assign w0_10[288 +: 32] = lb0[5920 +: 32];  assign w1_10[288 +: 32] = lb1[5920 +: 32];
+    assign w0_10[320 +: 32] = lb0[5952 +: 32];  assign w1_10[320 +: 32] = lb1[5952 +: 32];
+    assign w0_10[352 +: 32] = lb0[6048 +: 32];  assign w1_10[352 +: 32] = lb1[6048 +: 32];
+    assign w0_10[384 +: 32] = lb0[7872 +: 32];  assign w1_10[384 +: 32] = lb1[7872 +: 32];
+    assign w0_10[416 +: 32] = lb0[7968 +: 32];  assign w1_10[416 +: 32] = lb1[7968 +: 32];
+    assign w0_10[448 +: 32] = lb0[8000 +: 32];  assign w1_10[448 +: 32] = lb1[8000 +: 32];
+    assign w0_10[480 +: 32] = lb0[8096 +: 32];  assign w1_10[480 +: 32] = lb1[8096 +: 32];
+    assign w0_10[512 +: 32] = lb0[9920 +: 32];  assign w1_10[512 +: 32] = lb1[9920 +: 32];
+    assign w0_10[544 +: 32] = lb0[10016 +: 32];  assign w1_10[544 +: 32] = lb1[10016 +: 32];
+    assign w0_10[576 +: 32] = lb0[10048 +: 32];  assign w1_10[576 +: 32] = lb1[10048 +: 32];
+    assign w0_10[608 +: 32] = lb0[10144 +: 32];  assign w1_10[608 +: 32] = lb1[10144 +: 32];
+    assign w0_10[640 +: 32] = lb0[11968 +: 32];  assign w1_10[640 +: 32] = lb1[11968 +: 32];
+    assign w0_10[672 +: 32] = lb0[12064 +: 32];  assign w1_10[672 +: 32] = lb1[12064 +: 32];
+    assign w0_10[704 +: 32] = lb0[12096 +: 32];  assign w1_10[704 +: 32] = lb1[12096 +: 32];
+    assign w0_10[736 +: 32] = lb0[12192 +: 32];  assign w1_10[736 +: 32] = lb1[12192 +: 32];
+    assign w0_10[768 +: 32] = lb0[14016 +: 32];  assign w1_10[768 +: 32] = lb1[14016 +: 32];
+    assign w0_10[800 +: 32] = lb0[14112 +: 32];  assign w1_10[800 +: 32] = lb1[14112 +: 32];
+    assign w0_10[832 +: 32] = lb0[14144 +: 32];  assign w1_10[832 +: 32] = lb1[14144 +: 32];
+    assign w0_10[864 +: 32] = lb0[14240 +: 32];  assign w1_10[864 +: 32] = lb1[14240 +: 32];
+    assign w0_10[896 +: 32] = lb0[16064 +: 32];  assign w1_10[896 +: 32] = lb1[16064 +: 32];
+    assign w0_10[928 +: 32] = lb0[16160 +: 32];  assign w1_10[928 +: 32] = lb1[16160 +: 32];
+    assign w0_10[960 +: 32] = lb0[16192 +: 32];  assign w1_10[960 +: 32] = lb1[16192 +: 32];
+    assign w0_10[992 +: 32] = lb0[16288 +: 32];  assign w1_10[992 +: 32] = lb1[16288 +: 32];
+    logic [255:0] s1_10;
+    assign s1[2528 +: 32] = s1_10[0 +: 32];
+    assign s1[2560 +: 32] = s1_10[32 +: 32];
+    assign s1[2592 +: 32] = s1_10[64 +: 32];
+    assign s1[2624 +: 32] = s1_10[96 +: 32];
+    assign s1[2656 +: 32] = s1_10[128 +: 32];
+    assign s1[2688 +: 32] = s1_10[160 +: 32];
+    assign s1[2720 +: 32] = s1_10[192 +: 32];
+    assign s1[2752 +: 32] = s1_10[224 +: 32];
+    qba2_s1p_b10 u_b10 (.clk, .lb0(w0_10), .lb1(w1_10), .ctx(ctx[10]), .sel, .sel2, .dn_i(dn_10), .up_i(up_9), .dn_o(dn_9), .up_o(up_10), .s1(s1_10));
+    logic [1023:0] w0_11, w1_11;
+    assign w0_11[0 +: 32] = lb0[704 +: 32];  assign w1_11[0 +: 32] = lb1[704 +: 32];
+    assign w0_11[32 +: 32] = lb0[800 +: 32];  assign w1_11[32 +: 32] = lb1[800 +: 32];
+    assign w0_11[64 +: 32] = lb0[832 +: 32];  assign w1_11[64 +: 32] = lb1[832 +: 32];
+    assign w0_11[96 +: 32] = lb0[928 +: 32];  assign w1_11[96 +: 32] = lb1[928 +: 32];
+    assign w0_11[128 +: 32] = lb0[2752 +: 32];  assign w1_11[128 +: 32] = lb1[2752 +: 32];
+    assign w0_11[160 +: 32] = lb0[2848 +: 32];  assign w1_11[160 +: 32] = lb1[2848 +: 32];
+    assign w0_11[192 +: 32] = lb0[2880 +: 32];  assign w1_11[192 +: 32] = lb1[2880 +: 32];
+    assign w0_11[224 +: 32] = lb0[2976 +: 32];  assign w1_11[224 +: 32] = lb1[2976 +: 32];
+    assign w0_11[256 +: 32] = lb0[4800 +: 32];  assign w1_11[256 +: 32] = lb1[4800 +: 32];
+    assign w0_11[288 +: 32] = lb0[4896 +: 32];  assign w1_11[288 +: 32] = lb1[4896 +: 32];
+    assign w0_11[320 +: 32] = lb0[4928 +: 32];  assign w1_11[320 +: 32] = lb1[4928 +: 32];
+    assign w0_11[352 +: 32] = lb0[5024 +: 32];  assign w1_11[352 +: 32] = lb1[5024 +: 32];
+    assign w0_11[384 +: 32] = lb0[6848 +: 32];  assign w1_11[384 +: 32] = lb1[6848 +: 32];
+    assign w0_11[416 +: 32] = lb0[6944 +: 32];  assign w1_11[416 +: 32] = lb1[6944 +: 32];
+    assign w0_11[448 +: 32] = lb0[6976 +: 32];  assign w1_11[448 +: 32] = lb1[6976 +: 32];
+    assign w0_11[480 +: 32] = lb0[7072 +: 32];  assign w1_11[480 +: 32] = lb1[7072 +: 32];
+    assign w0_11[512 +: 32] = lb0[8896 +: 32];  assign w1_11[512 +: 32] = lb1[8896 +: 32];
+    assign w0_11[544 +: 32] = lb0[8992 +: 32];  assign w1_11[544 +: 32] = lb1[8992 +: 32];
+    assign w0_11[576 +: 32] = lb0[9024 +: 32];  assign w1_11[576 +: 32] = lb1[9024 +: 32];
+    assign w0_11[608 +: 32] = lb0[9120 +: 32];  assign w1_11[608 +: 32] = lb1[9120 +: 32];
+    assign w0_11[640 +: 32] = lb0[10944 +: 32];  assign w1_11[640 +: 32] = lb1[10944 +: 32];
+    assign w0_11[672 +: 32] = lb0[11040 +: 32];  assign w1_11[672 +: 32] = lb1[11040 +: 32];
+    assign w0_11[704 +: 32] = lb0[11072 +: 32];  assign w1_11[704 +: 32] = lb1[11072 +: 32];
+    assign w0_11[736 +: 32] = lb0[11168 +: 32];  assign w1_11[736 +: 32] = lb1[11168 +: 32];
+    assign w0_11[768 +: 32] = lb0[12992 +: 32];  assign w1_11[768 +: 32] = lb1[12992 +: 32];
+    assign w0_11[800 +: 32] = lb0[13088 +: 32];  assign w1_11[800 +: 32] = lb1[13088 +: 32];
+    assign w0_11[832 +: 32] = lb0[13120 +: 32];  assign w1_11[832 +: 32] = lb1[13120 +: 32];
+    assign w0_11[864 +: 32] = lb0[13216 +: 32];  assign w1_11[864 +: 32] = lb1[13216 +: 32];
+    assign w0_11[896 +: 32] = lb0[15040 +: 32];  assign w1_11[896 +: 32] = lb1[15040 +: 32];
+    assign w0_11[928 +: 32] = lb0[15136 +: 32];  assign w1_11[928 +: 32] = lb1[15136 +: 32];
+    assign w0_11[960 +: 32] = lb0[15168 +: 32];  assign w1_11[960 +: 32] = lb1[15168 +: 32];
+    assign w0_11[992 +: 32] = lb0[15264 +: 32];  assign w1_11[992 +: 32] = lb1[15264 +: 32];
+    logic [191:0] s1_11;
+    assign s1[2784 +: 32] = s1_11[0 +: 32];
+    assign s1[2816 +: 32] = s1_11[32 +: 32];
+    assign s1[2848 +: 32] = s1_11[64 +: 32];
+    assign s1[2880 +: 32] = s1_11[96 +: 32];
+    assign s1[2912 +: 32] = s1_11[128 +: 32];
+    assign s1[2944 +: 32] = s1_11[160 +: 32];
+    qba2_s1p_b11 u_b11 (.clk, .lb0(w0_11), .lb1(w1_11), .ctx(ctx[11]), .sel, .sel2, .dn_i(dn_11), .up_i(up_10), .dn_o(dn_10), .up_o(up_11), .s1(s1_11));
+    logic [1023:0] w0_12, w1_12;
+    assign w0_12[0 +: 32] = lb0[224 +: 32];  assign w1_12[0 +: 32] = lb1[224 +: 32];
+    assign w0_12[32 +: 32] = lb0[384 +: 32];  assign w1_12[32 +: 32] = lb1[384 +: 32];
+    assign w0_12[64 +: 32] = lb0[448 +: 32];  assign w1_12[64 +: 32] = lb1[448 +: 32];
+    assign w0_12[96 +: 32] = lb0[480 +: 32];  assign w1_12[96 +: 32] = lb1[480 +: 32];
+    assign w0_12[128 +: 32] = lb0[2272 +: 32];  assign w1_12[128 +: 32] = lb1[2272 +: 32];
+    assign w0_12[160 +: 32] = lb0[2432 +: 32];  assign w1_12[160 +: 32] = lb1[2432 +: 32];
+    assign w0_12[192 +: 32] = lb0[2496 +: 32];  assign w1_12[192 +: 32] = lb1[2496 +: 32];
+    assign w0_12[224 +: 32] = lb0[2528 +: 32];  assign w1_12[224 +: 32] = lb1[2528 +: 32];
+    assign w0_12[256 +: 32] = lb0[4320 +: 32];  assign w1_12[256 +: 32] = lb1[4320 +: 32];
+    assign w0_12[288 +: 32] = lb0[4480 +: 32];  assign w1_12[288 +: 32] = lb1[4480 +: 32];
+    assign w0_12[320 +: 32] = lb0[4544 +: 32];  assign w1_12[320 +: 32] = lb1[4544 +: 32];
+    assign w0_12[352 +: 32] = lb0[4576 +: 32];  assign w1_12[352 +: 32] = lb1[4576 +: 32];
+    assign w0_12[384 +: 32] = lb0[6368 +: 32];  assign w1_12[384 +: 32] = lb1[6368 +: 32];
+    assign w0_12[416 +: 32] = lb0[6528 +: 32];  assign w1_12[416 +: 32] = lb1[6528 +: 32];
+    assign w0_12[448 +: 32] = lb0[6592 +: 32];  assign w1_12[448 +: 32] = lb1[6592 +: 32];
+    assign w0_12[480 +: 32] = lb0[6624 +: 32];  assign w1_12[480 +: 32] = lb1[6624 +: 32];
+    assign w0_12[512 +: 32] = lb0[8416 +: 32];  assign w1_12[512 +: 32] = lb1[8416 +: 32];
+    assign w0_12[544 +: 32] = lb0[8576 +: 32];  assign w1_12[544 +: 32] = lb1[8576 +: 32];
+    assign w0_12[576 +: 32] = lb0[8640 +: 32];  assign w1_12[576 +: 32] = lb1[8640 +: 32];
+    assign w0_12[608 +: 32] = lb0[8672 +: 32];  assign w1_12[608 +: 32] = lb1[8672 +: 32];
+    assign w0_12[640 +: 32] = lb0[10464 +: 32];  assign w1_12[640 +: 32] = lb1[10464 +: 32];
+    assign w0_12[672 +: 32] = lb0[10624 +: 32];  assign w1_12[672 +: 32] = lb1[10624 +: 32];
+    assign w0_12[704 +: 32] = lb0[10688 +: 32];  assign w1_12[704 +: 32] = lb1[10688 +: 32];
+    assign w0_12[736 +: 32] = lb0[10720 +: 32];  assign w1_12[736 +: 32] = lb1[10720 +: 32];
+    assign w0_12[768 +: 32] = lb0[12512 +: 32];  assign w1_12[768 +: 32] = lb1[12512 +: 32];
+    assign w0_12[800 +: 32] = lb0[12672 +: 32];  assign w1_12[800 +: 32] = lb1[12672 +: 32];
+    assign w0_12[832 +: 32] = lb0[12736 +: 32];  assign w1_12[832 +: 32] = lb1[12736 +: 32];
+    assign w0_12[864 +: 32] = lb0[12768 +: 32];  assign w1_12[864 +: 32] = lb1[12768 +: 32];
+    assign w0_12[896 +: 32] = lb0[14560 +: 32];  assign w1_12[896 +: 32] = lb1[14560 +: 32];
+    assign w0_12[928 +: 32] = lb0[14720 +: 32];  assign w1_12[928 +: 32] = lb1[14720 +: 32];
+    assign w0_12[960 +: 32] = lb0[14784 +: 32];  assign w1_12[960 +: 32] = lb1[14784 +: 32];
+    assign w0_12[992 +: 32] = lb0[14816 +: 32];  assign w1_12[992 +: 32] = lb1[14816 +: 32];
+    logic [287:0] s1_12;
+    assign s1[2976 +: 32] = s1_12[0 +: 32];
+    assign s1[3008 +: 32] = s1_12[32 +: 32];
+    assign s1[3040 +: 32] = s1_12[64 +: 32];
+    assign s1[3072 +: 32] = s1_12[96 +: 32];
+    assign s1[3104 +: 32] = s1_12[128 +: 32];
+    assign s1[3136 +: 32] = s1_12[160 +: 32];
+    assign s1[3168 +: 32] = s1_12[192 +: 32];
+    assign s1[3200 +: 32] = s1_12[224 +: 32];
+    assign s1[3232 +: 32] = s1_12[256 +: 32];
+    qba2_s1p_b12 u_b12 (.clk, .lb0(w0_12), .lb1(w1_12), .ctx(ctx[12]), .sel, .sel2, .dn_i(dn_12), .up_i(up_11), .dn_o(dn_11), .up_o(up_12), .s1(s1_12));
+    logic [1023:0] w0_13, w1_13;
+    assign w0_13[0 +: 32] = lb0[1248 +: 32];  assign w1_13[0 +: 32] = lb1[1248 +: 32];
+    assign w0_13[32 +: 32] = lb0[1408 +: 32];  assign w1_13[32 +: 32] = lb1[1408 +: 32];
+    assign w0_13[64 +: 32] = lb0[1472 +: 32];  assign w1_13[64 +: 32] = lb1[1472 +: 32];
+    assign w0_13[96 +: 32] = lb0[1504 +: 32];  assign w1_13[96 +: 32] = lb1[1504 +: 32];
+    assign w0_13[128 +: 32] = lb0[3296 +: 32];  assign w1_13[128 +: 32] = lb1[3296 +: 32];
+    assign w0_13[160 +: 32] = lb0[3456 +: 32];  assign w1_13[160 +: 32] = lb1[3456 +: 32];
+    assign w0_13[192 +: 32] = lb0[3520 +: 32];  assign w1_13[192 +: 32] = lb1[3520 +: 32];
+    assign w0_13[224 +: 32] = lb0[3552 +: 32];  assign w1_13[224 +: 32] = lb1[3552 +: 32];
+    assign w0_13[256 +: 32] = lb0[5344 +: 32];  assign w1_13[256 +: 32] = lb1[5344 +: 32];
+    assign w0_13[288 +: 32] = lb0[5504 +: 32];  assign w1_13[288 +: 32] = lb1[5504 +: 32];
+    assign w0_13[320 +: 32] = lb0[5568 +: 32];  assign w1_13[320 +: 32] = lb1[5568 +: 32];
+    assign w0_13[352 +: 32] = lb0[5600 +: 32];  assign w1_13[352 +: 32] = lb1[5600 +: 32];
+    assign w0_13[384 +: 32] = lb0[7392 +: 32];  assign w1_13[384 +: 32] = lb1[7392 +: 32];
+    assign w0_13[416 +: 32] = lb0[7552 +: 32];  assign w1_13[416 +: 32] = lb1[7552 +: 32];
+    assign w0_13[448 +: 32] = lb0[7616 +: 32];  assign w1_13[448 +: 32] = lb1[7616 +: 32];
+    assign w0_13[480 +: 32] = lb0[7648 +: 32];  assign w1_13[480 +: 32] = lb1[7648 +: 32];
+    assign w0_13[512 +: 32] = lb0[9440 +: 32];  assign w1_13[512 +: 32] = lb1[9440 +: 32];
+    assign w0_13[544 +: 32] = lb0[9600 +: 32];  assign w1_13[544 +: 32] = lb1[9600 +: 32];
+    assign w0_13[576 +: 32] = lb0[9664 +: 32];  assign w1_13[576 +: 32] = lb1[9664 +: 32];
+    assign w0_13[608 +: 32] = lb0[9696 +: 32];  assign w1_13[608 +: 32] = lb1[9696 +: 32];
+    assign w0_13[640 +: 32] = lb0[11488 +: 32];  assign w1_13[640 +: 32] = lb1[11488 +: 32];
+    assign w0_13[672 +: 32] = lb0[11648 +: 32];  assign w1_13[672 +: 32] = lb1[11648 +: 32];
+    assign w0_13[704 +: 32] = lb0[11712 +: 32];  assign w1_13[704 +: 32] = lb1[11712 +: 32];
+    assign w0_13[736 +: 32] = lb0[11744 +: 32];  assign w1_13[736 +: 32] = lb1[11744 +: 32];
+    assign w0_13[768 +: 32] = lb0[13536 +: 32];  assign w1_13[768 +: 32] = lb1[13536 +: 32];
+    assign w0_13[800 +: 32] = lb0[13696 +: 32];  assign w1_13[800 +: 32] = lb1[13696 +: 32];
+    assign w0_13[832 +: 32] = lb0[13760 +: 32];  assign w1_13[832 +: 32] = lb1[13760 +: 32];
+    assign w0_13[864 +: 32] = lb0[13792 +: 32];  assign w1_13[864 +: 32] = lb1[13792 +: 32];
+    assign w0_13[896 +: 32] = lb0[15584 +: 32];  assign w1_13[896 +: 32] = lb1[15584 +: 32];
+    assign w0_13[928 +: 32] = lb0[15744 +: 32];  assign w1_13[928 +: 32] = lb1[15744 +: 32];
+    assign w0_13[960 +: 32] = lb0[15808 +: 32];  assign w1_13[960 +: 32] = lb1[15808 +: 32];
+    assign w0_13[992 +: 32] = lb0[15840 +: 32];  assign w1_13[992 +: 32] = lb1[15840 +: 32];
+    logic [255:0] s1_13;
+    assign s1[3264 +: 32] = s1_13[0 +: 32];
+    assign s1[3296 +: 32] = s1_13[32 +: 32];
+    assign s1[3328 +: 32] = s1_13[64 +: 32];
+    assign s1[3360 +: 32] = s1_13[96 +: 32];
+    assign s1[3392 +: 32] = s1_13[128 +: 32];
+    assign s1[3424 +: 32] = s1_13[160 +: 32];
+    assign s1[3456 +: 32] = s1_13[192 +: 32];
+    assign s1[3488 +: 32] = s1_13[224 +: 32];
+    qba2_s1p_b13 u_b13 (.clk, .lb0(w0_13), .lb1(w1_13), .ctx(ctx[13]), .sel, .sel2, .dn_i(dn_13), .up_i(up_12), .dn_o(dn_12), .up_o(up_13), .s1(s1_13));
+    logic [1023:0] w0_14, w1_14;
+    assign w0_14[0 +: 32] = lb0[736 +: 32];  assign w1_14[0 +: 32] = lb1[736 +: 32];
+    assign w0_14[32 +: 32] = lb0[896 +: 32];  assign w1_14[32 +: 32] = lb1[896 +: 32];
+    assign w0_14[64 +: 32] = lb0[960 +: 32];  assign w1_14[64 +: 32] = lb1[960 +: 32];
+    assign w0_14[96 +: 32] = lb0[992 +: 32];  assign w1_14[96 +: 32] = lb1[992 +: 32];
+    assign w0_14[128 +: 32] = lb0[2784 +: 32];  assign w1_14[128 +: 32] = lb1[2784 +: 32];
+    assign w0_14[160 +: 32] = lb0[2944 +: 32];  assign w1_14[160 +: 32] = lb1[2944 +: 32];
+    assign w0_14[192 +: 32] = lb0[3008 +: 32];  assign w1_14[192 +: 32] = lb1[3008 +: 32];
+    assign w0_14[224 +: 32] = lb0[3040 +: 32];  assign w1_14[224 +: 32] = lb1[3040 +: 32];
+    assign w0_14[256 +: 32] = lb0[4832 +: 32];  assign w1_14[256 +: 32] = lb1[4832 +: 32];
+    assign w0_14[288 +: 32] = lb0[4992 +: 32];  assign w1_14[288 +: 32] = lb1[4992 +: 32];
+    assign w0_14[320 +: 32] = lb0[5056 +: 32];  assign w1_14[320 +: 32] = lb1[5056 +: 32];
+    assign w0_14[352 +: 32] = lb0[5088 +: 32];  assign w1_14[352 +: 32] = lb1[5088 +: 32];
+    assign w0_14[384 +: 32] = lb0[6880 +: 32];  assign w1_14[384 +: 32] = lb1[6880 +: 32];
+    assign w0_14[416 +: 32] = lb0[7040 +: 32];  assign w1_14[416 +: 32] = lb1[7040 +: 32];
+    assign w0_14[448 +: 32] = lb0[7104 +: 32];  assign w1_14[448 +: 32] = lb1[7104 +: 32];
+    assign w0_14[480 +: 32] = lb0[7136 +: 32];  assign w1_14[480 +: 32] = lb1[7136 +: 32];
+    assign w0_14[512 +: 32] = lb0[8928 +: 32];  assign w1_14[512 +: 32] = lb1[8928 +: 32];
+    assign w0_14[544 +: 32] = lb0[9088 +: 32];  assign w1_14[544 +: 32] = lb1[9088 +: 32];
+    assign w0_14[576 +: 32] = lb0[9152 +: 32];  assign w1_14[576 +: 32] = lb1[9152 +: 32];
+    assign w0_14[608 +: 32] = lb0[9184 +: 32];  assign w1_14[608 +: 32] = lb1[9184 +: 32];
+    assign w0_14[640 +: 32] = lb0[10976 +: 32];  assign w1_14[640 +: 32] = lb1[10976 +: 32];
+    assign w0_14[672 +: 32] = lb0[11136 +: 32];  assign w1_14[672 +: 32] = lb1[11136 +: 32];
+    assign w0_14[704 +: 32] = lb0[11200 +: 32];  assign w1_14[704 +: 32] = lb1[11200 +: 32];
+    assign w0_14[736 +: 32] = lb0[11232 +: 32];  assign w1_14[736 +: 32] = lb1[11232 +: 32];
+    assign w0_14[768 +: 32] = lb0[13024 +: 32];  assign w1_14[768 +: 32] = lb1[13024 +: 32];
+    assign w0_14[800 +: 32] = lb0[13184 +: 32];  assign w1_14[800 +: 32] = lb1[13184 +: 32];
+    assign w0_14[832 +: 32] = lb0[13248 +: 32];  assign w1_14[832 +: 32] = lb1[13248 +: 32];
+    assign w0_14[864 +: 32] = lb0[13280 +: 32];  assign w1_14[864 +: 32] = lb1[13280 +: 32];
+    assign w0_14[896 +: 32] = lb0[15072 +: 32];  assign w1_14[896 +: 32] = lb1[15072 +: 32];
+    assign w0_14[928 +: 32] = lb0[15232 +: 32];  assign w1_14[928 +: 32] = lb1[15232 +: 32];
+    assign w0_14[960 +: 32] = lb0[15296 +: 32];  assign w1_14[960 +: 32] = lb1[15296 +: 32];
+    assign w0_14[992 +: 32] = lb0[15328 +: 32];  assign w1_14[992 +: 32] = lb1[15328 +: 32];
+    logic [191:0] s1_14;
+    assign s1[3520 +: 32] = s1_14[0 +: 32];
+    assign s1[3552 +: 32] = s1_14[32 +: 32];
+    assign s1[3584 +: 32] = s1_14[64 +: 32];
+    assign s1[3616 +: 32] = s1_14[96 +: 32];
+    assign s1[3648 +: 32] = s1_14[128 +: 32];
+    assign s1[3680 +: 32] = s1_14[160 +: 32];
+    qba2_s1p_b14 u_b14 (.clk, .lb0(w0_14), .lb1(w1_14), .ctx(ctx[14]), .sel, .sel2, .dn_i(dn_14), .up_i(up_13), .dn_o(dn_13), .up_o(up_14), .s1(s1_14));
+    logic [1023:0] w0_15, w1_15;
+    assign w0_15[0 +: 32] = lb0[1760 +: 32];  assign w1_15[0 +: 32] = lb1[1760 +: 32];
+    assign w0_15[32 +: 32] = lb0[1920 +: 32];  assign w1_15[32 +: 32] = lb1[1920 +: 32];
+    assign w0_15[64 +: 32] = lb0[1984 +: 32];  assign w1_15[64 +: 32] = lb1[1984 +: 32];
+    assign w0_15[96 +: 32] = lb0[2016 +: 32];  assign w1_15[96 +: 32] = lb1[2016 +: 32];
+    assign w0_15[128 +: 32] = lb0[3808 +: 32];  assign w1_15[128 +: 32] = lb1[3808 +: 32];
+    assign w0_15[160 +: 32] = lb0[3968 +: 32];  assign w1_15[160 +: 32] = lb1[3968 +: 32];
+    assign w0_15[192 +: 32] = lb0[4032 +: 32];  assign w1_15[192 +: 32] = lb1[4032 +: 32];
+    assign w0_15[224 +: 32] = lb0[4064 +: 32];  assign w1_15[224 +: 32] = lb1[4064 +: 32];
+    assign w0_15[256 +: 32] = lb0[5856 +: 32];  assign w1_15[256 +: 32] = lb1[5856 +: 32];
+    assign w0_15[288 +: 32] = lb0[6016 +: 32];  assign w1_15[288 +: 32] = lb1[6016 +: 32];
+    assign w0_15[320 +: 32] = lb0[6080 +: 32];  assign w1_15[320 +: 32] = lb1[6080 +: 32];
+    assign w0_15[352 +: 32] = lb0[6112 +: 32];  assign w1_15[352 +: 32] = lb1[6112 +: 32];
+    assign w0_15[384 +: 32] = lb0[7904 +: 32];  assign w1_15[384 +: 32] = lb1[7904 +: 32];
+    assign w0_15[416 +: 32] = lb0[8064 +: 32];  assign w1_15[416 +: 32] = lb1[8064 +: 32];
+    assign w0_15[448 +: 32] = lb0[8128 +: 32];  assign w1_15[448 +: 32] = lb1[8128 +: 32];
+    assign w0_15[480 +: 32] = lb0[8160 +: 32];  assign w1_15[480 +: 32] = lb1[8160 +: 32];
+    assign w0_15[512 +: 32] = lb0[9952 +: 32];  assign w1_15[512 +: 32] = lb1[9952 +: 32];
+    assign w0_15[544 +: 32] = lb0[10112 +: 32];  assign w1_15[544 +: 32] = lb1[10112 +: 32];
+    assign w0_15[576 +: 32] = lb0[10176 +: 32];  assign w1_15[576 +: 32] = lb1[10176 +: 32];
+    assign w0_15[608 +: 32] = lb0[10208 +: 32];  assign w1_15[608 +: 32] = lb1[10208 +: 32];
+    assign w0_15[640 +: 32] = lb0[12000 +: 32];  assign w1_15[640 +: 32] = lb1[12000 +: 32];
+    assign w0_15[672 +: 32] = lb0[12160 +: 32];  assign w1_15[672 +: 32] = lb1[12160 +: 32];
+    assign w0_15[704 +: 32] = lb0[12224 +: 32];  assign w1_15[704 +: 32] = lb1[12224 +: 32];
+    assign w0_15[736 +: 32] = lb0[12256 +: 32];  assign w1_15[736 +: 32] = lb1[12256 +: 32];
+    assign w0_15[768 +: 32] = lb0[14048 +: 32];  assign w1_15[768 +: 32] = lb1[14048 +: 32];
+    assign w0_15[800 +: 32] = lb0[14208 +: 32];  assign w1_15[800 +: 32] = lb1[14208 +: 32];
+    assign w0_15[832 +: 32] = lb0[14272 +: 32];  assign w1_15[832 +: 32] = lb1[14272 +: 32];
+    assign w0_15[864 +: 32] = lb0[14304 +: 32];  assign w1_15[864 +: 32] = lb1[14304 +: 32];
+    assign w0_15[896 +: 32] = lb0[16096 +: 32];  assign w1_15[896 +: 32] = lb1[16096 +: 32];
+    assign w0_15[928 +: 32] = lb0[16256 +: 32];  assign w1_15[928 +: 32] = lb1[16256 +: 32];
+    assign w0_15[960 +: 32] = lb0[16320 +: 32];  assign w1_15[960 +: 32] = lb1[16320 +: 32];
+    assign w0_15[992 +: 32] = lb0[16352 +: 32];  assign w1_15[992 +: 32] = lb1[16352 +: 32];
+    logic [383:0] s1_15;
+    assign s1[3712 +: 32] = s1_15[0 +: 32];
+    assign s1[3744 +: 32] = s1_15[32 +: 32];
+    assign s1[3776 +: 32] = s1_15[64 +: 32];
+    assign s1[3808 +: 32] = s1_15[96 +: 32];
+    assign s1[3840 +: 32] = s1_15[128 +: 32];
+    assign s1[3872 +: 32] = s1_15[160 +: 32];
+    assign s1[3904 +: 32] = s1_15[192 +: 32];
+    assign s1[3936 +: 32] = s1_15[224 +: 32];
+    assign s1[3968 +: 32] = s1_15[256 +: 32];
+    assign s1[4000 +: 32] = s1_15[288 +: 32];
+    assign s1[4032 +: 32] = s1_15[320 +: 32];
+    assign s1[4064 +: 32] = s1_15[352 +: 32];
+    qba2_s1p_b15 u_b15 (.clk, .lb0(w0_15), .lb1(w1_15), .ctx(ctx[15]), .sel, .sel2, .up_i(up_14), .dn_o(dn_14), .s1(s1_15));
+endmodule
+`endif

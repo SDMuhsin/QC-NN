@@ -1,0 +1,34 @@
+PT_BLK tt errors 0
+design qb_act2_blk corner tt period 2.000000 lib tcbn65gplustc_ccs spef_nets total 331491 rc_network 265464 not_annotated 66027
+insertion_delay_L_ns 0.765 (latencies 0.92 0.61)
+reg2reg slack_ns -0.342 fmax_mhz 427.0 arrival 2.746 path u_act/s1c_r_reg_14_/CP -> u_act/u_s1/u_b4/s1_reg_40_/D
+din2reg slack_ns -0.184 arrival 2.644 path s_q[1575] -> u_act/sdq_reg_1575_/D
+cin2reg slack_ns -0.484 arrival 2.916 path tgo[1] -> u_act/sel2_reg_2_/D
+reg2act slack_ns 0.117 arrival 0.848 path u_dist/q_reg_4484_/CP -> act[4484]
+reg2cout slack_ns 0.154 arrival 1.161 path u_act/g_ctx_1__u_ctx/st_reg_1_/CP -> done[1]
+all slack_ns -0.484 fmax_mhz 402.7 arrival 2.916 path tgo[1] -> u_act/sel2_reg_2_/D
+hold_reg2reg slack_ns -0.005 arrival 0.902 path u_act/g_ctx_1__u_ctx/u_lb/lb_reg_1__824_/CP -> u_act/g_ctx_1__u_ctx/u_lb/lb_reg_0__824_/D
+hold_in2reg slack_ns 0.177 arrival 0.980 path s_q[1647] -> u_act/sdq_reg_1647_/D
+hold_reg2out slack_ns -0.097 arrival 0.718 path u_dist/q_reg_2849_/CP -> act[2849]
+act_clk2pin_ns max 0.848 min 0.718 (incl. latency; L 0.765; budget 0.200 = 0.1 P)
+hold_violating_endpoints 4410
+setup_violating_endpoints 2085
+pt_wall_s 38
+PT_BLK ss errors 0
+design qb_act2_blk corner ss period 2.000000 lib tcbn65gpluswc_ccs spef_nets total 331491 rc_network 265464 not_annotated 66027
+insertion_delay_L_ns 1.125 (latencies 1.35 0.90)
+reg2reg slack_ns -1.715 fmax_mhz 269.2 arrival 4.446 path u_act/s1c_r_reg_13_/CP -> u_act/u_s1/u_b0/s1_reg_52_/D
+din2reg slack_ns -0.608 arrival 3.378 path s_q[1575] -> u_act/sdq_reg_1575_/D
+cin2reg slack_ns -1.352 arrival 4.054 path tgo[1] -> u_act/sel2_reg_1_/D
+reg2act slack_ns 0.069 arrival 1.256 path u_dist/q_reg_4484_/CP -> act[4484]
+reg2cout slack_ns -0.107 arrival 1.782 path u_act/g_ctx_1__u_ctx/st_reg_0_/CP -> done[1]
+all slack_ns -1.715 fmax_mhz 269.2 arrival 4.446 path u_act/s1c_r_reg_13_/CP -> u_act/u_s1/u_b0/s1_reg_52_/D
+hold_reg2reg slack_ns 0.036 arrival 1.237 path u_act/g_ctx_1__u_ctx/u_lb/lb_reg_6__590_/CP -> u_act/g_ctx_1__u_ctx/u_lb/lb_reg_2__590_/D
+hold_in2reg slack_ns 0.248 arrival 1.488 path m_q[291] -> u_act/rdq_reg_291_/D
+hold_reg2out slack_ns -0.114 arrival 1.061 path u_dist/q_reg_2849_/CP -> act[2849]
+act_clk2pin_ns max 1.256 min 1.061 (incl. latency; L 1.125; budget 0.200 = 0.1 P)
+hold_violating_endpoints 4132
+setup_violating_endpoints 29081
+pt_wall_s 40
+R9A_POST_DONE
+0

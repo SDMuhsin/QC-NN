@@ -182,11 +182,18 @@ module qb_act2 #(parameter int ACT_PIPE = 1) (
             s1c_r[5] <= is_v[0];
 `endif
         end
+`ifdef QB_ACT_S1P
+    assign lbm = '0;                                               // R19 QB_ACT_S1P: the pre-mux is inside qba2_s1p (per band)
+`else
     for (genvar k = 0; k < 16; k++) begin : g_pmr
         qba2_pm_r u_pm (.lb0(lbf[0][1024 * k +: 1024]), .lb1(lbf[1][1024 * k +: 1024]), .ctx(s1c_r[k]),
                         .m(lbm[1024 * k +: 1024]));
     end
+`endif
 `else
+`ifdef QB_ACT_S1P
+    $error("QB_ACT_S1P needs QB_ACT_RPL");
+`endif
     logic s1c;
     always_ff @(posedge clk or negedge rst_n)
         if (!rst_n) s1c <= 1'b0; else s1c <= is_v[1];
@@ -197,7 +204,14 @@ module qb_act2 #(parameter int ACT_PIPE = 1) (
     // act row, re-used across configurations with a cfg-qualified select (sel2 = the registered cfg of the item in
     // sel1a / sel1b); S2 connects a register only to the act units of its home row +- 1.  Bit- and cycle-exact.
     logic [4095:0] s1r;
+`ifdef QB_ACT_S1P
+    // R19 (opt-in, results/r19.md): the same S1 band-partitioned (gen_act2_s1p.py): lb word j (8 slots x 2 ctx + its
+    // pre-mux, select s1c_r[b]) in act-row band pj[j]; per band the partial ORs of its terms, OR-ed band by band toward
+    // the register's home row (cascade), s1 register in its home band.  Bit- and cycle-exact (same terms / registers).
+    qba2_s1p u_s1 (.clk, .lb0(lbf[0]), .lb1(lbf[1]), .ctx(s1c_r), .sel1a, .sel1b, .sel2, .s1(s1r));
+`else
     qba2_s1r u_s1 (.clk, .m(lbm), .sel1a, .sel1b, .sel2, .s1(s1r));
+`endif
     qba2_s2r u_s2 (.clk, .s1(s1r), .sel2(sel2_1), .act(act_q));
     assign s1 = '0;                                                // R2 S1 unused
 `else
@@ -834,20 +848,41 @@ module qba2_ctx #(parameter int ACT_PIPE = 1) (
     wire [2:0] rp_ws = rp_clr ? ev1.row[2:0] : rp_rci ? rp_s1 : rp_s0;
     wire [2:0] rp_wsl = ev1.s ? rp_ws : rp_wb;
     wire [3:0] rp_wqm = ev1.s ? 4'hf : (4'd1 << ev1.q);
+`ifdef QB_ACT_S1P
+    // R19 QB_ACT_S1P: region r = act-row band r (its 4 words are of one quarter, qba2_s1p_bq: rp_rq[r] = rp_wqm[Q(r)])
+    wire [15:0] rp_rq, rp_rq2;
+    qba2_s1p_bq u_bq (.wqm(rp_wqm), .bq(rp_rq));
+`ifndef SYNTHESIS
+    qba2_s1p_bq u_bq2 (.wqm(ev2.s ? 4'hf : (4'd1 << ev2.q)), .bq(rp_rq2));   // sim-only check below
+`endif
+    always_ff @(posedge clk or negedge rst_n)
+        if (!rst_n) wer <= '0;
+        else for (int r = 0; r < 16; r++) for (int s = 0; s < 8; s++)
+            wer[r][s] <= ev1.v && ev1.wr && rp_wsl == 3'(s) && rp_rq[r];
+`else
     always_ff @(posedge clk or negedge rst_n)
         if (!rst_n) wer <= '0;
         else for (int r = 0; r < 16; r++) for (int s = 0; s < 8; s++)
             wer[r][s] <= ev1.v && ev1.wr && rp_wsl == 3'(s) && rp_wqm[r / 4];
+`endif
 `ifndef SYNTHESIS
 `ifndef QBA_RPL_NOCHK                                              // sim-only shadow check of wer vs the ev2 decode
     always_ff @(posedge clk)
         if (rst_n) for (int r = 0; r < 16; r++) for (int s = 0; s < 8; s++)
+`ifdef QB_ACT_S1P
+            if (wer[r][s] != (ev2.v && ev2.wr && (ev2.s ? wsl_s[2:0] : wsl_b[2:0]) == 3'(s) && rp_rq2[r]))
+`else
             if (wer[r][s] != (ev2.v && ev2.wr && (ev2.s ? wsl_s[2:0] : wsl_b[2:0]) == 3'(s) &&
                               ((ev2.s ? 4'hf : (4'd1 << ev2.q)) >> (r / 4)) & 4'd1))
+`endif
                 $error("QBA2_RPL_ERR wer[%0d][%0d] %b", r, s, wer[r][s]);
 `endif
 `endif
+`ifdef QB_ACT_S1P
+    qba2_lb_p u_lb (.clk, .shq, .wer, .wzero(ev2.zero), .ws(ev2.s), .rdq, .sdq, .lbf);   // R19: wer per act-row band
+`else
     qba2_lb_r u_lb (.clk, .shq, .wer, .wzero(ev2.zero), .ws(ev2.s), .rdq, .sdq, .lbf);
+`endif
 `endif
 endmodule
 

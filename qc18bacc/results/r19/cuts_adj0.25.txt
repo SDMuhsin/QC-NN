@@ -1,0 +1,60 @@
+VAL M2 V crossings   1347339 GRT demand   1346559 (1.001) | GRT resource   2160720 cap x 0.974
+VAL M3 H crossings   1291439 GRT demand   1284384 (1.005) | GRT resource   2133669 cap x 0.964
+VAL M4 V crossings   1245566 GRT demand   1244941 (1.001) | GRT resource   2044728 cap x 0.960
+VAL M5 H crossings    941297 GRT demand    939631 (1.002) | GRT resource   2158005 cap x 0.973
+VAL M6 V crossings    962673 GRT demand    958595 (1.004) | GRT resource   2157422 cap x 0.973
+VAL M7 H crossings    282539 GRT demand    282539 (1.000) | GRT resource   2042170 cap x 0.973
+TOT S1 int tree        V   1562896  44.0 %  H   1295715  51.5 %
+TOT S2 nets            V    164131   4.6 %  H    103307   4.1 %
+TOT act pipe/ports     V     36453   1.0 %  H     79840   3.2 %
+TOT clock              V    191382   5.4 %  H    166662   6.6 %
+TOT lb D-fan(wd)       V    535902  15.1 %  H    432844  17.2 %
+TOT lb D-local         V     55060   1.5 %  H     42153   1.7 %
+TOT lb other           V      6773   0.2 %  H      3316   0.1 %
+TOT lb slot-shift      V    117923   3.3 %  H     82702   3.3 %
+TOT lb write rdq/sdq   V    688438  19.4 %  H    191149   7.6 %
+TOT lb wsrc s_q/m_q    V    124145   3.5 %  H     75690   3.0 %
+TOT other              V     57310   1.6 %  H     33228   1.3 %
+TOT sel other-bcast    V      1554   0.0 %  H       969   0.0 %
+TOT sel s1c            V      1546   0.0 %  H      1921   0.1 %
+TOT sel sel1           V        50   0.0 %  H        28   0.0 %
+TOT sel sel2           V      3883   0.1 %  H      1122   0.0 %
+TOT sel shq            V      1298   0.0 %  H       177   0.0 %
+TOT sel wer            V      6834   0.2 %  H      4452   0.2 %
+TOT unclassified       V         0   0.0 %  H         0   0.0 %
+TOT all                V   3555578 (cap   6352930,  56.0 %)  H   2515275 (cap   6310180,  39.9 %)
+# 2-D edge overflow (layer-summed, model capacity): V 125 tracks on 559 edges, H 0 on 2 edges
+# act rows (act reg y centroid um, row): r0 156 r1 263 r2 372 r3 493 r4 610 r5 741 r6 853 r7 974 r8 1090 r9 1209 r10 1313 r11 1442 r12 1555 r13 1669 r14 1782 r15 1896
+CUT y   210.0     5056 /    9684 ( 52.2 %)  ov      0 | lb_write_rdq/sdq 43.8% (0)  lb_D-fan(wd) 13.3% (0)  S1_int_tree 10.1% (0)  S2_nets 7.3% (0)  lb_slot-shift 6.9% (0)  other 6.1% (0)  clock 4.9% (0)
+CUT y   318.0     5925 /    9684 ( 61.2 %)  ov      0 | lb_write_rdq/sdq 33.1% (0)  S1_int_tree 27.9% (0)  lb_D-fan(wd) 20.4% (0)  clock 6.2% (0)  S2_nets 4.4% (0)  lb_wsrc_s_q/m_q 3.0% (0)  lb_slot-shift 1.8% (0)
+CUT y   432.0     6507 /    9684 ( 67.2 %)  ov      0 | S1_int_tree 39.0% (0)  lb_write_rdq/sdq 24.9% (0)  lb_D-fan(wd) 18.2% (0)  S2_nets 4.4% (0)  lb_slot-shift 3.7% (0)  clock 3.3% (0)  lb_wsrc_s_q/m_q 2.6% (0)
+CUT y   552.0     7060 /    9684 ( 72.9 %)  ov      1 | S1_int_tree 47.1% (0)  lb_write_rdq/sdq 21.5% (0)  lb_D-fan(wd) 17.3% (1)  clock 3.9% (0)  S2_nets 3.5% (1)  lb_slot-shift 2.3% (1)  lb_wsrc_s_q/m_q 1.8% (1)
+CUT y   675.0     6670 /    9684 ( 68.9 %)  ov      3 | S1_int_tree 39.4% (0)  lb_write_rdq/sdq 22.0% (0)  lb_D-fan(wd) 18.2% (0)  lb_slot-shift 5.7% (1)  clock 4.5% (2)  S2_nets 4.0% (3)  lb_D-local 2.1% (1)
+CUT y   798.0     5948 /    9684 ( 61.4 %)  ov      0 | S1_int_tree 52.2% (0)  lb_write_rdq/sdq 22.4% (0)  lb_D-fan(wd) 9.6% (0)  S2_nets 5.0% (0)  clock 3.2% (0)  lb_wsrc_s_q/m_q 2.0% (0)  lb_slot-shift 1.7% (0)
+CUT y   915.0     6501 /    9684 ( 67.1 %)  ov      0 | S1_int_tree 52.2% (0)  lb_write_rdq/sdq 17.4% (0)  lb_D-fan(wd) 14.1% (0)  clock 3.6% (0)  S2_nets 3.4% (0)  lb_slot-shift 3.4% (0)  lb_wsrc_s_q/m_q 1.6% (0)
+CUT y  1032.0     6338 /    9684 ( 65.4 %)  ov      0 | S1_int_tree 52.2% (0)  lb_write_rdq/sdq 16.5% (0)  lb_D-fan(wd) 14.1% (0)  S2_nets 4.8% (0)  clock 4.4% (0)  lb_slot-shift 3.0% (0)  lb_wsrc_s_q/m_q 1.6% (0)
+CUT y  1149.0     5972 /    9684 ( 61.7 %)  ov      0 | S1_int_tree 52.7% (0)  lb_write_rdq/sdq 15.6% (0)  lb_D-fan(wd) 14.2% (0)  S2_nets 5.8% (0)  clock 5.6% (0)  lb_slot-shift 1.7% (0)  lb_wsrc_s_q/m_q 1.2% (0)
+CUT y  1260.0     5453 /    9684 ( 56.3 %)  ov      0 | S1_int_tree 55.3% (0)  lb_write_rdq/sdq 15.6% (0)  lb_D-fan(wd) 11.8% (0)  S2_nets 6.9% (0)  clock 4.2% (0)  lb_slot-shift 2.1% (0)  lb_wsrc_s_q/m_q 1.2% (0)
+CUT y  1377.0     6218 /    9684 ( 64.2 %)  ov      0 | S1_int_tree 50.5% (0)  lb_D-fan(wd) 19.8% (0)  lb_write_rdq/sdq 10.3% (0)  clock 8.2% (0)  S2_nets 4.2% (0)  lb_slot-shift 3.9% (0)  lb_D-local 1.4% (0)
+CUT y  1500.0     5801 /    9684 ( 59.9 %)  ov      0 | S1_int_tree 60.0% (0)  lb_D-fan(wd) 15.2% (0)  lb_write_rdq/sdq 7.5% (0)  clock 7.1% (0)  S2_nets 4.3% (0)  lb_slot-shift 2.9% (0)  lb_D-local 1.1% (0)
+CUT y  1611.0     5618 /    9684 ( 58.0 %)  ov      0 | S1_int_tree 51.1% (0)  lb_D-fan(wd) 18.5% (0)  clock 8.3% (0)  S2_nets 8.1% (0)  lb_write_rdq/sdq 6.9% (0)  lb_slot-shift 4.2% (0)  lb_D-local 1.4% (0)
+CUT y  1725.0     4153 /    9684 ( 42.9 %)  ov      0 | S1_int_tree 56.8% (0)  lb_D-fan(wd) 14.9% (0)  S2_nets 8.8% (0)  clock 7.8% (0)  lb_write_rdq/sdq 7.1% (0)  lb_slot-shift 2.0% (0)  other 0.9% (0)
+CUT y  1839.0     3266 /    9684 ( 33.7 %)  ov      0 | S1_int_tree 44.3% (0)  lb_D-fan(wd) 23.6% (0)  S2_nets 9.6% (0)  clock 9.0% (0)  lb_slot-shift 6.1% (0)  lb_write_rdq/sdq 3.2% (0)  lb_D-local 2.5% (0)
+CUT y    30.0     4718 /    9684 ( 48.7 %)  ov      0 | lb_wsrc_s_q/m_q 75.5% (0)  lb_write_rdq/sdq 16.4% (0)  act_pipe/ports 3.3% (0)  clock 2.5% (0)  other 2.1% (0)  sel_other-bcast 0.0% (0)  unclassified 0.0% (0)
+CUT y    60.0     3065 /    9684 ( 31.7 %)  ov      0 | lb_write_rdq/sdq 44.4% (0)  lb_wsrc_s_q/m_q 41.7% (0)  other 9.0% (0)  clock 2.8% (0)  act_pipe/ports 2.0% (0)  sel_other-bcast 0.2% (0)  unclassified 0.0% (0)
+CUT y    90.0     3344 /    9684 ( 34.5 %)  ov      0 | lb_write_rdq/sdq 51.4% (0)  lb_wsrc_s_q/m_q 25.3% (0)  other 11.6% (0)  clock 4.0% (0)  lb_D-fan(wd) 3.3% (0)  act_pipe/ports 1.9% (0)  lb_slot-shift 1.3% (0)
+CUT y   120.0     3675 /    9684 ( 37.9 %)  ov      0 | lb_write_rdq/sdq 54.8% (0)  lb_wsrc_s_q/m_q 15.1% (0)  other 13.3% (0)  lb_D-fan(wd) 4.5% (0)  clock 4.5% (0)  S1_int_tree 1.9% (0)  act_pipe/ports 1.7% (0)
+CUT y   150.0     4174 /    9684 ( 43.1 %)  ov      0 | lb_write_rdq/sdq 53.1% (0)  other 11.6% (0)  lb_D-fan(wd) 9.4% (0)  lb_wsrc_s_q/m_q 8.0% (0)  clock 5.2% (0)  lb_slot-shift 3.5% (0)  S2_nets 3.2% (0)
+CUT y   180.0     4575 /    9684 ( 47.2 %)  ov      0 | lb_write_rdq/sdq 49.4% (0)  lb_D-fan(wd) 10.7% (0)  other 9.6% (0)  lb_slot-shift 7.2% (0)  S2_nets 4.6% (0)  lb_wsrc_s_q/m_q 4.5% (0)  clock 4.5% (0)
+CUT y   210.0     5056 /    9684 ( 52.2 %)  ov      0 | lb_write_rdq/sdq 43.8% (0)  lb_D-fan(wd) 13.3% (0)  S1_int_tree 10.1% (0)  S2_nets 7.3% (0)  lb_slot-shift 6.9% (0)  other 6.1% (0)  clock 4.9% (0)
+CUT y   240.0     5547 /    9684 ( 57.3 %)  ov      0 | lb_write_rdq/sdq 39.0% (0)  S1_int_tree 16.9% (0)  lb_D-fan(wd) 15.6% (0)  S2_nets 6.9% (0)  other 5.3% (0)  clock 5.0% (0)  lb_slot-shift 3.9% (0)
+CUT y   270.0     5633 /    9684 ( 58.2 %)  ov      0 | lb_write_rdq/sdq 37.3% (0)  S1_int_tree 23.8% (0)  lb_D-fan(wd) 14.3% (0)  S2_nets 6.5% (0)  clock 4.8% (0)  other 4.4% (0)  lb_wsrc_s_q/m_q 3.2% (0)
+CUT y   300.0     5585 /    9684 ( 57.7 %)  ov      0 | lb_write_rdq/sdq 35.9% (0)  S1_int_tree 25.9% (0)  lb_D-fan(wd) 15.9% (0)  S2_nets 5.2% (0)  clock 4.3% (0)  lb_slot-shift 3.3% (0)  lb_wsrc_s_q/m_q 3.2% (0)
+CUT y   330.0     6058 /    9684 ( 62.6 %)  ov      0 | lb_write_rdq/sdq 32.2% (0)  S1_int_tree 28.7% (0)  lb_D-fan(wd) 20.1% (0)  clock 6.0% (0)  S2_nets 3.8% (0)  lb_wsrc_s_q/m_q 2.9% (0)  lb_slot-shift 2.6% (0)
+CUT y   360.0     6087 /    9684 ( 62.9 %)  ov      0 | S1_int_tree 32.9% (0)  lb_write_rdq/sdq 31.2% (0)  lb_D-fan(wd) 17.3% (0)  S2_nets 4.7% (0)  clock 3.8% (0)  lb_wsrc_s_q/m_q 2.9% (0)  lb_slot-shift 2.7% (0)
+CUT y   390.0     6263 /    9684 ( 64.7 %)  ov      0 | S1_int_tree 36.1% (0)  lb_write_rdq/sdq 29.6% (0)  lb_D-fan(wd) 15.8% (0)  S2_nets 4.5% (0)  clock 4.1% (0)  lb_slot-shift 3.3% (0)  lb_wsrc_s_q/m_q 2.8% (0)
+CUT y   420.0     6536 /    9684 ( 67.5 %)  ov      1 | S1_int_tree 37.5% (0)  lb_write_rdq/sdq 25.8% (0)  lb_D-fan(wd) 18.8% (0)  S2_nets 4.2% (1)  lb_slot-shift 3.7% (0)  clock 3.0% (0)  lb_wsrc_s_q/m_q 2.7% (0)
+CUT y   450.0     6716 /    9684 ( 69.4 %)  ov      1 | S1_int_tree 38.4% (0)  lb_write_rdq/sdq 23.6% (0)  lb_D-fan(wd) 19.9% (0)  S2_nets 4.5% (1)  clock 4.1% (0)  lb_slot-shift 3.3% (0)  lb_D-local 2.3% (0)
+CUT y   480.0     6953 /    9684 ( 71.8 %)  ov      0 | S1_int_tree 40.6% (0)  lb_write_rdq/sdq 22.0% (0)  lb_D-fan(wd) 18.6% (0)  clock 4.3% (0)  S2_nets 4.2% (0)  lb_slot-shift 3.7% (0)  lb_D-local 2.7% (0)
+CUT y   510.0     7144 /    9684 ( 73.8 %)  ov      0 | S1_int_tree 43.9% (0)  lb_write_rdq/sdq 21.4% (0)  lb_D-fan(wd) 18.2% (0)  clock 4.2% (0)  lb_slot-shift 3.7% (0)  S2_nets 3.6% (0)  lb_wsrc_s_q/m_q 1.8% (0)
+CUT y   540.0     7171 /    9684 ( 74.1 %)  ov      1 | S1_int_tree 46.5% (0)  lb_write_rdq/sdq 21.2% (0)  lb_D-fan(wd) 17.6% (1)  clock 4.3% (1)  S2_nets 3.3% (1)  lb_slot-shift 2.6% (1)  lb_wsrc_s_q/m_q 1.8% (1)

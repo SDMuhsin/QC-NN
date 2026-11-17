@@ -1,0 +1,101 @@
+== r19_p
+init init_tt setup_wns_ns 0.045 setup_tns_ns 0.000 hold_wns_ns 0.003 hold_tns_ns 0.000
+r13 pins: 4608 act east at column 0 y (yoff 1140); south: 2048 s_q fixed M6 hub order x 24 .. 842.8000000000001, 718 other (place_pins M2-M5)
+floorplan die_um 900.00 x 1970.00 core_um2 1742976.0 cell_um2 902142.7 macro_um2 0.0 utilisation 0.518
+pdn VDD check_power_grid true
+pdn VSS check_power_grid true
+r19 band seed cells 114704 bands 16 y0 220.0
+r19 bands seed | en n 272 in_band 0.967 dy_p50 31 dy_p90 53 | lb n 32768 in_band 0.979 dy_p50 29 dy_p90 52 | s1 n 81664 in_band 0.983 dy_p50 29 dy_p90 52
+r9a_edge chains 4608 cells 4608 flops 4401 not_placed 0 depth_um 60.0 max_dy_um 5.7 gap 0.60
+r19 bands gpl | en n 272 in_band 0.169 dy_p50 336 dy_p90 760 | lb n 32768 in_band 0.554 dy_p50 51 dy_p90 142 | s1 n 81664 in_band 0.501 dy_p50 58 dy_p90 176
+before_repair1 drv_nets 12897: ctx_ctl 221 lb 3337 lb_out 18 other 530 rdq 377 s1 6327 s2 596 sdq 1488 sel 3
+r7c after_repair1 die_um 900.00 x 1970.00 core_um2 1742976.0 cell_um2 1004445.7 macro_um2 0.0 utilisation 0.576
+before_repair2 drv_nets 7255: ctx_ctl 92 lb 674 lb_out 33 other 1428 rdq 28 s1 4258 s2 447 sdq 292 sel 3
+r7c after_repair2 die_um 900.00 x 1970.00 core_um2 1742976.0 cell_um2 1059272.6 macro_um2 0.0 utilisation 0.608
+place die_um 900.00 x 1970.00 core_um2 1742976.0 cell_um2 1059272.6 macro_um2 0.0 utilisation 0.608
+place place_tt setup_wns_ns -0.831 setup_tns_ns -340.882 hold_wns_ns 0.008 hold_tns_ns 0.000
+cts die_um 900.00 x 1970.00 core_um2 1742976.0 cell_um2 1130004.7 macro_um2 0.0 utilisation 0.648
+cts cts_tt setup_wns_ns -0.869 setup_tns_ns -2897.075 hold_wns_ns -0.703 hold_tns_ns -1777.606
+postcts_pre_repair tt setup_wns_ns -0.869 setup_viol_endpoints 2147 hold_wns_ns -0.169 hold_viol_endpoints 3684 die_um 900.00 x 1970.00 core_um2 1742976.0 cell_um2 1130004.7 macro_um2 0.0 utilisation 0.648
+drc_violations NA antenna_net_violations NA antenna_pin_violations NA
+pnr_wall_s 962 wall  peak_rss_mb 0
+== r19_ps
+init init_tt setup_wns_ns 0.045 setup_tns_ns 0.000 hold_wns_ns 0.003 hold_tns_ns 0.000
+r13 pins: 4608 act east at column 0 y (yoff 1140); south: 2048 s_q fixed M6 hub order x 24 .. 842.8000000000001, 718 other (place_pins M2-M5)
+floorplan die_um 900.00 x 1970.00 core_um2 1742976.0 cell_um2 902142.7 macro_um2 0.0 utilisation 0.518
+pdn VDD check_power_grid true
+pdn VSS check_power_grid true
+r19 band seed cells 114704 bands 16 y0 220.0
+r19 bands seed | en n 272 in_band 0.967 dy_p50 31 dy_p90 53 | lb n 32768 in_band 0.979 dy_p50 29 dy_p90 52 | s1 n 81664 in_band 0.983 dy_p50 29 dy_p90 52
+r9a_edge chains 4608 cells 4608 flops 4401 not_placed 0 depth_um 60.0 max_dy_um 5.7 gap 0.60
+r19 bands gpl | en n 272 in_band 0.169 dy_p50 336 dy_p90 760 | lb n 32768 in_band 0.554 dy_p50 51 dy_p90 142 | s1 n 81664 in_band 0.501 dy_p50 58 dy_p90 176
+before_repair1 drv_nets 12897: ctx_ctl 221 lb 3337 lb_out 18 other 530 rdq 377 s1 6327 s2 596 sdq 1488 sel 3
+r7c after_repair1 die_um 900.00 x 1970.00 core_um2 1742976.0 cell_um2 1004445.7 macro_um2 0.0 utilisation 0.576
+before_repair2 drv_nets 7255: ctx_ctl 92 lb 674 lb_out 33 other 1428 rdq 28 s1 4258 s2 447 sdq 292 sel 3
+r7c after_repair2 die_um 900.00 x 1970.00 core_um2 1742976.0 cell_um2 1059272.6 macro_um2 0.0 utilisation 0.608
+place die_um 900.00 x 1970.00 core_um2 1742976.0 cell_um2 1059272.6 macro_um2 0.0 utilisation 0.608
+place place_tt setup_wns_ns -0.831 setup_tns_ns -340.882 hold_wns_ns 0.008 hold_tns_ns 0.000
+cts die_um 900.00 x 1970.00 core_um2 1742976.0 cell_um2 1130004.7 macro_um2 0.0 utilisation 0.648
+cts cts_tt setup_wns_ns -0.869 setup_tns_ns -2897.075 hold_wns_ns -0.703 hold_tns_ns -1777.606
+drc_violations NA antenna_net_violations NA antenna_pin_violations NA
+pnr_wall_s 962 wall  peak_rss_mb 0
+r16 respread pre die_um 900.00 x 1970.00 core_um2 1742976.0 cell_um2 1130004.7 macro_um2 0.0 utilisation 0.648 fixed_cells 15928 (clock 11320) density 0.6980000000000001 gpl_pad 0
+r16 respread s1_inflated 57007
+r16 respread drv_after_gpl 16364
+r16 respread post die_um 900.00 x 1970.00 core_um2 1742976.0 cell_um2 1158885.0 macro_um2 0.0 utilisation 0.665 respread_tt setup_wns_ns -0.631 setup_tns_ns -2144.870 hold_wns_ns -0.725 hold_tns_ns -1873.334 wall_s 243
+postcts_pre_repair tt setup_wns_ns -0.631 setup_viol_endpoints 2558 hold_wns_ns -0.168 hold_viol_endpoints 3705 die_um 900.00 x 1970.00 core_um2 1742976.0 cell_um2 1158885.0 macro_um2 0.0 utilisation 0.665
+postcts_setup_repair tt setup_wns_ns -0.157 setup_viol_endpoints 1264 hold_wns_ns -0.168 hold_viol_endpoints 3705 die_um 900.00 x 1970.00 core_um2 1742976.0 cell_um2 1177099.9 macro_um2 0.0 utilisation 0.675
+postcts_setup_legal tt setup_wns_ns -0.159 setup_viol_endpoints 1669 hold_wns_ns -0.168 hold_viol_endpoints 3701 die_um 900.00 x 1970.00 core_um2 1742976.0 cell_um2 1177099.9 macro_um2 0.0 utilisation 0.675
+postcts_hold_repair_unlegal tt setup_wns_ns -0.159 setup_viol_endpoints 1669 hold_wns_ns 0.020 hold_viol_endpoints 0 die_um 900.00 x 1970.00 core_um2 1742976.0 cell_um2 1193757.8 macro_um2 0.0 utilisation 0.685
+postcts_hold_legal tt setup_wns_ns -0.159 setup_viol_endpoints 1674 hold_wns_ns 0.009 hold_viol_endpoints 0 die_um 900.00 x 1970.00 core_um2 1742976.0 cell_um2 1193757.8 macro_um2 0.0 utilisation 0.685
+postcts_setup1_repair tt setup_wns_ns -0.159 setup_viol_endpoints 1334 hold_wns_ns 0.009 hold_viol_endpoints 0 die_um 900.00 x 1970.00 core_um2 1742976.0 cell_um2 1197087.5 macro_um2 0.0 utilisation 0.687
+postcts_setup1_legal tt setup_wns_ns -0.159 setup_viol_endpoints 1444 hold_wns_ns 0.004 hold_viol_endpoints 0 die_um 900.00 x 1970.00 core_um2 1742976.0 cell_um2 1197087.5 macro_um2 0.0 utilisation 0.687
+drc_violations NA antenna_net_violations NA antenna_pin_violations NA
+pnr_wall_s 839 wall 13:59.22 peak_rss_mb 2907
+== r19_q
+init init_tt setup_wns_ns 0.045 setup_tns_ns 0.000 hold_wns_ns 0.003 hold_tns_ns 0.000
+r13 pins: 4608 act east at column 0 y (yoff 1140); south: 2048 s_q fixed M6 hub order x 24 .. 842.8000000000001, 718 other (place_pins M2-M5)
+floorplan die_um 900.00 x 1970.00 core_um2 1742976.0 cell_um2 902142.7 macro_um2 0.0 utilisation 0.518
+pdn VDD check_power_grid true
+pdn VSS check_power_grid true
+r9a_edge chains 4608 cells 4608 flops 4401 not_placed 0 depth_um 60.0 max_dy_um 5.7 gap 0.60
+before_repair1 drv_nets 12953: ctx_ctl 192 lb 3178 lb_out 33 other 438 rdq 379 s1 6519 s2 620 sdq 1592 sel 2
+r7c after_repair1 die_um 900.00 x 1970.00 core_um2 1742976.0 cell_um2 1005363.4 macro_um2 0.0 utilisation 0.577
+before_repair2 drv_nets 7122: ctx_ctl 110 lb 721 lb_out 4 other 1433 rdq 26 s1 4152 s2 440 sdq 234 sel 2
+r7c after_repair2 die_um 900.00 x 1970.00 core_um2 1742976.0 cell_um2 1060100.3 macro_um2 0.0 utilisation 0.608
+place die_um 900.00 x 1970.00 core_um2 1742976.0 cell_um2 1060100.3 macro_um2 0.0 utilisation 0.608
+place place_tt setup_wns_ns -0.750 setup_tns_ns -331.007 hold_wns_ns 0.012 hold_tns_ns 0.000
+cts die_um 900.00 x 1970.00 core_um2 1742976.0 cell_um2 1130787.0 macro_um2 0.0 utilisation 0.649
+cts cts_tt setup_wns_ns -0.820 setup_tns_ns -2943.569 hold_wns_ns -0.670 hold_tns_ns -1781.902
+drc_violations NA antenna_net_violations NA antenna_pin_violations NA
+pnr_wall_s 1747 wall  peak_rss_mb 0
+== r19_qs
+init init_tt setup_wns_ns 0.045 setup_tns_ns 0.000 hold_wns_ns 0.003 hold_tns_ns 0.000
+r13 pins: 4608 act east at column 0 y (yoff 1140); south: 2048 s_q fixed M6 hub order x 24 .. 842.8000000000001, 718 other (place_pins M2-M5)
+floorplan die_um 900.00 x 1970.00 core_um2 1742976.0 cell_um2 902142.7 macro_um2 0.0 utilisation 0.518
+pdn VDD check_power_grid true
+pdn VSS check_power_grid true
+r9a_edge chains 4608 cells 4608 flops 4401 not_placed 0 depth_um 60.0 max_dy_um 5.7 gap 0.60
+before_repair1 drv_nets 12953: ctx_ctl 192 lb 3178 lb_out 33 other 438 rdq 379 s1 6519 s2 620 sdq 1592 sel 2
+r7c after_repair1 die_um 900.00 x 1970.00 core_um2 1742976.0 cell_um2 1005363.4 macro_um2 0.0 utilisation 0.577
+before_repair2 drv_nets 7122: ctx_ctl 110 lb 721 lb_out 4 other 1433 rdq 26 s1 4152 s2 440 sdq 234 sel 2
+r7c after_repair2 die_um 900.00 x 1970.00 core_um2 1742976.0 cell_um2 1060100.3 macro_um2 0.0 utilisation 0.608
+place die_um 900.00 x 1970.00 core_um2 1742976.0 cell_um2 1060100.3 macro_um2 0.0 utilisation 0.608
+place place_tt setup_wns_ns -0.750 setup_tns_ns -331.007 hold_wns_ns 0.012 hold_tns_ns 0.000
+cts die_um 900.00 x 1970.00 core_um2 1742976.0 cell_um2 1130787.0 macro_um2 0.0 utilisation 0.649
+cts cts_tt setup_wns_ns -0.820 setup_tns_ns -2943.569 hold_wns_ns -0.670 hold_tns_ns -1781.902
+drc_violations NA antenna_net_violations NA antenna_pin_violations NA
+pnr_wall_s 1747 wall  peak_rss_mb 0
+r16 respread pre die_um 900.00 x 1970.00 core_um2 1742976.0 cell_um2 1130787.0 macro_um2 0.0 utilisation 0.649 fixed_cells 15914 (clock 11306) density 0.6990000000000001 gpl_pad 0
+r16 respread s1_inflated 56898
+r16 respread drv_after_gpl 15030
+r16 respread post die_um 900.00 x 1970.00 core_um2 1742976.0 cell_um2 1158658.9 macro_um2 0.0 utilisation 0.665 respread_tt setup_wns_ns -0.742 setup_tns_ns -2145.286 hold_wns_ns -0.696 hold_tns_ns -1888.685 wall_s 295
+postcts_pre_repair tt setup_wns_ns -0.742 setup_viol_endpoints 2564 hold_wns_ns -0.175 hold_viol_endpoints 3578 die_um 900.00 x 1970.00 core_um2 1742976.0 cell_um2 1158658.9 macro_um2 0.0 utilisation 0.665
+postcts_setup_repair tt setup_wns_ns -0.230 setup_viol_endpoints 1309 hold_wns_ns -0.175 hold_viol_endpoints 3577 die_um 900.00 x 1970.00 core_um2 1742976.0 cell_um2 1176360.5 macro_um2 0.0 utilisation 0.675
+postcts_setup_legal tt setup_wns_ns -0.232 setup_viol_endpoints 1512 hold_wns_ns -0.175 hold_viol_endpoints 3556 die_um 900.00 x 1970.00 core_um2 1742976.0 cell_um2 1176360.5 macro_um2 0.0 utilisation 0.675
+postcts_hold_repair_unlegal tt setup_wns_ns -0.232 setup_viol_endpoints 1512 hold_wns_ns 0.020 hold_viol_endpoints 0 die_um 900.00 x 1970.00 core_um2 1742976.0 cell_um2 1192257.0 macro_um2 0.0 utilisation 0.684
+postcts_hold_legal tt setup_wns_ns -0.232 setup_viol_endpoints 1512 hold_wns_ns 0.008 hold_viol_endpoints 0 die_um 900.00 x 1970.00 core_um2 1742976.0 cell_um2 1192257.0 macro_um2 0.0 utilisation 0.684
+postcts_setup1_repair tt setup_wns_ns -0.232 setup_viol_endpoints 1289 hold_wns_ns 0.008 hold_viol_endpoints 0 die_um 900.00 x 1970.00 core_um2 1742976.0 cell_um2 1193524.9 macro_um2 0.0 utilisation 0.685
+postcts_setup1_legal tt setup_wns_ns -0.234 setup_viol_endpoints 1437 hold_wns_ns 0.008 hold_viol_endpoints 0 die_um 900.00 x 1970.00 core_um2 1742976.0 cell_um2 1193524.9 macro_um2 0.0 utilisation 0.685
+drc_violations NA antenna_net_violations NA antenna_pin_violations NA
+pnr_wall_s 1696 wall 28:15.95 peak_rss_mb 2903

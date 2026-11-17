@@ -1,0 +1,53 @@
+design qb_act2_blk top qb_act2_blk corner tt period_ns 1.65 topo 1 wire_load topo
+cell_area_um2 902142.730883 gate_eq_kGE 626.49 cells 249279 regs 55489
+setup_wns_ns -0.0538493 setup_tns_ns -1.899 setup_viol_endpoints 84
+setup_worst_path u_act/g_ctx_0__u_ctx/shq_reg_2_/CP -> u_act/g_ctx_0__u_ctx/u_lb/lb_reg_0__1837_/D
+hold_wns_ns -0.000125363 hold_tns_ns -0.011 hold_viol_endpoints 164
+hold_worst_path u_act/u_s2/act_reg_1955_/CP -> u_act/g_pipe_0__u_ap/q_reg_1955_/D
+dc_wall_s 1130
+wall 19:02.93 peak_rss_mb 3833
+u_act                             860927.4121     95.4   12614.4001   21991.3200  0.0000  qb_act2_ACT_PIPE1
+u_act/g_ctx_0__u_ctx              226229.4032     25.1    7411.6801    6989.7601  0.0000  qba2_ctx_ACT_PIPE1_1
+u_act/g_ctx_0__u_ctx/u_lb         211691.8830     23.5   95922.3607  112451.7623  0.0000  qba2_lb_p_1
+u_act/u_s1                        275977.0841     30.6    1197.3600       0.0000  0.0000  qba2_s1p
+u_act/u_s1/u_b0                    12612.6002      1.4   10751.0402    1861.5600  0.0000  qba2_s1p_b0
+u_act/u_s1/u_b1                    14382.7202      1.6   12762.0002    1620.7200  0.0000  qba2_s1p_b1
+u_act/u_s1/u_b10                   20098.4403      2.2   18305.2803    1793.1600  0.0000  qba2_s1p_b10
+u_act/u_s1/u_b11                   20250.3603      2.2   18890.6403    1359.7200  0.0000  qba2_s1p_b11
+u_act/u_s1/u_b12                   16389.3602      1.8   14373.0002    2016.3600  0.0000  qba2_s1p_b12
+u_act/u_s1/u_b13                   16703.6403      1.9   14917.6803    1785.9600  0.0000  qba2_s1p_b13
+u_act/u_s1/u_b14                   14596.5602      1.6   13252.6802    1343.8800  0.0000  qba2_s1p_b14
+u_act/u_s1/u_b15                   14060.1602      1.6   11398.3202    2661.8400  0.0000  qba2_s1p_b15
+u_act/u_s1/u_b2                    14852.8803      1.6   13046.0403    1806.8400  0.0000  qba2_s1p_b2
+u_act/u_s1/u_b3                    15775.2002      1.7   14635.8002    1139.4000  0.0000  qba2_s1p_b3
+u_act/u_s1/u_b4                    17358.8402      1.9   15125.0402    2233.8000  0.0000  qba2_s1p_b4
+u_act/u_s1/u_b5                    18473.7603      2.0   16482.2403    1991.5200  0.0000  qba2_s1p_b5
+u_act/u_s1/u_b6                    18624.9603      2.1   16813.0803    1811.8800  0.0000  qba2_s1p_b6
+u_act/u_s1/u_b7                    19931.7604      2.2   18570.6004    1361.1600  0.0000  qba2_s1p_b7
+u_act/u_s1/u_b8                    19278.3603      2.1   17133.4803    2144.8800  0.0000  qba2_s1p_b8
+u_act/u_s1/u_b9                    21390.1203      2.4   19342.0803    2048.0400  0.0000  qba2_s1p_b9
+u_act/u_s2                         65528.2812      7.3   34009.5605   31518.7207  0.0000  qba2_s2r
+== r13_actc
+design qb_act2_blk top qb_act2_blk corner tt period_ns 1.65 topo 1 wire_load topo
+cell_area_um2 824962.687039 gate_eq_kGE 572.89 cells 221717 regs 55484
+setup_wns_ns -0.066203 setup_tns_ns -16.733 setup_viol_endpoints 768
+setup_worst_path u_act/g_ctx_1__u_ctx/int8_reg/CP -> l_pos1[1]
+hold_wns_ns -0.000125431 hold_tns_ns -0.011 hold_viol_endpoints 175
+hold_worst_path u_act/u_s2/act_reg_952_/CP -> u_act/g_pipe_0__u_ap/q_reg_952_/D
+dc_wall_s 2968
+wall 50:37.83 peak_rss_mb 3383
+u_act                             785912.4083     95.3   15149.1601   21737.1600  0.0000  qb_act2_ACT_PIPE1
+u_act/g_ctx_0__u_ctx              226467.0031     27.5    7954.9201    6936.1201  0.0000  qba2_ctx_ACT_PIPE1_1
+u_act/g_ctx_0__u_ctx/u_lb         211439.8829     25.6   95751.3606  112370.7622  0.0000  qba2_lb_r_1
+u_act/g_pmr_0__u_pm                 5346.7199      0.6    5346.7199       0.0000  0.0000  qba2_pm_r_15
+u_act/g_pmr_1__u_pm                 5234.0399      0.6    5234.0399       0.0000  0.0000  qba2_pm_r_14
+u_act/g_pmr_2__u_pm                 5513.7599      0.7    5513.7599       0.0000  0.0000  qba2_pm_r_13
+u_act/g_pmr_3__u_pm                 5271.8399      0.6    5271.8399       0.0000  0.0000  qba2_pm_r_12
+u_act/g_pmr_4__u_pm                 5255.2799      0.6    5255.2799       0.0000  0.0000  qba2_pm_r_11
+u_act/g_pmr_5__u_pm                 5228.2799      0.6    5228.2799       0.0000  0.0000  qba2_pm_r_10
+u_act/g_pmr_6__u_pm                 5282.6399      0.6    5282.6399       0.0000  0.0000  qba2_pm_r_9
+u_act/g_pmr_7__u_pm                 5691.5999      0.7    5691.5999       0.0000  0.0000  qba2_pm_r_8
+u_act/g_pmr_8__u_pm                 4185.3600      0.5    4185.3600       0.0000  0.0000  qba2_pm_r_7
+u_act/g_pmr_9__u_pm                 3892.6800      0.5    3892.6800       0.0000  0.0000  qba2_pm_r_6
+u_act/u_s1                        148761.3610     18.0  119286.3610   29475.0000  0.0000  qba2_s1r
+u_act/u_s2                         64445.7612      7.8   32925.6005   31520.1607  0.0000  qba2_s2r

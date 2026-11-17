@@ -1,0 +1,47 @@
+# first RTL (pre-mux inline in the band module; tags s1p / s1pm) and final RTL (s1q / s1qm) below
+# R19 chip bench (hw/tb/run_tb_chip.sh, QBT_TECH=2, defines below), progc = prm_col-converted programs of R13 (scratchpad v/s0, v/s1)
+# defines: +define+QB_HEAD_FW=128+QB_HPW=144+QB_TOP_RSH=2+QB_HEAD_PCOL=1+QB_HEAD_IREG=2+QB_TOP_WBQ=2+QB_ACT_CTXR+QB_ACT_LDR+QB_ACT_CNT+QB_ACT_SRA+QB_SEQ_LPS+QB_SEQ_CMH+QB_SEQ_TKS+QB_PRM_BAR+QB_SEQ_DSP+QB_SEQ_TGO+QB_PRM_NUR+QB_SEQ_NXW+QB_SEQ_RAL+QB_ACT_S1M=1+QB_ACT_S2M+QB_TOP_FPR=1+QB_TOP_FFT=1+QB_TOP_WBK=1+QB_SEQ_DEP+QB_PRM_COL=1+QB_WB_COL=1+QB_ACT_RPL+QB_ACT_S1P
+== run_s1p_s0
+QB_CHIP img 0 s0/img60 go 0 img_free +275 end +3780 (rtl_end 3780 model 3779 delta 1) interval 3780 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7032 (after end +3252) PASS
+QB_CHIP img 1 s0/img61 go 3780 img_free +275 end +3748 (rtl_end 3748 model 3747 delta 1) interval 3748 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7000 (after end +3252) PASS
+QB_CHIP img 2 s0/img0 go 7528 img_free +275 end +3748 (rtl_end 3748 model 3747 delta 1) interval 3748 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7000 (after end +3252) PASS
+QB_CHIP img 3 s0/img1 go 11276 img_free +275 end +3788 (rtl_end 3788 model 3787 delta 1) interval 3788 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7040 (after end +3252) PASS
+QB_CHIP img 4 s0/img2 go 15064 img_free +275 end +3812 (rtl_end 3812 model 3811 delta 1) interval - logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7064 (after end +3252) PASS
+QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 0 head_err 0 PASS
+== run_s1p_s1
+QB_CHIP img 0 s1/img13 go 0 img_free +275 end +3836 (rtl_end 3836 model 3835 delta 1) interval 3836 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7088 (after end +3252) PASS
+QB_CHIP img 1 s1/img55 go 3836 img_free +275 end +3764 (rtl_end 3764 model 3763 delta 1) interval 3764 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7016 (after end +3252) PASS
+QB_CHIP img 2 s1/img7 go 7600 img_free +275 end +3732 (rtl_end 3732 model 3731 delta 1) interval 3732 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +6984 (after end +3252) PASS
+QB_CHIP img 3 s1/img42 go 11332 img_free +275 end +3796 (rtl_end 3796 model 3795 delta 1) interval 3796 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7048 (after end +3252) PASS
+QB_CHIP img 4 s1/img91 go 15128 img_free +275 end +3804 (rtl_end 3804 model 3803 delta 1) interval - logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7056 (after end +3252) PASS
+QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 0 head_err 0 PASS
+== run_s1pm_s0
+QB_CHIP img 0 s0/img60 go 0 img_free +275 end +3788 (rtl_end 3788 model 3779 delta 9) interval - logits 100/100 err 100 tiles 600 cycle_mismatch 38 last_logit +7040 (after end +3252) FAIL
+QB_CHIP_TB images 1 err 0 img_read_err 0 timeout 0 head_err 0 FAIL
+== run_s1pm_s1
+QB_CHIP img 0 s1/img13 go 0 img_free +275 end +3836 (rtl_end 3836 model 3835 delta 1) interval - logits 100/100 err 100 tiles 600 cycle_mismatch 0 last_logit +7088 (after end +3252) FAIL
+QB_CHIP_TB images 1 err 0 img_read_err 0 timeout 0 head_err 0 FAIL
+QBA2_RPL_ERR / QBA2_S2M_ERR in S1P logs: 0
+
+# final RTL (band pre-mux as a qba2_pm_r instance; tags s1q / s1qm), same defines
+== run_s1q_s0
+QB_CHIP img 0 s0/img60 go 0 img_free +275 end +3780 (rtl_end 3780 model 3779 delta 1) interval 3780 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7032 (after end +3252) PASS
+QB_CHIP img 1 s0/img61 go 3780 img_free +275 end +3748 (rtl_end 3748 model 3747 delta 1) interval 3748 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7000 (after end +3252) PASS
+QB_CHIP img 2 s0/img0 go 7528 img_free +275 end +3748 (rtl_end 3748 model 3747 delta 1) interval 3748 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7000 (after end +3252) PASS
+QB_CHIP img 3 s0/img1 go 11276 img_free +275 end +3788 (rtl_end 3788 model 3787 delta 1) interval 3788 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7040 (after end +3252) PASS
+QB_CHIP img 4 s0/img2 go 15064 img_free +275 end +3812 (rtl_end 3812 model 3811 delta 1) interval - logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7064 (after end +3252) PASS
+QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 0 head_err 0 PASS
+== run_s1q_s1
+QB_CHIP img 0 s1/img13 go 0 img_free +275 end +3836 (rtl_end 3836 model 3835 delta 1) interval 3836 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7088 (after end +3252) PASS
+QB_CHIP img 1 s1/img55 go 3836 img_free +275 end +3764 (rtl_end 3764 model 3763 delta 1) interval 3764 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7016 (after end +3252) PASS
+QB_CHIP img 2 s1/img7 go 7600 img_free +275 end +3732 (rtl_end 3732 model 3731 delta 1) interval 3732 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +6984 (after end +3252) PASS
+QB_CHIP img 3 s1/img42 go 11332 img_free +275 end +3796 (rtl_end 3796 model 3795 delta 1) interval 3796 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7048 (after end +3252) PASS
+QB_CHIP img 4 s1/img91 go 15128 img_free +275 end +3804 (rtl_end 3804 model 3803 delta 1) interval - logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7056 (after end +3252) PASS
+QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 0 head_err 0 PASS
+== run_s1qm_s0
+QB_CHIP img 0 s0/img60 go 0 img_free +275 end +3788 (rtl_end 3788 model 3779 delta 9) interval - logits 100/100 err 100 tiles 600 cycle_mismatch 38 last_logit +7040 (after end +3252) FAIL
+QB_CHIP_TB images 1 err 0 img_read_err 0 timeout 0 head_err 0 FAIL
+== run_s1qm_s1
+QB_CHIP img 0 s1/img13 go 0 img_free +275 end +3836 (rtl_end 3836 model 3835 delta 1) interval - logits 100/100 err 100 tiles 600 cycle_mismatch 0 last_logit +7088 (after end +3252) FAIL
+QB_CHIP_TB images 1 err 0 img_read_err 0 timeout 0 head_err 0 FAIL
+QBA2_RPL_ERR / QBA2_S2M_ERR in s1q logs: 0
