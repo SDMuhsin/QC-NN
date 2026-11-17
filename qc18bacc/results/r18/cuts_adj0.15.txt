@@ -1,0 +1,206 @@
+# R18 cuts.py adj 0.15  gcell 3.0 um  grid 300 x 657  classes 21 (nets classified 286565)
+# per layer: guide crossings vs GRT log Demand, model capacity calibration (cap x)
+VAL M2 V crossings   1567784 GRT demand   1566996 (1.001) | GRT resource   2357210 cap x 0.938
+VAL M3 H crossings   1359146 GRT demand   1352334 (1.005) | GRT resource   2330639 cap x 0.929
+VAL M4 V crossings   1583476 GRT demand   1582856 (1.000) | GRT resource   2280384 cap x 0.945
+VAL M5 H crossings   1047831 GRT demand   1046166 (1.002) | GRT resource   2354745 cap x 0.937
+VAL M6 V crossings   1422513 GRT demand   1418441 (1.003) | GRT resource   2353928 cap x 0.937
+VAL M7 H crossings    579358 GRT demand    579360 (1.000) | GRT resource   2238912 cap x 0.941
+# whole block, crossings by class (track-edges): class  V  (share)  H  (share)
+TOT S1 int tree        V   1178401  25.8 %  H    777620  26.0 %
+TOT S1 int->reg        V    304476   6.7 %  H    344871  11.5 %
+TOT S2 nets            V    286196   6.3 %  H    214252   7.2 %
+TOT act pipe/ports     V     39540   0.9 %  H     83250   2.8 %
+TOT clock              V    231816   5.1 %  H    159777   5.4 %
+TOT lb D-fan(wd)       V    599900  13.1 %  H    420738  14.1 %
+TOT lb D-local         V     54433   1.2 %  H     45833   1.5 %
+TOT lb slot-shift      V     22105   0.5 %  H     18873   0.6 %
+TOT lb write rdq/sdq   V    681793  14.9 %  H    107360   3.6 %
+TOT lb wsrc s_q/m_q    V     90255   2.0 %  H     60587   2.0 %
+TOT lbf pre-mux-in     V      3692   0.1 %  H      2267   0.1 %
+TOT lbf+shift          V     56279   1.2 %  H     55583   1.9 %
+TOT lbm S1-term-in     V    958976  21.0 %  H    654780  21.9 %
+TOT other              V     55968   1.2 %  H     35896   1.2 %
+TOT sel other-bcast    V      1159   0.0 %  H       905   0.0 %
+TOT sel s1c            V       382   0.0 %  H       232   0.0 %
+TOT sel sel1           V       283   0.0 %  H       193   0.0 %
+TOT sel sel2           V      3825   0.1 %  H      1698   0.1 %
+TOT sel shq            V       716   0.0 %  H       308   0.0 %
+TOT sel wer            V      3578   0.1 %  H      1312   0.0 %
+TOT unclassified       V         0   0.0 %  H         0   0.0 %
+TOT all                V   4573773 (cap   6980596,  65.5 %)  H   2986335 (cap   6898429,  43.3 %)
+# 2-D edge overflow (layer-summed, model capacity): V 24899 tracks on 25629 edges, H 1245 on 3026 edges
+# act rows (act reg y centroid um, row): r0 163 r1 272 r2 383 r3 504 r4 622 r5 724 r6 845 r7 976 r8 1092 r9 1222 r10 1325 r11 1449 r12 1571 r13 1678 r14 1783 r15 1880
+# horizontal cuts between act rows (V wiring): cut  pos(um)  crossings / capacity (%)  local overflow  | top classes share (overflow left if the class vanished)
+CUT y   219.0     4960 /   10641 ( 46.6 %)  ov      0 | lb_write_rdq/sdq 46.6% (0)  lb_D-fan(wd) 13.2% (0)  other 11.2% (0)  S2_nets 7.7% (0)  clock 5.3% (0)  lbm_S1-term-in 4.4% (0)  lbf+shift 3.8% (0)
+CUT y   327.0     5729 /   10641 ( 53.8 %)  ov      0 | lb_write_rdq/sdq 34.6% (0)  lb_D-fan(wd) 21.3% (0)  lbm_S1-term-in 11.2% (0)  S2_nets 8.2% (0)  S1_int_tree 6.0% (0)  clock 5.2% (0)  other 4.2% (0)
+CUT y   444.0     6423 /   10641 ( 60.4 %)  ov      0 | lb_write_rdq/sdq 27.1% (0)  lb_D-fan(wd) 19.8% (0)  lbm_S1-term-in 17.3% (0)  S1_int_tree 9.9% (0)  S2_nets 7.1% (0)  S1_int->reg 6.3% (0)  clock 4.9% (0)
+CUT y   564.0     7667 /   10641 ( 72.1 %)  ov      0 | lbm_S1-term-in 20.2% (0)  lb_write_rdq/sdq 19.6% (0)  lb_D-fan(wd) 19.1% (0)  S1_int_tree 12.8% (0)  S1_int->reg 7.3% (0)  S2_nets 6.2% (0)  clock 5.3% (0)
+CUT y   672.0     8098 /   10641 ( 76.1 %)  ov      0 | lbm_S1-term-in 23.7% (0)  S1_int_tree 18.0% (0)  lb_write_rdq/sdq 17.1% (0)  lb_D-fan(wd) 16.3% (0)  S1_int->reg 7.4% (0)  S2_nets 6.8% (0)  clock 4.1% (0)
+CUT y   786.0     9451 /   10641 ( 88.8 %)  ov      0 | lbm_S1-term-in 28.3% (0)  S1_int_tree 22.1% (0)  lb_D-fan(wd) 13.7% (0)  lb_write_rdq/sdq 12.5% (0)  S1_int->reg 8.0% (0)  S2_nets 7.2% (0)  clock 3.5% (0)
+CUT y   912.0    10419 /   10641 ( 97.9 %)  ov     14 | S1_int_tree 36.4% (0)  lbm_S1-term-in 27.5% (0)  lb_write_rdq/sdq 10.0% (7)  lb_D-fan(wd) 9.1% (7)  S1_int->reg 5.7% (3)  S2_nets 5.5% (8)  clock 2.9% (8)
+CUT y  1035.0    11130 /   10641 (104.6 %)  ov    491 | S1_int_tree 40.5% (6)  lbm_S1-term-in 26.6% (10)  lb_D-fan(wd) 9.1% (255)  lb_write_rdq/sdq 7.9% (177)  S1_int->reg 6.1% (244)  S2_nets 4.9% (433)  clock 2.4% (331)
+CUT y  1158.0    10721 /   10641 (100.8 %)  ov    111 | S1_int_tree 43.1% (2)  lbm_S1-term-in 23.1% (5)  lb_D-fan(wd) 8.9% (60)  lb_write_rdq/sdq 7.8% (42)  S1_int->reg 7.7% (45)  S2_nets 5.5% (88)  clock 1.5% (73)
+CUT y  1272.0    10320 /   10641 ( 97.0 %)  ov     11 | S1_int_tree 42.6% (1)  lbm_S1-term-in 21.5% (0)  lb_D-fan(wd) 8.3% (4)  lb_write_rdq/sdq 7.5% (1)  S1_int->reg 7.0% (9)  S2_nets 6.5% (11)  clock 3.8% (2)
+CUT y  1386.0     8940 /   10641 ( 84.0 %)  ov      0 | S1_int_tree 36.6% (0)  lbm_S1-term-in 22.8% (0)  lb_D-fan(wd) 9.1% (0)  S1_int->reg 8.7% (0)  lb_write_rdq/sdq 8.3% (0)  clock 6.9% (0)  S2_nets 5.0% (0)
+CUT y  1509.0     7083 /   10641 ( 66.6 %)  ov      0 | lbm_S1-term-in 23.4% (0)  S1_int_tree 22.1% (0)  lb_D-fan(wd) 14.8% (0)  clock 11.0% (0)  S1_int->reg 9.3% (0)  lb_write_rdq/sdq 8.9% (0)  S2_nets 5.3% (0)
+CUT y  1626.0     5257 /   10641 ( 49.4 %)  ov      0 | S1_int_tree 21.7% (0)  lbm_S1-term-in 18.6% (0)  lb_D-fan(wd) 14.2% (0)  S1_int->reg 11.6% (0)  clock 11.0% (0)  S2_nets 9.2% (0)  lb_write_rdq/sdq 7.9% (0)
+CUT y  1731.0     3679 /   10641 ( 34.6 %)  ov      0 | S1_int_tree 20.8% (0)  lb_D-fan(wd) 16.7% (0)  lbm_S1-term-in 15.5% (0)  S2_nets 14.5% (0)  clock 11.9% (0)  lb_write_rdq/sdq 7.8% (0)  S1_int->reg 7.7% (0)
+CUT y  1830.0     2774 /   10641 ( 26.1 %)  ov      0 | lb_D-fan(wd) 27.9% (0)  S2_nets 15.8% (0)  S1_int_tree 15.8% (0)  clock 14.9% (0)  lbm_S1-term-in 10.9% (0)  lb_write_rdq/sdq 4.0% (0)  lb_D-local 3.7% (0)
+# horizontal cuts every 30 um (V wiring): cut  pos(um)  crossings / capacity (%)  local overflow  | top classes share (overflow left if the class vanished)
+CUT y    30.0     3504 /   10641 ( 32.9 %)  ov      0 | lb_wsrc_s_q/m_q 77.1% (0)  lb_write_rdq/sdq 15.0% (0)  other 3.1% (0)  clock 2.6% (0)  act_pipe/ports 2.1% (0)  sel_other-bcast 0.0% (0)  unclassified 0.0% (0)
+CUT y    60.0     2838 /   10641 ( 26.7 %)  ov      0 | lb_wsrc_s_q/m_q 53.1% (0)  lb_write_rdq/sdq 38.9% (0)  other 3.1% (0)  clock 2.9% (0)  act_pipe/ports 1.9% (0)  sel_other-bcast 0.0% (0)  unclassified 0.0% (0)
+CUT y    90.0     2859 /   10641 ( 26.9 %)  ov      0 | lb_write_rdq/sdq 57.7% (0)  lb_wsrc_s_q/m_q 32.5% (0)  other 4.7% (0)  clock 3.4% (0)  act_pipe/ports 1.7% (0)  sel_other-bcast 0.0% (0)  unclassified 0.0% (0)
+CUT y   120.0     3069 /   10641 ( 28.8 %)  ov      0 | lb_write_rdq/sdq 68.6% (0)  lb_wsrc_s_q/m_q 15.1% (0)  other 8.4% (0)  clock 3.2% (0)  act_pipe/ports 2.2% (0)  S2_nets 1.6% (0)  lb_D-fan(wd) 0.8% (0)
+CUT y   150.0     3714 /   10641 ( 34.9 %)  ov      0 | lb_write_rdq/sdq 60.1% (0)  other 9.2% (0)  lb_wsrc_s_q/m_q 7.7% (0)  lb_D-fan(wd) 6.3% (0)  clock 4.7% (0)  S2_nets 3.3% (0)  lbf+shift 3.2% (0)
+CUT y   180.0     4412 /   10641 ( 41.5 %)  ov      0 | lb_write_rdq/sdq 52.1% (0)  lb_D-fan(wd) 12.5% (0)  other 9.3% (0)  clock 6.3% (0)  S2_nets 4.4% (0)  lb_wsrc_s_q/m_q 4.1% (0)  act_pipe/ports 3.5% (0)
+CUT y   210.0     4769 /   10641 ( 44.8 %)  ov      0 | lb_write_rdq/sdq 48.7% (0)  lb_D-fan(wd) 11.5% (0)  other 11.4% (0)  S2_nets 6.8% (0)  clock 5.1% (0)  lbf+shift 4.0% (0)  lbm_S1-term-in 4.0% (0)
+CUT y   240.0     5178 /   10641 ( 48.7 %)  ov      0 | lb_write_rdq/sdq 43.6% (0)  lb_D-fan(wd) 15.2% (0)  other 8.3% (0)  S2_nets 8.3% (0)  lbm_S1-term-in 6.2% (0)  clock 5.9% (0)  lbf+shift 3.1% (0)
+CUT y   270.0     5450 /   10641 ( 51.2 %)  ov      0 | lb_write_rdq/sdq 40.6% (0)  lb_D-fan(wd) 16.8% (0)  lbm_S1-term-in 8.9% (0)  S2_nets 8.4% (0)  other 6.8% (0)  clock 5.0% (0)  lbf+shift 3.2% (0)
+CUT y   300.0     5350 /   10641 ( 50.3 %)  ov      0 | lb_write_rdq/sdq 40.1% (0)  lb_D-fan(wd) 17.0% (0)  lbm_S1-term-in 11.1% (0)  S2_nets 8.4% (0)  other 5.6% (0)  S1_int_tree 5.2% (0)  clock 5.0% (0)
+CUT y   330.0     5690 /   10641 ( 53.5 %)  ov      0 | lb_write_rdq/sdq 34.9% (0)  lb_D-fan(wd) 21.3% (0)  lbm_S1-term-in 11.4% (0)  S2_nets 8.4% (0)  S1_int_tree 6.0% (0)  clock 5.2% (0)  other 3.9% (0)
+CUT y   360.0     5970 /   10641 ( 56.1 %)  ov      0 | lb_write_rdq/sdq 32.4% (0)  lb_D-fan(wd) 21.7% (0)  lbm_S1-term-in 13.0% (0)  S2_nets 7.3% (0)  S1_int_tree 6.6% (0)  clock 5.7% (0)  S1_int->reg 4.5% (0)
+CUT y   390.0     6247 /   10641 ( 58.7 %)  ov      0 | lb_write_rdq/sdq 29.8% (0)  lb_D-fan(wd) 23.7% (0)  lbm_S1-term-in 15.1% (0)  S1_int_tree 7.7% (0)  S2_nets 6.8% (0)  clock 5.4% (0)  S1_int->reg 5.3% (0)
+CUT y   420.0     6439 /   10641 ( 60.5 %)  ov      0 | lb_write_rdq/sdq 27.4% (0)  lb_D-fan(wd) 22.2% (0)  lbm_S1-term-in 15.8% (0)  S1_int_tree 8.9% (0)  S2_nets 6.6% (0)  S1_int->reg 5.7% (0)  clock 4.9% (0)
+CUT y   450.0     6436 /   10641 ( 60.5 %)  ov      0 | lb_write_rdq/sdq 26.8% (0)  lb_D-fan(wd) 19.2% (0)  lbm_S1-term-in 17.7% (0)  S1_int_tree 10.1% (0)  S2_nets 7.3% (0)  S1_int->reg 6.5% (0)  clock 5.1% (0)
+CUT y   480.0     6575 /   10641 ( 61.8 %)  ov      0 | lb_write_rdq/sdq 25.7% (0)  lb_D-fan(wd) 18.8% (0)  lbm_S1-term-in 18.6% (0)  S1_int_tree 11.9% (0)  S1_int->reg 7.2% (0)  S2_nets 6.7% (0)  clock 5.0% (0)
+CUT y   510.0     7103 /   10641 ( 66.8 %)  ov      0 | lb_write_rdq/sdq 22.7% (0)  lb_D-fan(wd) 21.0% (0)  lbm_S1-term-in 18.2% (0)  S1_int_tree 12.1% (0)  S1_int->reg 7.4% (0)  S2_nets 5.4% (0)  clock 5.4% (0)
+CUT y   540.0     7142 /   10641 ( 67.1 %)  ov      0 | lb_write_rdq/sdq 21.4% (0)  lbm_S1-term-in 19.4% (0)  lb_D-fan(wd) 18.1% (0)  S1_int_tree 13.0% (0)  S1_int->reg 7.6% (0)  S2_nets 6.0% (0)  clock 5.0% (0)
+CUT y   570.0     7613 /   10641 ( 71.5 %)  ov      0 | lbm_S1-term-in 21.3% (0)  lb_write_rdq/sdq 19.7% (0)  lb_D-fan(wd) 18.5% (0)  S1_int_tree 13.2% (0)  S1_int->reg 7.5% (0)  S2_nets 6.1% (0)  clock 5.4% (0)
+CUT y   600.0     7508 /   10641 ( 70.6 %)  ov      0 | lbm_S1-term-in 23.4% (0)  lb_write_rdq/sdq 19.8% (0)  lb_D-fan(wd) 16.0% (0)  S1_int_tree 14.6% (0)  S1_int->reg 7.7% (0)  S2_nets 6.8% (0)  clock 3.8% (0)
+CUT y   630.0     7502 /   10641 ( 70.5 %)  ov      0 | lbm_S1-term-in 24.1% (0)  lb_write_rdq/sdq 19.6% (0)  S1_int_tree 17.5% (0)  lb_D-fan(wd) 14.9% (0)  S1_int->reg 7.7% (0)  S2_nets 6.9% (0)  clock 3.7% (0)
+CUT y   660.0     7874 /   10641 ( 74.0 %)  ov      0 | lbm_S1-term-in 24.0% (0)  S1_int_tree 18.3% (0)  lb_write_rdq/sdq 17.9% (0)  lb_D-fan(wd) 16.3% (0)  S1_int->reg 7.3% (0)  S2_nets 6.6% (0)  clock 4.2% (0)
+CUT y   690.0     8368 /   10641 ( 78.6 %)  ov      0 | lbm_S1-term-in 24.2% (0)  S1_int_tree 17.9% (0)  lb_write_rdq/sdq 15.9% (0)  lb_D-fan(wd) 15.9% (0)  S1_int->reg 7.5% (0)  S2_nets 6.7% (0)  clock 3.9% (0)
+CUT y   720.0     8188 /   10641 ( 77.0 %)  ov      0 | lbm_S1-term-in 28.4% (0)  S1_int_tree 19.2% (0)  lb_write_rdq/sdq 15.2% (0)  lb_D-fan(wd) 13.4% (0)  S1_int->reg 8.6% (0)  S2_nets 6.9% (0)  clock 4.5% (0)
+CUT y   750.0     8884 /   10641 ( 83.5 %)  ov      0 | lbm_S1-term-in 27.6% (0)  S1_int_tree 19.7% (0)  lb_D-fan(wd) 14.0% (0)  lb_write_rdq/sdq 13.8% (0)  S1_int->reg 8.5% (0)  S2_nets 6.7% (0)  clock 4.7% (0)
+CUT y   780.0     9354 /   10641 ( 87.9 %)  ov      0 | lbm_S1-term-in 28.0% (0)  S1_int_tree 21.4% (0)  lb_D-fan(wd) 14.1% (0)  lb_write_rdq/sdq 12.8% (0)  S1_int->reg 8.0% (0)  S2_nets 7.0% (0)  clock 4.0% (0)
+CUT y   810.0     9525 /   10641 ( 89.5 %)  ov      0 | lbm_S1-term-in 29.2% (0)  S1_int_tree 25.3% (0)  lb_write_rdq/sdq 12.2% (0)  lb_D-fan(wd) 11.7% (0)  S1_int->reg 8.4% (0)  S2_nets 7.0% (0)  clock 2.5% (0)
+CUT y   840.0     9857 /   10641 ( 92.6 %)  ov      0 | lbm_S1-term-in 29.1% (0)  S1_int_tree 28.5% (0)  lb_write_rdq/sdq 11.5% (0)  lb_D-fan(wd) 11.0% (0)  S1_int->reg 7.7% (0)  S2_nets 6.3% (0)  clock 2.2% (0)
+CUT y   870.0    10136 /   10641 ( 95.3 %)  ov      2 | S1_int_tree 31.2% (0)  lbm_S1-term-in 28.7% (0)  lb_D-fan(wd) 10.9% (2)  lb_write_rdq/sdq 10.9% (1)  S1_int->reg 7.0% (0)  S2_nets 5.1% (2)  clock 2.5% (2)
+CUT y   900.0    10309 /   10641 ( 96.9 %)  ov      6 | S1_int_tree 35.0% (0)  lbm_S1-term-in 28.2% (0)  lb_write_rdq/sdq 10.3% (2)  lb_D-fan(wd) 9.8% (4)  S1_int->reg 5.8% (2)  S2_nets 5.1% (6)  clock 3.1% (5)
+CUT y   930.0    10484 /   10641 ( 98.5 %)  ov     20 | S1_int_tree 38.2% (0)  lbm_S1-term-in 27.1% (0)  lb_write_rdq/sdq 9.9% (5)  lb_D-fan(wd) 9.4% (8)  S1_int->reg 5.7% (6)  S2_nets 4.9% (18)  clock 2.3% (12)
+CUT y   960.0    10842 /   10641 (101.9 %)  ov    212 | S1_int_tree 39.0% (1)  lbm_S1-term-in 27.0% (0)  lb_D-fan(wd) 10.0% (114)  lb_write_rdq/sdq 8.7% (69)  S1_int->reg 5.4% (110)  S2_nets 4.6% (191)  clock 2.3% (137)
+CUT y   990.0    10977 /   10641 (103.2 %)  ov    339 | S1_int_tree 39.6% (1)  lbm_S1-term-in 26.8% (1)  lb_D-fan(wd) 9.9% (178)  lb_write_rdq/sdq 8.0% (105)  S1_int->reg 5.5% (163)  S2_nets 4.8% (302)  clock 2.5% (221)
+CUT y  1020.0    11131 /   10641 (104.6 %)  ov    492 | S1_int_tree 40.4% (3)  lbm_S1-term-in 26.8% (2)  lb_D-fan(wd) 9.5% (248)  lb_write_rdq/sdq 7.9% (151)  S1_int->reg 5.8% (265)  S2_nets 4.8% (454)  clock 2.5% (324)
+CUT y  1050.0    11128 /   10641 (104.6 %)  ov    488 | S1_int_tree 40.2% (7)  lbm_S1-term-in 26.3% (7)  lb_D-fan(wd) 9.3% (237)  lb_write_rdq/sdq 7.9% (168)  S1_int->reg 6.5% (228)  S2_nets 4.9% (426)  clock 2.3% (323)
+CUT y  1080.0    11075 /   10641 (104.1 %)  ov    436 | S1_int_tree 40.3% (3)  lbm_S1-term-in 26.1% (9)  lb_D-fan(wd) 8.8% (239)  lb_write_rdq/sdq 7.9% (149)  S1_int->reg 7.1% (176)  S2_nets 5.1% (372)  clock 2.2% (297)
+CUT y  1110.0    10875 /   10641 (102.2 %)  ov    239 | S1_int_tree 40.3% (6)  lbm_S1-term-in 25.7% (4)  lb_D-fan(wd) 8.8% (123)  lb_write_rdq/sdq 7.8% (61)  S1_int->reg 7.7% (84)  S2_nets 5.2% (209)  clock 1.9% (158)
+CUT y  1140.0    10796 /   10641 (101.5 %)  ov    171 | S1_int_tree 42.4% (1)  lbm_S1-term-in 23.9% (4)  lb_D-fan(wd) 8.7% (91)  lb_write_rdq/sdq 7.8% (50)  S1_int->reg 7.7% (65)  S2_nets 5.6% (146)  clock 1.5% (115)
+CUT y  1170.0    10687 /   10641 (100.4 %)  ov     83 | S1_int_tree 43.8% (1)  lbm_S1-term-in 22.4% (1)  lb_D-fan(wd) 8.6% (51)  lb_write_rdq/sdq 7.8% (28)  S1_int->reg 7.7% (36)  S2_nets 5.3% (74)  clock 1.6% (63)
+CUT y  1200.0    10438 /   10641 ( 98.1 %)  ov     22 | S1_int_tree 44.1% (0)  lbm_S1-term-in 22.5% (0)  lb_D-fan(wd) 8.4% (13)  lb_write_rdq/sdq 7.7% (5)  S1_int->reg 7.5% (9)  S2_nets 5.5% (22)  clock 2.0% (12)
+CUT y  1230.0    10478 /   10641 ( 98.5 %)  ov     18 | S1_int_tree 42.5% (1)  lbm_S1-term-in 22.4% (0)  lb_D-fan(wd) 8.0% (11)  lb_write_rdq/sdq 7.6% (3)  S1_int->reg 7.0% (8)  S2_nets 5.9% (18)  clock 2.7% (12)
+CUT y  1260.0    10366 /   10641 ( 97.4 %)  ov      7 | S1_int_tree 42.5% (1)  lbm_S1-term-in 22.0% (0)  lb_D-fan(wd) 8.2% (3)  lb_write_rdq/sdq 7.6% (0)  S1_int->reg 6.9% (3)  S2_nets 6.4% (7)  clock 3.6% (5)
+CUT y  1290.0    10226 /   10641 ( 96.1 %)  ov      3 | S1_int_tree 42.2% (0)  lbm_S1-term-in 21.6% (0)  lb_D-fan(wd) 8.4% (2)  lb_write_rdq/sdq 7.6% (1)  S1_int->reg 7.1% (1)  S2_nets 6.6% (3)  clock 3.9% (1)
+CUT y  1320.0     9964 /   10641 ( 93.6 %)  ov      0 | S1_int_tree 40.6% (0)  lbm_S1-term-in 21.1% (0)  lb_D-fan(wd) 8.8% (0)  S1_int->reg 7.7% (0)  lb_write_rdq/sdq 7.7% (0)  S2_nets 6.4% (0)  clock 4.2% (0)
+CUT y  1350.0     9572 /   10641 ( 90.0 %)  ov      0 | S1_int_tree 39.7% (0)  lbm_S1-term-in 21.7% (0)  lb_D-fan(wd) 8.5% (0)  S1_int->reg 8.3% (0)  lb_write_rdq/sdq 7.9% (0)  S2_nets 5.7% (0)  clock 5.1% (0)
+CUT y  1380.0     9083 /   10641 ( 85.4 %)  ov      0 | S1_int_tree 36.9% (0)  lbm_S1-term-in 22.8% (0)  lb_D-fan(wd) 9.1% (0)  S1_int->reg 8.6% (0)  lb_write_rdq/sdq 8.1% (0)  clock 6.6% (0)  S2_nets 4.9% (0)
+CUT y  1410.0     8669 /   10641 ( 81.5 %)  ov      0 | S1_int_tree 34.6% (0)  lbm_S1-term-in 21.9% (0)  lb_D-fan(wd) 9.9% (0)  S1_int->reg 9.2% (0)  lb_write_rdq/sdq 8.3% (0)  clock 8.1% (0)  S2_nets 5.0% (0)
+CUT y  1440.0     8078 /   10641 ( 75.9 %)  ov      0 | S1_int_tree 30.5% (0)  lbm_S1-term-in 22.4% (0)  lb_D-fan(wd) 10.7% (0)  S1_int->reg 9.5% (0)  lb_write_rdq/sdq 8.6% (0)  clock 8.6% (0)  S2_nets 5.4% (0)
+CUT y  1470.0     7438 /   10641 ( 69.9 %)  ov      0 | S1_int_tree 25.2% (0)  lbm_S1-term-in 24.5% (0)  lb_D-fan(wd) 12.1% (0)  S1_int->reg 10.1% (0)  lb_write_rdq/sdq 9.2% (0)  clock 8.7% (0)  S2_nets 5.1% (0)
+CUT y  1500.0     7218 /   10641 ( 67.8 %)  ov      0 | lbm_S1-term-in 23.6% (0)  S1_int_tree 22.7% (0)  lb_D-fan(wd) 14.5% (0)  clock 10.4% (0)  S1_int->reg 9.3% (0)  lb_write_rdq/sdq 8.9% (0)  S2_nets 5.4% (0)
+CUT y  1530.0     6930 /   10641 ( 65.1 %)  ov      0 | lbm_S1-term-in 22.3% (0)  S1_int_tree 20.1% (0)  lb_D-fan(wd) 16.5% (0)  clock 11.1% (0)  S1_int->reg 9.1% (0)  lb_write_rdq/sdq 8.1% (0)  S2_nets 5.3% (0)
+CUT y  1560.0     6579 /   10641 ( 61.8 %)  ov      0 | lbm_S1-term-in 20.6% (0)  S1_int_tree 20.2% (0)  lb_D-fan(wd) 18.3% (0)  clock 11.6% (0)  S1_int->reg 9.4% (0)  lb_write_rdq/sdq 7.7% (0)  S2_nets 4.8% (0)
+CUT y  1590.0     6061 /   10641 ( 57.0 %)  ov      0 | lbm_S1-term-in 20.1% (0)  S1_int_tree 20.1% (0)  lb_D-fan(wd) 18.3% (0)  clock 11.5% (0)  S1_int->reg 10.2% (0)  lb_write_rdq/sdq 7.4% (0)  S2_nets 6.3% (0)
+CUT y  1620.0     5251 /   10641 ( 49.3 %)  ov      0 | S1_int_tree 21.7% (0)  lbm_S1-term-in 18.8% (0)  lb_D-fan(wd) 14.3% (0)  S1_int->reg 11.6% (0)  clock 11.1% (0)  S2_nets 8.7% (0)  lb_write_rdq/sdq 7.9% (0)
+CUT y  1650.0     5355 /   10641 ( 50.3 %)  ov      0 | lb_D-fan(wd) 18.5% (0)  S1_int_tree 18.2% (0)  lbm_S1-term-in 17.3% (0)  clock 10.9% (0)  S1_int->reg 10.6% (0)  S2_nets 10.3% (0)  lb_write_rdq/sdq 7.1% (0)
+CUT y  1680.0     4831 /   10641 ( 45.4 %)  ov      0 | lb_D-fan(wd) 20.6% (0)  S1_int_tree 19.8% (0)  lbm_S1-term-in 15.7% (0)  clock 10.9% (0)  S1_int->reg 9.6% (0)  S2_nets 9.5% (0)  lb_write_rdq/sdq 7.1% (0)
+CUT y  1710.0     4460 /   10641 ( 41.9 %)  ov      0 | lb_D-fan(wd) 20.5% (0)  S1_int_tree 19.8% (0)  lbm_S1-term-in 14.0% (0)  clock 12.7% (0)  S2_nets 10.7% (0)  S1_int->reg 8.1% (0)  lb_write_rdq/sdq 7.2% (0)
+CUT y  1740.0     3545 /   10641 ( 33.3 %)  ov      0 | S1_int_tree 20.5% (0)  S2_nets 16.3% (0)  lbm_S1-term-in 15.9% (0)  lb_D-fan(wd) 15.8% (0)  clock 11.6% (0)  lb_write_rdq/sdq 7.6% (0)  S1_int->reg 6.8% (0)
+CUT y  1770.0     3873 /   10641 ( 36.4 %)  ov      0 | lb_D-fan(wd) 26.9% (0)  S1_int_tree 16.8% (0)  S2_nets 15.7% (0)  lbm_S1-term-in 13.3% (0)  clock 12.4% (0)  lb_write_rdq/sdq 4.5% (0)  S1_int->reg 3.8% (0)
+CUT y  1800.0     3301 /   10641 ( 31.0 %)  ov      0 | lb_D-fan(wd) 26.4% (0)  S2_nets 17.3% (0)  S1_int_tree 16.3% (0)  clock 13.9% (0)  lbm_S1-term-in 12.0% (0)  lb_write_rdq/sdq 4.5% (0)  S1_int->reg 2.6% (0)
+CUT y  1830.0     2774 /   10641 ( 26.1 %)  ov      0 | lb_D-fan(wd) 27.9% (0)  S2_nets 15.8% (0)  S1_int_tree 15.8% (0)  clock 14.9% (0)  lbm_S1-term-in 10.9% (0)  lb_write_rdq/sdq 4.0% (0)  lb_D-local 3.7% (0)
+CUT y  1860.0     1912 /   10641 ( 18.0 %)  ov      0 | lb_D-fan(wd) 29.1% (0)  clock 17.1% (0)  S1_int_tree 16.6% (0)  lbm_S1-term-in 15.8% (0)  S2_nets 10.8% (0)  act_pipe/ports 3.7% (0)  lb_D-local 2.9% (0)
+CUT y  1890.0     1544 /   10641 ( 14.5 %)  ov      0 | lb_D-fan(wd) 34.1% (0)  clock 16.8% (0)  lbm_S1-term-in 15.1% (0)  S1_int_tree 12.3% (0)  S2_nets 8.0% (0)  lbf+shift 5.4% (0)  lb_D-local 3.3% (0)
+CUT y  1920.0     1329 /   10641 ( 12.5 %)  ov      0 | lb_D-fan(wd) 40.6% (0)  clock 14.9% (0)  lbf+shift 13.0% (0)  lbm_S1-term-in 8.7% (0)  S1_int_tree 6.6% (0)  lb_D-local 6.3% (0)  S2_nets 3.8% (0)
+CUT y  1950.0      600 /   10641 (  5.6 %)  ov      0 | lb_D-fan(wd) 42.0% (0)  clock 13.5% (0)  lbf+shift 11.7% (0)  lb_D-local 10.3% (0)  S1_int_tree 8.2% (0)  lb_slot-shift 6.0% (0)  lbm_S1-term-in 4.2% (0)
+# vertical cuts every 30 um (H wiring): cut  pos(um)  crossings / capacity (%)  local overflow  | top classes share (overflow left if the class vanished)
+CUT x    30.0     3812 /   23073 ( 16.5 %)  ov      0 | lb_D-fan(wd) 31.2% (0)  lbf+shift 14.7% (0)  clock 13.2% (0)  lbm_S1-term-in 9.9% (0)  other 7.7% (0)  lb_write_rdq/sdq 6.7% (0)  lb_slot-shift 5.5% (0)
+CUT x    60.0     5453 /   23073 ( 23.6 %)  ov      0 | lb_D-fan(wd) 31.1% (0)  lbm_S1-term-in 16.2% (0)  lbf+shift 11.1% (0)  clock 10.5% (0)  other 8.5% (0)  lb_write_rdq/sdq 7.6% (0)  S1_int_tree 6.3% (0)
+CUT x    90.0     6283 /   23073 ( 27.2 %)  ov      0 | lb_D-fan(wd) 32.4% (0)  lbm_S1-term-in 24.1% (0)  clock 9.0% (0)  other 8.8% (0)  S1_int_tree 8.0% (0)  lb_write_rdq/sdq 6.4% (0)  lbf+shift 3.9% (0)
+CUT x   120.0     6507 /   23073 ( 28.2 %)  ov      0 | lbm_S1-term-in 29.4% (0)  lb_D-fan(wd) 23.1% (0)  S1_int_tree 12.4% (0)  clock 10.2% (0)  other 7.6% (0)  lb_write_rdq/sdq 5.0% (0)  lbf+shift 3.7% (0)
+CUT x   150.0     8357 /   23073 ( 36.2 %)  ov      0 | lbm_S1-term-in 28.3% (0)  lb_D-fan(wd) 25.6% (0)  S1_int_tree 14.6% (0)  clock 8.9% (0)  lbf+shift 5.2% (0)  lb_write_rdq/sdq 5.2% (0)  other 4.4% (0)
+CUT x   180.0    10010 /   23073 ( 43.4 %)  ov      0 | lbm_S1-term-in 29.8% (0)  lb_D-fan(wd) 26.0% (0)  S1_int_tree 14.9% (0)  clock 9.7% (0)  lb_write_rdq/sdq 5.4% (0)  lbf+shift 3.7% (0)  lb_D-local 2.8% (0)
+CUT x   210.0     9499 /   23073 ( 41.2 %)  ov      0 | lbm_S1-term-in 35.9% (0)  S1_int_tree 19.7% (0)  lb_D-fan(wd) 18.1% (0)  clock 7.8% (0)  lb_write_rdq/sdq 7.2% (0)  lb_wsrc_s_q/m_q 2.4% (0)  other 2.2% (0)
+CUT x   240.0    11191 /   23073 ( 48.5 %)  ov      0 | lbm_S1-term-in 30.6% (0)  S1_int_tree 24.5% (0)  lb_D-fan(wd) 19.6% (0)  clock 8.0% (0)  lb_write_rdq/sdq 5.8% (0)  lb_D-local 2.2% (0)  S1_int->reg 1.9% (0)
+CUT x   270.0    11580 /   23073 ( 50.2 %)  ov      0 | lbm_S1-term-in 31.2% (0)  S1_int_tree 28.2% (0)  lb_D-fan(wd) 15.5% (0)  clock 6.3% (0)  lb_write_rdq/sdq 5.6% (0)  lbf+shift 3.0% (0)  S1_int->reg 3.0% (0)
+CUT x   300.0    11625 /   23073 ( 50.4 %)  ov      0 | S1_int_tree 35.2% (0)  lbm_S1-term-in 31.7% (0)  lb_D-fan(wd) 11.3% (0)  clock 5.3% (0)  lb_write_rdq/sdq 5.0% (0)  S1_int->reg 4.0% (0)  lb_wsrc_s_q/m_q 2.0% (0)
+CUT x   330.0    11648 /   23073 ( 50.5 %)  ov      1 | S1_int_tree 37.4% (0)  lbm_S1-term-in 31.5% (0)  lb_D-fan(wd) 12.4% (1)  S1_int->reg 5.2% (1)  lb_write_rdq/sdq 3.7% (0)  clock 2.6% (1)  lb_wsrc_s_q/m_q 2.4% (1)
+CUT x   360.0    12309 /   23073 ( 53.3 %)  ov      2 | S1_int_tree 38.1% (0)  lbm_S1-term-in 29.1% (0)  lb_D-fan(wd) 12.8% (2)  S1_int->reg 6.1% (0)  clock 4.0% (2)  lb_write_rdq/sdq 3.0% (2)  lb_wsrc_s_q/m_q 2.6% (2)
+CUT x   390.0    12710 /   23073 ( 55.1 %)  ov      8 | S1_int_tree 40.2% (0)  lbm_S1-term-in 26.2% (0)  lb_D-fan(wd) 12.5% (8)  S1_int->reg 7.3% (1)  clock 4.1% (8)  lb_write_rdq/sdq 3.1% (7)  lb_wsrc_s_q/m_q 2.6% (8)
+CUT x   420.0    13153 /   23073 ( 57.0 %)  ov     20 | S1_int_tree 41.2% (0)  lbm_S1-term-in 24.0% (0)  lb_D-fan(wd) 12.3% (20)  S1_int->reg 8.4% (4)  clock 3.8% (20)  lb_write_rdq/sdq 2.9% (19)  lb_wsrc_s_q/m_q 2.7% (20)
+CUT x   450.0    13136 /   23073 ( 56.9 %)  ov     30 | S1_int_tree 41.5% (0)  lbm_S1-term-in 23.4% (0)  lb_D-fan(wd) 12.7% (30)  S1_int->reg 10.0% (3)  clock 3.5% (30)  lb_write_rdq/sdq 2.7% (29)  lb_wsrc_s_q/m_q 2.2% (30)
+CUT x   480.0    12581 /   23073 ( 54.5 %)  ov     16 | S1_int_tree 42.8% (0)  lbm_S1-term-in 23.9% (0)  S1_int->reg 12.1% (1)  lb_D-fan(wd) 10.4% (16)  clock 3.2% (16)  lb_write_rdq/sdq 2.2% (16)  lb_wsrc_s_q/m_q 1.4% (16)
+CUT x   510.0    11534 /   23073 ( 50.0 %)  ov     11 | S1_int_tree 43.1% (0)  lbm_S1-term-in 24.7% (0)  S1_int->reg 15.6% (0)  lb_D-fan(wd) 7.0% (11)  lb_write_rdq/sdq 2.3% (10)  clock 2.3% (11)  lb_wsrc_s_q/m_q 1.6% (10)
+CUT x   540.0    12222 /   23073 ( 53.0 %)  ov     15 | S1_int_tree 39.4% (0)  lbm_S1-term-in 21.7% (0)  S1_int->reg 17.3% (0)  lb_D-fan(wd) 9.4% (15)  clock 3.0% (15)  lb_write_rdq/sdq 2.3% (11)  lb_wsrc_s_q/m_q 2.2% (15)
+CUT x   570.0    12049 /   23073 ( 52.2 %)  ov      3 | S1_int_tree 35.8% (0)  lbm_S1-term-in 21.0% (0)  S1_int->reg 19.5% (0)  lb_D-fan(wd) 10.4% (3)  clock 3.5% (3)  lb_wsrc_s_q/m_q 2.9% (3)  lb_write_rdq/sdq 2.8% (3)
+CUT x   600.0    12088 /   23073 ( 52.4 %)  ov      2 | S1_int_tree 32.4% (0)  S1_int->reg 21.1% (0)  lbm_S1-term-in 20.6% (0)  lb_D-fan(wd) 11.5% (2)  lb_write_rdq/sdq 3.7% (1)  clock 3.5% (2)  lb_wsrc_s_q/m_q 2.8% (2)
+CUT x   630.0    11877 /   23073 ( 51.5 %)  ov      0 | S1_int_tree 29.7% (0)  S1_int->reg 22.8% (0)  lbm_S1-term-in 19.1% (0)  lb_D-fan(wd) 13.3% (0)  lb_write_rdq/sdq 4.6% (0)  clock 3.9% (0)  lb_wsrc_s_q/m_q 2.6% (0)
+CUT x   660.0    10871 /   23073 ( 47.1 %)  ov      0 | S1_int->reg 26.8% (0)  S1_int_tree 24.3% (0)  lbm_S1-term-in 20.2% (0)  lb_D-fan(wd) 12.6% (0)  lb_write_rdq/sdq 4.6% (0)  clock 3.8% (0)  lb_wsrc_s_q/m_q 2.5% (0)
+CUT x   690.0    11402 /   23073 ( 49.4 %)  ov      0 | S1_int->reg 26.1% (0)  lb_D-fan(wd) 21.0% (0)  lbm_S1-term-in 17.4% (0)  S1_int_tree 16.2% (0)  clock 6.3% (0)  S2_nets 3.6% (0)  lb_write_rdq/sdq 3.3% (0)
+CUT x   720.0    10854 /   23073 ( 47.0 %)  ov      0 | S1_int->reg 26.7% (0)  lb_D-fan(wd) 21.4% (0)  lbm_S1-term-in 15.9% (0)  S1_int_tree 13.8% (0)  clock 6.6% (0)  S2_nets 6.2% (0)  lb_write_rdq/sdq 3.0% (0)
+CUT x   750.0     8821 /   23073 ( 38.2 %)  ov      0 | S1_int->reg 27.1% (0)  S2_nets 17.7% (0)  lbm_S1-term-in 14.9% (0)  lb_D-fan(wd) 14.2% (0)  S1_int_tree 13.6% (0)  clock 5.5% (0)  lb_write_rdq/sdq 2.8% (0)
+CUT x   780.0     8148 /   23073 ( 35.3 %)  ov      0 | S2_nets 46.1% (0)  S1_int->reg 19.9% (0)  S1_int_tree 9.2% (0)  lbm_S1-term-in 8.4% (0)  lb_D-fan(wd) 6.0% (0)  clock 5.4% (0)  lb_write_rdq/sdq 2.0% (0)
+CUT x   810.0    10315 /   23073 ( 44.7 %)  ov      0 | S2_nets 71.7% (0)  S1_int->reg 10.0% (0)  S1_int_tree 4.7% (0)  lbm_S1-term-in 4.1% (0)  lb_D-fan(wd) 3.0% (0)  act_pipe/ports 2.0% (0)  clock 1.9% (0)
+CUT x   840.0     8346 /   23073 ( 36.2 %)  ov      0 | S2_nets 52.9% (0)  act_pipe/ports 17.3% (0)  S1_int->reg 10.7% (0)  clock 7.5% (0)  S1_int_tree 4.1% (0)  lbm_S1-term-in 3.4% (0)  lb_D-fan(wd) 2.3% (0)
+CUT x   870.0     6688 /   23073 ( 29.0 %)  ov      0 | act_pipe/ports 48.3% (0)  S2_nets 30.6% (0)  clock 8.5% (0)  S1_int->reg 6.5% (0)  S1_int_tree 2.7% (0)  lbm_S1-term-in 1.9% (0)  lb_D-fan(wd) 1.0% (0)
+# worst 5 y (V wiring) cuts by local overflow: what-if per class, overflow left (% of the cut's overflow)
+WORST y  1020.0 ov    492 util 104.6 % | S1_int_tree 1%  lbm_S1-term-in 0%  lb_D-fan(wd) 50%  lb_write_rdq/sdq 31%  S1_int->reg 54%  S2_nets 92%  clock 66%  lb_D-local 88%
+WORST y  1050.0 ov    488 util 104.6 % | S1_int_tree 1%  lbm_S1-term-in 1%  lb_D-fan(wd) 48%  lb_write_rdq/sdq 34%  S1_int->reg 47%  S2_nets 87%  clock 66%  act_pipe/ports 92%
+WORST y  1080.0 ov    436 util 104.1 % | S1_int_tree 1%  lbm_S1-term-in 2%  lb_D-fan(wd) 55%  lb_write_rdq/sdq 34%  S1_int->reg 40%  S2_nets 85%  clock 68%  act_pipe/ports 92%
+WORST y   990.0 ov    339 util 103.2 % | S1_int_tree 0%  lbm_S1-term-in 0%  lb_D-fan(wd) 52%  lb_write_rdq/sdq 31%  S1_int->reg 48%  S2_nets 89%  clock 65%  lb_D-local 84%
+WORST y  1110.0 ov    239 util 102.2 % | S1_int_tree 3%  lbm_S1-term-in 2%  lb_D-fan(wd) 52%  lb_write_rdq/sdq 26%  S1_int->reg 35%  S2_nets 87%  clock 66%  act_pipe/ports 92%
+# worst 5 x (H wiring) cuts by local overflow: what-if per class, overflow left (% of the cut's overflow)
+WORST x   450.0 ov     30 util  56.9 % | S1_int_tree 0%  lbm_S1-term-in 0%  lb_D-fan(wd) 99%  S1_int->reg 12%  clock 100%  lb_write_rdq/sdq 98%  lb_wsrc_s_q/m_q 100%  lb_D-local 100%
+WORST x   420.0 ov     20 util  57.0 % | S1_int_tree 0%  lbm_S1-term-in 0%  lb_D-fan(wd) 100%  S1_int->reg 21%  clock 100%  lb_write_rdq/sdq 97%  lb_wsrc_s_q/m_q 100%  lb_D-local 100%
+WORST x   480.0 ov     16 util  54.5 % | S1_int_tree 0%  lbm_S1-term-in 0%  S1_int->reg 4%  lb_D-fan(wd) 100%  clock 100%  lb_write_rdq/sdq 100%  lb_wsrc_s_q/m_q 100%  lb_D-local 100%
+WORST x   540.0 ov     15 util  53.0 % | S1_int_tree 0%  lbm_S1-term-in 0%  S1_int->reg 0%  lb_D-fan(wd) 100%  clock 100%  lb_write_rdq/sdq 78%  lb_wsrc_s_q/m_q 100%  lb_D-local 100%
+WORST x   510.0 ov     11 util  50.0 % | S1_int_tree 0%  lbm_S1-term-in 0%  S1_int->reg 4%  lb_D-fan(wd) 100%  lb_write_rdq/sdq 91%  clock 100%  lb_wsrc_s_q/m_q 98%  lb_D-local 100%
+# whole-block 2-D edge overflow left if a class vanished: class  V left (%)  H left (%)
+WHATIF S1 int tree        V      347 (  1.4 %)  H        0 (  0.0 %)
+WHATIF S1 int->reg        V    11035 ( 44.3 %)  H      125 ( 10.0 %)
+WHATIF S2 nets            V    21698 ( 87.1 %)  H     1245 (100.0 %)
+WHATIF act pipe/ports     V    23123 ( 92.9 %)  H     1245 (100.0 %)
+WHATIF clock              V    16267 ( 65.3 %)  H     1240 ( 99.6 %)
+WHATIF lb D-fan(wd)       V    12776 ( 51.3 %)  H     1242 ( 99.7 %)
+WHATIF lb D-local         V    21858 ( 87.8 %)  H     1245 (100.0 %)
+WHATIF lb slot-shift      V    23766 ( 95.5 %)  H     1245 (100.0 %)
+WHATIF lb write rdq/sdq   V     8358 ( 33.6 %)  H     1146 ( 92.1 %)
+WHATIF lb wsrc s_q/m_q    V    23759 ( 95.4 %)  H     1229 ( 98.7 %)
+WHATIF lbf pre-mux-in     V    24720 ( 99.3 %)  H     1245 (100.0 %)
+WHATIF lbf+shift          V    22889 ( 91.9 %)  H     1244 ( 99.9 %)
+WHATIF lbm S1-term-in     V      363 (  1.5 %)  H        0 (  0.0 %)
+WHATIF other              V    22680 ( 91.1 %)  H     1245 (100.0 %)
+WHATIF sel other-bcast    V    24844 ( 99.8 %)  H     1245 (100.0 %)
+WHATIF sel s1c            V    24858 ( 99.8 %)  H     1245 (100.0 %)
+WHATIF sel sel1           V    24799 ( 99.6 %)  H     1245 (100.0 %)
+WHATIF sel sel2           V    24483 ( 98.3 %)  H     1245 (100.0 %)
+WHATIF sel shq            V    24800 ( 99.6 %)  H     1245 (100.0 %)
+WHATIF sel wer            V    24428 ( 98.1 %)  H     1245 (100.0 %)
+WHATIF unclassified       V    24899 (100.0 %)  H     1245 (100.0 %)
+WHATIF-FAM S1 family (lbm + S1 internal)            V        0 (  0.0 %)  H        0 (  0.0 %)
+WHATIF-FAM lb family (lbf, shift, write, D-logic)   V     4934 ( 19.8 %)  H     1132 ( 90.9 %)
+WHATIF-FAM select broadcasts                        V    23730 ( 95.3 %)  H     1245 (100.0 %)
+WHATIF-FAM lb write path (rdq/sdq + wd fan)         V     5110 ( 20.5 %)  H     1144 ( 91.9 %)
+WHATIF-FAM S1 internal (tree + ->reg)               V      143 (  0.6 %)  H        0 (  0.0 %)
+# V crossings of horizontal edges per 100-um y band (k tracks) by class
+YB  y0  S1_int_tre S1_int->re    S2_nets      clock lb_D-fan(w lb_D-local lb_write_r lb_wsrc_s_  lbf+shift lbm_S1-ter      other   total  cap
+YB    0        0.0        0.0        0.0        2.8        0.0        0.0       30.4       62.9        0.0        0.0        3.6    102.2  351.3
+YB  100        0.8        0.0        4.1        6.2        9.8        1.3       72.3       10.8        1.7        2.1       10.6    124.0  351.1
+YB  200        4.8        1.5       14.0        8.9       25.5        2.9       74.1        3.4        5.1       12.3       14.0    170.7  351.1
+YB  300       13.0        8.1       15.3       10.4       42.9        3.2       66.8        2.1        3.0       25.4        5.0    199.6  361.8
+YB  400       22.0       13.8       14.5       10.6       43.6        4.2       57.1        1.9        3.4       37.4        1.7    214.5  351.1
+YB  500       31.4       18.2       14.7       12.4       46.4        5.1       50.6        1.1        7.6       48.6        2.2    243.9  351.1
+YB  600       46.3       20.1       18.0       10.4       41.7        4.2       48.2        1.0        4.9       63.8        2.7    265.9  361.8
+YB  700       59.2       24.2       20.1       12.1       40.5        4.0       40.4        0.8        3.4       80.9        2.4    291.8  351.1
+YB  800       96.5       24.2       19.4        8.5       36.1        2.6       37.0        0.7        2.3       94.3        2.3    327.3  351.1
+YB  900      139.2       20.2       17.6        9.0       35.3        2.2       33.1        0.7        1.6       99.0        1.8    363.3  361.8
+YB 1000      147.1       23.8       18.1        8.6       33.6        2.0       28.8        0.7        1.3       96.5        1.7    365.8  351.1
+YB 1100      150.6       27.2       19.1        6.0       31.0        1.9       27.6        0.7        1.5       83.9        1.7    354.5  351.1
+YB 1200      150.0       25.1       21.8       11.3       29.1        1.9       26.8        0.7        2.4       77.9        1.8    352.8  361.8
+YB 1300      122.9       25.8       17.8       16.6       27.8        1.7       24.9        0.7        1.7       69.0        1.7    314.0  351.1
+YB 1400       77.1       25.0       13.7       22.8       29.3        2.8       22.9        0.7        2.0       60.2        1.5    262.2  351.1
+YB 1500       46.5       21.4       12.1       25.5       38.0        4.0       18.1        0.6        3.5       48.6        1.0    224.9  361.8
+YB 1600       33.8       17.9       16.0       19.3       31.0        3.5       12.6        0.5        3.7       29.5        0.0    171.6  351.1
+YB 1700       23.8        7.4       18.7       15.7       28.2        2.9        7.8        0.2        2.3       17.9        0.0    127.5  351.1
+YB 1800       12.0        0.7       10.6       11.8       21.6        2.5        2.2        0.0        2.8       10.1        0.0     76.7  361.8
+YB 1900        1.5        0.0        0.8        3.0        8.4        1.5        0.0        0.0        2.3        1.8        0.0     20.7  245.0

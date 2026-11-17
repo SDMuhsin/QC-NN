@@ -1,0 +1,60 @@
+## r18_a25 (r10b/grt_probe.tcl on r16_se cts_rt, M2-M7, 10 congestion iterations)
+[INFO GRT-0053] Routing resources analysis:
+          Routing      Original      Derated      Resource
+Layer     Direction    Resources     Resources    Reduction (%)
+---------------------------------------------------------------
+M1         Horizontal          0             0          0.00%
+M2         Vertical      2952000       2160710          26.81%
+M3         Horizontal    2949660       2133897          27.66%
+M4         Vertical      2952000       2044734          30.73%
+M5         Horizontal    2949660       2158003          26.84%
+M6         Vertical      2952000       2157428          26.92%
+M7         Horizontal    2949660       2042170          30.77%
+[INFO GRT-0096] Final congestion report:
+Layer         Resource        Demand        Usage (%)    Max H / Max V / Total Overflow
+---------------------------------------------------------------------------------------
+M1                   0           287            0.00%             2 /  1 / 287
+M2             2160710       1572758           72.79%             1 /  7 / 59835
+M3             2133897       1332865           62.46%             4 /  1 / 4425
+M4             2044734       1538639           75.25%             1 /  7 / 41474
+M5             2158003       1122703           52.03%             3 /  1 / 2617
+M6             2157428       1463744           67.85%             1 /  6 / 34253
+M7             2042170        641838           31.43%             3 /  1 / 2170
+---------------------------------------------------------------------------------------
+Total         12696942       7672834           60.43%            15 / 24 / 145061
+
+[INFO GRT-0018] Total wirelength: 26716227 um
+[INFO GRT-0014] Routed nets: 261987
+R10B_T   955.9 s global_route done
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 15:56.51
+	Maximum resident set size (kbytes): 4518948
+## r18_a15 (r10b/grt_probe.tcl on r16_se cts_rt, M2-M7, 10 congestion iterations)
+[INFO GRT-0053] Routing resources analysis:
+          Routing      Original      Derated      Resource
+Layer     Direction    Resources     Resources    Reduction (%)
+---------------------------------------------------------------
+M1         Horizontal          0             0          0.00%
+M2         Vertical      2952000       2357210          20.15%
+M3         Horizontal    2949660       2330639          20.99%
+M4         Vertical      2952000       2280384          22.75%
+M5         Horizontal    2949660       2354745          20.17%
+M6         Vertical      2952000       2353928          20.26%
+M7         Horizontal    2949660       2238912          24.10%
+[INFO GRT-0096] Final congestion report:
+Layer         Resource        Demand        Usage (%)    Max H / Max V / Total Overflow
+---------------------------------------------------------------------------------------
+M1                   0             6            0.00%             1 /  0 /  6
+M2             2357210       1566996           66.48%             1 /  5 / 9519
+M3             2330639       1352334           58.02%             2 /  1 / 271
+M4             2280384       1582856           69.41%             0 /  3 / 5805
+M5             2354745       1046166           44.43%             2 /  1 / 171
+M6             2353928       1418441           60.26%             0 /  3 / 5300
+M7             2238912        579360           25.88%             2 /  1 / 140
+---------------------------------------------------------------------------------------
+Total         13915818       7546159           54.23%             8 / 14 / 21212
+
+[INFO GRT-0018] Total wirelength: 26054373 um
+[INFO GRT-0014] Routed nets: 261987
+R10B_T   767.2 s global_route done
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 12:47.80
+	Maximum resident set size (kbytes): 4209284

@@ -1,0 +1,39 @@
+gcell 3.0 um; overflowed gcells 15032 of 196800 = 7.64 %; records H 538 V 14878; total overflow H 580 V 20632 tracks
+REGION west  overflowed gcells     53 =   8.1 % of region; overflow H      0 V     74 tracks
+REGION col0  overflowed gcells   6447 =   7.6 % of region; overflow H     26 V   9385 tracks
+REGION col1  overflowed gcells   6664 =   7.8 % of region; overflow H    554 V   8882 tracks
+REGION col2  overflowed gcells   1868 =   2.2 % of region; overflow H      0 V   2291 tracks
+REGION col3  overflowed gcells      0 =   0.0 % of region; overflow H      0 V      0 tracks
+REGION col4  overflowed gcells      0 =   0.0 % of region; overflow H      0 V      0 tracks
+REGION col5  overflowed gcells      0 =   0.0 % of region; overflow H      0 V      0 tracks
+REGION col6  overflowed gcells      0 =   0.0 % of region; overflow H      0 V      0 tracks
+REGION col7  overflowed gcells      0 =   0.0 % of region; overflow H      0 V      0 tracks
+# class: share of net-tracks in overflowed gcells | overflow left if the class's tracks vanished (of 21212)
+CLASS S1_int_tree             41.5 % | overflow left    219 (  1.0 % of base)
+CLASS lbm_S1-term-in          26.1 % | overflow left    254 (  1.2 % of base)
+CLASS lb_D-fan(wd)             8.7 % | overflow left  11111 ( 52.4 % of base)
+CLASS lb_write_rdq/sdq         7.7 % | overflow left   7117 ( 33.6 % of base)
+CLASS S1_int->reg              6.6 % | overflow left   8784 ( 41.4 % of base)
+CLASS S2_nets                  4.6 % | overflow left  18565 ( 87.5 % of base)
+CLASS unknown                  1.6 % | overflow left  15900 ( 75.0 % of base)
+CLASS clock                    0.7 % | overflow left  18358 ( 86.5 % of base)
+CLASS act_pipe/ports           0.6 % | overflow left  19626 ( 92.5 % of base)
+CLASS lb_D-local               0.6 % | overflow left  18574 ( 87.6 % of base)
+CLASS other                    0.5 % | overflow left  19368 ( 91.3 % of base)
+CLASS lbf+shift                0.4 % | overflow left  19488 ( 91.9 % of base)
+CLASS lb_slot-shift            0.2 % | overflow left  20215 ( 95.3 % of base)
+CLASS lb_wsrc_s_q/m_q          0.2 % | overflow left  20166 ( 95.1 % of base)
+FAMILY write-back (f_y regs -> rotators -> S/B write)   share   0.0 % | overflow left  21212 (100.0 %), overflowed records left 15416 of 15416
+FAMILY S-read -> act port (S Q + rotator)               share   0.0 % | overflow left  21212 (100.0 %), overflowed records left 15416 of 15416
+FAMILY params Q -> pf / pw                              share   0.0 % | overflow left  21212 (100.0 %), overflowed records left 15416 of 15416
+FAMILY write-back + S-read                              share   0.0 % | overflow left  21212 (100.0 %), overflowed records left 15416 of 15416
+FAMILY all three                                        share   0.0 % | overflow left  21212 (100.0 %), overflowed records left 15416 of 15416
+LAYER M6 Vertical 2952000 2353928 20.26%
+LAYER M7 Horizontal 2949660 2238912 24.10%
+LAYER M1 0 6 0.00% 1 / 0 / 6
+LAYER M2 2357210 1566996 66.48% 1 / 5 / 9519
+LAYER M3 2330639 1352334 58.02% 2 / 1 / 271
+LAYER M4 2280384 1582856 69.41% 0 / 3 / 5805
+LAYER M5 2354745 1046166 44.43% 2 / 1 / 171
+LAYER M6 2353928 1418441 60.26% 0 / 3 / 5300
+LAYER M7 2238912 579360 25.88% 2 / 1 / 140

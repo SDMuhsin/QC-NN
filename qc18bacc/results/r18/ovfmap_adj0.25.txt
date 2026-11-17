@@ -1,0 +1,80 @@
+# GRT report: overflowed gcells 42768 of 197100 = 21.70 %; records H 6525 V 42665; overflow tracks H 9341 V 135720
+# DR markers 1362682, top types: Short/M2 742536, Short/M3 197811, Short/M4 73429, Recheck/M2 63977, Metal Spacing/M2 62806, Short/M5 54373
+# y profile (bin y0): overflow H, V | markers all, M2+M3 shorts (k)
+YP     0        0       0 |    11.9     9.2
+YP   100        0       0 |    15.8    10.4
+YP   200        0       0 |    32.2    22.4
+YP   300        0       0 |    32.2    22.6
+YP   400        0       0 |    32.5    23.3
+YP   500        0       0 |    45.6    32.7
+YP   600        0       0 |    37.7    26.0
+YP   700        0      20 |    52.3    37.8
+YP   800      403    4683 |    80.9    57.5
+YP   900     1865   31594 |   191.3   127.6
+YP  1000     3476   47228 |   229.6   153.1
+YP  1100     2546   33349 |   185.7   123.4
+YP  1200     1019   17899 |   144.4   101.7
+YP  1300       32     947 |    81.1    59.2
+YP  1400        0       0 |    56.7    41.2
+YP  1500        0       0 |    45.1    32.4
+YP  1600        0       0 |    31.0    21.7
+YP  1700        0       0 |    30.7    21.7
+YP  1800        0       0 |    18.7    12.2
+YP  1900        0       0 |     7.3     4.4
+# x profile (bin x0): overflow H, V | markers all, M2+M3 shorts (k)
+XP     0        0   13117 |    62.2    43.6
+XP   100        0   13790 |   117.2    82.2
+XP   200        3   13961 |   172.7   118.7
+XP   300      880   16351 |   208.2   137.6
+XP   400     5493   19211 |   205.3   138.5
+XP   500     2685   18024 |   208.5   143.7
+XP   600      280   14354 |   161.1   111.0
+XP   700        0   13891 |   137.0    97.8
+XP   800        0   13021 |    90.5    67.4
+# map ovf (x bins left->right, y top-down), units tracks
+MAP ovf      1900     0     0     0     0     0     0     0     0     0
+MAP ovf      1800     0     0     0     0     0     0     0     0     0
+MAP ovf      1700     0     0     0     0     0     0     0     0     0
+MAP ovf      1600     0     0     0     0     0     0     0     0     0
+MAP ovf      1500     0     0     0     0     0     0     0     0     0
+MAP ovf      1400     0     0     0     0     0     0     0     0     0
+MAP ovf      1300   159   169   184   208   162    86     9     2     0
+MAP ovf      1200  2308  2378  2341  2667  2950  2579  1299  1275  1121
+MAP ovf      1100  2938  3117  3270  4308  5644  5032  4083  3872  3631
+MAP ovf      1000  4696  4953  4995  5786  8261  6419  5354  5275  4965
+MAP ovf       900  2828  2975  2999  4048  6287  5123  3260  3016  2923
+MAP ovf       800   188   198   175   214  1400  1465   628   443   375
+MAP ovf       700     0     0     0     0     0     5     1     8     6
+MAP ovf       600     0     0     0     0     0     0     0     0     0
+MAP ovf       500     0     0     0     0     0     0     0     0     0
+MAP ovf       400     0     0     0     0     0     0     0     0     0
+MAP ovf       300     0     0     0     0     0     0     0     0     0
+MAP ovf       200     0     0     0     0     0     0     0     0     0
+MAP ovf       100     0     0     0     0     0     0     0     0     0
+MAP ovf         0     0     0     0     0     0     0     0     0     0
+# map mk (x bins left->right, y top-down), units k markers
+MAP mk       1900     0     0     2     2     2     1     1     0     0
+MAP mk       1800     0     2     3     3     3     3     2     2     1
+MAP mk       1700     0     2     4     4     4     4     2     8     3
+MAP mk       1600     3     4     4     4     4     3     2     6     2
+MAP mk       1500     4     4     6     6     6     6     5     4     3
+MAP mk       1400     4     6     5     7     7     6     8     6     6
+MAP mk       1300     4     7    12    11    13    15     8     6     5
+MAP mk       1200     4    11    24    30    21    23    14    10     8
+MAP mk       1100     6    13    25    29    33    31    23    15    11
+MAP mk       1000    10    21    33    38    32    33    27    23    13
+MAP mk        900     7    12    20    37    33    34    25    17     7
+MAP mk        800     5     5     4    11    17    14    10     8     7
+MAP mk        700     3     5     6     6     5     6     7     7     7
+MAP mk        600     2     3     4     3     7     5     7     4     2
+MAP mk        500     2     7     5     6     4     7     4     7     4
+MAP mk        400     0     3     5     2     5     5     5     4     3
+MAP mk        300     2     4     4     3     4     4     4     4     3
+MAP mk        200     4     4     3     4     3     3     4     3     3
+MAP mk        100     2     2     2     1     3     2     2     1     0
+MAP mk          0     1     1     1     2     2     3     2     1     0
+AGREE Pearson ovf~markers 0.876, Spearman 0.600; ovf~M2/M3 shorts Pearson 0.872
+AGREE top 10 % overflow bins hold 63.9 % of overflow and 34.8 % of markers (33.3 % of M2/M3 shorts)
+AGREE top 20 % overflow bins hold 96.1 % of overflow and 56.1 % of markers (54.6 % of M2/M3 shorts)
+AGREE top 10 % marker bins hold 39.1 % of markers and 58.4 % of overflow
+AGREE top 20 % marker bins hold 58.1 % of markers and 85.9 % of overflow
