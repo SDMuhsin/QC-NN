@@ -1,0 +1,10 @@
+# R13 PrimeTime of r13_c1d (chip-cone block, 900 x 1970, DR iteration 0: 1.72 M markers -> parasitics of an unclean route) [S]
+# def2spef tt / ss / ff, propagated clock, IO budget shifted by L, period 2.0 ns (impl/r7c/pt_blk.tcl via impl/r9a/run.sh post)
+corner  L ns   reg2reg fmax MHz (slack @2.0)   worst path                               din2reg   cin2reg            reg2act  reg2cout  hold r2r / ->out   viol ep setup / hold
+tt      0.770  407.6 (-0.453)                  s1c_r_reg_1 -> g_pmr_1 -> u_s1 -> s1_reg    -0.129    -0.292 (tgo->wer)  +0.135   +0.165    +0.003 / -0.044     9 144 / 4 359
+ss      1.140  264.5 (-1.780)                  s1c_r_reg_1 -> u_s1/s1_reg_1961             -0.439    -0.999 (tgo->wer)  +0.094   -0.089    +0.036 / -0.024    31 995 / 1 101
+# R9a (r9a_f2j): tt 344.3 (-0.905), ss 251.4; viol ep 21 925 / 43 148.
+# tt worst path: s1c_r_reg_1 (DFCNQD4) -> 4 BUFFD16 repeaters + BUFFD8 (fo 32, 0.23 pF) = 0.69 ns to the pre-mux MUX2D4 select (R9a: block-wide
+#   tree, 1.0+ ns) -> lbm[1801] (fo 7, 0.28 pF) 0.38 ns -> S1 OAI211 / AOI211 / ND4 / AO211 -> s1_d (0.19 pF) 0.39 ns -> s1_reg; capture clock
+#   0.25 ns earlier than launch.  Copy 1's 1 k bits (= lbm index group) are spread over the S1 area (lb word -> 22-34 act rows), so the copy's
+#   tree still spans ~the S1 region.  cin2reg: tgo -> is_v -> vb_inc / rc_inc select -> wer D (the late select of part 1b).

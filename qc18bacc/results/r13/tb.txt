@@ -1,0 +1,42 @@
+# R13 bench (Verilator 5.050, QBT_TECH=2, hw/tb/run_tb_chip.sh; vectors = R10a v/ s0 / s1 copies, program progc = compile/prm_col.py convert)
+# base B = +define+QB_HEAD_FW=128+QB_HPW=144+QB_TOP_RSH=2+QB_HEAD_PCOL=1+QB_HEAD_IREG=2+QB_TOP_WBQ=2+QB_ACT_CTXR+QB_ACT_LDR+QB_ACT_CNT+QB_ACT_SRA+QB_SEQ_LPS+QB_SEQ_CMH+QB_SEQ_TKS+QB_PRM_BAR+QB_SEQ_DSP+QB_SEQ_TGO+QB_PRM_NUR+QB_SEQ_NXW+QB_SEQ_RAL+QB_ACT_S1M=1+QB_ACT_S2M+QB_TOP_FPR=1+QB_TOP_WBK=1+QB_TOP_FFT=1+QB_SEQ_DEP+QB_PRM_COL=1+QB_WB_COL=1
+# r13f = B+QB_ACT_RPL (final RTL); def = B (no QB_ACT_RPL); mrc = +QB_ACT_RPL+QBA_MUT_RPLC; mrw = +QB_ACT_RPL+QBA_MUT_RPLW (shadow check on);
+# mrwn = +QB_ACT_RPL+QBA_MUT_RPLW+QBA_RPL_NOCHK (shadow check off: functional detection only)
+## r13f s0
+QB_CHIP img 0 s0/img60 go 0 interval 3780 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7032 (after end +3252) PASS
+QB_CHIP img 1 s0/img61 go 3780 interval 3748 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7000 (after end +3252) PASS
+QB_CHIP img 2 s0/img0 go 7528 interval 3748 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7000 (after end +3252) PASS
+QB_CHIP img 3 s0/img1 go 11276 interval 3788 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7040 (after end +3252) PASS
+QB_CHIP img 4 s0/img2 go 15064 interval - logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7064 (after end +3252) PASS
+QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 0 head_err 0 PASS
+## r13f s1
+QB_CHIP img 0 s1/img13 go 0 interval 3836 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7088 (after end +3252) PASS
+QB_CHIP img 1 s1/img55 go 3836 interval 3764 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7016 (after end +3252) PASS
+QB_CHIP img 2 s1/img7 go 7600 interval 3732 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +6984 (after end +3252) PASS
+QB_CHIP img 3 s1/img42 go 11332 interval 3796 logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7048 (after end +3252) PASS
+QB_CHIP img 4 s1/img91 go 15128 interval - logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7056 (after end +3252) PASS
+QB_CHIP_TB images 5 err 0 img_read_err 0 timeout 0 head_err 0 PASS
+## def s0
+QB_CHIP img 0 s0/img60 go 0 interval - logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7032 (after end +3252) PASS
+QB_CHIP_TB images 1 err 0 img_read_err 0 timeout 0 head_err 0 PASS
+## def s1
+QB_CHIP img 0 s1/img13 go 0 interval - logits 100/100 err 0 tiles 600 cycle_mismatch 0 last_logit +7088 (after end +3252) PASS
+QB_CHIP_TB images 1 err 0 img_read_err 0 timeout 0 head_err 0 PASS
+## mrc s0
+QB_CHIP img 0 s0/img60 go 0 img_free +275 end +3572 (rtl_end 3572 model 3779 delta -207) interval - logits 100/100 err 100 tiles 600 cycle_mismatch 40 last_logit +6824 (after end +3252) FAIL
+QB_CHIP_TB images 1 err 0 img_read_err 0 timeout 0 head_err 0 FAIL
+## mrc s1
+QB_CHIP img 0 s1/img13 go 0 img_free +275 end +3604 (rtl_end 3604 model 3835 delta -231) interval - logits 100/100 err 100 tiles 600 cycle_mismatch 40 last_logit +6856 (after end +3252) FAIL
+QB_CHIP_TB images 1 err 0 img_read_err 0 timeout 0 head_err 0 FAIL
+## mrw s0
+[169355] %Error: qb_act2.sv:846: Assertion failed in tb_qb_chip.dut.u_top.u_act.g_ctx[0].u_ctx.unnamedblk28.unnamedblk29: QBA2_RPL_ERR wer[8][3] 0
+[169355] %Error: qb_act2.sv:846: Assertion failed in tb_qb_chip.dut.u_top.u_act.g_ctx[0].u_ctx.unnamedblk28.unnamedblk29: QBA2_RPL_ERR wer[8][3] 0
+## mrw s1
+[169355] %Error: qb_act2.sv:846: Assertion failed in tb_qb_chip.dut.u_top.u_act.g_ctx[0].u_ctx.unnamedblk28.unnamedblk29: QBA2_RPL_ERR wer[8][3] 0
+[169355] %Error: qb_act2.sv:846: Assertion failed in tb_qb_chip.dut.u_top.u_act.g_ctx[0].u_ctx.unnamedblk28.unnamedblk29: QBA2_RPL_ERR wer[8][3] 0
+## mrwn s0
+QB_CHIP img 0 s0/img60 go 0 interval - logits 100/100 err 100 tiles 600 cycle_mismatch 40 last_logit +7048 (after end +3252) FAIL
+QB_CHIP_TB images 1 err 0 img_read_err 0 timeout 0 head_err 0 FAIL
+## mrwn s1
+QB_CHIP img 0 s1/img13 go 0 img_free +275 end +3812 (rtl_end 3812 model 3835 delta -23) interval - logits 100/100 err 100 tiles 600 cycle_mismatch 30 last_logit +7064 (after end +3252) FAIL
+QB_CHIP_TB images 1 err 0 img_read_err 0 timeout 0 head_err 0 FAIL

@@ -167,11 +167,31 @@ module qb_act2 #(parameter int ACT_PIPE = 1) (
     // are 0, so s1c only matters when sel1a | sel1b != 0).  QB_ACT_S1M = 1: flat AND-OR (qba2_s1m), 2: 3x3 chunk
     // select as a 4-stage shifter (qba2_s1s).  Bit- and cycle-exact (same registers, same S1 values).
     localparam int S1M = `QB_ACT_S1M;
-    logic s1c;
     logic [16383:0] lbm;
+`ifdef QB_ACT_RPL
+    // R13 (opt-in, results/r13.md): s1c replicated, one copy per 1024-b region of the pre-mux (s1c_r[k] selects
+    // lbm[1024 k +: 1024]); all copies are loaded from is_v[1] (bit- and cycle-exact).  The copies must not be merged
+    // by synthesis (impl/r13 hook: set_register_merging false on *s1c_r_reg*).  Mutant QBA_MUT_RPLC: copy 5 is loaded
+    // from is_v[0].
+    logic [15:0] s1c_r;
+    always_ff @(posedge clk or negedge rst_n)
+        if (!rst_n) s1c_r <= '0;
+        else begin
+            s1c_r <= {16{is_v[1]}};
+`ifdef QBA_MUT_RPLC
+            s1c_r[5] <= is_v[0];
+`endif
+        end
+    for (genvar k = 0; k < 16; k++) begin : g_pmr
+        qba2_pm_r u_pm (.lb0(lbf[0][1024 * k +: 1024]), .lb1(lbf[1][1024 * k +: 1024]), .ctx(s1c_r[k]),
+                        .m(lbm[1024 * k +: 1024]));
+    end
+`else
+    logic s1c;
     always_ff @(posedge clk or negedge rst_n)
         if (!rst_n) s1c <= 1'b0; else s1c <= is_v[1];
     qba2_pm u_pm (.lb0(lbf[0]), .lb1(lbf[1]), .ctx(s1c), .m(lbm));
+`endif
 `ifdef QB_ACT_S2M
     // R8c (opt-in, with QB_ACT_S1M = 1; results/r8c.md): row-homed S1 / S2 (gen_act2_s2m.py): 128 S1 registers, 8 per
     // act row, re-used across configurations with a cfg-qualified select (sel2 = the registered cfg of the item in
@@ -481,9 +501,11 @@ module qba2_ctx #(parameter int ACT_PIPE = 1) (
     logic [2:0] shq;
     wire [9:0] wsl_b = ev2.row - vb;
     wire [3:0] wsl_s = ev2.row[3:0] - rcnt[3:0];
+`ifndef QB_ACT_RPL                                                // R13 QB_ACT_RPL: qba2_lb_r at the end of qba2_ctx
     qba2_lb u_lb (.clk, .shq, .wr_en(ev2.v && ev2.wr),
                   .wsl(ev2.s ? wsl_s[2:0] : wsl_b[2:0]), .wqm(ev2.s ? 4'hf : (4'd1 << ev2.q)), .wzero(ev2.zero),
                   .ws(ev2.s), .rdq, .sdq, .lbf);
+`endif
     always_ff @(posedge clk or negedge rst_n)
         if (!rst_n) begin vdone <= '0; wdone <= '0; end
         else if (start) begin vdone <= '0; wdone <= '0; end
@@ -787,6 +809,46 @@ module qba2_ctx #(parameter int ACT_PIPE = 1) (
                       stem, stem && is_g == 4'd1,                              // stem, g3n
                       int8 ? is_pl : (stem ? {is_g[0], 2'b00} : 3'd0),         // plane
                       is_g, ct[2:0], tile[5:0]};
+`ifdef QB_ACT_RPL
+    // R13 (opt-in, results/r13.md): the write-slot decode one cycle early, registered and replicated per line-buffer
+    // region (wer[r][s] = write enable of slot s, bits 128 r +: 128, r = 0..15, quarter r / 4).  ev2 <= ev1 every cycle,
+    // so ev2's fields are ev1's one cycle earlier; vb / rcnt are taken as their next-state values: candidates from
+    // registers (no change, + adv / + irel, cleared by start) selected by the update conditions of the sequencer
+    // below (vb_inc = S_BIN window advance, rc_inc = int8 release, clr = start in S_IDLE).  Bit- and cycle-exact.
+    // Mutant QBA_MUT_RPLW: the window-advance candidate is ignored (vb + adv not seen).
+    logic [15:0][7:0] wer;
+    wire rp_clr = (st == S_IDLE) && start;
+    wire rp_vbi = (st == S_BIN) && is_v && (g == nchunk - 5'd1) && last_ct && (cfg != 4'd0 || tile[0]);
+`ifdef QB_ACT_SRA
+    wire rp_rci = relgo;
+`else
+    wire rp_rci = (st == S_INT) && is_v && !is_zero;
+`endif
+    wire [2:0] rp_b0 = ev1.row[2:0] - vb[2:0], rp_b1 = ev1.row[2:0] - vb[2:0] - adv;
+    wire [2:0] rp_s0 = ev1.row[2:0] - rcnt[2:0], rp_s1 = ev1.row[2:0] - rcnt[2:0] - {1'b0, irel};
+`ifdef QBA_MUT_RPLW
+    wire [2:0] rp_wb = rp_clr ? ev1.row[2:0] : rp_b0;
+`else
+    wire [2:0] rp_wb = rp_clr ? ev1.row[2:0] : rp_vbi ? rp_b1 : rp_b0;
+`endif
+    wire [2:0] rp_ws = rp_clr ? ev1.row[2:0] : rp_rci ? rp_s1 : rp_s0;
+    wire [2:0] rp_wsl = ev1.s ? rp_ws : rp_wb;
+    wire [3:0] rp_wqm = ev1.s ? 4'hf : (4'd1 << ev1.q);
+    always_ff @(posedge clk or negedge rst_n)
+        if (!rst_n) wer <= '0;
+        else for (int r = 0; r < 16; r++) for (int s = 0; s < 8; s++)
+            wer[r][s] <= ev1.v && ev1.wr && rp_wsl == 3'(s) && rp_wqm[r / 4];
+`ifndef SYNTHESIS
+`ifndef QBA_RPL_NOCHK                                              // sim-only shadow check of wer vs the ev2 decode
+    always_ff @(posedge clk)
+        if (rst_n) for (int r = 0; r < 16; r++) for (int s = 0; s < 8; s++)
+            if (wer[r][s] != (ev2.v && ev2.wr && (ev2.s ? wsl_s[2:0] : wsl_b[2:0]) == 3'(s) &&
+                              ((ev2.s ? 4'hf : (4'd1 << ev2.q)) >> (r / 4)) & 4'd1))
+                $error("QBA2_RPL_ERR wer[%0d][%0d] %b", r, s, wer[r][s]);
+`endif
+`endif
+    qba2_lb_r u_lb (.clk, .shq, .wer, .wzero(ev2.zero), .ws(ev2.s), .rdq, .sdq, .lbf);
+`endif
 endmodule
 
 // line buffer of one context: 8 slots x 2048 b; per edge: shift by shq (one-hot 1 / 2 / 4 slots toward slot 0), then
@@ -820,3 +882,42 @@ module qba2_lb (
         end
     end
 endmodule
+
+`ifdef QB_ACT_RPL
+// R13 QB_ACT_RPL: line buffer with registered, region-replicated write enables wer[r][s] (slot s, bits 128 r +: 128)
+// instead of the wr_en / wsl / wqm decode; same shift and write data as qba2_lb.
+module qba2_lb_r (
+    input  logic            clk,
+    input  logic [2:0]      shq,
+    input  logic [15:0][7:0] wer,
+    input  logic            wzero,
+    input  logic            ws,
+    input  logic [511:0]    rdq,
+    input  logic [2047:0]   sdq,
+    output logic [16383:0]  lbf);
+    logic [2047:0] lb [8];
+    logic [2047:0] wd;
+    always_comb for (int s = 0; s < 8; s++) lbf[2048 * s +: 2048] = lb[s];
+    always_comb wd = wzero ? 2048'd0 : ws ? sdq : {4{rdq}};
+    always_ff @(posedge clk) begin
+        for (int s = 0; s < 8; s++) begin
+            logic [2047:0] nx;
+            nx = lb[s];
+            if (shq[0] && s + 1 < 8) nx = lb[(s + 1) % 8];
+            if (shq[1] && s + 2 < 8) nx = lb[(s + 2) % 8];
+            if (shq[2] && s + 4 < 8) nx = lb[(s + 4) % 8];
+            for (int r = 0; r < 16; r++)
+                if (wer[r][s]) nx[128 * r +: 128] = wd[128 * r +: 128];
+            lb[s] <= nx;
+        end
+    end
+endmodule
+
+// R13 QB_ACT_RPL: one 1024-b region of the context pre-mux (as qba2_pm)
+module qba2_pm_r (
+    input  logic [1023:0] lb0, lb1,
+    input  logic          ctx,
+    output logic [1023:0] m);
+    assign m = ctx ? lb1 : lb0;
+endmodule
+`endif

@@ -1,0 +1,10 @@
+# R13 DC topographical qb_act2_blk (impl/r13/run.sh syn = impl/r9a recipe + QB_ACT_RPL, hook impl/r13/topo.tcl: set_register_merging
+# false on the 272 replica flops; tt 1.65 ns, compile_ultra -no_autoungroup -gate_clock -spg) [S]; tau3 build syn/r13_act, DC wall 14:32
+run        cell_um2  cells    regs    DRV nets left   PT tt / ss MHz (1.65 ns, DC topo RC)  lb_reg class tt / ss        s1_reg tt / ss
+r9a_act    819 202   223 092  55 245  230             601.6 / 383.6                         602.2 / 420.6               611.4 / 399.8
+r13_act    819 432   222 107  55 505   63             599.2 / 384.7                         631.0 / 422.9               611.7 / 401.7
+r13_actc   824 963   221 717  55 484   -              595.5 / 380.5                         640.3 / 431.1               613.0 / 399.5
+# delta +230 um2 (+0.03 %), +260 regs: s1c 1 -> 10 copies (pre-mux regions 10..15 = lbm[16383:10240] have no S1 load -> DC removed
+#   them with their copies; regions 0..9 one copy each), wer 2 x 128 (two contexts) replace the wsl decode; replicas kept (no merging).
+# worst tt / ss unchanged (lval -> m_ra, R8a ctx domain); lb_reg tt worst now wer_reg -> lb_reg D (was ev2.row -> wsl -> lb write).
+# r13_actc = chip-cone wrapper (QB13_BLK_CHIP: qb_act2 #(1) + u_dist act register) + QB_ACT_RPL, DC port side B for all non-act ports (R11 pins)
