@@ -1,0 +1,20 @@
+R24_DISP hu->hl prev sl: cells 328908 touched 16398 (new 16398) total_disp_um 4229927 mean 12.86 max 492.6  [M]
+  touched disp 1644996 (38.9 %), untouched (pushed) 2584931
+  H2 touched over macro: n 5361 disp 886430 (21.0 %) mean 165.3
+  touched not over macro: n 11037 disp 758565 (17.9 %) mean 68.7
+  untouched over macro: n 0 disp 0 (0.0 %) mean 0.0
+  bin density (50 um, pre-legal) | touched n / disp % / mean | all cells n / disp %  (cells not over macro)
+    0.0-0.6       511    0.0 %    2.5 |   43613    0.5 %
+    0.6-0.7       179    0.0 %    8.4 |   14081    0.3 %
+    0.7-0.8       332    0.1 %    7.3 |   21570    1.1 %
+    0.8-0.9       740    0.2 %   11.8 |   61121    2.6 %
+    0.9-1.0      3076    2.7 %   37.1 |  141732   38.4 %
+    1.0-1.2      4490    7.5 %   70.5 |   36161   24.4 %
+    1.2-inf      1709    7.4 %  183.8 |    4976   11.9 %
+  disp hist um 0-:2690/249441 2-:1372/7744 5-:1468/21913 20-:1572/17207 50-:2708/10763 100-:3438/3879 200-:3150/1302 400-:0/261  (touched/untouched)
+  bins: density p50 0.77 p90 1.00 p99 1.21 max 1.47; bins > 1.0: 137 of 1503
+  hot bin x 450 y 1900: disp 165077 (3.9 %) density 1.44 free 2200 um2 touched 438
+  hot bin x 400 y 1900: disp 97142 (2.3 %) density 1.39 free 2200 um2 touched 361
+  hot bin x 500 y 1900: disp 67317 (1.6 %) density 1.11 free 2200 um2 touched 105
+  hot bin x 350 y 1900: disp 61576 (1.5 %) density 1.32 free 2200 um2 touched 206
+  touched masters: BUFFD1:10931 BUFFD16:3890 CKBD16:893 BUFFD12:637 CKBD12:47

@@ -9,6 +9,7 @@
 #   qc18bacc/impl/r22/run.sh bud <tag>    budget.sh only (cuts21 regions from the run's S rows: QB21_SROWS)
 #   qc18bacc/impl/r22/run.sh sq <tag>     S-macro net spans on db/place.odb (sq22.tcl / sq22.py)
 #   qc18bacc/impl/r22/run.sh prod <tag>   CTS -> post-CTS repair (QB_IO_LAT) -> GRT + antenna repair (R21 hooks) -> db/grt.odb
+#                                         (opt-in R24: QB22_FROM start step [cts], QB22_SET_X extra QC_PNR_SET pairs)
 #   qc18bacc/impl/r22/run.sh dr|post|ant <tag>   = impl/r21/run.sh (abstract dir prefix r22)
 #   qc18bacc/impl/r22/run.sh abs <tag>    impl/r21/run.sh abs + ring LEF (impl/r5b/lef_ring.py) -> $QC_BUILD/r22_<tag>/
 #   qc18bacc/impl/r22/run.sh fin <tag>    ant | post -> abs (+ ring LEF)
@@ -50,7 +51,7 @@ sq)  # S-macro net spans of db/place.odb (sq22.tcl -> sq22.py): band H bisection
          "$here/sq22.tcl" > sq22.log 2>&1 < /dev/null )
      python3 -I "$here/sq22.py" "$d/sq22.txt" ;;
 prod) echo R22_PROD_START $(date +%T)
-     QC_PNR_SET="$SET" QB_GRT_STOP=1 QC_PNR_FROM=cts "$root/flow/tsmc65/pnr/run_pnr.sh" "$root/qc18bacc/impl/r10b/hub.cfg" "$tag"
+     QC_PNR_SET="$SET${QB22_SET_X:+ $QB22_SET_X}" QB_GRT_STOP=1 QC_PNR_FROM=${QB22_FROM:-cts} "$root/flow/tsmc65/pnr/run_pnr.sh" "$root/qc18bacc/impl/r10b/hub.cfg" "$tag"
      [ -s "$d/db/grt.odb" ] || { echo R22_FAIL grt; exit 1; }
      echo R22_PROD_DONE $(date +%T) ;;
 dr|post|ant) "$R21/run.sh" "$step" "$tag" ;;

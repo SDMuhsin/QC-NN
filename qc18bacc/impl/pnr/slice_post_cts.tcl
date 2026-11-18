@@ -60,7 +60,11 @@ proc qb_hold {} {
             -max_utilization [p MAX_UTIL] } e]} { qc_log "repair_timing -hold stopped: $e" }
     qc_log "repair_timing -hold [expr {[clock seconds] - $t}] s"
 }
-if {[qb_env QB_RTSEQ 2] == 2} {
+# QB_PC_HOOK (opt-in, R24 results/r24.md): a script sourced here (after the IO delays and the qb_* procs) that
+# runs its own repair / legalisation sequence instead of QB_RTSEQ; the reports + db/cts_rt.odb below still follow.
+if {[qb_env QB_PC_HOOK ""] ne ""} {
+    source $::env(QB_PC_HOOK)
+} elseif {[qb_env QB_RTSEQ 2] == 2} {
     qb_setup
     qb_counts postcts_setup_repair
     qb_legal postcts_setup_legal

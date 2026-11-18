@@ -1,0 +1,14 @@
+d_hl.txt d_hu.txt d_sl.txt geom.txt hl.setup.rpt hold_cls_sl.txt setup_cls_hl.txt setup_cls_sl.txt sl.setup.rpt R24_DISP hu->hl prev sl: cells 323062 touched 10552 (new 10552) total_disp_um 1522807 mean 4.71 max 311.0  [M]
+  touched disp 486126 (31.9 %), untouched (pushed) 1036681
+  H2 touched over macro: n 907 disp 75399 (5.0 %) mean 83.1
+  touched not over macro: n 9645 disp 410727 (27.0 %) mean 42.6
+  untouched over macro: n 0 disp 0 (0.0 %) mean 0.0
+  bin density (50 um, pre-legal) | touched n / disp % / mean | all cells n / disp %  (cells not over macro)
+  disp hist um 0-:2552/270685 2-:1339/7089 5-:1450/18198 20-:1611/10684 50-:2054/5036 100-:1067/715 200-:479/103 400-:0/0  (touched/untouched)
+  bins: density p50 0.77 p90 0.99 p99 1.14 max 1.40; bins > 1.0: 128 of 1503
+  hot bin x 450 y 1900: disp 82035 (5.4 %) density 1.33 free 2200 um2 touched 288
+  hot bin x 400 y 1900: disp 57924 (3.8 %) density 1.29 free 2200 um2 touched 263
+  hot bin x 350 y 1900: disp 33388 (2.2 %) density 1.20 free 2200 um2 touched 116
+  hot bin x 300 y 1900: disp 28123 (1.8 %) density 1.40 free 2200 um2 touched 106
+  touched-over-macro by macro: g_mac_g_p_u_mac:501 g_mac_g_i_u_mac:302 g_mac_g_s_u_mac:103 g_mac_g_f2_u_mac:1
+  touched masters: BUFFD1:7509 BUFFD16:1946 BUFFD12:539 CKBD16:521 CKBD12:37

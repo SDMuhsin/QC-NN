@@ -1,0 +1,33 @@
+QC_PNR repair_design on 98998 nets with DRV violations (160580 nets kept)
+QC_PNR repair_design on 9642 nets with DRV violations (284680 nets kept)
+QC_PNR repair_design on 6194 nets with DRV violations (298284 nets kept)
+total displacement     729118.8 u
+max displacement          285.8 u
+QC_PNR place die_um 3990.00 x 1950.80 core_um2 7722792.0 cell_um2 1813215.2 macro_um2 4041585.7 utilisation 0.758
+QC_PNR place place_tt setup_wns_ns -1.180 setup_tns_ns -2919.021 hold_wns_ns -0.057 hold_tns_ns -4.245
+total displacement     310854.4 u
+max displacement          220.1 u
+QC_PNR cts die_um 3990.00 x 1950.80 core_um2 7722792.0 cell_um2 1933239.2 macro_um2 4041585.7 utilisation 0.774
+QC_PNR cts cts_tt setup_wns_ns -3.061 setup_tns_ns -15842.659 hold_wns_ns -1.629 hold_tns_ns -26297.976
+QC_PNR post_cts: IO delays shifted by 1.3 ns (6641 inputs, 21146 outputs)
+QC_PNR postcts_pre_repair tt setup_wns_ns -1.761 setup_viol_endpoints 5549 hold_wns_ns -0.629 hold_viol_endpoints 4938 die_um 3990.00 x 1950.80 core_um2 7722792.0 cell_um2 1933239.2 macro_um2 4041585.7 utilisation 0.774
+QC_PNR repair_timing -setup 7710 s
+QC_PNR postcts_setup_repair tt setup_wns_ns -1.358 setup_viol_endpoints 4969 hold_wns_ns -0.358 hold_viol_endpoints 16187 die_um 3990.00 x 1950.80 core_um2 7722792.0 cell_um2 1967906.9 macro_um2 4041585.7 utilisation 0.778
+total displacement     139043.9 u
+max displacement          167.7 u
+QC_PNR postcts_setup_legal tt setup_wns_ns -1.479 setup_viol_endpoints 6080 hold_wns_ns -0.360 hold_viol_endpoints 16143 die_um 3990.00 x 1950.80 core_um2 7722792.0 cell_um2 1967906.9 macro_um2 4041585.7 utilisation 0.778
+QC_PNR repair_timing -hold 27 s
+QC_PNR postcts_hold_repair_unlegal tt setup_wns_ns -1.479 setup_viol_endpoints 6232 hold_wns_ns -0.040 hold_viol_endpoints 4 die_um 3990.00 x 1950.80 core_um2 7722792.0 cell_um2 2040823.1 macro_um2 4041585.7 utilisation 0.788
+total displacement    1675458.4 u
+max displacement          271.8 u
+QC_PNR postcts_hold_legal tt setup_wns_ns -1.480 setup_viol_endpoints 6802 hold_wns_ns -0.159 hold_viol_endpoints 216 die_um 3990.00 x 1950.80 core_um2 7722792.0 cell_um2 2040823.1 macro_um2 4041585.7 utilisation 0.788
+QC_PNR repair_timing -setup 3507 s
+QC_PNR postcts_setup1_repair tt setup_wns_ns -1.474 setup_viol_endpoints 4948 hold_wns_ns -0.183 hold_viol_endpoints 425 die_um 3990.00 x 1950.80 core_um2 7722792.0 cell_um2 2051400.2 macro_um2 4041585.7 utilisation 0.789
+total displacement     299449.0 u
+max displacement          208.0 u
+QC_PNR postcts_setup1_legal tt setup_wns_ns -1.478 setup_viol_endpoints 6109 hold_wns_ns -0.184 hold_viol_endpoints 439 die_um 3990.00 x 1950.80 core_um2 7722792.0 cell_um2 2051400.2 macro_um2 4041585.7 utilisation 0.789
+QC_PNR repair_timing -hold 4 s
+QC_PNR postcts_hold1_unlegal tt setup_wns_ns -1.478 setup_viol_endpoints 6113 hold_wns_ns -0.040 hold_viol_endpoints 4 die_um 3990.00 x 1950.80 core_um2 7722792.0 cell_um2 2053284.1 macro_um2 4041585.7 utilisation 0.789
+total displacement      79468.9 u
+max displacement          294.5 u
+QC_PNR postcts_hold1_legal tt setup_wns_ns -1.478 setup_viol_endpoints 6148 hold_wns_ns -0.054 hold_viol_endpoints 6 die_um 3990.00 x 1950.80 core_um2 7722792.0 cell_um2 2053284.1 macro_um2 4041585.7 utilisation 0.789
