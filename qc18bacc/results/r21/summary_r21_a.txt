@@ -1,0 +1,26 @@
+init init_tt setup_wns_ns -0.375 setup_tns_ns -13.200 hold_wns_ns -0.165 hold_tns_ns -84.134
+drc_violations NA antenna_net_violations NA antenna_pin_violations NA
+pnr_wall_s 31 wall 0:31.92 peak_rss_mb 1112
+floorplan die_um 3990.00 x 1751.00 core_um2 6927588.0 cell_um2 1081415.9 macro_um2 4041585.7 utilisation 0.740
+pdn VDD check_power_grid true
+pdn VSS check_power_grid true
+drc_violations NA antenna_net_violations NA antenna_pin_violations NA
+pnr_wall_s 62 wall 1:01.46 peak_rss_mb 1136
+place die_um 3990.00 x 1751.00 core_um2 6927588.0 cell_um2 1837982.2 macro_um2 4041585.7 utilisation 0.849
+place place_tt setup_wns_ns -1.462 setup_tns_ns -2886.512 hold_wns_ns -0.074 hold_tns_ns -9.150
+cts die_um 3990.00 x 1751.00 core_um2 6927588.0 cell_um2 1955890.8 macro_um2 4041585.7 utilisation 0.866
+cts cts_tt setup_wns_ns -2.716 setup_tns_ns -13984.390 hold_wns_ns -1.663 hold_tns_ns -24249.513
+postcts_pre_repair tt setup_wns_ns -2.323 setup_viol_endpoints 8546 hold_wns_ns -0.863 hold_viol_endpoints 25141 die_um 3990.00 x 1751.00 core_um2 6927588.0 cell_um2 1955890.8 macro_um2 4041585.7 utilisation 0.866
+drc_violations NA antenna_net_violations NA antenna_pin_violations NA
+pnr_wall_s 2089 wall  peak_rss_mb 0
+postcts_pre_repair tt setup_wns_ns -2.323 setup_viol_endpoints 5379 hold_wns_ns -0.626 hold_viol_endpoints 3830 die_um 3990.00 x 1751.00 core_um2 6927588.0 cell_um2 1955890.8 macro_um2 4041585.7 utilisation 0.866
+postcts_setup_repair tt setup_wns_ns -1.423 setup_viol_endpoints 3721 hold_wns_ns -0.691 hold_viol_endpoints 8779 die_um 3990.00 x 1751.00 core_um2 6927588.0 cell_um2 1993823.6 macro_um2 4041585.7 utilisation 0.871
+postcts_setup_legal tt setup_wns_ns -4.260 setup_viol_endpoints 6561 hold_wns_ns -0.690 hold_viol_endpoints 8085 die_um 3990.00 x 1751.00 core_um2 6927588.0 cell_um2 1993823.6 macro_um2 4041585.7 utilisation 0.871
+postcts_hold_repair_unlegal tt setup_wns_ns -4.260 setup_viol_endpoints 6584 hold_wns_ns -0.074 hold_viol_endpoints 4 die_um 3990.00 x 1751.00 core_um2 6927588.0 cell_um2 2021537.2 macro_um2 4041585.7 utilisation 0.875
+postcts_hold_legal tt setup_wns_ns -7.175 setup_viol_endpoints 7658 hold_wns_ns -0.102 hold_viol_endpoints 202 die_um 3990.00 x 1751.00 core_um2 6927588.0 cell_um2 2021537.2 macro_um2 4041585.7 utilisation 0.875
+drc_violations NA antenna_net_violations NA antenna_pin_violations NA
+pnr_wall_s 2908 wall  peak_rss_mb 0
+groute groute_tt setup_wns_ns -3.724 setup_tns_ns -19715.384 hold_wns_ns -2.301 hold_tns_ns -27968.921
+r9b grt tt setup_wns_ns -3.724 fmax_est_mhz 166.0
+drc_violations NA antenna_net_violations NA antenna_pin_violations NA
+pnr_wall_s 1743 wall 29:03.11 peak_rss_mb 12844

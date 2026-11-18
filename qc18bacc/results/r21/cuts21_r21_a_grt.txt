@@ -1,0 +1,212 @@
+# R21 cuts21.py: budget adjustment 0.25 (run M2-M4 0.25 M5-M9 0.10), gcell 3.0 um, grid 1330 x 584, die 3990.0 x 1751.0, classes 40 (nets 332209), over-budget > 75 %
+VAL M2 V crossings   1790920 GRT demand         0 (1790920.000) | GRT resource   3678431 cal x 0.826 | cap@0.25   3678431 | whole-die use  48.7 %
+VAL M3 H crossings   2318708 GRT demand         0 (2318708.000) | GRT resource   3808728 cal x 0.912 | cap@0.25   3808728 | whole-die use  60.9 %
+VAL M4 V crossings   4051471 GRT demand         0 (4051471.000) | GRT resource   7284025 cal x 0.950 | cap@0.25   7284028 | whole-die use  55.6 %
+VAL M5 H crossings   4323078 GRT demand         0 (4323078.000) | GRT resource  10084452 cal x 0.962 | cap@0.25   8403701 | whole-die use  51.4 %
+VAL M6 V crossings   4290741 GRT demand         0 (4290741.000) | GRT resource  10046484 cal x 0.958 | cap@0.25   8372070 | whole-die use  51.3 %
+VAL M7 H crossings   1592224 GRT demand         0 (1592224.000) | GRT resource   4868996 cal x 0.488 | cap@0.25   4057498 | whole-die use  39.2 %
+VAL M8 V crossings    426142 GRT demand         0 (426142.000) | GRT resource   1241050 cal x 0.555 | cap@0.25   1034207 | whole-die use  41.2 %
+VAL M9 H crossings    309720 GRT demand         0 (309720.000) | GRT resource   1437941 cal x 0.577 | cap@0.25   1198284 | whole-die use  25.8 %
+# over-budget items (demand > 75 % of capacity at adj 0.25), worst first: kind pos region layer dem / cap = ratio | top classes
+OVB x   860.0 S3     M9       130 /      106 = 122.7 % | prm 75%  glue:reg>col-out 15%  glue:reg>top-out 4%  glue:s-Q>act-out 2%  glue:port>top-out 2%
+OVB x   860.0 S3     M7       436 /      359 = 121.6 % | prm 88%  glue:reg>col-out 7%  glue:port>s-in 2%  glue:s-Q>act-out 2%  port_in 0%
+OVB x   860.0 S3     M5       906 /      747 = 121.4 % | prm 79%  glue:reg>col-out 16%  glue:reg>top-out 2%  clock 2%  glue:port>s-in 1%
+OVB y  1320.0 col2   M8       212 /      175 = 121.2 % | prm 39%  port_in 26%  f_y_path 11%  glue:fy-reg>s-in 7%  glue:reg>col-out 7%
+OVB y  1320.0 col3   M6      1706 /     1412 = 120.8 % | prm 33%  f_y_path 26%  glue:reg>col-out 21%  port_in 7%  MACRO:qb_s_Q 6%
+OVB y  1320.0 col2   M6      1705 /     1412 = 120.7 % | prm 34%  f_y_path 23%  glue:reg>top-out 10%  port_in 9%  glue:reg>col-out 8%
+OVB y  1320.0 col6   M6      1704 /     1412 = 120.7 % | prm 41%  glue:reg>col-out 21%  f_y_path 15%  port_in 9%  MACRO:qb_s_Q 7%
+OVB y  1320.0 col6   M8       211 /      175 = 120.7 % | prm 51%  port_in 25%  glue:reg>col-out 10%  MACRO:qb_s_Q 9%  glue:fy-reg>s-in 4%
+OVB y  1320.0 col5   M6      1703 /     1412 = 120.6 % | prm 36%  f_y_path 22%  glue:reg>col-out 20%  MACRO:qb_s_Q 9%  port_in 7%
+OVB y  1320.0 col3   M8       209 /      173 = 120.6 % | prm 34%  glue:reg>col-out 18%  port_in 17%  f_y_path 10%  MACRO:qb_s_Q 8%
+OVB y  1320.0 col5   M8       209 /      173 = 120.6 % | prm 48%  port_in 20%  MACRO:qb_s_Q 16%  glue:reg>col-out 7%  f_y_path 5%
+OVB y  1320.0 col4   M6      1698 /     1412 = 120.3 % | prm 34%  f_y_path 22%  glue:reg>col-out 19%  port_in 9%  MACRO:qb_s_Q 8%
+OVB y  1320.0 col4   M8       210 /      175 = 120.1 % | prm 50%  port_in 21%  MACRO:qb_s_Q 11%  glue:reg>col-out 10%  f_y_path 3%
+OVB x   860.0 ch23   M5       181 /      151 = 119.5 % | glue:reg>col-out 41%  prm 30%  MACRO:qb_s_Q 9%  MACRO:qb_p_Q 5%  glue:reg>top-out 4%
+OVB y  1320.0 col7   M6      1687 /     1412 = 119.5 % | prm 41%  glue:reg>col-out 21%  f_y_path 16%  port_in 8%  MACRO:qb_s_Q 7%
+OVB y  1350.0 col5   M6      1683 /     1412 = 119.2 % | prm 37%  f_y_path 21%  glue:reg>col-out 20%  MACRO:qb_s_Q 9%  port_in 7%
+OVB y  1320.0 col1   M8       206 /      173 = 118.9 % | prm 26%  port_in 17%  MACRO:qb_s_Q 14%  glue:fy-reg>s-in 12%  glue:reg>col-out 11%
+OVB y  1350.0 col6   M6      1675 /     1412 = 118.6 % | prm 42%  glue:reg>col-out 21%  f_y_path 15%  port_in 10%  MACRO:qb_s_Q 6%
+OVB y  1320.0 col1   M6      1673 /     1412 = 118.5 % | prm 29%  f_y_path 26%  glue:reg>col-out 15%  MACRO:qb_s_Q 10%  port_in 6%
+OVB y  1380.0 col6   M6      1672 /     1412 = 118.4 % | prm 43%  glue:reg>col-out 21%  f_y_path 14%  port_in 9%  MACRO:qb_s_Q 6%
+OVB y  1380.0 col6   M8       207 /      175 = 118.4 % | prm 52%  port_in 26%  glue:reg>col-out 11%  MACRO:qb_s_Q 6%  glue:fy-reg>s-in 4%
+OVB y  1410.0 col6   M8       207 /      175 = 118.4 % | prm 53%  port_in 27%  glue:reg>col-out 9%  MACRO:qb_s_Q 6%  glue:fy-reg>s-in 4%
+OVB y  1440.0 col6   M8       207 /      175 = 118.4 % | prm 56%  port_in 26%  glue:reg>col-out 9%  MACRO:qb_s_Q 5%  glue:fy-reg>s-in 3%
+OVB y  1350.0 col7   M6      1671 /     1412 = 118.3 % | prm 41%  glue:reg>col-out 21%  f_y_path 16%  port_in 8%  MACRO:qb_s_Q 7%
+OVB y  1470.0 col7   M6      1671 /     1412 = 118.3 % | prm 41%  glue:reg>col-out 21%  f_y_path 16%  port_in 8%  MACRO:qb_s_Q 7%
+OVB y  1350.0 col5   M8       205 /      173 = 118.3 % | prm 49%  port_in 20%  MACRO:qb_s_Q 14%  glue:reg>col-out 9%  f_y_path 5%
+OVB y  1380.0 col5   M6      1668 /     1412 = 118.1 % | prm 40%  glue:reg>col-out 21%  f_y_path 19%  port_in 8%  MACRO:qb_s_Q 7%
+OVB y  1380.0 col7   M6      1668 /     1412 = 118.1 % | prm 41%  glue:reg>col-out 21%  f_y_path 16%  port_in 8%  MACRO:qb_s_Q 7%
+OVB y  1410.0 col6   M6      1667 /     1412 = 118.1 % | prm 44%  glue:reg>col-out 21%  f_y_path 14%  port_in 9%  MACRO:qb_s_Q 6%
+OVB y  1410.0 col7   M6      1667 /     1412 = 118.1 % | prm 41%  glue:reg>col-out 21%  f_y_path 16%  port_in 8%  MACRO:qb_s_Q 7%
+OVB y  1440.0 col7   M6      1665 /     1412 = 117.9 % | prm 41%  glue:reg>col-out 21%  f_y_path 16%  port_in 8%  MACRO:qb_s_Q 7%
+OVB y  1350.0 col6   M8       206 /      175 = 117.8 % | prm 54%  port_in 24%  glue:reg>col-out 11%  MACRO:qb_s_Q 6%  glue:fy-reg>s-in 4%
+OVB y  1320.0 col7   M8       204 /      173 = 117.7 % | port_in 36%  prm 33%  glue:reg>col-out 16%  MACRO:qb_s_Q 9%  glue:fy-reg>s-in 3%
+OVB y  1410.0 col5   M6      1662 /     1412 = 117.7 % | prm 41%  glue:reg>col-out 21%  f_y_path 18%  port_in 7%  MACRO:qb_s_Q 7%
+OVB y  1350.0 col4   M6      1661 /     1412 = 117.6 % | prm 36%  f_y_path 22%  glue:reg>col-out 20%  port_in 9%  MACRO:qb_s_Q 7%
+OVB y  1140.0 col1   M6      1660 /     1412 = 117.6 % | f_y_path 25%  glue:s-Q>act-out 23%  MACRO:qb_s_Q 17%  glue:fy-reg>s-in 12%  prm 7%
+OVB y  1290.0 col3   M6      1659 /     1412 = 117.5 % | prm 33%  f_y_path 27%  glue:reg>col-out 20%  glue:fy-reg>s-in 7%  MACRO:qb_s_Q 7%
+OVB y  1200.0 col1   M6      1658 /     1412 = 117.4 % | f_y_path 28%  prm 19%  MACRO:qb_s_Q 12%  glue:fy-reg>s-in 11%  glue:s-Q>act-out 10%
+OVB y  1380.0 col4   M6      1655 /     1412 = 117.2 % | prm 38%  glue:reg>col-out 20%  f_y_path 19%  port_in 9%  MACRO:qb_s_Q 7%
+OVB y  1470.0 col5   M6      1655 /     1412 = 117.2 % | prm 41%  glue:reg>col-out 21%  f_y_path 18%  port_in 8%  MACRO:qb_s_Q 7%
+OVB x   860.0 ch23   M7        85 /       73 = 117.2 % | glue:reg>col-out 28%  MACRO:qb_p_Q 24%  glue:s-Q>act-out 20%  prm 13%  MACRO:qb_s_Q 7%
+OVB y  1470.0 col6   M6      1653 /     1412 = 117.1 % | prm 43%  glue:reg>col-out 21%  f_y_path 14%  port_in 10%  MACRO:qb_s_Q 6%
+OVB y  1290.0 col4   M6      1652 /     1412 = 117.0 % | prm 33%  f_y_path 24%  glue:reg>col-out 19%  MACRO:qb_s_Q 9%  glue:fy-reg>s-in 7%
+OVB y  1200.0 col3   M6      1651 /     1412 = 116.9 % | f_y_path 28%  prm 22%  MACRO:qb_s_Q 15%  glue:reg>col-out 13%  glue:fy-reg>s-in 9%
+OVB y  1440.0 col5   M6      1651 /     1412 = 116.9 % | prm 40%  glue:reg>col-out 21%  f_y_path 18%  port_in 8%  MACRO:qb_s_Q 7%
+OVB y  1440.0 col6   M6      1651 /     1412 = 116.9 % | prm 44%  glue:reg>col-out 21%  f_y_path 14%  port_in 9%  MACRO:qb_s_Q 6%
+OVB y  1350.0 col2   M8       204 /      175 = 116.7 % | prm 40%  port_in 27%  f_y_path 12%  glue:reg>col-out 6%  glue:fy-reg>s-in 6%
+OVB y  1290.0 col1   M6      1645 /     1412 = 116.5 % | prm 28%  f_y_path 28%  glue:reg>col-out 15%  MACRO:qb_s_Q 9%  glue:fy-reg>s-in 8%
+OVB y  1200.0 col2   M6      1643 /     1412 = 116.4 % | f_y_path 25%  prm 20%  MACRO:qb_s_Q 15%  port_in 11%  glue:fy-reg>s-in 10%
+OVB y  1350.0 col3   M6      1642 /     1412 = 116.3 % | prm 35%  f_y_path 26%  glue:reg>col-out 22%  port_in 7%  MACRO:qb_s_Q 4%
+OVB y  1410.0 col4   M6      1642 /     1412 = 116.3 % | prm 41%  glue:reg>col-out 20%  f_y_path 18%  port_in 9%  MACRO:qb_s_Q 6%
+OVB y  1290.0 col2   M6      1641 /     1412 = 116.2 % | prm 33%  f_y_path 25%  glue:reg>top-out 10%  glue:fy-reg>s-in 8%  glue:reg>col-out 8%
+OVB y  1380.0 col4   M8       203 /      175 = 116.1 % | prm 47%  port_in 29%  MACRO:qb_s_Q 12%  glue:reg>col-out 10%  glue:fy-reg>s-in 1%
+OVB y  1170.0 col1   M6      1639 /     1412 = 116.1 % | f_y_path 27%  glue:s-Q>act-out 19%  MACRO:qb_s_Q 16%  glue:fy-reg>s-in 12%  prm 10%
+OVB y  1200.0 col3   M8       201 /      173 = 116.0 % | prm 30%  port_in 17%  glue:reg>col-out 14%  f_y_path 12%  MACRO:qb_s_Q 11%
+OVB y  1380.0 col5   M8       201 /      173 = 116.0 % | prm 47%  port_in 21%  MACRO:qb_s_Q 14%  glue:reg>col-out 11%  f_y_path 4%
+OVB y  1410.0 col5   M8       201 /      173 = 116.0 % | prm 47%  port_in 21%  MACRO:qb_s_Q 14%  glue:reg>col-out 12%  f_y_path 3%
+OVB y  1470.0 col4   M6      1634 /     1412 = 115.7 % | prm 43%  glue:reg>col-out 20%  f_y_path 17%  port_in 9%  MACRO:qb_s_Q 5%
+OVB y  1230.0 col1   M6      1632 /     1412 = 115.6 % | f_y_path 28%  prm 21%  glue:reg>col-out 12%  glue:fy-reg>s-in 11%  glue:s-Q>act-out 8%
+OVB y  1350.0 col2   M6      1630 /     1412 = 115.4 % | prm 35%  f_y_path 24%  glue:reg>top-out 10%  port_in 10%  glue:reg>col-out 9%
+OVB y  1440.0 col5   M8       200 /      173 = 115.4 % | prm 48%  port_in 22%  MACRO:qb_s_Q 14%  glue:reg>col-out 10%  f_y_path 4%
+OVB y  1140.0 col2   M6      1628 /     1412 = 115.3 % | f_y_path 25%  MACRO:qb_s_Q 24%  glue:s-Q>act-out 14%  glue:fy-reg>s-in 10%  port_in 9%
+OVB y  1230.0 col2   M6      1628 /     1412 = 115.3 % | f_y_path 26%  prm 22%  MACRO:qb_s_Q 12%  glue:fy-reg>s-in 9%  port_in 8%
+OVB y  1290.0 col5   M6      1628 /     1412 = 115.3 % | prm 33%  f_y_path 24%  glue:reg>col-out 18%  MACRO:qb_s_Q 8%  glue:fy-reg>s-in 8%
+OVB x  1055.0 band   M5      2031 /     1764 = 115.2 % | glue:s-Q>act-out 38%  glue:reg>s-in 15%  MACRO:qb_s_Q 14%  fyreg>s-in 8%  pcol 4%
+OVB y  1440.0 col4   M6      1625 /     1412 = 115.1 % | prm 43%  glue:reg>col-out 20%  f_y_path 17%  port_in 8%  MACRO:qb_s_Q 5%
+OVB y  1170.0 col3   M6      1623 /     1412 = 114.9 % | f_y_path 28%  prm 19%  MACRO:qb_s_Q 19%  glue:fy-reg>s-in 9%  glue:reg>col-out 8%
+OVB y  1350.0 col4   M8       201 /      175 = 114.9 % | prm 47%  port_in 26%  MACRO:qb_s_Q 11%  glue:reg>col-out 10%  f_y_path 2%
+OVB y  1470.0 col6   M8       201 /      175 = 114.9 % | prm 56%  port_in 26%  glue:reg>col-out 8%  MACRO:qb_s_Q 5%  glue:fy-reg>s-in 3%
+OVB x  3005.0 band   M9       289 /      251 = 114.9 % | MACRO:qb_s_Q 47%  glue:reg>s-in 16%  glue_regs 15%  pcol 5%  glue:reg>top-out 5%
+OVB y  1530.0 col6   M6      1618 /     1412 = 114.6 % | prm 46%  glue:reg>col-out 22%  f_y_path 14%  port_in 8%  glue:fy-reg>s-in 5%
+OVB y  1020.0 col1   M6      1616 /     1412 = 114.4 % | glue:s-Q>act-out 15%  MACRO:qb_s_Q 13%  fyreg>s-in 11%  glue:reg>s-in 9%  port_in 9%
+OVB y  1290.0 col0   M6      1615 /     1412 = 114.4 % | f_y_path 28%  MACRO:qb_s_Q 15%  glue:fy-reg>s-in 13%  glue:s-Q>act-out 11%  port_in 11%
+OVB y  1380.0 col3   M6      1615 /     1412 = 114.4 % | prm 36%  f_y_path 24%  glue:reg>col-out 22%  port_in 8%  glue:fy-reg>s-in 4%
+OVB y  1290.0 col2   M8       200 /      175 = 114.4 % | prm 39%  port_in 18%  f_y_path 12%  MACRO:qb_s_Q 8%  glue:reg>col-out 7%
+OVB y  1170.0 col0   M6      1614 /     1412 = 114.3 % | f_y_path 23%  MACRO:qb_s_Q 22%  glue:s-Q>act-out 21%  glue:fy-reg>s-in 12%  port_in 11%
+OVB y  1260.0 col1   M6      1613 /     1412 = 114.2 % | f_y_path 28%  prm 26%  glue:reg>col-out 15%  glue:fy-reg>s-in 10%  MACRO:qb_s_Q 7%
+OVB y  1500.0 col7   M6      1613 /     1412 = 114.2 % | prm 42%  glue:reg>col-out 21%  f_y_path 16%  port_in 8%  glue:fy-reg>s-in 6%
+OVB y  1200.0 col0   M6      1612 /     1412 = 114.2 % | f_y_path 25%  MACRO:qb_s_Q 21%  glue:s-Q>act-out 19%  glue:fy-reg>s-in 13%  port_in 11%
+OVB y  1230.0 col3   M6      1612 /     1412 = 114.2 % | f_y_path 28%  prm 22%  glue:reg>col-out 20%  MACRO:qb_s_Q 11%  glue:fy-reg>s-in 8%
+# over-budget count by (kind, region, layer)
+OVBN y col2   M6   31
+OVBN y col2   M4   31
+OVBN y col1   M6   30
+OVBN y col3   M4   30
+OVBN y col1   M4   30
+OVBN y col3   M6   29
+OVBN y col0   M6   29
+OVBN y col2   M8   28
+OVBN y col3   M8   28
+OVBN y col0   M4   28
+OVBN y col4   M6   27
+OVBN y col2   allV 27
+OVBN y col1   allV 27
+OVBN y col4   M4   27
+OVBN y col5   M6   26
+OVBN y col3   allV 26
+OVBN y col0   allV 26
+OVBN y col4   allV 25
+OVBN y col5   M4   24
+OVBN y col4   M8   22
+OVBN y col1   M8   22
+OVBN y col5   allV 22
+OVBN y col5   M8   20
+OVBN y col6   M8   19
+OVBN y col6   M4   19
+OVBN y col6   M6   18
+OVBN y col7   M6   18
+OVBN y col7   M8   18
+OVBN y col7   M4   16
+OVBN y col6   allV 15
+OVBN y col0   M8   15
+OVBN y col1   M2   14
+OVBN y col7   allV 14
+OVBN x band   M5   13
+OVBN y col3   M2   13
+OVBN x band   M7   13
+OVBN y col2   M2   13
+OVBN y col0   M2   13
+OVBN x band   M3   13
+OVBN x band   M9   12
+# class share of the demand on over-budget (cut segment, layer) items: 773 items, 782556 track crossings
+OVBCLS prm                         24.6 %
+OVBCLS f_y path                    11.1 %
+OVBCLS MACRO:qb_s Q                10.9 %
+OVBCLS glue:reg>col-out            10.1 %
+OVBCLS port in                      6.6 %
+OVBCLS glue:reg>s-in                6.6 %
+OVBCLS glue:s-Q>act-out             6.2 %
+OVBCLS fyreg>s-in                   4.0 %
+OVBCLS glue:fy-reg>s-in             4.0 %
+OVBCLS glue regs                    3.5 %
+OVBCLS MACRO:qb_p Q                 2.9 %
+OVBCLS clock                        2.1 %
+OVBCLS glue:reg>top-out             1.9 %
+OVBCLS pcol                         1.8 %
+OVBCLS glue:reg>act-out             1.3 %
+OVBCLS head                         0.6 %
+OVBCLS glue:reg>reg                 0.4 %
+OVBCLS glue:b-Q>act-out             0.4 %
+OVBCLS glue:fy-reg>top-out          0.3 %
+OVBCLS glue:port>s-in               0.2 %
+# worst layer-summed cut per region: H wiring (vertical cuts) and V wiring (horizontal cuts)
+WORST x  1055.0 south  allH    1397 /     2506 =  55.8 % | MACRO:qb_b_Q 39%  prm 28%  glue_regs 12%  glue:b-Q>act-out 8%  glue:port>reg 6%
+WORST x  1055.0 S0     allH     260 /     1253 =  20.7 % | MACRO:qb_b_Q 57%  glue:b-Q>act-out 16%  MACRO:qb_s_Q 13%  glue:reg>s-in 5%  glue:fy-reg>s-in 4%
+WORST x  1250.0 ch01   allH     164 /      405 =  40.5 % | MACRO:qb_s_Q 45%  glue:reg>s-in 15%  glue_regs 12%  glue:port>s-in 7%  prm 5%
+WORST x  2225.0 S1     allH     791 /     1255 =  63.0 % | glue:reg>reg 23%  glue_regs 22%  glue:reg>s-in 18%  port_in 16%  MACRO:qb_s_Q 7%
+WORST x  1055.0 band   allH    4922 /     4521 = 108.9 % | glue:s-Q>act-out 34%  glue:reg>s-in 16%  MACRO:qb_s_Q 14%  glue_regs 6%  fyreg>s-in 5%
+WORST x  1055.0 S2     allH    1309 /     1255 = 104.3 % | MACRO:qb_s_Q 42%  glue:s-Q>act-out 34%  MACRO:qb_p_Q 7%  prm 6%  f_y_path 2%
+WORST x   860.0 ch23   allH     419 /      378 = 110.8 % | glue:reg>col-out 34%  prm 25%  MACRO:qb_s_Q 10%  MACRO:qb_p_Q 9%  glue:s-Q>act-out 8%
+WORST x  1055.0 S3     allH    1240 /     1254 =  98.9 % | prm 59%  glue:reg>col-out 16%  f_y_path 9%  MACRO:qb_s_Q 7%  glue:reg>top-out 2%
+WORST x   860.0 north  allH      78 /       78 = 100.2 % | prm 95%  glue:port>s-in 3%  port_in 1%  glue:reg>col-out 1%
+WORST y  1470.0 west   allV    5658 /     7654 =  73.9 % | glue:s-Q>act-out 33%  prm 19%  glue:b-Q>act-out 9%  MACRO:qb_s_Q 7%  port_in 6%
+WORST y  1200.0 col0   allV    4337 /     4148 = 104.5 % | glue:s-Q>act-out 23%  MACRO:qb_s_Q 21%  f_y_path 12%  glue:reg>act-out 11%  glue:fy-reg>s-in 7%
+WORST y  1200.0 col1   allV    4543 /     4147 = 109.6 % | prm 22%  glue:s-Q>act-out 13%  f_y_path 12%  MACRO:qb_s_Q 12%  glue:reg>col-out 9%
+WORST y  1320.0 col2   allV    3232 /     2914 = 110.9 % | prm 37%  f_y_path 15%  MACRO:qb_s_Q 11%  port_in 8%  glue:reg>col-out 8%
+WORST y  1320.0 col3   allV    3205 /     2912 = 110.1 % | prm 37%  glue:reg>col-out 18%  f_y_path 16%  MACRO:qb_s_Q 12%  port_in 7%
+WORST y  1320.0 col4   allV    3204 /     2914 = 110.0 % | prm 39%  glue:reg>col-out 16%  f_y_path 16%  MACRO:qb_s_Q 12%  port_in 8%
+WORST y  1320.0 col5   allV    3205 /     2912 = 110.1 % | prm 41%  glue:reg>col-out 17%  f_y_path 16%  MACRO:qb_s_Q 10%  port_in 6%
+WORST y  1320.0 col6   allV    3220 /     2912 = 110.6 % | prm 41%  glue:reg>col-out 18%  f_y_path 16%  MACRO:qb_s_Q 9%  port_in 8%
+WORST y  1320.0 col7   allV    3172 /     2910 = 109.0 % | prm 39%  glue:reg>col-out 19%  f_y_path 16%  MACRO:qb_s_Q 8%  port_in 8%
+# whole-die crossings by class: V (share) H (share)
+TOT prm                        V   2147382  20.3 %  H   1093555  12.8 %
+TOT MACRO:qb_s Q               V   1015735   9.6 %  H   1448180  17.0 %
+TOT glue:reg>s-in              V    600862   5.7 %  H    896389  10.5 %
+TOT glue:s-Q>act-out           V    606994   5.7 %  H    860863  10.1 %
+TOT port in                    V    811539   7.7 %  H    412246   4.8 %
+TOT glue regs                  V    512752   4.9 %  H    621353   7.3 %
+TOT glue:reg>col-out           V    796787   7.5 %  H    305815   3.6 %
+TOT f_y path                   V    912092   8.6 %  H    107263   1.3 %
+TOT MACRO:qb_p Q               V    579311   5.5 %  H    312219   3.7 %
+TOT glue:fy-reg>s-in           V    635173   6.0 %  H    134120   1.6 %
+TOT fyreg>s-in                 V    380010   3.6 %  H    212333   2.5 %
+TOT MACRO:qb_b Q               V     69486   0.7 %  H    517674   6.1 %
+TOT clock                      V    252528   2.4 %  H    286935   3.4 %
+TOT glue:reg>reg               V    157915   1.5 %  H    290882   3.4 %
+TOT head                       V    223151   2.1 %  H    218279   2.6 %
+TOT pcol                       V    135962   1.3 %  H    215077   2.5 %
+TOT glue:b-Q>act-out           V    248296   2.4 %  H     73031   0.9 %
+TOT glue:reg>top-out           V    160636   1.5 %  H    155309   1.8 %
+TOT glue:reg>act-out           V    104255   1.0 %  H    101113   1.2 %
+TOT glue:port>s-in             V     27388   0.3 %  H     71200   0.8 %
+TOT MACRO:qb_i Q               V     53059   0.5 %  H     28681   0.3 %
+TOT glue:fy-reg>top-out        V     26534   0.3 %  H     46231   0.5 %
+TOT glue:port>reg              V     15701   0.1 %  H     49555   0.6 %
+TOT glue:port>top-out          V     23214   0.2 %  H     33566   0.4 %
+TOT glue:?>reg                 V     18009   0.2 %  H     24692   0.3 %
+TOT MACRO:qb_f Q               V     25242   0.2 %  H     11101   0.1 %
+TOT fyreg>top-out              V      3224   0.0 %  H      7396   0.1 %
+TOT glue:port>b-in             V      2586   0.0 %  H      3147   0.0 %
+TOT glue:?>s-in                V      3703   0.0 %  H       222   0.0 %
+TOT glue:port>i-in             V      2418   0.0 %  H      1103   0.0 %
+TOT glue:?>b-in                V      2670   0.0 %  H        34   0.0 %
+TOT glue:i-Q>act-out           V      1595   0.0 %  H       757   0.0 %
+TOT glue:fy-reg>reg            V       555   0.0 %  H      1633   0.0 %
+TOT glue:?>i-in                V       776   0.0 %  H       688   0.0 %
+TOT glue:reg>i-in              V       613   0.0 %  H       764   0.0 %
+TOT glue:port>f-in             V       977   0.0 %  H       243   0.0 %
+TOT fyreg>reg                  V       140   0.0 %  H        76   0.0 %
+TOT glue:?>top-out             V         4   0.0 %  H         5   0.0 %
+TOT none                       V         0   0.0 %  H         0   0.0 %
+TOT unclassified               V         0   0.0 %  H         0   0.0 %

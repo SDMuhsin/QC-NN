@@ -1,0 +1,20 @@
+config.tcl
+db
+dr.log
+dr.log.time
+dr.out
+kit.env
+macros.txt
+mplace.tcl
+out
+pins9_data.tcl
+rc
+route.guide
+rpt
+summary.txt
+# r21_u_uniform025 (/tmp/ckp908/qc18bacc/build/pnr/r21_u/dr_it6_killed.out)
+it        viol      h  cum_h | shorts      M2      M3      M4      M5      M6      M7 | M5 share
+0       987555   0.61   0.61 | shorts  349740  135714   63877   47059   33842    3130 |   7.4 %
+1       393818   0.54   1.16 | shorts  214665   61439   26871   27198   12935    2319 |   7.9 %
+2       377853   0.52   1.68 | shorts  202394   58219   28200   28198   12931    2565 |   8.5 %
+3       205346   1.90   3.58 | shorts  103616   36146   14962   12910    5070    1724 |   7.4 %

@@ -1,0 +1,12 @@
+R21_CLS in2out violating_endpoints 254 worst -1.462
+R21_CLS in2reg violating_endpoints 303 worst -0.918
+R21_CLS reg2out violating_endpoints 2297 worst -1.294
+R21_CLS reg2reg violating_endpoints 5072 worst -1.060
+R21_CLS from_actin violating_endpoints 388 worst -1.462
+R21_CLS to_actout violating_endpoints 2192 worst -1.294
+R21_CLS from_colin violating_endpoints 3 worst -0.030
+R21_CLS to_colnorth violating_endpoints 2 worst -1.144
+R21_CLS to_colout violating_endpoints 59 worst -0.541
+R21_CLS from_hostin violating_endpoints 30 worst -0.631
+R21_CLS from_topin violating_endpoints 418 worst -1.144
+R21_CLS to_topout violating_endpoints 294 worst -1.462

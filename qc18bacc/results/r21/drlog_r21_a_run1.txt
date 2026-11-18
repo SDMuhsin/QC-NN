@@ -1,0 +1,6 @@
+# r21_a_B (/tmp/ckp908/qc18bacc/build/pnr/r21_a/dr_it7_killed.out)
+it        viol      h  cum_h | shorts      M2      M3      M4      M5      M6      M7 | M5 share
+0       904294   0.53   0.53 | shorts  291028  113915   42940   83297   58104    3205 |  14.0 %
+1       366592   0.48   1.00 | shorts  181676   52051   23986   42225   19908    2792 |  13.1 %
+2       358401   0.46   1.46 | shorts  173427   50314   25271   44458   20079    3151 |  14.0 %
+    Completing 20% with 329859 violations.
