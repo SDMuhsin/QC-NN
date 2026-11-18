@@ -1,0 +1,17 @@
+# sq22 /tmp/ckp908/qc18bacc/build/pnr/r22_a/sq22.txt: per S column / direction: nets, crossing x 1995 %, mean span um, mean offset (cols), offset histogram
+SQ O col0 n   512 cross-mid   0.0 % span    236 off -0.46 | -1:291 +0:221
+SQ O col1 n   512 cross-mid   0.0 % span    188 off -0.18 | -1:122 +0:390
+SQ O col2 n   512 cross-mid   8.0 % span    137 off -0.02 | -1:8 +0:504
+SQ O col3 n   512 cross-mid   0.0 % span    126 off -0.03 | +0:512
+SQ O col4 n   512 cross-mid 100.0 % span   1815 off -2.36 | -3:171 -2:341
+SQ O col5 n   512 cross-mid 100.0 % span   1719 off -2.22 | -3:129 -2:383
+SQ O col6 n   512 cross-mid  96.9 % span   1613 off -2.11 | -3:23 -2:489
+SQ O col7 n   512 cross-mid   0.0 % span   1622 off -2.11 | -3:12 -2:500
+SQ I col0 n  1132 cross-mid   4.9 % span    293 off +0.42 | -2:1 -1:8 +0:736 +1:355 +2:13 +3:18 +4:1
+SQ I col1 n  1132 cross-mid  26.3 % span    442 off +0.28 | -2:1 -1:108 +0:748 +1:138 +2:127 +3:10
+SQ I col2 n  1132 cross-mid  33.6 % span    491 off -0.20 | -3:1 -2:3 -1:262 +0:843 +1:2 +2:18 +3:3
+SQ I col3 n  1132 cross-mid  46.6 % span    549 off -0.64 | -2:253 -1:263 +0:589 +1:4 +2:23
+SQ I col4 n  1132 cross-mid   1.2 % span    499 off +0.59 | -2:7 -1:4 +0:553 +1:435 +2:133
+SQ I col5 n  1132 cross-mid   0.3 % span    474 off -0.01 | -2:5 -1:146 +0:822 +1:159
+SQ I col6 n  1132 cross-mid   0.3 % span    225 off +0.07 | -3:3 -2:2 -1:2 +0:1031 +1:94
+SQ I col7 n  1132 cross-mid   0.3 % span    226 off -0.38 | -4:3 -2:25 -1:322 +0:782

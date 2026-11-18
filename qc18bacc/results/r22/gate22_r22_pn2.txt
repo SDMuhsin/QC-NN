@@ -1,0 +1,32 @@
+# R22 gate22: /tmp/ckp908/qc18bacc/build/pnr/r22_pn2  (limit 75 % layer-summed at adj 0.25, util <= 0.80)
+# bands S0 185-389  S1 430-634  S2 644-848  band_mid 848-1485  S3 1485-1689  prow 1699-1834  prmband 1834-1946
+ITEM 1 V over north S rows (cols 1-7) y 1500.0 col3   allV   2430/  2917 =  83.3 % | MACRO:qb_s_Q 32%  f_y_path 21%  glue:reg>col-out 10%  port_in 9%  glue:s-Q>act-out 9%
+ITEM 1b same, col0                  y 1500.0 col0   allV   1864/  2918 =  63.9 % | f_y_path 27%  MACRO:qb_s_Q 20%  glue:s-Q>act-out 19%  port_in 12%  glue:reg>col-out 8%
+ITEM 2 H band (all x)               x 1835.0 band   allH   4567/  5927 =  77.0 % | MACRO:qb_s_Q 22%  glue:reg>s-in 19%  glue_regs 9%  fyreg>s-in 8%  port_in 8%
+ITEM 3 x 860 (any region) allH      x  860.0 north  allH   1956/  2043 =  95.8 % | glue:s-Q>act-out 35%  glue:reg>col-out 22%  prm 18%  MACRO:qb_p_Q 11%  glue:reg>top-out 5%
+ITEM 3b x 860 (any region) M5/M7/M9 x  860.0 north  M5      998/   962 = 103.7 % | glue:s-Q>act-out 36%  glue:reg>col-out 22%  prm 20%  MACRO:qb_p_Q 9%  glue:reg>top-out 5%
+ITEM 4 V north of S3 (col0-7)       y 1800.0 col2   allV   1907/  2918 =  65.3 % | f_y_path 27%  MACRO:qb_s_Q 24%  port_in 12%  prm 9%  glue:reg>col-out 8%
+ITEM 5 V band (col0-7)              y 1140.0 col5   allV   3061/  4187 =  73.1 % | glue:reg>s-in 27%  fyreg>s-in 15%  glue:fy-reg>s-in 14%  MACRO:qb_s_Q 13%  glue:reg>reg 13%
+# worst layer-summed cut per (kind, region)
+WORST x  860.0 north  allH   1956/  2043 =  95.8 % | glue:s-Q>act-out 35%  glue:reg>col-out 22%  prm 18%  MACRO:qb_p_Q 11%  glue:reg>top-out 5%
+WORST y 1500.0 col3   allV   2430/  2917 =  83.3 % | MACRO:qb_s_Q 32%  f_y_path 21%  glue:reg>col-out 10%  port_in 9%  glue:s-Q>act-out 9%
+WORST y 1500.0 col2   allV   2347/  2918 =  80.4 % | MACRO:qb_s_Q 25%  f_y_path 22%  glue:s-Q>act-out 16%  port_in 10%  prm 9%
+WORST y 1500.0 col1   allV   2301/  2915 =  78.9 % | glue:s-Q>act-out 23%  MACRO:qb_s_Q 22%  f_y_path 22%  port_in 10%  prm 9%
+WORST x 1835.0 band   allH   4567/  5927 =  77.0 % | MACRO:qb_s_Q 22%  glue:reg>s-in 19%  glue_regs 9%  fyreg>s-in 8%  port_in 8%
+WORST x 1055.0 S3     allH    928/  1254 =  74.0 % | glue:s-Q>act-out 53%  MACRO:qb_s_Q 34%  prm 8%  glue:reg>s-in 1%  glue:port>s-in 1%
+WORST y 1140.0 col5   allV   3061/  4187 =  73.1 % | glue:reg>s-in 27%  fyreg>s-in 15%  glue:fy-reg>s-in 14%  MACRO:qb_s_Q 13%  glue:reg>reg 13%
+WORST y 1440.0 col0   allV   2702/  4189 =  64.5 % | MACRO:qb_s_Q 25%  glue:reg>act-out 20%  f_y_path 19%  glue:s-Q>act-out 14%  port_in 8%
+WORST y 1920.0 col4   allV   2658/  4189 =  63.5 % | prm 27%  glue:reg>col-out 23%  f_y_path 19%  MACRO:qb_p_Q 14%  port_in 9%
+WORST y 1260.0 col6   allV   2567/  4189 =  61.3 % | fyreg>s-in 29%  glue:reg>s-in 28%  MACRO:qb_s_Q 15%  glue_regs 9%  glue:fy-reg>s-in 7%
+WORST y 1920.0 col7   allV   2541/  4187 =  60.7 % | prm 28%  glue:reg>col-out 22%  f_y_path 20%  MACRO:qb_p_Q 14%  port_in 9%
+WORST x 1640.0 ch01   allH    238/   405 =  58.8 % | MACRO:qb_b_Q 40%  port_in 14%  glue:reg>reg 13%  glue:port>reg 13%  glue:reg>s-in 9%
+WORST y 1920.0 west   allV   5296/  9174 =  57.7 % | glue:s-Q>act-out 38%  glue_regs 17%  port_in 14%  glue:b-Q>act-out 10%  glue:reg>top-out 4%
+WORST x 1445.0 south  allH    736/  1299 =  56.7 % | MACRO:qb_b_Q 74%  glue:port>reg 8%  port_in 5%  glue_regs 4%  glue:b-Q>act-out 3%
+WORST x  430.0 ch12   allH     32/   112 =  28.7 % | MACRO:qb_f_Q 94%  port_in 6%
+WORST x 1055.0 S0     allH    282/  1253 =  22.5 % | MACRO:qb_b_Q 71%  MACRO:qb_s_Q 11%  glue:b-Q>act-out 8%  glue:reg>s-in 4%  glue:port>s-in 1%
+WORST x 1055.0 S2     allH     64/  1254 =   5.1 % | MACRO:qb_s_Q 61%  glue:reg>s-in 20%  glue:port>s-in 11%  glue:fy-reg>s-in 6%  head 2%
+WORST x  860.0 S1     allH     69/  1715 =   4.0 % | MACRO:qb_s_Q 55%  glue:port>s-in 20%  glue:fy-reg>s-in 12%  glue:reg>s-in 7%  port_in 1%
+# per-layer segments > 75 % (cap > 50): M2 41 M3 9 M4 53 M5 21 M6 9 M7 9 M9 1
+Q1 std init 1.081 -> placed 1.828 mm2 (+0.746): wire buffers +482201, fanout buffers +53495, resize +292321 um2
+UTIL place 0.76 (std + macro) / core; std 1.828 mm2 / (core - macro) 3.681 mm2 = 0.497
+GATE FAIL: worst layer-summed cut 95.8 % (x 860 north), util 0.76

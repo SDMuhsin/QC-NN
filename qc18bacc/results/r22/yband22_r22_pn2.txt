@@ -1,0 +1,14 @@
+# yband22 /tmp/ckp908/qc18bacc/build/pnr/r22_pn2/bud_pl/dump_db.txt: std area per y band (mm2): all / prm, west strip | columns
+YB gap       y     0.0-  185.0 (185.0 um) all 0.039 (W 0.011 C 0.029) prm 0.000 (W 0.000 C 0.000)
+YB S0        y   185.0-  389.1 (204.1 um) all 0.019 (W 0.019 C 0.000) prm 0.000 (W 0.000 C 0.000)
+YB gap       y   389.1-  429.8 ( 40.7 um) all 0.025 (W 0.005 C 0.020) prm 0.000 (W 0.000 C 0.000)
+YB S1        y   429.8-  633.9 (204.1 um) all 0.019 (W 0.019 C 0.000) prm 0.000 (W 0.000 C 0.000)
+YB gap       y   633.9-  644.0 ( 10.1 um) all 0.002 (W 0.002 C 0.000) prm 0.000 (W 0.000 C 0.000)
+YB S2        y   644.0-  848.1 (204.1 um) all 0.042 (W 0.042 C 0.000) prm 0.000 (W 0.000 C 0.000)
+YB band_mid  y   848.1- 1484.6 (636.5 um) all 1.224 (W 0.096 C 1.128) prm 0.026 (W 0.023 C 0.003)
+YB S3        y  1484.6- 1688.7 (204.1 um) all 0.099 (W 0.099 C 0.000) prm 0.061 (W 0.061 C 0.000)
+YB gap       y  1688.7- 1698.8 ( 10.1 um) all 0.003 (W 0.003 C 0.000) prm 0.002 (W 0.002 C 0.000)
+YB prow      y  1698.8- 1834.3 (135.5 um) all 0.016 (W 0.016 C 0.000) prm 0.000 (W 0.000 C 0.000)
+YB prmband   y  1834.3- 1945.8 (111.5 um) all 0.338 (W 0.065 C 0.273) prm 0.144 (W 0.003 C 0.141)
+YB gap       y  1945.8- 1950.8 (  5.0 um) all 0.000 (W 0.000 C 0.000) prm 0.000 (W 0.000 C 0.000)
+YB total all 1.828 prm 0.233 mm2

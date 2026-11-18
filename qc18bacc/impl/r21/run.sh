@@ -12,7 +12,7 @@
 #   qc18bacc/impl/r21/run.sh ant <tag>    check_antennas of db/route_dr.odb in its own process (ant.tcl)
 #   qc18bacc/impl/r21/run.sh all <tag>    pnr -> dr -> (ant | post -> abs);  fin <tag>: ant | post -> abs
 # Env defaults (= r15_midc + B, the R15 DR baseline, plus TD / CTS / repair): QB9_PER 2.30, QB_TD 1, QB_IO_LAT 1.30 (measured p50 hub clock-pin latency after CTS, clk_lat.tcl),
-# QB9_GR_ITER 10, QB15_GADJ_L "M5-M9 0.10", QB_MAXTRAN 0.4, QB21_MAXFO (unset = SDC 16), QB_DR_ITER 64.
+# QB21_PFX [r21] abstract dir prefix ($QC_BUILD/<pfx>_<tag>), QB9_GR_ITER 10, QB15_GADJ_L "M5-M9 0.10", QB_MAXTRAN 0.4, QB21_MAXFO (unset = SDC 16), QB_DR_ITER 64.
 set -u
 here=$(cd "$(dirname "$0")" && pwd); root=$(cd "$here/../../.." && pwd)
 export QC_BUILD=${QC_BUILD:-/tmp/$USER/qc18bacc/build}; B=$QC_BUILD
@@ -58,13 +58,13 @@ post) # SPEF ss / ff in parallel with PT + ETM tt (tt SPEF comes from the dr ste
      ptc tt 0 pt_hub & ptc tt 1 etm & wait
      for c in ss ff; do ptc $c 0 pt_hub & ptc $c 1 etm & done; wait
      for c in tt ss ff; do echo "PT_HUB $c errors $(grep -c '^Error' $d/pt_hub_$c.log) ETM errors $(grep -c '^Error' $d/etm_$c.log)"; cat "$d/pt_hub_$c.txt"; done ;;
-abs) o=$B/r21_$tag; mkdir -p "$o"     # LEF (abs.tcl) + copies of the ETMs (post step) and the routed netlist
+abs) o=$B/${QB21_PFX:-r21}_$tag; mkdir -p "$o"     # LEF (abs.tcl) + copies of the ETMs (post step) and the routed netlist
      ( . "$root/flow/tsmc65/common/tool.sh"; export QC_KIT=$(tcsh -f -c "source $FLOW/site/site.csh >& /dev/null; printenv QC_KIT")
        cd "$d" && QC_FLOW=$FLOW QC_PNR_OUT=$d QB21_ABS_OUT=$o "$OR" -no_init -no_splash -exit -log abs.log "$here/abs.tcl" > abs.out 2>&1 < /dev/null )
      grep "R21_ABS" "$d/abs.log"; python3 -I "$root/qc18bacc/impl/r9a/lef_size.py" "$o/qb_hub.lef" "$d/abs.log"
      cp "$d/out/qb_hub.v" "$d"/out/etm/qb_hub_{tt,ss,ff}.lib "$d"/out/etm/qb_hub_{tt,ss,ff}_lib.db "$o/" 2>/dev/null; ls -la "$o"; echo R21_ABS_DONE ;;
 fin) "$0" ant "$tag" > "$d/ant_step.out" 2>&1 & "$0" abs "$tag" > "$d/abs_step.out" 2>&1 & "$0" post "$tag"; wait
-     cp "$d"/out/etm/qb_hub_{tt,ss,ff}.lib "$d"/out/etm/qb_hub_{tt,ss,ff}_lib.db "$B/r21_$tag/" 2>/dev/null; ls -la "$B/r21_$tag"
+     cp "$d"/out/etm/qb_hub_{tt,ss,ff}.lib "$d"/out/etm/qb_hub_{tt,ss,ff}_lib.db "$B/${QB21_PFX:-r21}_$tag/" 2>/dev/null; ls -la "$B/${QB21_PFX:-r21}_$tag"
      cat "$d/ant_step.out" "$d/abs_step.out"; echo R21_FIN_DONE $(date +%T) ;;
 all) "$0" pnr "$tag" || exit 1; "$0" dr "$tag"; "$0" fin "$tag"; echo R21_ALL_DONE $(date +%T) ;;
 *)   sed -n '2,13p' "$0"; exit 1 ;;
