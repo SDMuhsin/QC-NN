@@ -111,6 +111,9 @@
 `ifndef QB_COL_B2R
 `define QB_COL_B2R 0
 `endif
+`ifndef QB_TOP_PTR
+`define QB_TOP_PTR 0
+`endif
 `ifndef QB_TOP_WBK
 `define QB_TOP_WBK 0
 `endif
@@ -873,6 +876,37 @@ module qb_top #(parameter int DIST = 1, parameter int AP = 1, parameter bit R3B 
     assign fo = fdl[D + 7];
     assign wo = wdl[D + 8];
     assign bo = cdl[D + 4];
+    // R25 hook QB_TOP_PTR = 1 (default 0): the pass-table entries of fo and of the b2 FIFO head are registered one
+    // cycle early from their next-state index (a same-cycle pt write is forwarded, so cycle-exact), which takes the
+    // 32:1 x 89 b pt mux off the write-back paths (R24 reg2reg groups b2f_pi -> b2f_d / b_wd, fdl pi -> b_wd)
+    logic [88:0] fo_p;
+    if (`QB_TOP_PTR) begin : g_ptr_f
+        wire [4:0]   fi = fdl[D + 6].pi;                  // fo one cycle later (plain shift, both reset to 0)
+        logic [88:0] fo_pq;
+`ifdef QBT_MUT_PTR
+        always_ff @(posedge clk) fo_pq <= pt[fo.pi][88:0];   // mutant: lookup one cycle late
+`else
+        always_ff @(posedge clk) fo_pq <= (h_we && h_sel == 4'd3 && h_addr[4:0] == fi) ? h_data[88:0] : pt[fi][88:0];
+`endif
+        assign fo_p = fo_pq;
+`ifdef QBT_PTR_CHK   // R26 bench-only monitor: registered index == fo.pi every cycle, value == pt[fo.pi] when fo.v
+        logic [4:0] fi_q;  int n_chk, n_v, n_fw, n_bad;
+        initial begin n_chk = 0; n_v = 0; n_fw = 0; n_bad = 0; end
+        always_ff @(posedge clk) begin
+            fi_q <= fi;
+            if (h_we && h_sel == 4'd3 && h_addr[4:0] == fi) n_fw <= n_fw + 1;
+            if (rst_n && $time > 0) begin
+                n_chk <= n_chk + 1;  if (fo.v) n_v <= n_v + 1;
+                if (fi_q != fo.pi || (fo.v && fo_pq != pt[fo.pi][88:0])) begin
+                    n_bad <= n_bad + 1;  if (n_bad < 5) $display("PTR_CHK fo MISMATCH t %0t", $time);
+                end
+            end
+        end
+        final $display("PTR_CHK fo checks %0d valid %0d fwd_hits %0d bad %0d", n_chk, n_v, n_fw, n_bad);
+`endif
+    end else begin : g_nptr_f
+        assign fo_p = pt[fo.pi][88:0];
+    end
     wire fvg = WBQ ? fo.v : fo.v && f_vld_o;              // R8a WBQ: map-write / flag gating from the registered tags
     wire wvg = WBQ ? wo.v : wo.v && w_vld_o;
     wire b2_e = WBQ ? bo.v && bo.cmp : b2_vld;            // R8a WBQ: b2 capture enable from the tag (b2_vld == it, else err)
@@ -891,7 +925,7 @@ module qb_top #(parameter int DIST = 1, parameter int AP = 1, parameter bit R3B 
     logic [7:0] fsa [4], fsa_q [4];  logic [1:0] fsg [4], fsg_q [4];
     always_comb begin
         logic [88:0] p;
-        p = pt[fo.pi];
+        p = fo_p;
         for (int q = 0; q < 4; q++) begin
             logic [15:0] px;  logic [23:0] e;
             px = 16'(fo.tp) * 16 + 16'(fo.k) * 4 + 16'(q);
@@ -963,9 +997,47 @@ module qb_top #(parameter int DIST = 1, parameter int AP = 1, parameter bit R3B 
         assign b2r = '0;
     end
     logic [1:0]    b2f_n;  logic [1:0] b2_j;  logic b2_ovf;
-    wire [88:0]    b2p = pt[b2f_pi[0]];
-    wire [2:0]     b2w = pt_lgw(b2p);
+    wire [2:0]     b2w;
     wire [1:0]     b2_nl = (b2w == 3'd2) ? 2'd3 : 2'd1;   // lines - 1
+    if (`QB_TOP_PTR) begin : g_ptr_b2
+        // next-state FIFO head index, as in the b2 capture FIFO below (pop, then the capture into slot 0)
+        wire       pop = (b2f_n != 2'd0) && (b2_j == b2_nl);
+        wire [1:0] slot = b2f_n - {1'b0, pop};
+`ifdef QBT_MUT_PTRA
+        wire [4:0] pin = pop ? b2f_pi[1] : b2f_pi[0];                                  // R26 mutant: capture into an empty head missed
+`else
+        wire [4:0] pin = (b2_e && slot == 2'd0) ? bo.pi : pop ? b2f_pi[1] : b2f_pi[0];
+`endif
+        logic [2:0] b2w_q;
+`ifdef QBT_MUT_PTR
+        always_ff @(posedge clk) b2w_q <= pt_lgw(pt[b2f_pi[0]]);   // mutant: lookup one cycle late
+`else
+        always_ff @(posedge clk) b2w_q <= (h_we && h_sel == 4'd3 && h_addr[4:0] == pin) ? h_data[57:55] : pt_lgw(pt[pin]);
+`endif
+        assign b2w = b2w_q;
+`ifdef QBT_PTR_CHK   // R26 bench-only monitor: registered head index == b2f_pi[0] whenever the FIFO is not empty
+        logic [4:0] pin_q;  int n_chk, n_pop2, n_cap0, n_fw, n_dpi, n_bad;
+        initial begin n_chk = 0; n_pop2 = 0; n_cap0 = 0; n_fw = 0; n_dpi = 0; n_bad = 0; end
+        always_ff @(posedge clk) begin
+            pin_q <= pin;
+            if (h_we && h_sel == 4'd3 && h_addr[4:0] == pin) n_fw <= n_fw + 1;
+            if (rst_n) begin
+                if (pop && b2f_n == 2'd2) begin n_pop2 <= n_pop2 + 1; if (b2f_pi[1] != b2f_pi[0]) n_dpi <= n_dpi + 1; end
+                if (b2_e && slot == 2'd0) n_cap0 <= n_cap0 + 1;
+                if (b2f_n != 2'd0) begin
+                    n_chk <= n_chk + 1;
+                    if (pin_q != b2f_pi[0] || b2w_q != pt_lgw(pt[b2f_pi[0]])) begin
+                        n_bad <= n_bad + 1;  if (n_bad < 5) $display("PTR_CHK b2 MISMATCH t %0t", $time);
+                    end
+                end
+            end
+        end
+        final $display("PTR_CHK b2 checks %0d pop_at_2 %0d (head pi changes %0d) capture_to_head %0d fwd_hits %0d bad %0d",
+                       n_chk, n_pop2, n_dpi, n_cap0, n_fw, n_bad);
+`endif
+    end else begin : g_nptr_b2
+        assign b2w = pt_lgw(pt[b2f_pi[0]]);
+    end
     always_comb begin
         sw_en = '0; sw_conf = 1'b0; hit_hq = '0; hit_hqd = '0; hit_z = '0; bw_conf = 1'b0;
         for (int l = 0; l < 32; l++) begin sw_a[l] = '0; sw_d[l] = '0; sw_m[l] = '0; end
@@ -976,7 +1048,7 @@ module qb_top #(parameter int DIST = 1, parameter int AP = 1, parameter bit R3B 
         // ---------------- fused outputs
         if (fvg) begin
             logic [88:0] p;
-            p = pt[fo.pi];
+            p = fo_p;
             if (fo.hm) begin
                 // HQ: px = 16 tp + 4 k + q on the 8 x 8 map, y = 2 tp + (k >> 1), x0 = 4 (k & 1)
                 logic [3:0] y, l0;
