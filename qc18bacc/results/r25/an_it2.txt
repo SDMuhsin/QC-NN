@@ -1,0 +1,37 @@
+R25_MK markers 181213 bins 79x39=3081
+R25_MK by layer/type: M2 Short 109579; M3 Short 23900; M5 Short 14909; M2 Metal Spacing 14343; M4 Short 6730; VIA1 Cut Spacing 5148; M3 Metal Spacing 2053; M6 Short 1836
+R25_MK srcs: net 180128; inst-net 1085
+R25_TOP 1% bins (31): 13.2 % of markers
+R25_TOP 5% bins (154): 38.2 % of markers
+R25_TOP 10% bins (308): 59.4 % of markers
+R25_TOP 25% bins (770): 93.0 % of markers
+R25_NEAR within 10 um: macro edge 1889 (1.0 %), macro signal pin 2669 (1.5 %), block pin 2817 (1.6 %), any 6882 (3.8 %); inside a macro 4471 (2.5 %); west of x 860: 18.5 %
+R25_BASE non-macro area share within 10 um: macro edge 12.9 %, macro pin 0.0 %, block pin 1.1 %;
+R25_SP all bins n=3081: rho(markers, std density) +0.837; rho(markers, std pins) +0.848; rho(markers, pins/free um2) +0.852; rho(markers, macro+block pins) +0.035
+R25_SP bins >=50% free of macros n=1413: rho(markers, std density) +0.805; rho(markers, std pins) +0.909; rho(markers, pins/free um2) +0.915; rho(markers, macro+block pins) -0.127
+R25_DENS std bins (>=50% free): density p50 0.67 p90 0.82 max 1.01; marker-weighted mean density 0.76 (bins >=50% free hold 98.2 % of markers)
+R25_BIN 1 x 1250-1300 y 1400-1450 [25,28]: 1641 markers (M2 Short 876; M3 Short 294; M2 Metal 123) | std density 0.94 cells 441 std pins 1840 macro pins 0 block pins 0 | macro cover - centre-to-macro-edge 60 um (qb_s_256x128m1) 
+R25_BIN 2 x 950-1000 y 1400-1450 [19,28]: 1485 markers (M2 Short 781; M3 Short 274; M2 Metal 163) | std density 0.95 cells 477 std pins 2079 macro pins 0 block pins 0 | macro cover - centre-to-macro-edge 60 um (qb_s_256x128m1) 
+R25_BIN 3 x 1800-1850 y 1350-1400 [36,27]: 1272 markers (M2 Short 680; M3 Short 228; M4 Short 102) | std density 0.97 cells 380 std pins 1486 macro pins 0 block pins 0 | macro cover - centre-to-macro-edge 110 um (qb_s_256x128m1) 
+R25_BIN 4 x 1350-1400 y 1350-1400 [27,27]: 1166 markers (M2 Short 696; M3 Short 195; M2 Metal 87) | std density 0.95 cells 420 std pins 1726 macro pins 0 block pins 0 | macro cover - centre-to-macro-edge 110 um (qb_s_256x128m1) 
+R25_BIN 5 x 1700-1750 y 1350-1400 [34,27]: 1144 markers (M2 Short 589; M3 Short 235; M5 Short 93) | std density 0.86 cells 447 std pins 1919 macro pins 0 block pins 0 | macro cover - centre-to-macro-edge 110 um (qb_s_256x128m1) 
+R25_BIN 6 x 1850-1900 y 1350-1400 [37,27]: 1016 markers (M2 Short 562; M3 Short 183; M2 Metal 83) | std density 0.92 cells 405 std pins 1633 macro pins 0 block pins 0 | macro cover - centre-to-macro-edge 110 um (qb_s_256x128m1) 
+R25_BIN 7 x 1800-1850 y 1300-1350 [36,26]: 1004 markers (M2 Short 524; M3 Short 201; M2 Metal 83) | std density 0.83 cells 431 std pins 1738 macro pins 0 block pins 0 | macro cover - centre-to-macro-edge 160 um (qb_s_256x128m1) 
+R25_BIN 8 x 1750-1800 y 1350-1400 [35,27]: 939 markers (M2 Short 521; M3 Short 162; M4 Short 60) | std density 0.95 cells 374 std pins 1397 macro pins 0 block pins 0 | macro cover - centre-to-macro-edge 110 um (qb_s_256x128m1) 
+R25_BIN 9 x 1250-1300 y 1350-1400 [25,27]: 835 markers (M2 Short 495; M3 Short 132; M5 Short 63) | std density 0.91 cells 390 std pins 1575 macro pins 0 block pins 0 | macro cover - centre-to-macro-edge 110 um (qb_s_256x128m1) 
+R25_BIN 10 x 1900-1950 y 1400-1450 [38,28]: 791 markers (M2 Short 472; M3 Short 121; M2 Metal 57) | std density 0.95 cells 388 std pins 1553 macro pins 0 block pins 0 | macro cover - centre-to-macro-edge 60 um (qb_s_256x128m1) 
+R25_DCLS density [0.0,0.6): bins 548 pins 13.7 % markers 5.8 % markers/kpin 71.6
+R25_DCLS density [0.6,0.7): bins 308 pins 27.7 % markers 21.8 % markers/kpin 132.3
+R25_DCLS density [0.7,0.8): bins 380 pins 38.7 % markers 41.2 % markers/kpin 178.6
+R25_DCLS density [0.8,0.9): bins 115 pins 13.0 % markers 17.0 % markers/kpin 218.6
+R25_DCLS density [0.9,2.0): bins 62 pins 6.9 % markers 12.3 % markers/kpin 299.9
+R25_LAYER M2 Short 109579: in top-10% bins 61.7 %, rho(vs pins/free, std bins) +0.936, near macro edge/pin/block pin 0.9 %, west of 860 20.2 %
+R25_LAYER M3 Short 23900: in top-10% bins 63.2 %, rho(vs pins/free, std bins) +0.837, near macro edge/pin/block pin 4.0 %, west of 860 15.7 %
+R25_LAYER M5 Short 14909: in top-10% bins 39.4 %, rho(vs pins/free, std bins) +0.467, near macro edge/pin/block pin 9.1 %, west of 860 7.6 %
+R25_LAYER M2 Metal Spacing 14343: in top-10% bins 63.1 %, rho(vs pins/free, std bins) +0.892, near macro edge/pin/block pin 5.0 %, west of 860 23.3 %
+R25_LAYER M4 Short 6730: in top-10% bins 56.6 %, rho(vs pins/free, std bins) +0.592, near macro edge/pin/block pin 17.3 %, west of 860 13.8 %
+R25_LAYER VIA1 Cut Spacing 5148: in top-10% bins 65.4 %, rho(vs pins/free, std bins) +0.852, near macro edge/pin/block pin 0.4 %, west of 860 26.0 %
+R25_BASE2 non-macro area west of x 860: 26.3 %; std pins west 23.0 %
+R25_MAC qb_f_3232x128m8 x1 x 10-404 y 10-1195; qb_i_128x128m1 x4 x 424-654 y 10-629; qb_b_128x128m1 x8 x 865-3975 y 10-144; qb_p_240x144m2 x9 x 10-3980 y 1206-1834; qb_s_256x128m1 x32 x 855-3985 y 185-1689
+R25_YPROF markers per 50 um row (y lo: %): 750:1 900:2 950:6 1000:8 1050:7 1100:7 1150:8 1200:6 1250:5 1300:5 1350:10 1400:8 1450:3 1500:2 1550:2 1600:1 1650:1 1850:5 1900:8
+R25_XPROF markers per 200 um column (x lo: %): 0:3 200:4 400:4 600:6 800:5 1000:6 1200:8 1400:7 1600:6 1800:9 2000:5 2200:6 2400:3 2600:6 2800:4 3000:6 3200:4 3400:3 3600:4 3800:1
