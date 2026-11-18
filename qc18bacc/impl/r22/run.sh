@@ -17,7 +17,7 @@ set -u
 here=$(cd "$(dirname "$0")" && pwd); root=$(cd "$here/../../.." && pwd)
 export QC_BUILD=${QC_BUILD:-/tmp/$USER/qc18bacc/build}; B=$QC_BUILD
 export QB_SB=${QB_SB:-649} QB21_MAXFO=${QB21_MAXFO:-32} QB22_FP=${QB22_FP:-a} QB15_FP=${QB15_FP:-mid}
-export QB15_MPLACE=$here/mplace22.py QB21_PFX=r22
+export QB15_MPLACE=${QB22_MPLACE:-$here/mplace22.py} QB21_PFX=r22   # QB22_MPLACE: opt-in (R23 impl/r23/mplace23.py)
 export QB_SYN=${QB_SYN:-r10_rpw} QB9_W=${QB9_W:-$B/r10b_ww} QB10_SRD=${QB10_SRD:-0}
 export QB9_PER=${QB9_PER:-2.30} QB_TD=${QB_TD:-1} QB_RD=${QB_RD:-0}
 export QB_DPL_ARGS=${QB_DPL_ARGS:-"-max_displacement 500"} QB9_CHBLK=${QB9_CHBLK:-40} QB9_GPL2=${QB9_GPL2:-1}

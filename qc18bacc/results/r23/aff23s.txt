@@ -1,0 +1,14 @@
+AFF23S signatures 132, nets 313667
+AFF23S identity: band-weighted H per cut k1..7 3436 3967 3803 3316 3458 2802 1940 (max 3967); total max 6954
+AFF23S 04152637: band-weighted max 9084 (+129.0 %), total max 14599 (+109.9 %)
+AFF23S 40516273: band-weighted max 9084 (+129.0 %), total max 15379 (+121.2 %)
+AFF23S best 8 of 40320 orders by worst band-weighted interior cut:
+AFF23S   01234567  band max 3967 (+0.0 %)  total max 6954 (+0.0 %)  cuts 3436 3967 3803 3316 3458 2802 1940
+AFF23S   01234576  band max 3967 (+0.0 %)  total max 6954 (+0.0 %)  cuts 3436 3967 3803 3316 3458 2802 3484
+AFF23S   01234756  band max 5181 (+30.6 %)  total max 7695 (+10.7 %)  cuts 3436 3967 3803 3316 3458 5181 3484
+AFF23S   01234765  band max 5181 (+30.6 %)  total max 7695 (+10.7 %)  cuts 3436 3967 3803 3316 3458 5181 4655
+AFF23S   01237456  band max 5181 (+30.6 %)  total max 7956 (+14.4 %)  cuts 3436 3967 3803 3316 5112 5181 3484
+AFF23S   01237465  band max 5181 (+30.6 %)  total max 7956 (+14.4 %)  cuts 3436 3967 3803 3316 5112 5181 4655
+AFF23S   67543210  band max 5284 (+33.2 %)  total max 12478 (+79.4 %)  cuts 5042 4382 5051 4839 5284 5267 3408
+AFF23S   76543210  band max 5284 (+33.2 %)  total max 12478 (+79.4 %)  cuts 3508 4382 5051 4839 5284 5267 3408
+AFF23S identity rank 1 of 40320

@@ -1,0 +1,7 @@
+AFF23 worst per family (H total / H band-weighted / V slots), first order = reference
+AFF23 A0 identity (placed)       H 3945@2 V1166 2382@5 V1505 2124@0 V664 730@1 | west line 5680
+AFF23 N 01234567                 H 6022@1 V1166 2399@5 V1505 2825@0 V664 749@1 | west line 12040
+AFF23 N 04152637                 H 8266@1 V1166 2707@6 V1505 1947@0 V664 728@6 | west line 11254
+AFF23 N 40516273                 H 7916@6 V1166 2267@5 V1505 2080@0 V664 892@0 | west line 12653
+AFF23 class worse >10 % (N 04152637 vs 01234567, classes >= 3 % of a cut): 71; top H4 glue:reg>s-in 402->2405; H6 glue:fy-reg>s-in 270->1052; H6 fyreg>s-in 236->676; H6 glue:reg>col-out 328->836
+AFF23 class worse >10 % (N 40516273 vs 01234567, classes >= 3 % of a cut): 69; top H7 prm 191->1627; H4 glue:reg>s-in 402->2322; V11667 MACRO:qb_s Q 154->537; H2 glue regs 635->1912

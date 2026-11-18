@@ -1,0 +1,4 @@
+PAIR23 merge 1: nets 234761, kept (<= 64 pins) 234384
+PAIR23 cells 221238 (class all, hop 2); columns reached: 0:110609 1:85590 2:22418 3:834 4:159 5:17 6:161 8:1450
+PAIR23 2-column cells by column distance |a-b|: 1:3528 2:484 3:553 4:17552 5:167 6:134
+PAIR23 top pairs: 26:4414 04:4409 15:4389 37:4340 34:616 67:583 45:547 56:535 23:496 12:424 01:327 36:199

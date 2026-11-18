@@ -3,6 +3,7 @@
 #   run15.sh fp  <tag>          impl/r10b/run.sh fp with impl/r15/mplace15.py (QB15_FP base|mid|split|gap, QB15_GAP, QB15_NG)
 #                               instead of mplace10.py (same steps: sdc.py, init, macro dump, floorplan, pins9.py, pdn)
 #                               (QB15_MPLACE: opt-in floorplan script with the same interface, e.g. impl/r22/mplace22.py)
+#                               (QB15_PINS: opt-in pin-plan script with the pins9.py interface, e.g. impl/r23/pins23.py)
 #   run15.sh grt <tag> <db>     impl/r10b/run.sh grt with impl/r15/grt15.tcl (QB15_GADJ_L per-layer adjustment, opt-in)
 #   run15.sh lay <tag> <g>      per y-band / per layer GRT guide demand vs capacity + overflow by y band (lay15.py) -> grt_<g>/lay15.txt
 #   run15.sh all <tag>          fp + pnr to place + grt (QB_GI [3], QB_GTAG [pl3]) + r10b ana + lay  (= impl/r12/launch.sh chain)
@@ -23,7 +24,7 @@ fp)  kit; mkdir -p "$W/cfg_$tag"
      ( cd "$d" && QB_RUN=$d "$OR" -no_init -no_splash -exit "$root/qc18bacc/impl/r5b/dump_macros.tcl" > dump.log 2>&1 < /dev/null )
      "$PY" -I "${QB15_MPLACE:-$here/mplace15.py}" "$d/macros.txt" "$d/mplace.tcl" || exit 1
      x0=$(sed -n 's/^set ::QB9_X0 //p' "$d/mplace.tcl")
-     "$PY" -I "$root/qc18bacc/impl/r9b/pins9.py" "$W/bnd_bits.txt" "$B/r5b_blk/qb_col_blk.lef" "$x0" "$d/pins9_data.tcl" || exit 1
+     "$PY" -I "${QB15_PINS:-$root/qc18bacc/impl/r9b/pins9.py}" "$W/bnd_bits.txt" "$B/r5b_blk/qb_col_blk.lef" "$x0" "$d/pins9_data.tcl" || exit 1
      QC_PNR_FROM=floorplan QC_PNR_TO=pdn "$root/flow/tsmc65/pnr/run_pnr.sh" "$R10/hub.cfg" "$tag" ;;
 grt) kit; cd "$d" || exit 1; g=$d/grt_${QB_GTAG:-a}; mkdir -p "$g"
      QB_DB=${3:-cts} QB_GOUT=$g QC_PNR_OUT=$d /usr/bin/time -v -o "$g/grt.time" "$OR" -no_init -no_splash -exit \

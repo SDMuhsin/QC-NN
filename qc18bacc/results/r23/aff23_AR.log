@@ -1,0 +1,12 @@
+AFF23 worst per family (H total / H band-weighted / V slots), first order = reference
+AFF23 A0 identity (placed)       H 3945@2 V1166 2382@5 V1505 2124@0 V664 730@1 | west line 5680
+AFF23 A 01234567                 H 3945@2 V1166 2382@5 V1505 2124@0 V664 730@1 | west line 5680
+AFF23 R 01234567                 H 5900@2 V1166 2545@5 V1505 2068@3 V664 804@2 | west line 7380
+AFF23 A 04152637                 H 9061@4 V1166 2466@3 V1505 1906@0 V664 785@4 | west line 5680
+AFF23 R 04152637                 H 8351@4 V1166 2439@6 V1505 1982@1 V664 764@4 | west line 7000
+AFF23 A 40516273                 H 9099@4 V1166 2504@2 V1505 2004@0 V664 778@3 | west line 6112
+AFF23 R 40516273                 H 8269@2 V1166 2553@5 V1505 2158@0 V664 833@4 | west line 8799
+AFF23 class worse >10 % (A 04152637 vs 01234567, classes >= 3 % of a cut): 67; top H5 port in 158->901; H4 glue:reg>s-in 387->1750; H6 MACRO:qb_b Q 257->972; H5 glue regs 430->1575
+AFF23 class worse >10 % (R 04152637 vs 01234567, classes >= 3 % of a cut): 67; top H4 glue:reg>s-in 388->2012; H6 prm 223->634; H7 pcol 347->969; V11667 MACRO:qb_s Q 117->280
+AFF23 class worse >10 % (A 40516273 vs 01234567, classes >= 3 % of a cut): 85; top H5 port in 158->1029; H7 MACRO:qb_b Q 130->844; H7 port in 113->682; H4 glue:reg>s-in 387->1750
+AFF23 class worse >10 % (R 40516273 vs 01234567, classes >= 3 % of a cut): 60; top H7 prm 189->1603; H4 glue:reg>s-in 388->2076; H1 glue:reg>col-out 240->1141; V11667 MACRO:qb_s Q 117->420

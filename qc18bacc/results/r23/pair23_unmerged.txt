@@ -1,0 +1,8 @@
+PAIR23 cells 293778 (class all, hop 2); columns reached: 0:177375 1:96453 2:16030 3:1361 4:2499 5:14 6:44 8:2
+PAIR23 2-column cells by column distance |a-b|: 1:5332 2:229 3:42 4:10426 5:1
+PAIR23 top pairs: 04:2792 15:2780 37:2560 26:2294 67:1131 45:872 01:761 23:732 56:685 12:584 34:567 02:99
+PAIR23 cells 98717 (class reg>s-in, hop 2); columns reached: 0:57765 1:39641 2:959 3:89 4:204 5:13 6:44 8:2
+PAIR23 2-column cells by column distance |a-b|: 1:839 2:100 3:16 4:4
+PAIR23 top pairs: 67:224 01:174 45:134 56:121 23:99 12:60 02:41 13:29 34:27 57:18 24:8 47:6
+
+[exited with code 0]

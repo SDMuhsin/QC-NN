@@ -1,0 +1,132 @@
+== A0 identity (placed)
+H 0 5680 1562 | glue:s-Q>act-out 30, MACRO:qb_b Q 14, MACRO:qb_s Q 13, prm 11
+H 1 6839 3422 | glue:s-Q>act-out 21, MACRO:qb_s Q 15, MACRO:qb_b Q 12, glue:reg>s-in 10
+H 2 6760 3945 | MACRO:qb_s Q 18, glue:s-Q>act-out 15, MACRO:qb_b Q 11, glue:reg>s-in 10
+H 3 6259 3789 | MACRO:qb_s Q 26, glue:reg>s-in 11, MACRO:qb_b Q 10, port in 10
+H 4 5388 3314 | MACRO:qb_s Q 38, glue regs 11, MACRO:qb_b Q 10, port in 9
+H 5 5088 3450 | MACRO:qb_s Q 30, glue:reg>reg 14, glue:reg>s-in 13, glue regs 8
+H 6 4044 2800 | MACRO:qb_s Q 25, glue:reg>s-in 19, glue regs 15, glue:reg>col-out 7
+H 7 2860 1935 | glue:reg>s-in 28, MACRO:qb_s Q 18, glue regs 14, glue:reg>col-out 7
+V1166 0 1678 1678 | glue:reg>s-in 24, fyreg>s-in 23, MACRO:qb_s Q 18, glue:fy-reg>s-in 13
+V1166 1 2143 2143 | glue:reg>s-in 21, MACRO:qb_s Q 19, fyreg>s-in 19, glue regs 12
+V1166 2 2153 2153 | glue:reg>s-in 22, MACRO:qb_s Q 22, fyreg>s-in 19, glue regs 14
+V1166 3 2218 2218 | MACRO:qb_s Q 25, fyreg>s-in 19, glue:reg>s-in 17, glue:fy-reg>s-in 14
+V1166 4 1998 1998 | glue:reg>s-in 22, fyreg>s-in 18, MACRO:qb_s Q 17, glue:fy-reg>s-in 16
+V1166 5 2382 2382 | glue:reg>s-in 19, fyreg>s-in 17, glue:reg>reg 16, glue:fy-reg>s-in 15
+V1166 6 1876 1876 | glue:reg>s-in 25, fyreg>s-in 21, glue:fy-reg>s-in 17, MACRO:qb_s Q 16
+V1166 7 1441 1441 | fyreg>s-in 22, glue:reg>s-in 22, glue:fy-reg>s-in 18, MACRO:qb_s Q 17
+V1505 0 2124 2124 | f_y path 24, glue:s-Q>act-out 22, MACRO:qb_s Q 17, port in 10
+V1505 1 1772 1772 | f_y path 29, MACRO:qb_s Q 22, port in 13, glue:reg>col-out 9
+V1505 2 1773 1773 | f_y path 29, MACRO:qb_s Q 24, port in 12, glue:fy-reg>s-in 7
+V1505 3 1886 1886 | f_y path 27, MACRO:qb_s Q 27, port in 12, glue:reg>col-out 11
+V1505 4 1613 1613 | f_y path 32, MACRO:qb_s Q 19, port in 17, glue:reg>col-out 14
+V1505 5 1473 1473 | f_y path 35, MACRO:qb_s Q 20, port in 17, glue:reg>col-out 9
+V1505 6 1518 1518 | f_y path 34, MACRO:qb_s Q 16, port in 14, glue regs 12
+V1505 7 1342 1342 | f_y path 38, port in 16, MACRO:qb_s Q 16, glue:fy-reg>s-in 9
+V664 0 516 516 | glue:fy-reg>s-in 48, MACRO:qb_s Q 34, glue regs 6, glue:reg>s-in 6
+V664 1 730 730 | MACRO:qb_s Q 39, glue:fy-reg>s-in 35, glue:reg>reg 8, glue:port>reg 7
+V664 2 727 727 | MACRO:qb_s Q 42, glue:fy-reg>s-in 35, port in 7, glue regs 5
+V664 3 721 721 | MACRO:qb_s Q 45, glue:fy-reg>s-in 35, port in 10, glue regs 6
+V664 4 670 670 | glue:fy-reg>s-in 38, MACRO:qb_s Q 36, glue regs 19, port in 2
+V664 5 673 673 | glue:fy-reg>s-in 38, MACRO:qb_s Q 33, glue regs 22, glue:reg>reg 4
+V664 6 613 613 | glue:fy-reg>s-in 42, MACRO:qb_s Q 33, glue regs 23, glue:port>s-in 1
+V664 7 527 527 | glue:fy-reg>s-in 48, MACRO:qb_s Q 34, glue regs 16, glue:port>s-in 1
+== N 01234567
+H 0 12040 5720 | glue:s-Q>act-out 17, prm 11, glue:reg>s-in 10, glue:fy-reg>s-in 9
+H 1 10468 6022 | glue:s-Q>act-out 18, glue:reg>s-in 12, glue regs 12, prm 8
+H 2 9937 5568 | head 16, glue:s-Q>act-out 14, MACRO:qb_s Q 11, glue:reg>s-in 8
+H 3 9085 6001 | MACRO:qb_s Q 18, glue:s-Q>act-out 16, glue regs 12, glue:reg>s-in 11
+H 4 7723 4620 | MACRO:qb_s Q 27, glue:s-Q>act-out 14, glue regs 14, glue:reg>col-out 11
+H 5 7328 5074 | MACRO:qb_s Q 21, glue regs 20, glue:reg>s-in 13, glue:reg>col-out 8
+H 6 6549 5115 | glue regs 18, glue:reg>s-in 18, glue:reg>reg 16, MACRO:qb_s Q 16
+H 7 4834 3477 | glue:reg>s-in 26, glue regs 25, MACRO:qb_s Q 11, glue:reg>col-out 9
+V1166 0 1040 1040 | fyreg>s-in 19, MACRO:qb_s Q 18, glue:reg>s-in 18, glue:fy-reg>s-in 13
+V1166 1 1897 1897 | MACRO:qb_s Q 20, glue:reg>s-in 19, fyreg>s-in 18, glue regs 12
+V1166 2 847 847 | MACRO:qb_s Q 50, glue regs 15, glue:reg>s-in 9, fyreg>s-in 8
+V1166 3 2040 2040 | MACRO:qb_s Q 32, fyreg>s-in 17, glue:reg>s-in 15, glue:fy-reg>s-in 14
+V1166 4 1767 1767 | MACRO:qb_s Q 29, glue:reg>s-in 16, glue:fy-reg>s-in 15, fyreg>s-in 15
+V1166 5 2399 2399 | glue:reg>s-in 20, fyreg>s-in 19, glue:fy-reg>s-in 15, glue:reg>reg 13
+V1166 6 2140 2140 | glue:reg>s-in 22, fyreg>s-in 20, glue:fy-reg>s-in 14, MACRO:qb_s Q 14
+V1166 7 1459 1459 | glue:reg>s-in 30, fyreg>s-in 23, glue:fy-reg>s-in 21, MACRO:qb_s Q 11
+V1505 0 2825 2825 | prm 23, f_y path 21, glue:s-Q>act-out 18, MACRO:qb_s Q 11
+V1505 1 1755 1755 | MACRO:qb_s Q 24, f_y path 21, glue:s-Q>act-out 14, port in 13
+V1505 2 1496 1496 | MACRO:qb_s Q 25, f_y path 23, port in 16, glue:reg>col-out 9
+V1505 3 2126 2126 | MACRO:qb_s Q 25, f_y path 24, glue:reg>col-out 13, port in 12
+V1505 4 1757 1757 | f_y path 29, MACRO:qb_s Q 28, port in 12, glue:reg>col-out 10
+V1505 5 1451 1451 | f_y path 35, port in 19, MACRO:qb_s Q 18, glue:fy-reg>s-in 9
+V1505 6 1617 1617 | f_y path 32, port in 16, MACRO:qb_s Q 16, glue regs 13
+V1505 7 1177 1177 | f_y path 44, port in 17, MACRO:qb_s Q 12, glue:fy-reg>s-in 11
+V664 0 615 615 | glue:fy-reg>s-in 35, MACRO:qb_s Q 24, glue:b-Q>act-out 20, glue regs 6
+V664 1 749 749 | MACRO:qb_s Q 36, glue:fy-reg>s-in 26, glue:reg>reg 10, port in 8
+V664 2 690 690 | MACRO:qb_s Q 41, glue:fy-reg>s-in 33, port in 15, glue regs 6
+V664 3 663 663 | MACRO:qb_s Q 50, glue:fy-reg>s-in 39, glue regs 6, port in 2
+V664 4 688 688 | MACRO:qb_s Q 42, glue:fy-reg>s-in 37, glue regs 18, glue:port>s-in 1
+V664 5 645 645 | glue:fy-reg>s-in 40, MACRO:qb_s Q 36, glue regs 19, glue:reg>reg 4
+V664 6 620 620 | glue:fy-reg>s-in 41, MACRO:qb_s Q 34, glue regs 21, glue:reg>reg 2
+V664 7 556 556 | glue:fy-reg>s-in 46, MACRO:qb_s Q 29, glue regs 22, glue:port>s-in 1
+== N 04152637
+H 0 11254 5458 | glue:s-Q>act-out 14, prm 11, glue:reg>s-in 11, MACRO:qb_s Q 10
+H 1 13374 8266 | glue:reg>s-in 17, glue regs 14, glue:s-Q>act-out 12, MACRO:qb_s Q 9
+H 2 11938 6602 | glue:reg>s-in 12, glue regs 11, glue:s-Q>act-out 9, MACRO:qb_s Q 9
+H 3 9859 6085 | glue:reg>s-in 17, glue regs 16, glue:s-Q>act-out 13, prm 9
+H 4 11147 8199 | glue:reg>s-in 22, glue regs 17, glue:s-Q>act-out 14, glue:fy-reg>s-in 6
+H 5 8530 5988 | glue:reg>s-in 18, glue regs 15, glue:reg>reg 13, glue:s-Q>act-out 11
+H 6 10256 7192 | glue:reg>s-in 18, glue regs 13, glue:fy-reg>s-in 10, glue:reg>col-out 8
+H 7 4788 3792 | glue:reg>s-in 28, glue regs 22, MACRO:qb_s Q 11, glue:fy-reg>s-in 9
+V1166 0 1782 1782 | glue:reg>s-in 23, MACRO:qb_s Q 22, fyreg>s-in 18, glue:fy-reg>s-in 11
+V1166 1 1847 1847 | fyreg>s-in 25, MACRO:qb_s Q 19, glue:fy-reg>s-in 17, glue:reg>s-in 17
+V1166 2 898 898 | MACRO:qb_s Q 35, glue:reg>s-in 20, glue regs 17, glue:fy-reg>s-in 8
+V1166 3 2014 2014 | fyreg>s-in 26, glue:reg>s-in 23, glue:fy-reg>s-in 17, glue regs 15
+V1166 4 1841 1841 | glue:reg>s-in 25, MACRO:qb_s Q 25, fyreg>s-in 14, glue regs 12
+V1166 5 1890 1890 | glue:reg>reg 27, MACRO:qb_s Q 20, glue:reg>s-in 12, pcol 10
+V1166 6 2707 2707 | fyreg>s-in 26, glue:reg>s-in 22, MACRO:qb_s Q 17, glue:fy-reg>s-in 16
+V1166 7 1259 1259 | MACRO:qb_s Q 24, glue:reg>s-in 22, glue:fy-reg>s-in 20, fyreg>s-in 20
+V1505 0 1947 1947 | f_y path 25, MACRO:qb_s Q 19, glue:s-Q>act-out 13, prm 11
+V1505 1 1880 1880 | f_y path 24, MACRO:qb_s Q 17, glue:reg>col-out 14, glue:s-Q>act-out 11
+V1505 2 1654 1654 | f_y path 25, port in 20, MACRO:qb_s Q 18, glue:s-Q>act-out 12
+V1505 3 1451 1451 | f_y path 35, port in 15, glue:reg>col-out 10, prm 10
+V1505 4 1793 1793 | f_y path 28, MACRO:qb_s Q 22, port in 17, glue:reg>col-out 7
+V1505 5 1687 1687 | f_y path 28, MACRO:qb_s Q 21, port in 16, glue regs 7
+V1505 6 1760 1760 | f_y path 31, MACRO:qb_s Q 20, port in 13, glue:reg>col-out 10
+V1505 7 1302 1302 | f_y path 39, MACRO:qb_s Q 21, port in 13, glue:fy-reg>s-in 10
+V664 0 687 687 | glue:fy-reg>s-in 29, MACRO:qb_s Q 23, glue:b-Q>act-out 16, glue:reg>reg 6
+V664 1 673 673 | MACRO:qb_s Q 40, glue:fy-reg>s-in 35, glue regs 7, glue:port>reg 5
+V664 2 623 623 | glue:fy-reg>s-in 38, MACRO:qb_s Q 35, port in 14, glue regs 7
+V664 3 546 546 | glue:fy-reg>s-in 47, MACRO:qb_s Q 35, port in 8, glue regs 6
+V664 4 688 688 | MACRO:qb_s Q 41, glue:fy-reg>s-in 37, glue regs 18, glue:reg>reg 2
+V664 5 622 622 | MACRO:qb_s Q 39, glue:fy-reg>s-in 37, glue regs 20, glue:reg>reg 3
+V664 6 728 728 | MACRO:qb_s Q 41, glue:fy-reg>s-in 39, glue regs 18, glue:reg>reg 2
+V664 7 585 585 | glue:fy-reg>s-in 44, MACRO:qb_s Q 33, glue regs 21, glue:port>s-in 0
+== N 40516273
+H 0 12653 6718 | glue regs 15, glue:reg>s-in 13, glue:s-Q>act-out 12, prm 10
+H 1 11843 5980 | glue:s-Q>act-out 14, glue:reg>s-in 12, glue regs 10, MACRO:qb_s Q 9
+H 2 13138 7885 | glue:reg>s-in 16, glue regs 15, glue:s-Q>act-out 9, MACRO:qb_s Q 7
+H 3 10929 6457 | glue:reg>s-in 19, glue regs 14, glue:s-Q>act-out 11, head 10
+H 4 10028 7007 | glue:reg>s-in 23, glue regs 19, glue:s-Q>act-out 13, prm 10
+H 5 10290 6919 | glue:reg>s-in 19, glue regs 17, MACRO:qb_s Q 10, glue:reg>col-out 10
+H 6 10546 7916 | glue regs 18, glue:reg>s-in 17, glue:reg>reg 9, glue:s-Q>act-out 8
+H 7 7830 3494 | prm 21, glue:reg>col-out 12, MACRO:qb_s Q 11, glue regs 9
+V1166 0 1647 1647 | MACRO:qb_s Q 23, glue:reg>s-in 20, fyreg>s-in 19, glue:fy-reg>s-in 15
+V1166 1 1997 1997 | glue:reg>s-in 22, MACRO:qb_s Q 21, fyreg>s-in 20, glue:fy-reg>s-in 13
+V1166 2 1116 1116 | MACRO:qb_s Q 25, fyreg>s-in 19, glue:fy-reg>s-in 17, glue:reg>s-in 17
+V1166 3 1806 1806 | glue:reg>s-in 26, fyreg>s-in 22, glue regs 16, glue:fy-reg>s-in 14
+V1166 4 1809 1809 | MACRO:qb_s Q 23, glue:reg>s-in 20, fyreg>s-in 20, glue:fy-reg>s-in 14
+V1166 5 2267 2267 | glue:reg>s-in 22, fyreg>s-in 21, MACRO:qb_s Q 16, glue:reg>reg 12
+V1166 6 1781 1781 | glue:reg>s-in 21, MACRO:qb_s Q 16, glue:fy-reg>s-in 15, fyreg>s-in 14
+V1166 7 1887 1887 | MACRO:qb_s Q 28, fyreg>s-in 21, glue:fy-reg>s-in 16, glue:reg>s-in 16
+V1505 0 2080 2080 | f_y path 23, MACRO:qb_s Q 17, glue:s-Q>act-out 14, glue:reg>col-out 13
+V1505 1 1733 1733 | MACRO:qb_s Q 24, f_y path 22, port in 15, glue:s-Q>act-out 11
+V1505 2 1626 1626 | f_y path 30, MACRO:qb_s Q 15, port in 15, glue:s-Q>act-out 13
+V1505 3 1402 1402 | f_y path 37, port in 21, glue:fy-reg>s-in 9, glue:reg>col-out 7
+V1505 4 1840 1840 | f_y path 28, MACRO:qb_s Q 22, port in 15, prm 10
+V1505 5 1602 1602 | f_y path 31, MACRO:qb_s Q 16, port in 14, glue:reg>col-out 9
+V1505 6 1597 1597 | f_y path 31, MACRO:qb_s Q 21, port in 16, glue:reg>col-out 8
+V1505 7 1610 1610 | f_y path 33, MACRO:qb_s Q 25, port in 12, glue:reg>col-out 9
+V664 0 892 892 | MACRO:qb_s Q 34, glue:fy-reg>s-in 31, glue:b-Q>act-out 12, glue:reg>reg 5
+V664 1 530 530 | glue:fy-reg>s-in 36, MACRO:qb_s Q 26, glue regs 8, port in 8
+V664 2 674 674 | MACRO:qb_s Q 40, glue:fy-reg>s-in 37, port in 10, glue regs 6
+V664 3 500 500 | glue:fy-reg>s-in 51, MACRO:qb_s Q 31, port in 7, glue regs 6
+V664 4 636 636 | glue:fy-reg>s-in 40, MACRO:qb_s Q 38, glue regs 18, glue:reg>s-in 2
+V664 5 686 686 | MACRO:qb_s Q 39, glue:fy-reg>s-in 38, glue regs 18, glue:reg>reg 4
+V664 6 610 610 | glue:fy-reg>s-in 41, MACRO:qb_s Q 36, glue regs 19, glue:reg>reg 1
+V664 7 706 706 | MACRO:qb_s Q 43, glue:fy-reg>s-in 37, glue regs 19, glue:reg>reg 1
