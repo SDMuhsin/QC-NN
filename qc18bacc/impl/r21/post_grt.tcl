@@ -3,7 +3,9 @@
 # fresh process: impl/r21/run.sh dr).
 if {[qb_env QB21_ANT 3] > 0} {
     set t [clock seconds]
-    repair_antennas [lindex $::QC_PNR_DIODE 0] -iterations [qb_env QB21_ANT 3]
+    # opt-in R28: QB28_ANT_MARGIN <pct> (repair_antennas -ratio_margin: GRT under-estimates the DR antenna ratios)
+    set _m [expr {[qb_env QB28_ANT_MARGIN 0] > 0 ? [list -ratio_margin [qb_env QB28_ANT_MARGIN 0]] : {}}]
+    repair_antennas [lindex $::QC_PNR_DIODE 0] -iterations [qb_env QB21_ANT 3] {*}$_m
     write_guides $::OUT/route.guide
     qc_log "r21: repair_antennas [expr {[clock seconds] - $t}] s, guides rewritten"
 }
