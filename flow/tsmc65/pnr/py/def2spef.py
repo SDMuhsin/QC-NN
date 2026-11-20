@@ -153,6 +153,20 @@ def parse_route(tok, vias):
     return segs, vs
 
 
+def spef_name_raw(n):
+    """spef_name() that keeps the escapes already in an OpenROAD name ('clknet_0_u_a\\/x' stays one escaped divider)"""
+    out, i = [], 0
+    while i < len(n):
+        ch = n[i]
+        if ch == '\\' and i + 1 < len(n):
+            out.append(n[i:i + 2])
+            i += 2
+            continue
+        out.append(ch if (ch.isalnum() or ch in '_[]/') else '\\' + ch)
+        i += 1
+    return ''.join(out)
+
+
 def _unesc_keys(m, fv):
     o = defaultdict(list)
     for k, v in m.items():
@@ -171,6 +185,11 @@ def main():
         # and nets whose conn key carries '\\/' get no *CONN pins
         pins = _unesc_keys(pins, lambda v: (unescape(v[0]),) + tuple(v[1:]))
         ports = _unesc_keys(ports, lambda v: (unescape(v[0]),) + tuple(v[1:]))
+    # opt-in (qc18bacc/results/r34.md, R32 sec. 5.2): QC_SPEF_ORFIX 1 for the OpenROAD copy (no --escape-divider).
+    # CTS-made nets / instances carry an escaped divider in the db name ('clknet_0_u_head\\/g_pcol_0__u_pc\\/net1'):
+    # unescaping the DEF name loses the conn pins (empty *CONN = read_spef syntax error STA-1657) and the net is not found
+    # (STA-1650).  With ORFIX such names are written as the db has them (escapes kept) and matched to the conn as such.
+    ORFIX = (not ESC_DIV) and os.environ.get('QC_SPEF_ORFIX', '0') == '1'
     wire, cut = read_rc(rcf)
     rmin = 0.001
     top = re.search(r'^DESIGN\s+(\S+)\s*;', open(deff).read(4096), re.M).group(1)
@@ -183,6 +202,9 @@ def main():
         if use in ('POWER', 'GROUND'):
             continue
         name = unescape(dname)
+        raw = ORFIX and '\\' in dname and (dname in pins or dname in ports)
+        if raw:
+            name = dname
         segs, vs = parse_route(tok, vias)
         stats['nets'] += 1
         # nodes: (layer, x, y) -> id; split segments at nodes lying on them
@@ -223,13 +245,16 @@ def main():
         conn, pin_nodes = [], []
         r_m1 = wire.get('M1', (1.0, 0.0))[0]
         for (inst, pin, d, x, y, l, cell) in pins.get(name, []):
-            pn = '%s:%s' % (spef_name(inst), spef_name(pin))
+            pn = '%s:%s' % ((spef_name_raw if ORFIX and '\\' in inst else spef_name)(inst), spef_name(pin))
             conn.append('*I %s %s *D %s' % (pn, d, cell))
             pin_nodes.append((pn, x, y, l))
         for (p, d, x, y, l) in ports.get(name, []):
             pn = spef_name(p)
             conn.append('*P %s %s' % (pn, d))
             pin_nodes.append((pn, x, y, l))
+        if ORFIX and not conn:
+            stats['skipped'] = stats.get('skipped', 0) + 1     # pinless net (SYNOPSYS_UNCONNECTED_*): empty *CONN = STA-1657
+            continue
         keys = list(nodes.keys())
         for (pn, x, y, l) in pin_nodes:
             if not keys:
@@ -242,7 +267,7 @@ def main():
             stats['unrouted'] += len(pin_nodes) > 1
             for (pn, x, y, l) in pin_nodes[1:]:
                 res.append((pin_nodes[0][0], pn, rmin))
-        sn = spef_name(name)
+        sn = spef_name_raw(name) if raw else spef_name(name)
         def node(i):
             return i if isinstance(i, str) else '%s:%d' % (sn, i)
         total = sum(caps.values())
@@ -269,7 +294,8 @@ def main():
                 f.write('%s %s\n' % (spef_name(p), d))
             f.write('\n')
         f.write('\n'.join(nets_out))
-    print('def2spef: %(nets)d nets, %(res)d resistors, %(unrouted)d multi-pin nets without wires' % stats)
+    print('def2spef: %(nets)d nets, %(res)d resistors, %(unrouted)d multi-pin nets without wires' % stats
+          + (' (orfix: %d pinless nets skipped)' % stats.get('skipped', 0) if ORFIX else ''))
 
 
 if __name__ == '__main__':
