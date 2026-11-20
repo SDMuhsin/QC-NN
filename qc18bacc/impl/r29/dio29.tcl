@@ -6,6 +6,7 @@
 #   R29_SHPWL  <um> [0 = off]: also every std-cell input pin without diffusion on a macro-driven net above it
 #   R29_LOOPS  [3] rounds of check_antennas (GR wires) -> diodes on the flagged pins -> incremental GRT
 #   R29_PDN    [""] tcl sourced after loading (e.g. impl/r29/pdn29.tcl, the macro-PDN strap trim)
+#   R29_DIO_PFX [r29_dio_] diode instance name prefix (a second round on a db that already has r29_dio_* cells)
 #   R29_ANTD   [0] 1: the GR-wire checks apply the LEF diffusion rule (scalar CAR of M1-M8 set to 0 in memory, as
 #              impl/r29/antd29.tcl; restored before the db is written)
 # Output: db/grt.{odb,sdc} (overwritten; the input is kept as db/grt_r29in.*), route.guide, rpt/r29_dio_<k>.rpt.
@@ -47,7 +48,7 @@ proc add_dio {it why} {
             2 { set y [expr {[$m yMin] - 6000}] } 3 { set y [expr {[$m yMax] + 2000}] }
         }
     }
-    set di [odb::dbInst_create [ord::get_db_block] $::dm r29_dio_[incr ::nd]]
+    set di [odb::dbInst_create [ord::get_db_block] $::dm [qc_env R29_DIO_PFX r29_dio_][incr ::nd]]
     $di setLocation $x $y; $di setPlacementStatus PLACED
     [$di findITerm I] connect $n
     return 1

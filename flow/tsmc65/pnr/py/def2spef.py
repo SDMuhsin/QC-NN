@@ -13,6 +13,7 @@ starts on them (T junctions).  Pins attach to the nearest wire node of their net
 distance).  No coupling capacitance, no pin capacitance (the liberty has it).  Accuracy is limited by the RC
 model of captable_rc.py; see pnr/README.md.
 """
+import os
 import re
 import sys
 import time
@@ -152,11 +153,24 @@ def parse_route(tok, vias):
     return segs, vs
 
 
+def _unesc_keys(m, fv):
+    o = defaultdict(list)
+    for k, v in m.items():
+        o[unescape(k)].extend(fv(x) for x in v)
+    return o
+
+
 def main():
     global ESC_DIV
     deff, connf, rcf, outf = sys.argv[1:5]
     ESC_DIV = '--escape-divider' in sys.argv[5:]
     unit, layers, vias, pins, ports = read_conn(connf)
+    if ESC_DIV and os.environ.get('QC_SPEF_UNESC', '0') == '1':
+        # opt-in (qc18bacc/results/r31.md): dump_conn writes flat names with an escaped divider ('clkbuf_0_u_a\\/x');
+        # unescape them like the DEF net names, else spef_name() escapes them twice (PrimeTime PARA-044 / PARA-124)
+        # and nets whose conn key carries '\\/' get no *CONN pins
+        pins = _unesc_keys(pins, lambda v: (unescape(v[0]),) + tuple(v[1:]))
+        ports = _unesc_keys(ports, lambda v: (unescape(v[0]),) + tuple(v[1:]))
     wire, cut = read_rc(rcf)
     rmin = 0.001
     top = re.search(r'^DESIGN\s+(\S+)\s*;', open(deff).read(4096), re.M).group(1)

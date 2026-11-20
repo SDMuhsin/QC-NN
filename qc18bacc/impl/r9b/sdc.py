@@ -45,7 +45,12 @@ with open(osdc, "w") as f:
     f.write("set_driving_cell -lib_cell BUFFD4 -pin Z [all_inputs]\nset_load 0.010 [all_outputs]\n")
     # ARM macro EMA* = 000 / RETN = 1 (hw/tech/qb_mem_tech.sv): without case analysis OpenSTA takes the worst `when` arc,
     # the uncharacterised EMA = 100 clk -> Q table of 999 ns (r9b_f place STA -999 ns)
-    f.write("set_case_analysis 0 [get_pins -hierarchical */EMA*]\nset_case_analysis 1 [get_pins -hierarchical */RETN]\n")
+    # R31 (results/r31.md) opt-in QB31_SDC=1: OpenSTA's */EMA* also matches 1816 macro QA outputs (R29 / R30), so OR never
+    # timed the memory-read paths; the regexp matches the 282 EMA / EMAA / EMAB bits only, in OpenSTA and PT alike
+    if __import__("os").environ.get("QB31_SDC", "0") == "1":
+        f.write("set_case_analysis 0 [get_pins -hierarchical -regexp {.*/EMA[AB]?\\[[0-9]+\\]}]\nset_case_analysis 1 [get_pins -hierarchical */RETN]\n")
+    else:
+        f.write("set_case_analysis 0 [get_pins -hierarchical */EMA*]\nset_case_analysis 1 [get_pins -hierarchical */RETN]\n")
     f.write("set_false_path -to [get_pins -hierarchical */CLKA]\nset_false_path -to [get_pins -hierarchical */CLKB]\n")
     f.write("source %s\nqb9_io_apply %.4f 0.0\n" % (__import__("os").path.abspath(oio), per))
 with open(oio, "w") as f:
