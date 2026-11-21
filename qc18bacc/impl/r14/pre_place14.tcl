@@ -18,8 +18,17 @@ if {[llength [qb_env QB39_HUBHALO ""]] == 2} {
     foreach _i [$_b getInsts] {
         if {[[$_i getMaster] getName] ne "qb_hub"} continue
         set _bb [$_i getBBox]
-        set _bl [odb::dbBlockage_create $_b [$_bb xMin] [$_bb yMax] [expr {[$_bb xMin] + int($_w * $_u)}] [expr {[$_bb yMax] + int($_h * $_u)}]]
-        qc_log "r39: hub halo blockage [expr {[$_bb xMin] / double($_u)}] [expr {[$_bb yMax] / double($_u)}] +$_w x +$_h um"
+        set _ko [list [$_bb xMin] [$_bb yMax] [expr {[$_bb xMin] + int($_w * $_u)}] [expr {[$_bb yMax] + int($_h * $_u)}]]
+        # R43 opt-in QB43_KOROWS [0] 1 (results/r43.md, R41 bug 1): OR 2.0-12381 gpl / DPL / check_placement ignore a
+        # dbBlockage (1 645 cells sat in it on r39_v) -> remove the rows under the rectangle (as cut_rows does for the
+        # macro halos) and fail every later check_placement on any instance inside it (impl/r43/keepout43.tcl)
+        if {[qb_env QB43_KOROWS 0]} {
+            source [file normalize $::QB_R14/../r43/keepout43.tcl]
+            q43_keepout {*}$_ko
+        } else {
+        set _bl [odb::dbBlockage_create $_b {*}$_ko]
+        }
+        qc_log "r39: hub halo [expr {[qb_env QB43_KOROWS 0] ? {rows removed} : {blockage}}] [expr {[$_bb xMin] / double($_u)}] [expr {[$_bb yMax] / double($_u)}] +$_w x +$_h um"
     }
 }
 if {[qb_env QB39_DPLPAD 0] > 0} { set_placement_padding -global -left [qb_env QB39_DPLPAD 0] -right [qb_env QB39_DPLPAD 0]; qc_log "r39: DPL padding [qb_env QB39_DPLPAD 0] sites" }

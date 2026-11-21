@@ -28,4 +28,6 @@ proc qb44_split {gap} {
     qc_log "r44: icg split gap $gap um: $n clones"
 }
 if {[qb_env QB44_SPLIT 0] > 0} { qb44_split [qb_env QB44_SPLIT 0] }
-source /tmp/ckp908/qc18bacc/r35_snap/qc18bacc/impl/r34/cts_pre.tcl
+# R43 opt-in QB44_CTS_PRE (default = the R44 hub hook below; "" = none, for callers that run their own PRE_CTS after it)
+set _cp [qb_env QB44_CTS_PRE /tmp/ckp908/qc18bacc/r35_snap/qc18bacc/impl/r34/cts_pre.tcl]
+if {$_cp ne ""} { source $_cp }

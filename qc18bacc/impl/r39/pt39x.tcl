@@ -8,10 +8,15 @@
 set hub [get_cells -hierarchical -filter "ref_name==qb_hub"]
 set act [get_cells -hierarchical -filter "ref_name==qb_act2_blk"]
 set hi [get_pins -of_objects $hub -filter "direction==in"]; set ho [get_pins -of_objects $hub -filter "direction==out"]
+# R43 opt-in QB43_FTFIX [0] 1 (results/r43.md, defect 8): hub_ft = every data path through a hub data input AND a hub
+# output (the hub clk pin excluded: clk -> output arcs are launches, not feed-throughs), all slacks counted
+# (get_timing_paths returns only violating paths unless -slack_lesser_than is given)
+set _ftsl {}
+if {[qc_env QB43_FTFIX 0]} { set hi [filter_collection $hi "lib_pin_name!=clk"]; set _ftsl [list -slack_lesser_than 1e9] }
 set ai [get_pins -of_objects $act -filter "direction==in"]; set ao [get_pins -of_objects $act -filter "direction==out"]
 foreach dt {max min} {
     set k [expr {$dt eq "max" ? "" : "hold_"}]
-    set ft [get_timing_paths -delay_type $dt -through $hi -through $ho -max_paths 100000 -nworst 1]
+    set ft [get_timing_paths -delay_type $dt -through $hi -through $ho -max_paths 100000 -nworst 1 {*}$_ftsl]
     set nv 0; set ws 1e9
     foreach_in_collection p $ft { set s [get_attribute $p slack]; if {$s < $ws} { set ws $s }; if {$s < 0} { incr nv } }
     puts $fh [format "${k}hub_ft endpoints %d violators %d worst_slack %s" [sizeof_collection $ft] $nv [expr {$ws < 1e8 ? [format %.3f $ws] : "NA"}]]

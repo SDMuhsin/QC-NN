@@ -19,12 +19,16 @@ add_pdn_connect -grid macro_blk -layers {M7 M8} {*}[qb_env QB_V78 {}]
 }
 if {[qb_env QB_PDN_SRAM 1]} {
 define_pdn_grid -macro -cells $_sram -name macro_sram -halo [p MACRO_HALO] -grid_over_boundary
-add_pdn_connect -grid macro_sram -layers {M4 M7}
-add_pdn_connect -grid macro_sram -layers {M4 M8}    ;# R90 macros (FC): the ring M4 runs horizontally, under the M8 straps
+# R43 opt-in QB43_SRAM_CONN (list of layer pairs; default = the two below): r39_v DR / LVS shorts at the R90 u_ds
+# came from the M4 -> M8 stacks (2.94-um VIA4-7 arrays through M5-M7 under every 3-um M8 strap); "{M3 M7}" connects
+# the R90 ring's vertical M3 sides to the core M7 straps instead (0.8-um stacks, as the other macros' M4 -> M7)
+foreach _c [qb_env QB43_SRAM_CONN {{M4 M7} {M4 M8}}] { add_pdn_connect -grid macro_sram -layers $_c }
 }
 if {[qb_env QB_PDN_RF 1]} {
 define_pdn_grid -macro -cells $_rf -name macro_rf -halo [p MACRO_HALO] -grid_over_boundary
-add_pdn_stripe -grid macro_rf -layer M4 -width 1.0 -pitch 20.0 -offset 10.0
+# R43 opt-in QB43_RF_M4OFF [10.0]: offset of the rf macro M4 straps (r39_v: the strap at qb_w x 230 covers EMA[1] ->
+# NS Metal at its pin in every qb_w, reproduced alone in impl/r43/ema43.tcl)
+add_pdn_stripe -grid macro_rf -layer M4 -width 1.0 -pitch 20.0 -offset [qb_env QB43_RF_M4OFF 10.0]
 add_pdn_connect -grid macro_rf -layers {M3 M4}
 add_pdn_connect -grid macro_rf -layers {M4 M7}
 }

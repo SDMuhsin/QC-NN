@@ -29,6 +29,13 @@ if {[file exists $::QB_R11/classes.tcl]} {
         source $::QB_R11/classes.tcl
         file rename -force $::OUT/rpt/classes_tt.txt $::OUT/rpt/classes_tt_ideal.txt
         set_propagated_clock [all_clocks]
+        # R43 opt-in QB43_LATFIX 1 (results/r43.md): the pin latencies above stayed in the constraints, so the block
+        # clk pins were IDEAL at -INS for the post-GRT repair and in db/grt.sdc (act -> top hold -4.96 ns at r39_v grt)
+        if {[qb_env QB43_LATFIX 0]} {
+            unset_clock_latency [get_pins [list u_hub/clk u_act_blk/clk]]
+            unset_clock_latency [get_pins u_top_u_core_u_arr_g_c_*__u_col/clk]
+            qc_log "r43: block clk pin latencies removed after the ideal-clock class report"
+        }
     } _e
     qc_log "r11 classes (ideal + insertion latency): $_e"
 }

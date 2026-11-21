@@ -20,6 +20,8 @@ qc_apply_constraints $corner
 set_propagated_clock [all_clocks]
 read_parasitics -format spef $dir/out/${top}_${corner}_pt.spef
 update_timing
+# R43 opt-in QB43_AUTOL 1: IO shift L = this corner's measured top-register clock p50 (impl/r43/autol43_pt.tcl)
+if {[qc_env QB43_AUTOL 0]} { source [file normalize [file dirname [info script]]/../r43/autol43_pt.tcl] }
 file mkdir $dir/rpt
 set fh [open $dir/pt_chip_$corner.txt w]
 redirect -variable ann { report_annotated_parasitics }

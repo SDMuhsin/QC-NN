@@ -7,6 +7,17 @@ proc q14_arr {name} {
     set p [get_pins -quiet $name]
     if {$p eq ""} { return "" }
     set best ""
+    # R43 opt-in QB43_CLKRISE [0] 1 (results/r43.md): vertex_worst_arrival_path is the latest arrival over BOTH clock
+    # edges, i.e. the falling-edge arrival (latency + P/2) at every sink: every clk14 number (and the top IO latency
+    # 7.7 copied from it) was P/2 = 3.25 ns too large.  Here: the rising-edge arrival of qb_clk (max over the APs).
+    if {[qb_env QB43_CLKRISE 0]} {
+        set clk [lindex [get_clocks qb_clk] 0]
+        foreach v [$p vertices] {
+            if {$v eq "NULL"} { continue }
+            foreach a [$v arrivals_clk rise $clk rise] { if {$a < 1e-3 && $a > -1e-3 && ($best eq "" || $a * 1e9 > $best)} { set best [expr {$a * 1e9}] } }
+        }
+        return $best
+    }
     foreach v [$p vertices] {
         if {$v eq "NULL"} { continue }
         set path [sta::vertex_worst_arrival_path $v max]
