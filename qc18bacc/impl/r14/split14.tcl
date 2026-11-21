@@ -33,12 +33,15 @@ proc q14s_split {} {
         upvar occ occ
         set x [expr {min(max($x, 10.0), ($side eq "G" ? $::QB14_X0 - 12.0 : [lindex $::QB14_DIE 0] - 12.0))}]
         # 8-um x buckets (one BUFFD16 wide), rows next to the block edge first, then neighbouring buckets
-        set b0 [expr {int(round($x / 8.0))}]
+        # R39 opt-in slot spreading (defaults = R14): QB39_SLOTX bucket width [8 um], QB39_SLOTRS row step [1],
+        # QB39_SLOTRN rows [40] (r39_y: the FIRM L / R buffer arrays at the channel ends were the densest bins, 0.9)
+        set sx [qb_env QB39_SLOTX 8.0]; set rs [qb_env QB39_SLOTRS 1]; set rn [qb_env QB39_SLOTRN 40]
+        set b0 [expr {int(round($x / $sx))}]
         for {set k 0} {$k < 80} {incr k} {
             set bk [expr {$b0 + (($k % 2) ? -1 : 1) * (($k + 1) / 2)}]
-            set xx [expr {$bk * 8.0}]
+            set xx [expr {$bk * $sx}]
             if {$xx < 10.0 || $xx > ($side eq "G" ? $::QB14_X0 - 12.0 : [lindex $::QB14_DIE 0] - 12.0)} { continue }
-            for {set r 2} {$r < 40} {incr r} {
+            for {set r 2} {$r < $rn} {incr r $rs} {
                 set y [expr {$side eq "G" ? floor([lindex $::QB11_ACT 1] / 1.8) * 1.8 - 1.8 * ($r + 1) : ceil($::QB11_YT / 1.8) * 1.8 + 1.8 * $r}]
                 set key "$side,$bk,$r"
                 if {![info exists occ($key)]} { set occ($key) 1; return [list $xx $y] }
@@ -54,7 +57,18 @@ proc q14s_split {} {
     if {$pass eq "do"} {
         set cand [lsort -real -index 1 $cand]; set nc [llength $cand]
         set w [expr {$::QB14_X0 - 22.0}]
+        # R39 opt-in QB39_XCW <um>: crossing x spread over 10 .. 10 + XCW only (the west std-cell channel of the
+        # impl/r39/run39.sh floorplan: trunks run through the channel's rows / all layers instead of over the act's M8)
+        if {[qb_env QB39_XCW ""] ne ""} { set w [qb_env QB39_XCW ""] }
         for {set k 0} {$k < $nc} {incr k} { set xcmap([lindex $cand $k 0]) [expr {10.0 + ($k + 0.5) * $w / $nc}] }
+        # R39 opt-in QB39_XCF <f>: the first (1-f) of the crossings (by driver x) spread over the channel 10 .. 10+XCW,
+        # the rest (fraction f) over the act 10+XCW+20 .. X0-12 (capacity split: the act exposes ~2 V tracks per gcell)
+        if {[qb_env QB39_XCF ""] ne "" && $nc > 0} {
+            set nch [expr {int(round((1.0 - [qb_env QB39_XCF ""]) * $nc))}]; set x1 [expr {10.0 + $w + 20.0}]; set wa [expr {$::QB14_X0 - 12.0 - $x1}]
+            for {set k 0} {$k < $nc} {incr k} {
+                set xcmap([lindex $cand $k 0]) [expr {$k < $nch ? 10.0 + ($k + 0.5) * $w / max($nch, 1) : $x1 + ($k - $nch + 0.5) * $wa / max($nc - $nch, 1)}]
+            }
+        }
     }
     foreach net [$b getNets] {
         if {[$net getSigType] ne "SIGNAL" || [$net isSpecial]} { continue }
