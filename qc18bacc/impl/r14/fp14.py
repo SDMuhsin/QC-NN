@@ -32,7 +32,9 @@ place = []
 def put(n, x, y, o, snap=True):
     x, y = (snapx(x), snapy(y)) if snap else (round(x, 3), round(y, 3))
     place.append((n, x, y, o))
-put(inst["qb_hub"][0][0], 0.0, 0.0, "R0", False)
+# R35 opt-in QB14_HUBX [0]: hub at (HUBX, 0), die HUBX wider (real hub 3990 wide with its column pins at x 860 + 390 c)
+HUBX = E("QB14_HUBX", 0.0)
+put(inst["qb_hub"][0][0], HUBX, 0.0, "R0", False)
 for c in range(NC):
     put([t for t in inst["qb_col_blk"] if idx(t[0], "g_c")[0] == c][0][0], x0 + c * BW, yh, "R0", False)
 ya = yh + BH - aH; xa = x0 - aW
@@ -57,7 +59,7 @@ for j, (n, _, _) in enumerate(sorted(inst["qb_d_624x80m8"])):
     put(n, M + j * (dh + HG), yn, "R90")
 assert M + len(inst["qb_d_624x80m8"]) * (dh + HG) <= xw - HG
 top = max(top, snapy(yn + dw + HG))
-dieW, dieH = hW, round(top + M, 1)
+dieW, dieH = hW + HUBX, round(top + M, 1)
 assert xr <= dieW, (xr, dieW)
 assert len(place) == sum(len(v) for v in inst.values())
 A = dieW * dieH / 1e6

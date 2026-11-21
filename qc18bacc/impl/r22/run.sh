@@ -26,7 +26,7 @@ export QB9_GPL2_DENS=${QB9_GPL2_DENS:-0.80} QB_IO_LAT=${QB_IO_LAT:-1.30} QB_RT_L
 export QB9_GR_ITER=${QB9_GR_ITER:-10} QB15_GADJ_L=${QB15_GADJ_L-"M5-M9 0.10"} QB_DR_ITER=${QB_DR_ITER:-64}
 export QC_PNR_THREADS=${QC_PNR_THREADS:-16}
 R21=$root/qc18bacc/impl/r21
-SET="QB_GPL_INCR_DENS ${QB_GPL_INCR_DENS:-0.80} PRE_PLACE_TCL $R21/place_pre.tcl PRE_ROUTE_TCL $R21/route_pre.tcl POST_GRT_TCL $R21/post_grt.tcl"
+SET="QB_GPL_INCR_DENS ${QB_GPL_INCR_DENS:-0.80} PRE_PLACE_TCL ${QB22_PRE_PLACE:-$R21/place_pre.tcl} PRE_ROUTE_TCL $R21/route_pre.tcl POST_GRT_TCL $R21/post_grt.tcl"
 step=${1:?step}; tag=${2:?tag}; d=$B/pnr/$tag
 case $step in
 gate) echo R22_GATE_START $(date +%T)

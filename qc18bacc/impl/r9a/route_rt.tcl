@@ -20,6 +20,8 @@ set_thread_count [qc_env QC_PNR_THREADS 8]
 set_routing_layers -signal $::QC_PNR_MIN_LAYER-$::QC_PNR_MAX_LAYER -clock $::QC_PNR_MIN_LAYER-$::QC_PNR_MAX_LAYER
 set_global_routing_layer_adjustment $::QC_PNR_MIN_LAYER-$::QC_PNR_MAX_LAYER [qc_env QB9_GR_ADJ [p GR_ADJUST]]
 qc_log "r9a GR adjustment [qc_env QB9_GR_ADJ [p GR_ADJUST]]"
+# R35 opt-in: per-layer adjustment pairs QB15_GADJ_L (e.g. "M2-M3 0.6", R30 fix) after the uniform one (unset = as before)
+foreach {_l _a} [qc_env QB15_GADJ_L ""] { set_global_routing_layer_adjustment $_l $_a; qc_log "r35 gadj $_l $_a" }
 set t [clock seconds]
 global_route -guide_file $::OUT/route.guide -allow_congestion -congestion_iterations [qc_env QB9_GR_ITER 20] \
     -congestion_report_file $::OUT/rpt/gr_congestion.rpt -verbose

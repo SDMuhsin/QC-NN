@@ -37,7 +37,7 @@ if {[qb_env QB34_GRTREP 0]} {
         qc_log "r34: IO budget re-applied (P $_per L [qb_env QB_IO_LAT 0.85])"
     }
     if {[qb_env QB34_GRT_HOLD 0]} {
-        if {[catch { repair_timing -hold -hold_margin [p HOLD_MARGIN] -max_buffer_percent [qb_env QB_HOLD_PCT 10] \
+        if {[catch { repair_timing -hold -hold_margin [qb_env QB34_GRT_HOLD_M [p HOLD_MARGIN]] -max_buffer_percent [qb_env QB_HOLD_PCT 10] \
                 -max_utilization [p MAX_UTIL] } e]} { qc_log "r34: post-GRT repair_timing -hold stopped: $e" }
     }
     detailed_placement {*}[p DPL_ARGS]

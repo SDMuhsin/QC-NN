@@ -8,7 +8,8 @@ global_connect
 set _blk {}; set _sram {}; set _rf {}
 foreach i [qc_macros] {
     set mn [[$i getMaster] getName]
-    if {$mn eq "qb_col_blk"} { set l _blk } elseif {[string match qb_d_* $mn] || [string match qb_f_3232* $mn]} { set l _sram } else { set l _rf }
+    # R35 opt-in QB_PDN_BLKX: more hard-block masters on the block grid (M7 -> M8 connect only, no macro stripes)
+    if {$mn eq "qb_col_blk" || $mn in [qb_env QB_PDN_BLKX {}]} { set l _blk } elseif {[string match qb_d_* $mn] || [string match qb_f_3232* $mn]} { set l _sram } else { set l _rf }
     if {[lsearch -exact [set $l] $mn] < 0} { lappend $l $mn }
 }
 qc_log "pdn_macro: masters blocks $_blk sram $_sram rf $_rf"

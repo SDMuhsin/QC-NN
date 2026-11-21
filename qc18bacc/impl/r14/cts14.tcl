@@ -63,13 +63,16 @@ proc q14_tap {name master x y drvnet sinkterm} {
     return $i
 }
 lassign [q14_pinxy $_hub] hx hy
-set H [q14_tap q14_H CKBD8 $hx [expr {$hy + 8}] $nR $_hub]
+# R35 opt-in QB14_HTAP_N 1: hub clk pin under a column (real hub: north edge under column 7) -> H tap in the north band
+# above it on the spine (below: after N0), its net straight down over the column on M8
+if {![qb_env QB14_HTAP_N 0]} { set H [q14_tap q14_H CKBD8 $hx [expr {$hy + 8}] $nR $_hub] }
 lassign [q14_pinxy $_act] ax ay
 set A [q14_tap q14_A CKBD8 $ax [expr {$ay - 10}] $nR $_act]
 set U [q14_tap q14_U CKBD16 450.0 [expr {$_ay1 - 12}] $nR ""]
 set nU [[q14_pin $U Z] getNet]
 set N0 [q14_tap q14_N0 CKBD16 450.0 $ym $nU ""]
 set nS [[q14_pin $N0 Z] getNet]
+if {[qb_env QB14_HTAP_N 0]} { set H [q14_tap q14_H CKBD16 $hx [expr {$_yt + 12}] $nS $_hub] }
 foreach c [lsort -integer [array names _col]] {
     lassign [q14_pinxy $_col($c)] cx cy
     q14_tap q14_C$c CKBD8 $cx [expr {$cy + 6}] $nS $_col($c)

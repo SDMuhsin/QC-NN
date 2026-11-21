@@ -231,6 +231,8 @@ blk = {}
 for name, d, wdt in BLK_PORTS:
     if name == "act":
         bl = list(ac["q"])
+    elif name == "start" and "start" in am:   # R35: netlist with the plain start port on u_act (no DC BAR pins)
+        bl = list(am["start"])
     elif name == "start":
         bl = []
         for k in (1, 0):
