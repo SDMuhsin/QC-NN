@@ -1,7 +1,7 @@
 # IO budget of the act-supply hard block qb_act2_blk (results/r7c.md), fractions of the period P, relative to the
 # clock at the top-level flops; after CTS shifted by the block insertion delay L (inputs + L, outputs - L), as
 # blocks/col/io_budget.tcl for the column block.  Used by blocks/act/act.cfg (P&R SDC), repair/post_cts.tcl (QB_IO_BUDGET),
-# signoff/pt/act_blk.tcl and repair/act_hold_io.tcl.  Knobs QB7_DIN / QB7_CIN / QB7_AOUT differ by step (blocks/act/act.env).
+# signoff/pt/act_blk.tcl and repair/block_io.tcl.  Knobs QB7_DIN / QB7_CIN / QB7_AOUT differ by step (blocks/act/act.env).
 #   data in   s_q (S read, 2 048 b) / m_q (map read, 512 b): S / map macro clk->Q + top rotator / mux + wire; the block
 #             only registers them (sdq / rdq): max QB7_DIN (default 0.70 P), min 0.05 P
 #   ctl in    pass commands, tokens, load permissions, flag port (sequencer / glue): max QB7_CIN (default 0.40 P)

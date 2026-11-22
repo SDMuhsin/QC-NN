@@ -9,8 +9,8 @@
 # guide (DRT-1000) and stops with DRT-0218 when no guide is within one gcell (DRT-1001; r48_act hold step, 4 tries).
 # qb_pa_reset drops every instance's access data, so GRT uses the pin shapes (as on a never-routed db, e.g. the route
 # step's cts_rt.odb); detailed_route recomputes pin access for every instance and writes it back (FlexPA, io::Writer).
-# Sourced by every script that runs global_route on a db that was detailed-routed before (repair/hold_eco.tcl,
-# route/reroute.tcl), after the last placement / netlist change and before global_route.
+# Sourced by every script that runs global_route on a db that was detailed-routed before (repair/hold_eco.tcl),
+# after the last placement / netlist change and before global_route.
 proc qb_pa_reset {} {
     set blk [ord::get_db_block]
     # a stale preferred AP is keyed by the object id of the OLD master's dbMPin (ids 1..n within each master; the Tcl

@@ -57,8 +57,9 @@ drveco) qb_kit; . "$d/kit.env"   # PrimeTime DRV ECO (signoff/pt/drv_eco.tcl): s
            grep "^drv\|QB_DRV_ECO" "$d/drv_eco_$c.log"; echo "size_cell $(grep -c ^size_cell "$d/out/drv_eco_$c.tcl")"
        done ) ;;
 eco) [ -e "$d/db/route_dr.odb" ] || touch "$d/db/route_dr.odb"   # DRV ECO sizes (if any) + hold + DRV repair, full re-route (repair/hold_eco.sh)
-     QB35_HDB=finish QB35_ECO_TCL=$([ -f "$d/out/drv_eco_tt.tcl" ] && echo "$d/out/drv_eco_tt.tcl") QB35_HOLD_M=0.02 QB35_HDR_FULL=1 QB35_FILL_BEFORE=1 \
-       QB37_FIRM=0 QB37_FORCE_SAVE=1 QB35_THREADS=${QB35_THREADS:-15} QB37_HPRE_TCL= QB37_HPOST_TCL= QB35_IO_TCL= QB35_IOL= \
+     QB35_HDB=finish QB35_ECO_TCL=$([ -f "$d/out/drv_eco_tt.tcl" ] && echo "$d/out/drv_eco_tt.tcl") QB35_HOLD_M=0.02 QB35_FILL_BEFORE=1 \
+       QB37_FORCE_SAVE=1 QB35_THREADS=${QB35_THREADS:-15} QB37_HPRE_TCL= QB37_HPOST_TCL= QB35_IO_TCL=$QBF/repair/block_io.tcl \
+       QB35_PER=$COL_PT_PERIOD QB35_IOL= \
        QB15_GADJ_L=$COL_GADJ_L "$QBF/repair/hold_eco.sh" "$tag"
      rm -f "$d/db/route_dr_prehold.odb" ;;
 calibre) o=$B/drc/$tag; C=$QBF/signoff/calibre; mkdir -p "$o"

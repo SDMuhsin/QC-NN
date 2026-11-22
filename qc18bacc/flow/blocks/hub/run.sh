@@ -10,16 +10,13 @@
 #   run.sh fin <tag>       antenna check (route_dr) | abstract LEF + ring LEF ($B/r22_<tag>) | SPEF ss ff, PT + ETMs tt ss ff
 #   run.sh antd <tag>      LEF-rule antenna check (signoff/antenna.tcl) of db/route_dr
 #   run.sh pt <tag>        PT summary tt / ss (signoff/pt/hub_summary.tcl)
-# Post-route ECOs and sign-off of the r35_hubC -> r38_hub_rr -> r40_hub lineage (results/r37.md, r38.md, r40.md):
-#   run.sh eco <tag> <margin>   incremental hold ECO on db/finish (R37): setup pre-repair against the ss-derived port
-#                          tightening (repair/hub_setup_pre.tcl) + hold repair, rip + GRT + DR of the changed nets.  Per-ECO
-#                          env: QB35_IOL [measured], QB37_SSX, QB37_RESIZE, QB37_DONTTOUCH, QB37_FR,
-#                          QB37_HUNC, QB37_PORTBUF_UP, QB37_RIP_PORTS / MACROS / NEAR, QB37_FORCE_SAVE, QB37_SM, QB37_SPCT
-#   run.sh copy <src> <tag>     copy of a run (run dir, cfg dir, kit.env fixed up) for a re-route / hold round
-#   run.sh reroute <tag>   full re-route of db/eco (route/reroute.tcl)
-#   run.sh hold <tag> [margin 0.05]   hold (+ setup) + DRV fix in FULL re-route mode (R38 / R40; IO budget at the L measured on
-#                          the routed parasitics), env HUB_HOLD_DT (more dont_touch cells), QB37_RESIZE, HUB_HOLD_ANT (antenna repair after
-#                          GRT with -ratio_margin <pct>; R40: 25; empty: none, R38)
+# Post-route steps (the R37 incremental ECO and R38 reroute steps of the r35_hubC -> r40_hub lineage were removed in R50;
+# git history, results/r37.md, r38.md, r40.md):
+#   run.sh copy <src> <tag>     copy of a run (run dir, cfg dir, kit.env fixed up) for a hold round
+#   run.sh hold <tag> [margin 0.05]   setup pre-repair (repair/hub_setup_pre.tcl) + DRV / hold repair at tt + ss, full re-route
+#                          (repair/hold_eco.sh; IO budget at the PT tt latency, per corner via repair/io_ref.tcl), env
+#                          HUB_HOLD_DT (more dont_touch cells), QB37_RESIZE, HUB_HOLD_ANT (antenna repair after GRT with
+#                          -ratio_margin <pct>; R40: 25; empty: none, R38)
 #   run.sh drveco <tag>    PrimeTime DRV ECO ss + tt (signoff/pt/drv_eco.tcl) -> out/drv_eco_tt.tcl, applied by run.sh hold
 #   run.sh signoff <tag>   SPEF tt, fin, LEF-rule antenna + PT tt / ss (signoff/pt/hub_signoff.tcl), antenna data in the
 #                          LEF, ring LEF, ETM scan ($B/r22_<tag>); GDS (SRAM abstracts), LVS source, Calibre LVS (lvs_hub.sed +
@@ -84,20 +81,15 @@ pt)  for c in tt ss; do
          grep -h "^R31PT\|^R31CLK\|^R31HOLD" "$d/r31_pt31_$c.log" | cut -c1-400
          echo "R31_PT_ERRORS $c $(grep -c '^Error' "$d/r31_pt31_$c.log") PARA044 $(grep -c "PARA-044)" "$d/r31_pt31_$c.log")" ) &
      done; wait ;;
-eco) export QB35_HDB=finish QB35_IO_TCL=$QBF/repair/hub_io.tcl QB37_HUBIO=$W/cfg_$tag/hub_io.tcl QB35_PER=$HUB_PERIOD \
-       QB35_IOL=${QB35_IOL:-} QB35_HOLD_M=${3:?margin} QB37_HPRE_TCL=$QBF/repair/hub_setup_pre.tcl QB37_HPOST_TCL= \
-       QB37_SPCT=${QB37_SPCT:-5} QB37_SM=${QB37_SM:-0.0} QB35_THREADS=${QB35_THREADS:-14} QB37_FIRM=1 QB35_HDR_FULL=0
-     "$QBF/repair/hold_eco.sh" "$tag" ;;
 copy) src=${2:?src}; tag=${3:?tag}; d=$B/pnr/$tag; [ -e "$d" ] && { echo "HUB_FAIL $d exists"; exit 1; }
      cp -a "$B/pnr/$src" "$d"; mkdir -p "$W/cfg_$tag"
      for f in "$W/cfg_$src"/*; do sed "s#cfg_$src#cfg_$tag#g" "$f" > "$W/cfg_$tag/$(basename "$f")"; done
      sed -i "s#cfg_$src#cfg_$tag#g; s#/pnr/$src\b#/pnr/$tag#g" "$d/kit.env" ;;
-reroute) "$QBF/common/or.sh" "$tag" "$QBF/route/reroute.tcl" r38_rr.log; grep -h "R38_RR" "$d/r38_rr.log" | tail -3 ;;
 hold) [ -e "$d/db/route_dr.odb" ] || touch "$d/db/route_dr.odb"     # hold_eco.tcl copies route_dr -> route_dr_prehold before its save
-     export QB35_HDB=finish QB35_PER=$HUB_PERIOD QB35_HOLD_M=${3:-0.05} QB35_HDR_FULL=1 QB35_FILL_BEFORE=1 QB37_FIRM=0 \
+     export QB35_HDB=finish QB35_PER=$HUB_PERIOD QB35_HOLD_M=${3:-0.05} QB35_FILL_BEFORE=1 \
        QB37_FORCE_SAVE=1 QB35_THREADS=${QB35_THREADS:-14} QB35_IO_TCL=$QBF/repair/hub_io.tcl QB37_HUBIO=$W/cfg_$tag/hub_io.tcl \
        QB37_FR="actout 0.26" QB37_DONTTOUCH="u_top_U92356${HUB_HOLD_DT:+ $HUB_HOLD_DT}" \
-       QB37_HPRE_TCL=$QBF/repair/hub_setup_pre.tcl QB37_SSX=$HUB_SSX QB37_SPCT=5 QB37_SM=0.0 \
+       QB37_HPRE_TCL=$QBF/repair/hub_setup_pre.tcl QB37_SPCT=5 QB37_SM=0.0 \
        QB37_HPOST_TCL=${HUB_HOLD_ANT:+$QBF/repair/hub_hold_ant.tcl} QB38_ANT_MARGIN=${HUB_HOLD_ANT:-} \
        QB35_ECO_TCL=$([ -f "$d/out/drv_eco_tt.tcl" ] && echo "$d/out/drv_eco_tt.tcl")
      "$QBF/repair/hold_eco.sh" "$tag"

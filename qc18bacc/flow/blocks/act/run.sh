@@ -3,22 +3,17 @@
 #   qc18bacc/flow/blocks/act/run.sh pnr <tag>            floorplan .. place .. CTS, stop (db/cts.odb; QC_PNR_TO [cts])
 #   qc18bacc/flow/blocks/act/run.sh postcts <src> <tag>  <src>'s db/cts.odb -> re-spread + post-CTS repair -> db/cts_rt.odb
 #   qc18bacc/flow/blocks/act/run.sh route <src> <tag>    <src>'s db/cts_rt.odb -> GRT, antenna repair, DR, finish (route/act_route.tcl)
-#   qc18bacc/flow/blocks/act/run.sh eco1 <tag>           R37 hold ECO 1 in place (repair/hold_eco.sh: margin 0.0, L 0.99, P&R budget)
-#   qc18bacc/flow/blocks/act/run.sh eco6 <tag>           R37 hold ECO 6 in place (input-port buffers + output offset hook
-#                                                        repair/act_hold_pre.tcl, margin 0.03, L 0.985, ports ripped, incremental
-#                                                        re-route); production ran it on the ECO-1 db restored by hand
-#   qc18bacc/flow/blocks/act/run.sh reroute <src> <tag>  copy run of <src> (finish db -> db/<ACT_RR_DB>.odb), full re-route
-#                                                        (route/reroute.tcl; launch env not recorded, see act.env)
 #   qc18bacc/flow/blocks/act/run.sh drveco <tag>         PrimeTime DRV ECO ss + tt (signoff/pt/drv_eco.tcl) -> out/drv_eco_tt.tcl
-#   qc18bacc/flow/blocks/act/run.sh hold <tag> [margin]  DRV ECO (if any) + hold fix in FULL re-route mode (repair/hold_eco.sh,
-#                                                        margin ACT_HOLD_M)
+#   qc18bacc/flow/blocks/act/run.sh hold <tag> [margin]  PT DRV ECO file (if any) + DRV / hold repair at tt + ss, full re-route
+#                                                        (repair/hold_eco.sh, margin ACT_HOLD_M)
 #   qc18bacc/flow/blocks/act/run.sh post <tag>           SPEF tt / ss / ff, PT tt / ss / ff, DRC histogram, LEF-rule antenna (finish db),
 #                                                        abstract + abutment check + ETMs tt / ss / ff, antenna data in the LEF,
 #                                                        ring LEFs, etmcheck -> $B/r9a_blk/<tag>
 #   qc18bacc/flow/blocks/act/run.sh calibre <tag>        GDS, LVS source, Calibre LVS (lvs_case.sed), DRC (drc_blk.sed), antenna
 #                                                        -> $B/drc/<tag>
-# Production: pnr r35_act_p; postcts r35_act_p r35_act_s; route r35_act_s r35_act_c; eco1 r35_act_c; eco6 r35_act_c;
-# reroute r35_act_c r38_act_rr2; hold r38_act_rr2; post r38_act_rr2; calibre r38_act_rr2 (results/r35.md, r37.md, r38.md).
+# Production (R50): pnr r48_act_p; postcts r48_act_p r48_act_s; route r48_act_s r48_act; post; hold; post; calibre
+# (results/r48.md, r49.md, r50.md).  The R37 / R38 lineage steps (eco1, eco6, reroute: r35_act_c -> r38_act_rr2) were
+# removed in R50; they are in git history (results/r37.md, r38.md).
 set -u
 here=$(cd "$(dirname "$0")" && pwd); . "$here/../../common/env.sh"; . "$here/act.env"
 step=${1:?step}; tag=${2:?tag}
@@ -44,21 +39,10 @@ route) src=$B/pnr/$tag; tag=${3:?tag}; d=$B/pnr/$tag
      ( qb_kit; cd "$d" && QC_FLOW=$FLOW QC_PNR_OUT=$d QC_PNR_THREADS=${QC_PNR_THREADS:-14} \
        /usr/bin/time -v -o route.time "$OR" -no_init -no_splash -exit -log openroad.log "$QBF/route/act_route.tcl" > openroad.out 2>&1 < /dev/null )
      echo "ROUTE rc $?" ;;
-eco1) QB35_HDB=finish QB35_IO_TCL=$QBF/repair/act_hold_io.tcl QB35_PER=$ACT_PT_PERIOD QB35_IOL=0.99 QB35_HOLD_M=0.0 \
-       QB15_GADJ_L=$ACT_GADJ_L QB35_THREADS=10 "$QBF/repair/hold_eco.sh" "$tag" ;;
-eco6) QB35_HDB=finish QB35_IO_TCL=$QBF/repair/act_hold_io.tcl QB35_PER=$ACT_PT_PERIOD QB35_IOL=0.985 QB35_HOLD_M=0.03 \
-       QB7_AOUT=$ACT_AOUT QB37_HPRE_TCL=$QBF/repair/act_hold_pre.tcl QB37_RIP_PORTS=1 QB37_FIRM=1 QB35_HDR_FULL=0 \
-       QB15_GADJ_L=$ACT_GADJ_L QB35_THREADS=10 "$QBF/repair/hold_eco.sh" "$tag" ;;
-reroute) src=$B/pnr/$tag; tag=${3:?tag}; d=$B/pnr/$tag
-     rm -rf "$d"; mkdir -p "$d/db" "$d/rpt"; cp -r "$src/config.tcl" "$src/kit.env" "$src/rc" "$d/"
-     cp "$src/db/finish.odb" "$d/db/$ACT_RR_DB.odb"; cp "$src/db/finish.sdc" "$d/db/$ACT_RR_DB.sdc"
-     QB38_RRDB=$ACT_RR_DB QB38_RR_MIN=$ACT_RR_MIN QB35_THREADS=14 QB15_GADJ_L=$ACT_GADJ_L \
-       "$QBF/common/or.sh" "$tag" "$QBF/route/reroute.tcl" r38_rr.log
-     grep -h "R38_RR" "$d/r38_rr.log" | tail -3 ;;
 hold) d=$B/pnr/$tag
      [ -e "$d/db/route_dr.odb" ] || touch "$d/db/route_dr.odb"     # hold_eco.tcl copies route_dr -> route_dr_prehold before its save
-     QB35_HDB=finish QB35_PER=$ACT_PT_PERIOD QB35_HOLD_M=${3:-$ACT_HOLD_M} QB35_HDR_FULL=1 QB35_FILL_BEFORE=1 QB37_FIRM=0 \
-       QB37_FORCE_SAVE=1 QB35_THREADS=${QB35_THREADS:-14} QB37_HPRE_TCL= QB37_HPOST_TCL= QB35_IO_TCL=$QBF/repair/act_hold_io.tcl \
+     QB35_HDB=finish QB35_PER=$ACT_PT_PERIOD QB35_HOLD_M=${3:-$ACT_HOLD_M} QB35_FILL_BEFORE=1 \
+       QB37_FORCE_SAVE=1 QB35_THREADS=${QB35_THREADS:-14} QB37_HPRE_TCL= QB37_HPOST_TCL= QB35_IO_TCL=$QBF/repair/block_io.tcl \
        QB35_IOL= QB7_DPL_ARGS= QB7_AOUT=$ACT_AOUT QB7_DIN=$ACT_DIN QB35_ECO_TCL=$([ -f "$d/out/drv_eco_tt.tcl" ] && echo "$d/out/drv_eco_tt.tcl") \
        "$QBF/repair/hold_eco.sh" "$tag"
      rm -f "$d/db/route_dr_prehold.odb" ;;

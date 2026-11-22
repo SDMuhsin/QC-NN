@@ -1,7 +1,7 @@
 # Hub QB35_IO_TCL of repair/hold_eco.tcl (results/r37.md sec. 9): clock at the chip period QB35_PER, the run's hub
 # IO budget (blocks/hub/sdc.py hub_io.tcl, QB37_HUBIO) at the PT-measured tt p50 insertion delay QB35_IOL, in2out feed-through
-# paths false for setup (timed at chip level, as the pt37 sign-off), and per-port extra tightening QB37_SSX (file of
-# "in|out <port> <X ns>", from impl/r37 ssx: X = tt slack + (0.05 - ss slack) / 1.4) so a tt-only repair also closes ss.
+# paths false for setup (timed at chip level, as the pt37 sign-off).  (The R37 per-port tightening QB37_SSX that stood in for
+# ss in a tt-only repair was removed in R50: the repair session times ss itself, repair/hold_eco.tcl.)
 set _p $::env(QB35_PER)
 create_clock -name qb_clk -period $_p -waveform [list 0 [expr {$_p / 2.0}]] [get_ports clk]
 set_clock_uncertainty -setup 0.25 [get_clocks qb_clk]; set_clock_uncertainty -hold 0.05 [get_clocks qb_clk]
@@ -22,18 +22,4 @@ foreach {k v} [qc_env QB37_FR ""] {
     else { set_output_delay -max [expr {$_b - $_L}] -clock qb_clk [get_ports $::QB9_IO($k)] }
     puts "R37_HUBIO class $k max budget $v P"
 }
-set _n 0
-if {[qc_env QB37_SSX ""] ne ""} {
-    set f [open $::env(QB37_SSX)]
-    foreach ln [split [read $f] "\n"] {
-        if {[llength $ln] < 3} continue
-        lassign $ln d p x
-        if {![info exists _cls($p)]} { puts "R37_HUBIO no class for $p"; continue }
-        set b [expr {$_fr($_cls($p)) * $_p}]
-        if {$d eq "in"} { set_input_delay -max [expr {$b + $::env(QB35_IOL) + $x}] -clock qb_clk [get_ports $p] } \
-        else { set_output_delay -max [expr {$b - $::env(QB35_IOL) + $x}] -clock qb_clk [get_ports $p] }
-        incr _n
-    }
-    close $f
-}
-puts "R37_HUBIO hub clock $_p IO budget at L $::env(QB35_IOL), in2out setup false, $_n ports tightened"
+puts "R37_HUBIO hub clock $_p IO budget at L $::env(QB35_IOL), in2out setup false"

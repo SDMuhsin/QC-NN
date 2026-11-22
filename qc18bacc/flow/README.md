@@ -43,29 +43,25 @@ PE tiles `$B/r5d_Ctiles`, reference abstract `$B/r5b_blk/qb_col_blk_ring.lef` (p
 qc18bacc/flow/blocks/act/run.sh pnr <tag>              # floorplan .. place .. CTS (db/cts.odb)
 qc18bacc/flow/blocks/act/run.sh postcts <src> <tag>    # re-spread + post-CTS repair -> db/cts_rt.odb
 qc18bacc/flow/blocks/act/run.sh route <src> <tag>      # GRT, antenna repair, DR, finish
-qc18bacc/flow/blocks/act/run.sh eco1 <tag>; eco6 <tag> # R37 hold ECOs (lineage; ECO 6 ran on the ECO-1 db restored by hand)
-qc18bacc/flow/blocks/act/run.sh reroute <src> <tag>    # full re-route of a copy (R38; launch env not recorded, see act.env)
-qc18bacc/flow/blocks/act/run.sh hold <tag>             # hold fix in full re-route mode (R38)
+qc18bacc/flow/blocks/act/run.sh drveco <tag>           # PrimeTime DRV ECO ss + tt -> out/drv_eco_tt.tcl (applied by hold)
+qc18bacc/flow/blocks/act/run.sh hold <tag>             # DRV + hold repair at tt + ss, full re-route (repair/hold_eco.sh)
 qc18bacc/flow/blocks/act/run.sh post <tag>             # SPEF, PT, antenna, abstract + ETMs, antenna data, ring LEFs -> $B/r9a_blk/<tag>
 qc18bacc/flow/blocks/act/run.sh calibre <tag>          # GDS, LVS source, Calibre LVS / DRC / antenna
 ```
-Production (R38): `pnr r35_act_p; postcts r35_act_p r35_act_s; route r35_act_s r35_act_c; eco1 r35_act_c; eco6 r35_act_c;
-reroute r35_act_c r38_act_rr2; hold r38_act_rr2; post r38_act_rr2; calibre r38_act_rr2`.  R48: `pnr r48_act_p; postcts
-r48_act_p r48_act_s; route r48_act_s r48_act; post; drveco; hold (applies out/drv_eco_tt.tcl); post; calibre` - the hold
-step stopped at DRT-0218 (results/r48.md; cause: stale DRT pin access in the routed db, fixed by route/pa_reset.tcl,
-results/r49.md).  Inputs: `$B/syn/r35_act`, `$B/r35/col_act_pins.txt` (synth/run.sh act / actpins).
+Production (R50): `pnr r48_act_p; postcts r48_act_p r48_act_s; route r48_act_s r48_act; post; hold; post; calibre`
+(results/r48.md - r50.md: DRT-0218 fixed by route/pa_reset.tcl, R49; RSZ-0050 and the tt + ss repair session, R50).
+The R37 / R38 lineage steps eco1 / eco6 / reroute (r35_act_c -> r38_act_rr2) were removed in R50 (git history).  Inputs: `$B/syn/r35_act`, `$B/r35/col_act_pins.txt` (synth/run.sh act / actpins).
 
 ## Hub block qb_hub (`blocks/hub`, production lineage r35_hubC -> r38_hub_rr -> r40_hub)
 
 ```
 qc18bacc/flow/blocks/hub/run.sh all <tag>               # gate prod dio dr fin antd pt (run34.sh all)
-qc18bacc/flow/blocks/hub/run.sh eco <tag> <margin>      # R37 incremental hold ECOs (per-ECO QB37_* env, see run.sh header)
-qc18bacc/flow/blocks/hub/run.sh copy <src> <tag>        # copy of a run for a re-route / hold round (replaces the manual copies)
-qc18bacc/flow/blocks/hub/run.sh reroute <tag>           # full re-route (R38)
-qc18bacc/flow/blocks/hub/run.sh hold <tag> [0.05]       # hold (+ setup) fix, full re-route (R38 / R40: HUB_HOLD_IOL, HUB_HOLD_DT, HUB_HOLD_ANT, QB37_RESIZE)
+qc18bacc/flow/blocks/hub/run.sh copy <src> <tag>        # copy of a run for a hold round (replaces the manual copies)
+qc18bacc/flow/blocks/hub/run.sh drveco <tag>            # PrimeTime DRV ECO ss + tt -> out/drv_eco_tt.tcl (applied by hold)
+qc18bacc/flow/blocks/hub/run.sh hold <tag> [0.05]       # setup pre-repair + DRV + hold at tt + ss, full re-route (HUB_HOLD_DT, HUB_HOLD_ANT, QB37_RESIZE)
 qc18bacc/flow/blocks/hub/run.sh signoff <tag>           # SPEF, fin, antenna, PT, antenna LEF, ring LEF, ETM scan, GDS, LVS, Calibre antenna
 ```
-Inputs: `$B/syn/r26_ptr`, partition `$B/r26_w` (synth/run.sh chip / part), column abstract `$B/r5b_blk`, SRAM views.
+(R37 incremental ECO / R38 reroute steps removed in R50, git history.)  Inputs: `$B/syn/r26_ptr`, partition `$B/r26_w` (synth/run.sh chip / part), column abstract `$B/r5b_blk`, SRAM views.
 
 ## Chip top qb_chip (`blocks/top`, production run r43_a + R46 opt-ins)
 
@@ -161,7 +157,7 @@ signoff; top hold, dr, antenna, pt, lvs, views (views reproduced abs7 byte-for-b
 | r37/hubio37.tcl | repair/hub_io.tcl |
 | r37/hubpre37.tcl | repair/hub_setup_pre.tcl |
 | r37/icgclone37.tcl | deleted in R48 (ICG split before CTS, cts/icg_pre.tcl) |
-| r37/inbuf37.tcl | repair/act_hold_pre.tcl |
+| r37/inbuf37.tcl | repair/act_hold_pre.tcl (removed R50) |
 | r37/pt37.tcl | signoff/pt/hub_signoff.tcl |
 | r38/drc_blk.sed | signoff/calibre/drc_blk.sed |
 | r38/drc_xsram.sed | signoff/calibre/drc_xsram.sed |
@@ -174,7 +170,7 @@ signoff; top hold, dr, antenna, pt, lvs, views (views reproduced abs7 byte-for-b
 | r38/lvs_hubpg.sed | signoff/calibre/lvs_hubpg.sed |
 | r38/lvssrc38.sh | signoff/calibre/lvs_src.sh |
 | r38/pgfix.py | signoff/calibre/pgfix.py |
-| r38/reroute38.tcl | route/reroute.tcl |
+| r38/reroute38.tcl | route/reroute.tcl (removed R50) |
 | r4/constraints.sdc | synth/chip_constraints.sdc |
 | r4/dc_hook.tcl | synth/chip_macros_hook.tcl |
 | r4/dc_post.tcl | synth/chip_dc_post.tcl |
@@ -238,8 +234,8 @@ signoff; top hold, dr, antenna, pt, lvs, views (views reproduced abs7 byte-for-b
 | r9a/place.tcl r13/pad.tcl | place/act_edge.tcl |
 | r19/place.tcl r19/band.tcl r20/place.tcl r13/place.tcl r7c/gpl_incr2.tcl | place/act_place.tcl |
 | r16/respread.tcl r16/post_cts.tcl r13/post_cts.tcl r9a/post_cts.tcl | repair/act_post_cts.tcl |
-| r35/act_io.tcl | repair/act_hold_io.tcl |
-| r37/inbuf37.tcl r37/actpre37.tcl | repair/act_hold_pre.tcl |
+| r35/act_io.tcl | repair/block_io.tcl (R50: generic, was repair/act_hold_io.tcl) |
+| r37/inbuf37.tcl r37/actpre37.tcl | repair/act_hold_pre.tcl (removed R50) |
 | r10b/hub.cfg r9b/hub.cfg r22/run.sh (QC_PNR_SET) r34/preset.env | blocks/hub/hub.cfg + blocks/hub/hub.env |
 | r34/run34.sh r34/preset.env r31/run31.sh r28/run28.sh r22/run.sh r21/run.sh r15/run15.sh r29/run29.sh r31/pt31.sh r37/pt37.sh r40/fin40.sh r38/hold38.sh (hub) r38/fin38.sh (hub) | blocks/hub/run.sh |
 | r22/mplace22.py r15/mplace15.py r10b/mplace10.py r9b/mplace9.py | floorplan/hub_mplace.py |
