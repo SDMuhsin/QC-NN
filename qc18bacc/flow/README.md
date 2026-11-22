@@ -52,8 +52,8 @@ qc18bacc/flow/blocks/act/run.sh calibre <tag>          # GDS, LVS source, Calibr
 Production (R38): `pnr r35_act_p; postcts r35_act_p r35_act_s; route r35_act_s r35_act_c; eco1 r35_act_c; eco6 r35_act_c;
 reroute r35_act_c r38_act_rr2; hold r38_act_rr2; post r38_act_rr2; calibre r38_act_rr2`.  R48: `pnr r48_act_p; postcts
 r48_act_p r48_act_s; route r48_act_s r48_act; post; drveco; hold (applies out/drv_eco_tt.tcl); post; calibre` - the hold
-step stopped at DRT-0218 (results/r48.md).  Inputs: `$B/syn/r35_act`,
-`$B/r35/col_act_pins.txt` (synth/run.sh act / actpins).
+step stopped at DRT-0218 (results/r48.md; cause: stale DRT pin access in the routed db, fixed by route/pa_reset.tcl,
+results/r49.md).  Inputs: `$B/syn/r35_act`, `$B/r35/col_act_pins.txt` (synth/run.sh act / actpins).
 
 ## Hub block qb_hub (`blocks/hub`, production lineage r35_hubC -> r38_hub_rr -> r40_hub)
 

@@ -1,7 +1,7 @@
 # R38 opt-in fix for F4 (results/r38.md): full detailed re-route of a block whose last ECO used the incremental re-route
 # (repair/hold_eco.tcl QB35_HDR_FULL 0), keeping its netlist and placement exactly.  Same routing recipe as hold35.tcl's
-# QB35_HDR_FULL 1 branch (fillers out, every non-special wire destroyed, global_route + detailed_route, fillers back,
-# flow finish.tcl; kit min-step / EOL rules route/drc_rules.tcl).  Run in an R38 COPY run dir via common/or.sh <tag> reroute38.tcl <log>; loads db/<QB38_RRDB>.odb.
+# QB35_HDR_FULL 1 branch (fillers out, every non-special wire destroyed, old pin access dropped (route/pa_reset.tcl),
+# global_route + detailed_route, fillers back, flow finish.tcl; kit min-step / EOL rules route/drc_rules.tcl).  Run in an R38 COPY run dir via common/or.sh <tag> reroute38.tcl <log>; loads db/<QB38_RRDB>.odb.
 set ::T0 [clock seconds]
 source $::env(QC_FLOW)/pnr/or/lib.tcl
 set ::OUT $::env(QC_PNR_OUT)
@@ -27,6 +27,7 @@ foreach {l a} [qc_env QB15_GADJ_L ""] { set_global_routing_layer_adjustment $l $
 # fillers / decaps BEFORE detailed_route, as flow pnr/or/route.tcl (hold35.tcl's default places them after DR: DCAP M1 then
 # lands next to router VIA12 pads -> Calibre M1.S.1, results/r38.md F8); QB38_RR_FILL_AFTER 1 = hold35 order
 if {[llength $fill] && ![qc_env QB38_RR_FILL_AFTER 0]} { filler_placement $fill; check_placement }
+source $::QBF/route/pa_reset.tcl
 set t [clock seconds]
 global_route -guide_file $::OUT/route_rr.guide -allow_congestion -congestion_iterations 10
 puts "R38_RR global_route [expr {[clock seconds] - $t}] s"

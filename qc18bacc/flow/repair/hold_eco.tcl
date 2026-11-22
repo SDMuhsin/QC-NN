@@ -4,9 +4,10 @@
 #   2. max-transition / max-cap repair (repair/drv.tcl), then repair_timing -hold -hold_margin QB35_HOLD_M [0.05] (all paths
 #      incl. IO; setup kept by repair_timing's own check)
 #   3. fillers removed, detailed_placement (incremental), every net of a new buffer or of a moved cell loses its wires
-#   4. global_route (-allow_congestion) and detailed_route (QB35_HDR_ITER [64]) of every net (QB35_HDR_FULL [1]; 0: only
-#      the touched nets, on top of the kept routing - fails in this OpenROAD build, see below; kit min-step / EOL rules
-#      route/drc_rules.tcl), fillers back, db/route_dr (old one kept as route_dr_prehold), route, finish
+#   4. pin access of the old route dropped (route/pa_reset.tcl), global_route (-allow_congestion) and detailed_route
+#      (QB35_HDR_ITER [64]) of every net (QB35_HDR_FULL [1]; 0: only the touched nets, on top of the kept routing - fails
+#      in this OpenROAD build, see below; kit min-step / EOL rules route/drc_rules.tcl), fillers back, db/route_dr (old
+#      one kept as route_dr_prehold), route, finish
 # QB35_HOLD_DRY 1: steps 1-2 only (report what the repair would do, nothing saved).
 set ::T0 [clock seconds]
 source $::env(QC_FLOW)/pnr/or/lib.tcl
@@ -175,6 +176,8 @@ puts "R35_HOLD moved_insts $nmov nets_ripped $nr (of [array size rip] touched)"
 set_routing_layers -signal $::QC_PNR_MIN_LAYER-$::QC_PNR_MAX_LAYER -clock $::QC_PNR_MIN_LAYER-$::QC_PNR_MAX_LAYER
 set_global_routing_layer_adjustment $::QC_PNR_MIN_LAYER-$::QC_PNR_MAX_LAYER [p GR_ADJUST]
 foreach {l a} [qc_env QB15_GADJ_L ""] { set_global_routing_layer_adjustment $l $a }
+# stale DRT pin access of the loaded routed db out, so GRT sees the resized / moved / new cells' real pins (R49 DRT-0218)
+source $::QBF/route/pa_reset.tcl
 set t [clock seconds]
 global_route -guide_file $::OUT/route_hold.guide -allow_congestion -congestion_iterations 10
 puts "R35_HOLD global_route [expr {[clock seconds] - $t}] s"
