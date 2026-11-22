@@ -3,7 +3,10 @@
 #   QB_ICC2_RUN (run dir: <run>/<top>.nlib design library, rpt/, out/), QC_BUILD, QB_ICC2_CORES (default 16).
 # Kit facts come from the flow/tsmc65 site files (site.tcl: libraries, tf, TLU+; site/pnr.tcl: LEF, GDS, cells, layers).
 #   ::QB_NDM            standard-cell NDM (flow/icc2/libs.tcl), shared by every block under $QC_BUILD/icc2/ndm
-#   qb_open <from> <to> open the design library, copy block label <from> to <to>, make it current
+#   qb_open <from> <to> open the design library, copy block label <from> to <to>, make it current, qb_timer
+#   qb_timer            timer options of every design step: CCS receiver capacitance in delay / slew / max_cap
+#                       (time.enable_ccs_rcv_cap, default false: ICC2 then loads nets with the NLDM pin cap while
+#                       PrimeTime uses the CCS receiver model of the same _ccs.db, R55: 0.06 vs 0.09 pF on n1690)
 #   qb_done <step> [as] save (as 1: save the current block as label <step>, the init step), log the step end in
 #                       <run>/summary.txt, QB_ICC2_DONE marker for the wrapper
 #   qb_qor <step>       QoR lines (cells, utilization, DRV count, WNS / TNS / NVE per scenario) + rpt/<step>_{qor,drv}.rpt
@@ -29,6 +32,10 @@ proc qb_open {from to} {
     copy_block -from_block $P(TOP)/$from -to_block $P(TOP)/$to -force
     current_block $P(TOP)/$to
     link_block
+    qb_timer
+}
+proc qb_timer {} {
+    set_app_options -name time.enable_ccs_rcv_cap -value true
 }
 # one QoR line: setup WNS / TNS / violators per scenario, hold WNS per scenario, DRV counts, utilization
 proc qb_qor {step} {

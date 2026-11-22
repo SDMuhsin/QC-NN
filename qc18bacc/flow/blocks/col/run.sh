@@ -3,8 +3,9 @@
 #   qc18bacc/flow/blocks/col/run.sh pnr <tag>      ICC2 (flow/icc2): libs init floorplan place cts route outputs in
 #                                                  $B/icc2/col/<tag> (QC_PNR_FROM / QC_PNR_TO select a step range)
 #   qc18bacc/flow/blocks/col/run.sh post <tag>     PrimeTime tt / ss / ff on the ICC2 netlist + SPEF, ETMs tt / ss / ff
-#   qc18bacc/flow/blocks/col/run.sh calibre <tag>  LVS source, Calibre LVS (lvs_case.sed), DRC (block deck drc_blk.sed),
-#                                                  antenna on the ICC2 GDS -> <run>/calibre
+#   qc18bacc/flow/blocks/col/run.sh calibre <tag>  kit dummy metal fill (fill_blk.sed) on the ICC2 GDS, then on the
+#                                                  filled GDS: LVS source, Calibre LVS (lvs_case.sed), DRC (block deck
+#                                                  drc_blk.sed), antenna -> <run>/calibre
 set -u
 here=$(cd "$(dirname "$0")" && pwd); . "$here/../../common/env.sh"; . "$here/col.env"
 step=${1:?step}; tag=${2:?tag}; d=$B/icc2/col/$tag
@@ -31,12 +32,15 @@ post) qb_kit
            echo "ETM $c $(ls out/etm/ 2>/dev/null | tr '\n' ' ')"
        done ) || exit 1 ;;
 calibre) o=$d/calibre; C=$QBF/signoff/calibre; mkdir -p "$o"
+     QB55_FILL_SED="-f $C/fill_blk.sed" bash "$C/cal.sh" fill "$d/out/$COL_TOP.gds" "$COL_TOP" "$o/fill" > "$o/fill.log" 2>&1 \
+         || { cat "$o/fill.log"; exit 1; }
+     cat "$o/fill.log"; g=$o/fill/${COL_TOP}_fill.gds
      bash "$C/lvs_src.sh" "$d/out/${COL_TOP}_pg.v" "$o/col_src.spi" > "$o/src.log" 2>&1; r=$?; tail -3 "$o/src.log"; [ $r = 0 ] || exit 1
      r=0
-     QB36_LVS_SED="-f $C/lvs_case.sed" bash "$C/cal.sh" lvs "$d/out/$COL_TOP.gds" "$COL_TOP" "$o/col_src.spi" "$o/lvs" > "$o/lvs.log" 2>&1 || r=1
-     QB36_DRC_SED="-f $C/drc_blk.sed" bash "$C/cal.sh" drc "$d/out/$COL_TOP.gds" "$COL_TOP" "$o/drcb" > "$o/drcb.log" 2>&1 || r=1
-     bash "$C/cal.sh" ant "$d/out/$COL_TOP.gds" "$COL_TOP" "$o/ant" > "$o/ant.log" 2>&1 || r=1
+     QB36_LVS_SED="-f $C/lvs_case.sed" bash "$C/cal.sh" lvs "$g" "$COL_TOP" "$o/col_src.spi" "$o/lvs" > "$o/lvs.log" 2>&1 || r=1
+     QB36_DRC_SED="-f $C/drc_blk.sed" bash "$C/cal.sh" drc "$g" "$COL_TOP" "$o/drcb" > "$o/drcb.log" 2>&1 || r=1
+     bash "$C/cal.sh" ant "$g" "$COL_TOP" "$o/ant" > "$o/ant.log" 2>&1 || r=1
      cat "$o/lvs.log" "$o/drcb.log" "$o/ant.log"; [ $r = 0 ] || exit 1 ;;
-*) sed -n '2,7p' "$0"; exit 1 ;;
+*) sed -n '2,9p' "$0"; exit 1 ;;
 esac
 echo "COL_DONE $step $tag $(date +%T)"

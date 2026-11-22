@@ -7,6 +7,7 @@ source [file dirname [info script]]/common.tcl
 open_lib $::QB_LIB
 open_block $P(TOP)/route
 link_block
+qb_timer
 set o $::R/out/$P(TOP)
 write_verilog -hierarchy all -exclude {leaf_module_declarations pg_objects end_cap_cells well_tap_cells filler_cells \
     pad_spacer_cells physical_only_cells cover_cells} $o.v

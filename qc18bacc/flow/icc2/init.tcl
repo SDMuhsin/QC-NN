@@ -35,6 +35,7 @@ foreach c $::QC_CORNERS {
 set sdc [qb_sdc]
 read_verilog -top $P(TOP) $P(NETLIST)
 link_block
+qb_timer
 
 create_mode func
 foreach c $::QC_CORNERS {

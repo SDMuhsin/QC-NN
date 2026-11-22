@@ -3,7 +3,9 @@
 #   qc18bacc/flow/signoff/calibre/cal.sh drc <gds> <topcell> <rundir> [turbo=8]   CLN65S_9M_6X2Z.23a (MAIN_DRC_TopMz), hierarchical
 #   qc18bacc/flow/signoff/calibre/cal.sh ant <gds> <topcell> <rundir> [turbo=8]   CN65S_9M.ANT.23a
 #   qc18bacc/flow/signoff/calibre/cal.sh lvs <gds> <topcell> <src.spi> <rundir> [turbo=8]  CRN65GP calibre.lvs (src.spi must include the cell spice)
-# env: QB36_DRC_SED / QB36_LVS_SED = extra sed arguments for the deck copy (e.g. "-f drc_blk.sed"), QB36_LVS_EXTRA,
+#   qc18bacc/flow/signoff/calibre/cal.sh fill <gds> <topcell> <rundir> [turbo=8]  kit dummy metal (Dummy_Metal_Calibre_65nm.22c,
+#        cell <topcell>_DM) placed at 0 0 in <topcell> -> <rundir>/<topcell>_fill.gds (calibredrv filemerge)
+# env: QB36_DRC_SED / QB36_LVS_SED / QB55_FILL_SED = extra sed arguments for the deck copy (e.g. "-f drc_blk.sed"), QB36_LVS_EXTRA,
 #      QB36_HCELL (hcell file)
 # Summary: grep of the TOTAL counts and the rule checks with results (CAL36 lines).  Exit status: Calibre's.
 set -u
@@ -20,6 +22,15 @@ drc|ant) d=$4; t=${5:-8}; mkdir -p "$d"; cd "$d" || exit 1
      rep=$(sed -n 's/^DRC SUMMARY REPORT "\(.*\)".*/\1/p' deck.$mode | head -1)
      echo "CAL36 $mode $top rc $rc $(grep 'TOTAL DRC Results Generated' "$rep") wall $(grep Elapsed cal_$mode.time | awk '{print $NF}') rss_kb $(grep Maximum cal_$mode.time | awk '{print $NF}')"
      grep "RULECHECK .* TOTAL Result Count = [1-9]" "$rep" | awk '{print "CAL36_RULE", $2, $(NF-1)}' | head -60 ;;
+fill) d=$4; t=${5:-8}; mkdir -p "$d"; cd "$d" || exit 1
+     deck=$K/CLN65GP/TN65CLDR001C3_V2.2C/Dummy_Metal_Calibre_65nm.22c
+     sed -e "s#^\(LAYOUT PATH\) .*#\1 \"$gds\"#" -e "s#^\(LAYOUT PRIMARY\) .*#\1 \"$top\"#" \
+         -e 's#^DRC RESULTS DATABASE "DM.gds" GDSII .*#DRC RESULTS DATABASE "DM.gds" GDSII _DM#' ${QB55_FILL_SED:-} "$deck" > deck.fill
+     /usr/bin/time -v "$C/bin/calibre" -drc -hier -turbo "$t" deck.fill > cal_fill.log 2> cal_fill.time; rc=$?
+     [ $rc = 0 ] && "$C/bin/calibredrv" -a layout filemerge -in "$gds" \
+         -infile "{-name DM.gds -placecell {-refcell ${top}_DM -incell $top -x 0 -y 0}}" -out "${top}_fill.gds" > merge.log 2>&1 || rc=1
+     echo "CAL55 fill $top rc $rc $(grep 'TOTAL DRC Results Generated' DM.sum) wall $(grep Elapsed cal_fill.time | awk '{print $NF}') out $(ls -s "${top}_fill.gds" 2>/dev/null)"
+     grep "RULECHECK .* TOTAL Result Count = [1-9]" DM.sum | awk '{print "CAL55_FILL", $2, $(NF-1)}' | head -40 ;;
 lvs) src=$4; d=$5; t=${6:-8}; mkdir -p "$d"; cd "$d" || exit 1; L=$K/CRN65GP/TN65CMSP018K1_V1.0C/Calibre/lvs
      sed -e "s#^LAYOUT PRIMARY .*#LAYOUT PRIMARY \"$top\"#" -e "s#^LAYOUT PATH .*#LAYOUT PATH \"$gds\"#" \
          -e "s#^SOURCE PRIMARY .*#SOURCE PRIMARY \"$top\"#" -e "s#^SOURCE PATH .*#SOURCE PATH \"$src\"#" \
@@ -29,6 +40,6 @@ lvs) src=$4; d=$5; t=${6:-8}; mkdir -p "$d"; cd "$d" || exit 1; L=$K/CRN65GP/TN6
      /usr/bin/time -v "$C/bin/calibre" -lvs -hier $hc -turbo "$t" deck.lvs > cal_lvs.log 2> cal_lvs.time; rc=$?
      echo "CAL36 lvs $top rc $rc wall $(grep Elapsed cal_lvs.time | awk '{print $NF}') rss_kb $(grep Maximum cal_lvs.time | awk '{print $NF}')"
      grep -m4 "CORRECT\|INCORRECT\|NOT COMPARED" lvs.rep; awk '/CELL  SUMMARY/{f=1} f && /INCORRECT|NOT COMPARED/ {print "CAL36_CELL", $0} /LVS PARAMETERS/{f=0}' lvs.rep | head -40 ;;
-*) sed -n '2,8p' "$0"; exit 1 ;;
+*) sed -n '2,10p' "$0"; exit 1 ;;
 esac
 exit $rc     # Calibre's exit status (a run with results is not a failure: see the CAL36 lines)

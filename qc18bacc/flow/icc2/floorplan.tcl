@@ -31,14 +31,21 @@ foreach m $P(PDN_MESH) {
 }
 create_pg_mesh_pattern qb_mesh -layers $layers
 create_pg_std_cell_conn_pattern qb_rail -layers {M1}
-set_pg_strategy qb_mesh -core -pattern {{name: qb_mesh} {nets: {VDD VSS}}} \
-    -extension {{direction: L R} {stop: design_boundary_and_generate_pin}}
 set_pg_strategy qb_rail -core -pattern {{name: qb_rail} {nets: {VDD VSS}}}
+compile_pg -strategies qb_rail
+# the lowest strap layer reaches across the whole followpin rail at the core edges: the rails on the bottom / top row
+# boundary are centred on the core edge, so a strap clipped at the core put its rail via on half the rail and the via's
+# M1 enclosure stuck out of the rail (R54 Calibre G.4:M1i / M1.S.1 at y 5.165-5.170; ICC2 does not check same-net jogs)
+set rw [tcl::mathfunc::max {*}[get_attribute [get_shapes -filter "layer_name==M1 && shape_use==lib_cell_pin_connect"] width]]
 set lo [lindex [lindex $P(PDN_MESH) 0] 0]
+set_pg_strategy qb_mesh -core -pattern {{name: qb_mesh} {nets: {VDD VSS}}} \
+    -extension [list {{direction: L R} {stop: design_boundary_and_generate_pin}} \
+                     [list "layers: $lo" {direction: B T} "stop: [expr {$rw / 2.0}]"]]
 set_pg_strategy_via_rule qb_via -via_rule [list \
-    [list [list {strategies: qb_mesh} "layers: $lo"] {{strategies: qb_rail} {layers: M1}} {via_master: default}] \
+    [list [list {strategies: qb_mesh} "layers: $lo"] {{existing: std_conn} {layers: M1}} {via_master: default}] \
     {{intersection: undefined} {via_master: NIL}}]
-compile_pg -strategies {qb_mesh qb_rail} -via_rule qb_via
+compile_pg -strategies qb_mesh -via_rule qb_via
+qb_line "floorplan rail_width $rw strap_ext $lo [expr {$rw / 2.0}]"
 redirect -tee $::R/rpt/floorplan_pg.rpt { check_pg_connectivity -check_std_cell_pins none; check_pg_drc }
 
 qb_line "floorplan die $P(DIE) core_offset $P(CORE_OFFSET) rows [sizeof_collection [get_site_rows]] signal_ports [sizeof_collection $sig] with_terminals $nt pg_terminals [sizeof_collection [get_terminals -quiet -of_objects [get_ports {VDD VSS}]]]"
