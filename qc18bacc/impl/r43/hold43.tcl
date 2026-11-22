@@ -35,9 +35,12 @@ if {[qc_env R43_HGRT0 1]} { global_route -congestion_iterations [p GR_ITER] -all
 estimate_parasitics -[qc_env R43_HPAR global_routing]
 h43 pre
 set _hfp {}
+# R43_HFPIN [1]: 0 = no hold false paths to the dont_touch block inputs (R46: test whether the QB43_HOLDFP rule is needed)
+if {[qc_env R43_HFPIN 1]} {
 foreach _i [$b getInsts] { if {[[$_i getMaster] getName] in {qb_hub qb_act2_blk qb_col_blk}} {
     foreach _t [$_i getITerms] { if {[$_t isInputSignal] && [$_t getNet] ne "NULL" && [[$_t getNet] isDoNotTouch]} { lappend _hfp [$_i getName]/[[$_t getMTerm] getName] } } } }
-set_false_path -hold -to [get_pins $_hfp]
+}
+if {[llength $_hfp]} { set_false_path -hold -to [get_pins $_hfp] }
 qc_log "r43 hold43: [llength $_hfp] block inputs on dont_touch nets hold-false-pathed"
 qc_to $::OUT/rpt/r43_hold_pre.rpt { report_checks -path_delay min -group_count 2000 -endpoint_count 1 -format end }
 # R43_HINC [1]: repair inside global_route -start_incremental (new buffers routed incrementally); 0: no GRT session
@@ -50,7 +53,7 @@ if {[qc_env R43_HOLD 1]} {
 repair_timing -hold -hold_margin [qc_env QB35_HOLD_M 0.05] -max_buffer_percent [qc_env QB_HOLD_PCT 10] -max_utilization [p MAX_UTIL]
 }
 qc_log "r43 hold43: repair_timing -hold [expr {[clock seconds] - $t}] s"
-unset_path_exceptions -hold -to [get_pins $_hfp]
+if {[llength $_hfp]} { unset_path_exceptions -hold -to [get_pins $_hfp] }
 detailed_placement {*}[p DPL_ARGS]
 check_placement
 if {[qc_env R43_HINC 1]} { global_route -end_incremental -allow_congestion } else { global_route -congestion_iterations [p GR_ITER] -allow_congestion }
