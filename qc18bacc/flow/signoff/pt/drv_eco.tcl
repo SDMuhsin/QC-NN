@@ -1,9 +1,10 @@
 # PrimeTime DRV ECO of a routed block at one corner (R48, results/r48.md): OpenROAD repairs max transition / max cap with the
 # liberty pin capacitance it reads, PrimeTime signs off with the CCS receiver capacitance range (upper bound up to 2.3 x:
 # r48_col NR2XD8 A1 0.012 / 0.028 pF), so routed blocks that OpenROAD sees clean fail the PT DRV check (r48_col tt 1 000 /
-# 1 165, ss 22 538 / 2 058 transition / capacitance pins).  Here PrimeTime itself sizes the drivers (fix_eco_drc,
-# size_cell only: no new cells, so the routed placement is kept up to legalisation) and writes the changes for OpenROAD
-# (<run>/out/drv_eco_<corner>.tcl, size_cell lines; repair/hold_eco.tcl QB35_ECO_TCL applies them before its full re-route).
+# 1 165, ss 22 538 / 2 058 transition / capacitance pins).  Here PrimeTime itself repairs them (fix_eco_drc -methods
+# {size_cell insert_buffer}: driver sizing and BUFFD2 / 4 / 8 buffers, legalised and routed by the caller) and writes the
+# changes for OpenROAD (<run>/out/drv_eco_<corner>.tcl, size_cell + insert_buffer lines; repair/hold_eco.tcl QB35_ECO_TCL
+# applies both, r48_insbuf, before its full re-route).
 # The design setup is the block's own sign-off script (QB_PT_SCRIPT) evaluated up to its first update_timing; a
 # QB_PT_PRE_ECO file (the changes of an earlier corner) is applied first; write_changes then holds both corners (the
 # last corner's file is the cumulative ECO).

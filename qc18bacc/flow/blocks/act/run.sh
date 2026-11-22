@@ -55,9 +55,9 @@ post) d=$B/pnr/$tag; o=$B/r9a_blk/$tag; mkdir -p "$o"
          export QC_SDC=$QBF/common/constraints.sdc QC_PT_HOOK= QC_PERIOD=$ACT_PT_PERIOD
          cd "$d" || exit 1
          for c in tt ss ff; do
-             QC_PNR_OUT=$d QC_TOP=$TOP QC_CORNER=$c qc_tool "pt_blk_$c.log" pt_shell -f "$QBF/signoff/pt/act_blk.tcl"
-             echo "PT_BLK $c errors $(grep -c '^Error' pt_blk_$c.log)"; cat "pt_blk_$c.txt"
-         done )
+             QC_PNR_OUT=$d QC_TOP=$TOP QC_CORNER=$c qb_pt "pt_blk_$c.log" pt_shell -f "$QBF/signoff/pt/act_blk.tcl" || exit 1
+             cat "pt_blk_$c.txt"
+         done ) || exit 1
        [ -f "$d/rpt/drt.drc.rpt" ] && "$PY" -I "$QBF/signoff/drc_hist.py" "$d/rpt/drt.drc.rpt" > "$d/drc_hist.txt" )
      ts antd; R29_DB=finish R29_TAG=fin "$QBF/common/or.sh" "$tag" "$QBF/signoff/antenna.tcl" r29_antd.log
      grep -h "Found\|R29_ANTD" "$d/r29_antd.log" | tail -3
@@ -72,9 +72,8 @@ post) d=$B/pnr/$tag; o=$B/r9a_blk/$tag; mkdir -p "$o"
          export QC_SDC=$QBF/common/constraints.sdc QC_PT_HOOK= QC_PERIOD=$ACT_PT_PERIOD
          cd "$d" || exit 1
          for c in tt ss ff; do      # serial: parallel extract_model runs share the temp file ./<top>_lib.lib in the run dir
-             QC_PNR_OUT=$d QC_TOP=$TOP QC_CORNER=$c qc_tool "etm_$c.log" pt_shell -f "$QBF/signoff/etm/etm.tcl"
-         done
-         for c in tt ss ff; do echo "ETM $c errors $(grep -c '^Error' etm_$c.log)"; done )
+             QC_PNR_OUT=$d QC_TOP=$TOP QC_CORNER=$c qb_pt "etm_$c.log" pt_shell -f "$QBF/signoff/etm/etm.tcl" || exit 1
+         done ) || exit 1
        cp "$d/out/qb_act2_blk.v" "$d"/out/etm/qb_act2_blk_{tt,ss,ff}.lib "$d"/out/etm/qb_act2_blk_{tt,ss,ff}_lib.db "$o/"
        ls -la "$o" ) | tail -3
      ts blkant; QB35_AOUT=$o/blkant.txt QB35_ADB=finish "$QBF/common/or.sh" "$tag" "$QBF/signoff/etm/blkant.tcl" r38_blkant.log
@@ -87,16 +86,17 @@ drveco) d=$B/pnr/$tag   # PrimeTime DRV ECO (signoff/pt/drv_eco.tcl): ss, then t
          QB7_AOUT=$ACT_AOUT QB7_DIN=$ACT_DIN
        for c in ss tt; do mkdir -p "$d/w_eco_$c"; cd "$d/w_eco_$c" || exit 1
            QB_PT_PRE_ECO=$([ $c = tt ] && echo "$d/out/drv_eco_ss.tcl") QC_PNR_OUT=$d QC_TOP=$TOP QC_CORNER=$c \
-             qc_tool "$d/drv_eco_$c.log" pt_shell -f "$QBF/signoff/pt/drv_eco.tcl"
+             qb_pt "$d/drv_eco_$c.log" pt_shell -f "$QBF/signoff/pt/drv_eco.tcl" || exit 1
            grep "^drv\|QB_DRV_ECO" "$d/drv_eco_$c.log"
-       done ) ;;
+       done ) || exit 1 ;;
 calibre) d=$B/pnr/$tag; o=$B/drc/$tag; C=$QBF/signoff/calibre; mkdir -p "$o"
-     bash "$C/gds.sh" "$tag" "$d/out/qb_act2_blk.def" "$o/act.gds" > "$o/gds.log" 2>&1; tail -2 "$o/gds.log"
-     bash "$C/lvs_src.sh" "$d/out/qb_act2_blk_pg.v" "$o/act_src.spi" > "$o/src.log" 2>&1; tail -3 "$o/src.log"
-     QB36_LVS_SED="-f $C/lvs_case.sed" bash "$C/cal.sh" lvs "$o/act.gds" qb_act2_blk "$o/act_src.spi" "$o/lvs" > "$o/lvs.log" 2>&1
-     QB36_DRC_SED="-f $C/drc_blk.sed" bash "$C/cal.sh" drc "$o/act.gds" qb_act2_blk "$o/drcb" > "$o/drcb.log" 2>&1
-     bash "$C/cal.sh" ant "$o/act.gds" qb_act2_blk "$o/ant" > "$o/ant.log" 2>&1
-     cat "$o/lvs.log" "$o/drcb.log" "$o/ant.log" ;;
+     bash "$C/gds.sh" "$tag" "$d/out/qb_act2_blk.def" "$o/act.gds" > "$o/gds.log" 2>&1; r=$?; tail -2 "$o/gds.log"; [ $r = 0 ] || exit 1
+     bash "$C/lvs_src.sh" "$d/out/qb_act2_blk_pg.v" "$o/act_src.spi" > "$o/src.log" 2>&1; r=$?; tail -3 "$o/src.log"; [ $r = 0 ] || exit 1
+     r=0
+     QB36_LVS_SED="-f $C/lvs_case.sed" bash "$C/cal.sh" lvs "$o/act.gds" qb_act2_blk "$o/act_src.spi" "$o/lvs" > "$o/lvs.log" 2>&1 || r=1
+     QB36_DRC_SED="-f $C/drc_blk.sed" bash "$C/cal.sh" drc "$o/act.gds" qb_act2_blk "$o/drcb" > "$o/drcb.log" 2>&1 || r=1
+     bash "$C/cal.sh" ant "$o/act.gds" qb_act2_blk "$o/ant" > "$o/ant.log" 2>&1 || r=1
+     cat "$o/lvs.log" "$o/drcb.log" "$o/ant.log"; [ $r = 0 ] || exit 1 ;;
 *) sed -n '2,20p' "$0"; exit 1 ;;
 esac
 echo "ACT_DONE $* $(date +%T)"

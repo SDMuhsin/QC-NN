@@ -6,11 +6,13 @@
 #           pid:N            wait until process N has exited
 #           file:PATH        wait until PATH exists (done-marker)
 #           grep:PATH:PAT    wait until PATH contains PAT
-#           need:PATH:PAT    fail the step at once unless PATH contains PAT (gate after a pid wait)
+#           need:PATH:PAT    fail the step at once unless PATH contains PAT (after a pid wait on a process outside
+#                            this queue, whose exit status the queue cannot see; steps of one queue need no gate)
 #   Fields are split on blanks (no globbing): write a blank in PAT as '.'.  VAR=val: env of that step only (QB50_MPA=1).
 # Out: <logdir>/queue.state (one line per step: n blk step run status start end rc; status pending|wait|run|ok|fail),
 #      <logdir>/q<n>_<blk>_<step>.out (step stdout + stderr), <logdir>/queue.log; $B/pnr/<run>/queue.dir -> <logdir>
-#      (read by common/status.sh).  rc = run.sh exit code (some steps exit 0 after an error; status.sh shows the ERROR).
+#      (read by common/status.sh).  rc = run.sh exit code: non-zero whenever a tool of the step failed (R53), so the
+#      queue stops there.
 set -uf
 . "$(dirname "$0")/env.sh"
 lg=${1:?logdir}; spec=${2:?spec}

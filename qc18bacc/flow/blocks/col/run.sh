@@ -29,9 +29,9 @@ post) QC_SPEF_UNESC=1 "$QBF/signoff/spef.sh" "$tag" "tt ss ff"
        export QC_SDC=$QBF/common/constraints.sdc QC_PT_HOOK= QC_PERIOD=$COL_PT_PERIOD
        cd "$d" || exit 1
        for c in tt ss ff; do
-           QC_PNR_OUT=$d QC_TOP=$TOP QC_CORNER=$c qc_tool "pt_blk_$c.log" pt_shell -f "$QBF/signoff/pt/col_blk.tcl"
-           echo "PT_BLK $c errors $(grep -c '^Error' pt_blk_$c.log)"; cat "pt_blk_$c.txt"
-       done )
+           QC_PNR_OUT=$d QC_TOP=$TOP QC_CORNER=$c qb_pt "pt_blk_$c.log" pt_shell -f "$QBF/signoff/pt/col_blk.tcl" || exit 1
+           cat "pt_blk_$c.txt"
+       done ) || exit 1
      ( cd "$d" && QC_FLOW=$FLOW QC_PNR_OUT=$d "$OR" -no_init -no_splash -exit -log abs.log "$QBF/signoff/etm/col_abs.tcl" > abs.out 2>&1 < /dev/null )
      grep -E "QB5_ANT|QB5_ABUT|ANT-|violat" "$d/abs.log" | tail -5
      echo "ABS_DONE pins $(grep -c '^  PIN' $d/out/$TOP.lef) $(grep -m1 -A0 'SIZE' $d/out/$TOP.lef)"
@@ -39,9 +39,9 @@ post) QC_SPEF_UNESC=1 "$QBF/signoff/spef.sh" "$tag" "tt ss ff"
        export QC_SDC=$QBF/common/constraints.sdc QC_PT_HOOK= QC_PERIOD=$COL_PT_PERIOD
        cd "$d" || exit 1
        for c in tt ss ff; do
-           QC_PNR_OUT=$d QC_TOP=$TOP QC_CORNER=$c qc_tool "etm_$c.log" pt_shell -f "$QBF/signoff/etm/etm.tcl"
-           echo "ETM $c errors $(grep -c '^Error' etm_$c.log); $(ls out/etm/ 2>/dev/null | tr '\n' ' ')"
-       done )
+           QC_PNR_OUT=$d QC_TOP=$TOP QC_CORNER=$c qb_pt "etm_$c.log" pt_shell -f "$QBF/signoff/etm/etm.tcl" || exit 1
+           echo "ETM $c $(ls out/etm/ 2>/dev/null | tr '\n' ' ')"
+       done ) || exit 1
      R29_DB=${R29_DB:-route} R29_TAG=dr "$QBF/common/or.sh" "$tag" "$QBF/signoff/antenna.tcl" r29_antd.log
      grep -hi "R29_ANTD\|found\|violat" "$d/r29_antd.log" | tail -4 ;;
 views) LEF=$(. "$d/kit.env"; echo $LEF); o=$d/out
@@ -53,9 +53,9 @@ drveco) qb_kit; . "$d/kit.env"   # PrimeTime DRV ECO (signoff/pt/drv_eco.tcl): s
        export QC_SDC=$QBF/common/constraints.sdc QC_PT_HOOK= QC_PERIOD=$COL_PT_PERIOD QB_PT_SCRIPT=$QBF/signoff/pt/col_blk.tcl
        for c in ss tt; do mkdir -p "$d/w_eco_$c"; cd "$d/w_eco_$c" || exit 1
            QB_PT_PRE_ECO=$([ $c = tt ] && echo "$d/out/drv_eco_ss.tcl") QC_PNR_OUT=$d QC_TOP=$TOP QC_CORNER=$c \
-             qc_tool "$d/drv_eco_$c.log" pt_shell -f "$QBF/signoff/pt/drv_eco.tcl"
+             qb_pt "$d/drv_eco_$c.log" pt_shell -f "$QBF/signoff/pt/drv_eco.tcl" || exit 1
            grep "^drv\|QB_DRV_ECO" "$d/drv_eco_$c.log"; echo "size_cell $(grep -c ^size_cell "$d/out/drv_eco_$c.tcl")"
-       done ) ;;
+       done ) || exit 1 ;;
 eco) [ -e "$d/db/route_dr.odb" ] || touch "$d/db/route_dr.odb"   # DRV ECO sizes (if any) + hold + DRV repair, full re-route (repair/hold_eco.sh)
      QB35_HDB=finish QB35_ECO_TCL=$([ -f "$d/out/drv_eco_tt.tcl" ] && echo "$d/out/drv_eco_tt.tcl") QB35_HOLD_M=0.02 QB35_FILL_BEFORE=1 \
        QB37_FORCE_SAVE=1 QB35_THREADS=${QB35_THREADS:-15} QB37_HPRE_TCL= QB37_HPOST_TCL= QB35_IO_TCL=$QBF/repair/block_io.tcl \
@@ -63,12 +63,13 @@ eco) [ -e "$d/db/route_dr.odb" ] || touch "$d/db/route_dr.odb"   # DRV ECO sizes
        QB15_GADJ_L=$COL_GADJ_L "$QBF/repair/hold_eco.sh" "$tag"
      rm -f "$d/db/route_dr_prehold.odb" ;;
 calibre) o=$B/drc/$tag; C=$QBF/signoff/calibre; mkdir -p "$o"
-     bash "$C/gds.sh" "$tag" "$d/out/qb_col_blk.def" "$o/col.gds" > "$o/gds.log" 2>&1; tail -2 "$o/gds.log"
-     bash "$C/lvs_src.sh" "$d/out/qb_col_blk_pg.v" "$o/col_src.spi" > "$o/src.log" 2>&1; tail -3 "$o/src.log"
-     QB36_LVS_SED="-f $C/lvs_case.sed" bash "$C/cal.sh" lvs "$o/col.gds" qb_col_blk "$o/col_src.spi" "$o/lvs" > "$o/lvs.log" 2>&1
-     QB36_DRC_SED="-f $C/drc_blk.sed" bash "$C/cal.sh" drc "$o/col.gds" qb_col_blk "$o/drcb" > "$o/drcb.log" 2>&1
-     bash "$C/cal.sh" ant "$o/col.gds" qb_col_blk "$o/ant" > "$o/ant.log" 2>&1
-     cat "$o/lvs.log" "$o/drcb.log" "$o/ant.log" ;;
+     bash "$C/gds.sh" "$tag" "$d/out/qb_col_blk.def" "$o/col.gds" > "$o/gds.log" 2>&1; r=$?; tail -2 "$o/gds.log"; [ $r = 0 ] || exit 1
+     bash "$C/lvs_src.sh" "$d/out/qb_col_blk_pg.v" "$o/col_src.spi" > "$o/src.log" 2>&1; r=$?; tail -3 "$o/src.log"; [ $r = 0 ] || exit 1
+     r=0
+     QB36_LVS_SED="-f $C/lvs_case.sed" bash "$C/cal.sh" lvs "$o/col.gds" qb_col_blk "$o/col_src.spi" "$o/lvs" > "$o/lvs.log" 2>&1 || r=1
+     QB36_DRC_SED="-f $C/drc_blk.sed" bash "$C/cal.sh" drc "$o/col.gds" qb_col_blk "$o/drcb" > "$o/drcb.log" 2>&1 || r=1
+     bash "$C/cal.sh" ant "$o/col.gds" qb_col_blk "$o/ant" > "$o/ant.log" 2>&1 || r=1
+     cat "$o/lvs.log" "$o/drcb.log" "$o/ant.log"; [ $r = 0 ] || exit 1 ;;
 *) sed -n '2,9p' "$0"; exit 1 ;;
 esac
 echo "COL_DONE $step $tag $(date +%T)"

@@ -20,5 +20,5 @@ pt)  t=$1; shift; "$FLOW/sta/run_pt.sh" "$t" "${@:-tt ss}" ;;
 all) t=${3:-$1_${QC_CORNER}_p$2}
      "$FLOW/syn/run_dc.sh" "$FL" "$1" "$2" "$t" && "$FLOW/sta/run_pt.sh" "$t" tt ss ;;
 *)   sed -n '2,7p' "$0"; exit 1 ;;
-esac
+esac || { echo "QB_IMPL FAIL $cmd $*"; exit 1; }
 echo "QB_IMPL_DONE $cmd $*"

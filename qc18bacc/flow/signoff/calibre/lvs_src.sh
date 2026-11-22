@@ -10,9 +10,10 @@ SP=/CMC/kits/tsmc_65nm_libs/tcbn65gplus_200a/TSMCHOME/digital/Back_End/spice/tcb
 PY=${QC_TOOLS:-/tmp/$USER/tools}/env/bin/python3
 vin=$1; out=$2; shift 2
 d=$(dirname "$out"); b=$(basename "$out" .spi)
-"$PY" -I "$here/pgfix.py" "$vin" "$SP" "$d/$b.fix.v" | tee "$d/$b.pgfix.txt" | head -30
+"$PY" -I "$here/pgfix.py" "$vin" "$SP" "$d/$b.fix.v" > "$d/$b.pgfix.txt" || { tail -5 "$d/$b.pgfix.txt"; echo "LVSSRC38 FAIL pgfix"; exit 1; }
+head -30 "$d/$b.pgfix.txt"
 lsp=""; inc="-s $SP"; for x in "$@"; do inc="$inc -s $x"; vx=${x%.spi}.v; if [ -f "$vx" ]; then lsp="$lsp -l $vx"; else lsp="$lsp -lsp $x"; fi; done
-"$C/bin/v2lvs" -v "$d/$b.fix.v" -lsp "$SP" $lsp $inc -o "$out" -s0 VSS -s1 VDD > "$d/$b.v2lvs.log" 2>&1
-echo "LVSSRC38 v2lvs rc $? $(grep -ciE 'error' "$d/$b.v2lvs.log") error-lines; $(grep -ciE 'warning' "$d/$b.v2lvs.log") warning-lines"
+"$C/bin/v2lvs" -v "$d/$b.fix.v" -lsp "$SP" $lsp $inc -o "$out" -s0 VSS -s1 VDD > "$d/$b.v2lvs.log" 2>&1; rc=$?
+echo "LVSSRC38 v2lvs rc $rc $(grep -ciE 'error' "$d/$b.v2lvs.log") error-lines; $(grep -ciE 'warning' "$d/$b.v2lvs.log") warning-lines"
 grep -iE "error|warning" "$d/$b.v2lvs.log" | sort | uniq -c | sort -rn | head -8
-rm -f "$d/$b.fix.v"; ls -la "$out"
+rm -f "$d/$b.fix.v"; ls -la "$out"; exit $rc

@@ -30,6 +30,11 @@ status start end rc) and `q<n>_<blk>_<step>.out`.  One queue per host keeps one 
 `common/status.sh <run_dir|tag>...` prints at most 15 lines per run: current step + elapsed, latest DRT iteration +
 markers, PT setup / hold / DRV per corner, last ERROR line, queue.state of the run.
 
+Exit status (R53): `synth/run.sh` + `partition.sh` (flow/tsmc65 `run_dc.sh` / `run_pt.sh`), the PrimeTime and Calibre
+parts of `blocks/*/run.sh` and `signoff/calibre/*.sh` exit non-zero when the tool fails (PrimeTime: exit status or an
+`^Error` line in its log or `parasitics_command.log`, `common/env.sh qb_pt`; background jobs: `qb_wait`), so a queue
+stops at that step.  The OpenROAD steps are unchanged.
+
 ## Column block qb_col_blk (`blocks/col`, production run r35_colb)
 
 ```
@@ -70,6 +75,8 @@ qc18bacc/flow/blocks/hub/run.sh hold <tag> [0.05]       # setup pre-repair + DRV
 qc18bacc/flow/blocks/hub/run.sh signoff <tag>           # SPEF, fin, antenna, PT, antenna LEF, ring LEF, ETM scan, GDS, LVS, Calibre antenna
 ```
 (R37 incremental ECO / R38 reroute steps removed in R50, git history.)  Inputs: `$B/syn/r26_ptr`, partition `$B/r26_w` (synth/run.sh chip / part), column abstract `$B/r5b_blk`, SRAM views.
+`signoff` makes the SRAM LVS stubs and abstract GDS from the run's macro LEFs in `$B/drc/<tag>/sram` (lefstub.py,
+`signoff/calibre/kl.sh kl_abs`; R53, was the tau6-only `$B/drc/r38_hub`).
 
 ## Chip top qb_chip (`blocks/top`, production run r43_a + R46 opt-ins)
 

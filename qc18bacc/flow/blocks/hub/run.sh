@@ -28,13 +28,13 @@ export QB_SYN=$HUB_SYN QB9_W=$W QC_PNR_THREADS=${QC_PNR_THREADS:-16}
 export QC_SPEF_UNESC=1 QC_SPEF_ORFIX=1 QB15_GADJ_L=$HUB_GADJ_L
 pnr() { QB_DPL_ARGS=$HUB_DPL_ARGS "$ROOT/flow/tsmc65/pnr/run_pnr.sh" "$here/hub.cfg" "$tag"; }
 # PrimeTime of the run at one corner in its own work dir w_<PTW [log]>_<corner>: pt <corner> <script> <log> [VAR=value ...]
-# (-> <run>/<log>_<corner>.log; extract_model writes ./<top>_lib.lib temporaries)
+# (-> <run>/<log>_<corner>.log; extract_model writes ./<top>_lib.lib temporaries); status of common/env.sh qb_pt
 pt() { local c=$1 s=$2 log=$3 w=${PTW:-$3}; shift 3
   ( . "$ROOT/flow/tsmc65/common/tool.sh"; . "$d/kit.env"; set -a; . "$B/syn/$QB_SYN/run.env"; set +a
     mkdir -p "$d/w_${w}_$c" "$d/rpt"; cd "$d/w_${w}_$c" || exit 1
     [ $# -gt 0 ] && export "$@"
     export QC_PNR_OUT=$d QC_TOP=$TOP QC_CORNER=$c QB21_SDC=$W/cfg_$tag/qb_hub.sdc QB_PT_PERIOD=$HUB_PERIOD R31_PTHUB=$QBF/signoff/pt/hub.tcl
-    qc_tool "$d/${log}_$c.log" pt_shell -f "$s" ) ; }
+    qb_pt "$d/${log}_$c.log" pt_shell -f "$s" ) ; }
 echo "HUB_STEP $step $tag $(date +%T)"
 case $step in
 all) for s in gate prod dio dr fin antd pt; do "$0" $s "$tag" || { echo "HUB_FAIL $s"; exit 1; }; done ;;
@@ -68,19 +68,19 @@ fin) o=$B/r22_$tag; mkdir -p "$o"
        ( cd "$o" && "$PY" -I "$QBF/signoff/etm/lef_ring.py" qb_hub.lef qb_hub_ring.lef ) && echo HUB_RING_LEF ok ) > "$d/abs_step.out" 2>&1 &
      # SPEF ss / ff in parallel with PT + ETM tt (tt SPEF: dr step), then PT + ETM ss / ff (4 in parallel)
      ( for c in ss ff; do "$QBF/signoff/spef.sh" "$tag" $c > "$d/spef_$c.out" 2>&1 & done
-       pt tt "$QBF/signoff/pt/hub.tcl" pt_hub QB21_ETM=0 & pt tt "$QBF/signoff/pt/hub.tcl" etm QB21_ETM=1 & wait
-       for c in ss ff; do pt $c "$QBF/signoff/pt/hub.tcl" pt_hub QB21_ETM=0 & pt $c "$QBF/signoff/pt/hub.tcl" etm QB21_ETM=1 & done; wait
-       for c in tt ss ff; do echo "PT_HUB $c errors $(grep -c '^Error' $d/pt_hub_$c.log) ETM errors $(grep -c '^Error' $d/etm_$c.log)"; cat "$d/pt_hub_$c.txt"; done )
-     wait
+       pt tt "$QBF/signoff/pt/hub.tcl" pt_hub QB21_ETM=0 & pt tt "$QBF/signoff/pt/hub.tcl" etm QB21_ETM=1 & qb_wait; r=$?
+       for c in ss ff; do pt $c "$QBF/signoff/pt/hub.tcl" pt_hub QB21_ETM=0 & pt $c "$QBF/signoff/pt/hub.tcl" etm QB21_ETM=1 & done; qb_wait || r=1
+       for c in tt ss ff; do cat "$d/pt_hub_$c.txt"; done; exit $r )
+     r=$?; wait
      cp "$d"/out/etm/qb_hub_{tt,ss,ff}.lib "$d"/out/etm/qb_hub_{tt,ss,ff}_lib.db "$o/" 2>/dev/null; ls -la "$o"
-     tail -n 3 "$d/ant_step.out" "$d/abs_step.out" ;;
+     tail -n 3 "$d/ant_step.out" "$d/abs_step.out"; [ $r = 0 ] || { echo HUB_FAIL fin PT; exit 1; } ;;
 antd) R29_DB=route_dr R29_TAG=dr "$QBF/common/or.sh" "$tag" "$QBF/signoff/antenna.tcl" r29_antd.log
      grep -hi "R29_ANTD\|found\|violat" "$d/r29_antd.log" | tail -4 ;;
 pt)  for c in tt ss; do
-       ( PTW=r31 pt $c "$QBF/signoff/pt/hub_summary.tcl" r31_pt31; rm -rf "$d/w_r31_$c"
+       ( PTW=r31 pt $c "$QBF/signoff/pt/hub_summary.tcl" r31_pt31; r=$?; rm -rf "$d/w_r31_$c"
          grep -h "^R31PT\|^R31CLK\|^R31HOLD" "$d/r31_pt31_$c.log" | cut -c1-400
-         echo "R31_PT_ERRORS $c $(grep -c '^Error' "$d/r31_pt31_$c.log") PARA044 $(grep -c "PARA-044)" "$d/r31_pt31_$c.log")" ) &
-     done; wait ;;
+         echo "R31_PT $c PARA044 $(grep -c "PARA-044)" "$d/r31_pt31_$c.log")"; exit $r ) &
+     done; qb_wait || exit 1 ;;
 copy) src=${2:?src}; tag=${3:?tag}; d=$B/pnr/$tag; [ -e "$d" ] && { echo "HUB_FAIL $d exists"; exit 1; }
      cp -a "$B/pnr/$src" "$d"; mkdir -p "$W/cfg_$tag"
      for f in "$W/cfg_$src"/*; do sed "s#cfg_$src#cfg_$tag#g" "$f" > "$W/cfg_$tag/$(basename "$f")"; done
@@ -96,7 +96,7 @@ hold) [ -e "$d/db/route_dr.odb" ] || touch "$d/db/route_dr.odb"     # hold_eco.t
      rm -f "$d/db/route_dr_prehold.odb" ;;
 drveco) for c in ss tt; do   # PrimeTime DRV ECO (signoff/pt/drv_eco.tcl): ss, then tt on top (out/drv_eco_tt.tcl = both)
        PTW=eco pt $c "$QBF/signoff/pt/drv_eco.tcl" drv_eco QB_PT_SCRIPT=$QBF/signoff/pt/hub.tcl \
-         QB_PT_PRE_ECO=$([ $c = tt ] && echo "$d/out/drv_eco_ss.tcl")
+         QB_PT_PRE_ECO=$([ $c = tt ] && echo "$d/out/drv_eco_ss.tcl") || exit 1
        grep "^drv\|QB_DRV_ECO" "$d/drv_eco_$c.log"
      done ;;
 signoff) o=$B/r22_$tag; c=$B/drc/$tag; C=$QBF/signoff/calibre; mkdir -p "$c"
@@ -104,20 +104,24 @@ signoff) o=$B/r22_$tag; c=$B/drc/$tag; C=$QBF/signoff/calibre; mkdir -p "$c"
      "$0" fin "$tag" > "$d/r38_fin.out" 2>&1; tail -4 "$d/r38_fin.out"
      R29_DB=finish R29_TAG=fin "$QBF/common/or.sh" "$tag" "$QBF/signoff/antenna.tcl" r29_antd.log &
      for k in tt ss; do
-       ( PTW=r37 pt $k "$QBF/signoff/pt/hub_signoff.tcl" r37_pt; rm -rf "$d/w_r37_$k"
-         grep -h "^R37" "$d/r37_pt_$k.log"; cat "$d/pt_hub_$k.txt"; echo "R37_PT_ERRORS $k $(grep -c '^Error' "$d/r37_pt_$k.log")" ) > "$d/r38_pt_$k.out" 2>&1 &
-     done; wait
-     grep -h "Found\|R29_ANTD" "$d/r29_antd.log" | tail -3; for k in tt ss; do grep "^R37\|violating\|slack_ns" "$d/r38_pt_$k.out" | cut -c1-200; done
+       ( PTW=r37 pt $k "$QBF/signoff/pt/hub_signoff.tcl" r37_pt; r=$?; rm -rf "$d/w_r37_$k"
+         grep -h "^R37" "$d/r37_pt_$k.log"; cat "$d/pt_hub_$k.txt"; exit $r ) > "$d/r38_pt_$k.out" 2>&1 &
+     done; qb_wait; ptr=$?
+     grep -h "Found\|R29_ANTD" "$d/r29_antd.log" | tail -3; for k in tt ss; do grep "^R37\|PT_ERRORS\|violating\|slack_ns" "$d/r38_pt_$k.out" | cut -c1-200; done; [ $ptr = 0 ] || exit 1
      QB35_AOUT=$o/blkant.txt QB35_ADB=finish "$QBF/common/or.sh" "$tag" "$QBF/signoff/etm/blkant.tcl" r38_blkant.log
      LEF=$(. "$d/kit.env"; echo $LEF); "$PY" -I "$QBF/signoff/etm/blkant.py" "$LEF" "$o/blkant.txt" "$o/qb_hub.lef" "$o/qb_hub_ant.lef" | tail -3
      "$PY" -I "$QBF/signoff/etm/lef_ring.py" "$o/qb_hub_ant.lef" "$o/qb_hub_ant_ring.lef" | tail -2
      for k in tt ss ff; do "$PY" -I "$QBF/signoff/etm/etmcheck.py" "$o/qb_hub_$k.lib" 3.0; done
-     ML=$(cd "$d" && . ./kit.env && echo "$MACRO_LEFS")
-     QB38_GDS_EXTRA=$HUB_SRAM_ABS/sram_abs.gds bash "$C/gds.sh" "$tag" "$d/out/qb_hub.def" "$c/hub.gds" $ML > "$c/gds.log" 2>&1; tail -2 "$c/gds.log"
-     bash "$C/lvs_src.sh" "$d/out/qb_hub_pg.v" "$c/hub_src.spi" "$HUB_SRAM_ABS/sram_stub.spi" > "$c/lvssrc.log" 2>&1; tail -3 "$c/lvssrc.log"
+     # SRAM views for LVS / GDS (no layout / netlist in the kit, R38 F7): pin-only LVS stubs (lefstub.py) and LEF
+     # abstract GDS cells with pin stack cuts (kl.sh kl_abs, lef2gds.py stack 1) of the run's macro LEFs -> $B/drc/<tag>/sram
+     ML=$(cd "$d" && . ./kit.env && echo "$MACRO_LEFS"); S=$c/sram; mkdir -p "$S"; . "$C/kl.sh"
+     "$PY" -I "$C/lefstub.py" "$S/sram_stub.spi" "$S/sram_stub.box" $ML && kl_abs "$tag" 1 "$S/sram_abs.gds" $ML > "$S/abs.log" 2>&1 \
+       || { tail -3 "$S/abs.log"; echo "HUB_FAIL SRAM abstracts ($S)"; exit 1; }
+     QB38_GDS_EXTRA=$S/sram_abs.gds bash "$C/gds.sh" "$tag" "$d/out/qb_hub.def" "$c/hub.gds" $ML > "$c/gds.log" 2>&1; r=$?; tail -2 "$c/gds.log"; [ $r = 0 ] || exit 1
+     bash "$C/lvs_src.sh" "$d/out/qb_hub_pg.v" "$c/hub_src.spi" "$S/sram_stub.spi" > "$c/lvssrc.log" 2>&1; r=$?; tail -3 "$c/lvssrc.log"; [ $r = 0 ] || exit 1
      QB36_LVS_SED="-f $C/lvs_hub.sed -f $C/lvs_hubpg.sed" bash "$C/cal.sh" lvs "$c/hub.gds" qb_hub "$c/hub_src.spi" "$c/lvs" > "$c/lvs.log" 2>&1 &
      QB36_DRC_SED="-f $C/drc_xsram.sed" bash "$C/cal.sh" ant "$c/hub.gds" qb_hub "$c/ant" > "$c/ant.log" 2>&1 &
-     wait; cat "$c/lvs.log" "$c/ant.log" ;;
+     qb_wait; r=$?; cat "$c/lvs.log" "$c/ant.log"; [ $r = 0 ] || exit 1 ;;
 *) sed -n '2,28p' "$0"; exit 1 ;;
 esac
 echo "HUB_DONE $step $tag $(date +%T)"

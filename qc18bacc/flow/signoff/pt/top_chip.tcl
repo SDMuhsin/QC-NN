@@ -3,7 +3,7 @@
 # (blocks/top/pt_sdc.tcl) at QC_PERIOD, propagated clock; chip IO latency L measured at this corner (below).
 # fmax = 1 / (period - WNS) per class:
 #   reg2reg      every clocked start / end incl. block ETM pins and macros (IO excluded)
-#   top2top      top-level flops only (no block / macro pin at either end)
+#   top2top      top-level flops only (no column / hub / act block pin, no macro pin, no chip IO on the path)
 #   top2blk / blk2top / blk2blk   paths ending / starting at a column-block pin
 #   mac          paths starting or ending at an ARM macro pin
 # then the R37 block conditions at chip level, violators and clock latencies (R39), not-annotated nets (R42).
@@ -52,6 +52,8 @@ set blk [get_cells -hierarchical -filter "ref_name==qb_col_blk"]
 set mac [get_cells -hierarchical -filter "ref_name=~qb_*_*x*m*"]
 set bp [get_pins -of_objects $blk]
 set mp [get_pins -of_objects $mac]
+# the other hard blocks (hub, act): their pins are not top-to-top either
+set hp [get_pins -of_objects [get_cells -hierarchical -filter "ref_name==qb_hub || ref_name==qb_act2_blk"]]
 puts $fh "blocks [sizeof_collection $blk] macros [sizeof_collection $mac]"
 proc fl {fh k p per} {
     if {![sizeof_collection $p]} { puts $fh "$k none"; return }
@@ -62,7 +64,7 @@ proc fl {fh k p per} {
 set bo [filter_collection $bp "direction==out"]; set bi [filter_collection $bp "direction==in"]
 set mo [filter_collection $mp "direction==out"]; set mi [filter_collection $mp "direction==in"]
 fl $fh reg2reg [get_timing_paths -delay_type max -max_paths 1 -exclude $io] $per
-fl $fh top2top [get_timing_paths -delay_type max -max_paths 1 -exclude [add_to_collection [add_to_collection $io $bp] $mp]] $per
+fl $fh top2top [get_timing_paths -delay_type max -max_paths 1 -exclude [add_to_collection [add_to_collection [add_to_collection $io $bp] $mp] $hp]] $per
 fl $fh top2blk [get_timing_paths -delay_type max -max_paths 1 -to $bi -exclude [add_to_collection $io $bo]] $per
 fl $fh blk2top [get_timing_paths -delay_type max -max_paths 1 -from [get_cells $blk] -exclude [add_to_collection $io $bi]] $per
 fl $fh blk2blk [get_timing_paths -delay_type max -max_paths 1 -from [get_cells $blk] -to $bi] $per

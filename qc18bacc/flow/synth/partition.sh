@@ -14,20 +14,20 @@ echo "== $step $(date +%T)"
 case $step in
 dump) qb_kit; cd "$W" || exit 1
      QC_PNR_OUT=$W QB_NETLIST=$B/syn/$QB_SYN/qb_chip.v QB_OUT=$W/dump.txt /usr/bin/time -v -o dump.log.time \
-         "$OR" -no_init -no_splash -exit -log dump.log "$here/part_dump.tcl" > dump.out 2>&1 < /dev/null
+         "$OR" -no_init -no_splash -exit -log dump.log "$here/part_dump.tcl" > dump.out 2>&1 < /dev/null || { tail -3 dump.out; exit 1; }
      tail -2 dump.out
      python3 -I "$here/part_cuts.py" dump.txt grp --head-south --split-w --groups grp0.txt > cuts.log 2>&1 || { tail -3 cuts.log; exit 1; }
      awk '{n[$2]++} END {for (g in n) print "GROUP_CELLS", g, n[g]}' grp0.txt | sort ;;
 part) qb_kit; cd "$W" || exit 1
      python3 -I "$here/part_hub.py" dump.txt grp0.txt hub > part.log || exit 1; grep -v mixed part.log
      ( set -a; . "$B/syn/$QB_SYN/run.env"; set +a
-       QB_SYN_DIR=$B/syn/$QB_SYN QB_W=$W qc_tool dc_part.log dc_shell -f "$here/part_dc.tcl" )
+       QB_SYN_DIR=$B/syn/$QB_SYN QB_W=$W qc_tool dc_part.log dc_shell -f "$here/part_dc.tcl" ) || { tail -3 dc_part.log; exit 1; }
      grep '^R9B' dc_part.log; qc_time dc_part.log
      python3 -I "$here/part_const.py" qb_hub.v qb_hub_c.v && python3 -I "$here/part_const.py" qb_chip_r9b.v qb_chip_r9b_c.v ;;
 ports) qb_kit; cd "$W" || exit 1
-     QC_PNR_OUT=$W QB_NETLIST=$W/qb_hub_c.v QB_OUT=$W/ports_reg.txt "$OR" -no_init -no_splash -exit -log ports.log "$here/part_ports.tcl" > ports.out 2>&1 < /dev/null
+     QC_PNR_OUT=$W QB_NETLIST=$W/qb_hub_c.v QB_OUT=$W/ports_reg.txt "$OR" -no_init -no_splash -exit -log ports.log "$here/part_ports.tcl" > ports.out 2>&1 < /dev/null || { tail -3 ports.out; exit 1; }
      tail -1 ports.out ;;
-sdc) cd "$W" && python3 -I "$here/part_bnd.py" qb_chip_r9b.v qb_hub.v ports_reg.txt bnd && cat bnd_bus.txt | head -30 ;;
+sdc) cd "$W" && python3 -I "$here/part_bnd.py" qb_chip_r9b.v qb_hub.v ports_reg.txt bnd || exit 1; head -30 bnd_bus.txt ;;
 esac || { echo "PART_FAIL $step"; exit 1; }
 done
 echo "PART_DONE $QB_SYN $W"

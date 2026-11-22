@@ -3,6 +3,7 @@
 #   B     build root QC_BUILD [/tmp/$USER/qc18bacc/build]; P&R runs in $B/pnr/<tag>
 #   TOOLS QC_TOOLS [/tmp/$USER/tools]; PY / OR = its python3 / openroad
 #   qb_kit  sources flow/tsmc65 common/tool.sh (FLOW, qc_tool) and exports QC_KIT, QC_PY
+#   qb_pt   PrimeTime run + error check;  qb_wait  wait for background jobs, non-zero if one failed
 QBF=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd); ROOT=$(cd "$QBF/../.." && pwd)
 export QC_BUILD=${QC_BUILD:-/tmp/$USER/qc18bacc/build}; B=$QC_BUILD
 TOOLS=${QC_TOOLS:-/tmp/$USER/tools}; PY=$TOOLS/env/bin/python3; OR=$TOOLS/env/bin/openroad
@@ -10,3 +11,14 @@ qb_kit() {
     . "$ROOT/flow/tsmc65/common/tool.sh"
     QC_KIT=$(tcsh -f -c "source $FLOW/site/site.csh >& /dev/null; printenv QC_KIT"); export QC_KIT QC_PY=$PY
 }
+# qb_pt <log> <command ...>: qc_tool of a PrimeTime run in the current dir; one PT_ERRORS line; non-zero unless the tool
+# exited 0 and neither the log nor ./parasitics_command.log (read_parasitics, e.g. SPFP-103) has an '^Error' line
+qb_pt() {
+    local log=$1 rc e p=0; rm -f parasitics_command.log
+    qc_tool "$@"; rc=$?
+    e=$(grep -c '^Error' "$log"); [ -f parasitics_command.log ] && p=$(grep -c '^Error' parasitics_command.log)
+    echo "PT_ERRORS $(basename "$log") rc $rc errors ${e:-NA} parasitics_errors $p"
+    [ $rc = 0 ] && [ "$e" = 0 ] && [ "$p" = 0 ]
+}
+# qb_wait: wait for every background job of this shell; non-zero if any of them failed
+qb_wait() { local j r=0; for j in $(jobs -p); do wait "$j" || r=1; done; return $r; }

@@ -15,10 +15,13 @@ dir=$(cd "$dir" && pwd) || exit 1
 set -a; . "$dir/run.env"; set +a
 corners=${*:-$(sed -n 's/^set ::QC_CORNERS *{\(.*\)}.*/\1/p' "$FLOW/site/site.tcl")}
 cd "$dir" || exit 1
+fail=0
 for c in $corners; do
     QC_OUT=$dir QC_CORNER=$c qc_tool "pt_$c.log" pt_shell -f "$FLOW/sta/pt.tcl"
     rc=$?
     qc_time "pt_$c.log" >> "pt_$c.txt" 2>/dev/null
     echo "PT_DONE $(basename "$dir") $c rc $rc errors $(grep -c '^Error' "pt_$c.log")"
     [ -f "pt_$c.txt" ] && sed 's/^/  /' "pt_$c.txt"
+    [ $rc = 0 ] || fail=1
 done
+exit $fail

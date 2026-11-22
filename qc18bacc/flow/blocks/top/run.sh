@@ -75,28 +75,27 @@ pt)  qb_kit
        for f in ${!v}; do case $f in *qb_col_blk*) ;; *) m="$m $f" ;; esac; done
        export QC_EXTRA_DB_$C="$m $TOP_ABS/qb_col_blk_${c}_lib.db $TOP_ABS/qb_hub_${c}_lib.db $TOP_ABS/qb_act2_blk_${c}_lib.db"
        export QC_SDC=$here/pt_sdc.tcl QC_PERIOD=$TOP_PERIOD QB35_TOPL=0
-       QC_PNR_OUT=$d QC_TOP=$TOP QC_CORNER=$c qc_tool "pt_chip_$c.log" pt_shell -f "$QBF/signoff/pt/top_chip.tcl"
-       echo "PT_CHIP $c errors $(grep -c '^Error' pt_chip_$c.log)"; cat "pt_chip_$c.txt"
-       cp pt_chip_$c.txt pt_chip_$c.log rpt/r39_${c}_viol.txt rpt/pt_chip_${c}_*.rpt "$o/" 2>/dev/null ) > "$o/run.log" 2>&1 &
-     done; wait
+       QC_PNR_OUT=$d QC_TOP=$TOP QC_CORNER=$c qb_pt "pt_chip_$c.log" pt_shell -f "$QBF/signoff/pt/top_chip.tcl"; r=$?
+       cat "pt_chip_$c.txt"
+       cp pt_chip_$c.txt pt_chip_$c.log rpt/r39_${c}_viol.txt rpt/pt_chip_${c}_*.rpt "$o/" 2>/dev/null; exit $r ) > "$o/run.log" 2>&1 &
+     done; qb_wait; r=$?
      for c in ${3:-tt ss}; do o=$d/pt_${TOP_PERIOD}_$c; echo "PT_DONE $tag $TOP_PERIOD $c"
        grep -E "spef_nets|^all|^reg2reg|hold_reg2reg|violating|hub_ft|hub2act|act2col|io_|R39LAT|unconstrained" "$o/pt_chip_$c.txt"
-       grep R43_AUTOL "$o/pt_chip_$c.log"; done ;;
-lvs) r=${3:-$B/drc/$tag/lvs}; C=$QBF/signoff/calibre; KL=$TOOLS/kl/bin/klayout; mkdir -p "$r"; cd "$r" || exit 1
-     . "$d/kit.env"
+       grep R43_AUTOL "$o/pt_chip_$c.log"; grep PT_ERRORS "$o/run.log"; done; [ $r = 0 ] || exit 1 ;;
+lvs) r=${3:-$B/drc/$tag/lvs}; C=$QBF/signoff/calibre; mkdir -p "$r"; cd "$r" || exit 1
+     . "$d/kit.env"; . "$C/kl.sh"
      # block LEFs (= MACRO_LEFS of the run: TOP_ABS) and SRAM LEFs; both become pin-only LVS BOX cells
      bl=""; ml=""; for f in $MACRO_LEFS; do case $(basename "$f") in qb_col_blk.lef|qb_hub.lef|qb_act2_blk.lef) bl="$bl $f" ;; *) ml="$ml $f" ;; esac; done
      echo "TOP_LVS lefs $MACRO_LEFS"
-     "$PY" -I "$C/lefstub.py" "$r/stubs.spi" "$r/stubs.box" $MACRO_LEFS
-     # LEF abstracts -> GDS cells: blocks without stack cuts (their PG pins cross on adjacent layers), SRAMs with them
-     # (R38 F5: M1-M3 pins at one spot)
-     "$KL" -b -r "$C/lef2gds.py" -rd lefs="$LEF $bl" -rd layer_map="$B/r36/gds/kl.map" -rd stack=0 -rd out="$r/abs_blk.gds"
-     "$KL" -b -r "$C/lef2gds.py" -rd lefs="$LEF $ml" -rd layer_map="$B/r36/gds/kl.map" -rd stack=1 -rd out="$r/abs_mac.gds"
-     QB38_GDS_EXTRA="$r/abs_blk.gds $r/abs_mac.gds" bash "$C/gds.sh" "$tag" "$d/out/$TOP.def" "$r/top.gds" $MACRO_LEFS
-     bash "$C/lvs_src.sh" "$d/out/${TOP}_pg.v" "$r/top.spi" "$r/stubs.spi"
+     "$PY" -I "$C/lefstub.py" "$r/stubs.spi" "$r/stubs.box" $MACRO_LEFS || exit 1
+     # LEF abstracts -> GDS cells (signoff/calibre/kl.sh kl_abs): blocks without stack cuts (their PG pins cross on
+     # adjacent layers), SRAMs with them (R38 F5: M1-M3 pins at one spot)
+     kl_abs "$tag" 0 "$r/abs_blk.gds" $bl && kl_abs "$tag" 1 "$r/abs_mac.gds" $ml || { echo "TOP_FAIL LEF abstract GDS"; exit 1; }
+     QB38_GDS_EXTRA="$r/abs_blk.gds $r/abs_mac.gds" bash "$C/gds.sh" "$tag" "$d/out/$TOP.def" "$r/top.gds" $MACRO_LEFS || exit 1
+     bash "$C/lvs_src.sh" "$d/out/${TOP}_pg.v" "$r/top.spi" "$r/stubs.spi" || exit 1
      { echo '/^LVS ISOLATE SHORTS YES/a\'; echo 'LAYOUT CASE YES\'; echo 'SOURCE CASE YES\';
        sed '$!s/$/\\/' "$r/stubs.box"; } > "$r/deck.sed"
-     QB36_LVS_SED="-f $r/deck.sed" bash "$C/cal.sh" lvs "$r/top.gds" "$TOP" "$r/top.spi" "$r/cal" 8 ;;
+     QB36_LVS_SED="-f $r/deck.sed" bash "$C/cal.sh" lvs "$r/top.gds" "$TOP" "$r/top.spi" "$r/cal" 8 || exit 1 ;;
 *) sed -n '2,20p' "$0"; exit 1 ;;
 esac
 echo "TOP_DONE $step $tag $(date +%T)"

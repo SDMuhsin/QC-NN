@@ -45,3 +45,4 @@ rc=$?
 qc_time dc.log >> summary.txt 2>/dev/null
 echo "DC_DONE $tag rc $rc errors $(grep '^Error' dc.log | grep -vc PROC-3) summary $([ -f "$top.v" ] && echo ok || echo FAIL)"
 [ -f summary.txt ] && sed 's/^/  /' summary.txt
+[ "$rc" = 0 ] && [ -f "$top.v" ]     # exit status: DC rc 0 and a netlist written
