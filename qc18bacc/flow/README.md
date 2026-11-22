@@ -8,7 +8,7 @@ Stage-organized implementation flow of the qc18bacc chip (column block, act bloc
 
 | dir | contents |
 |---|---|
-| `common/` | `env.sh` (bash: `QBF`, `ROOT`, `B`, `TOOLS`, `PY`, `OR`, `qb_kit`), `qb.tcl` (Tcl: `::QBF`, `qb_env`), `or.sh` (run an OpenROAD script in a run dir), `block_sdc.tcl` (netlist + P&R SDC of a hard block from its DC run), `constraints.sdc` (DC / PT SDC) |
+| `common/` | `env.sh` (bash: `QBF`, `ROOT`, `B`, `TOOLS`, `PY`, `OR`, `qb_kit`), `qb.tcl` (Tcl: `::QBF`, `qb_env`), `or.sh` (run an OpenROAD script in a run dir), `block_sdc.tcl` (netlist + P&R SDC of a hard block from its DC run), `constraints.sdc` (DC / PT SDC), `queue.sh` (detached step queue per host), `status.sh` (run status digest) |
 | `synth/` | DC / partition / top-netlist steps that produced the P&R input netlists |
 | `floorplan/` | pins, PDN, macro placement, floorplan generators |
 | `place/` | placement hooks (seeds, tiling, buffer removal, incremental gpl) |
@@ -21,6 +21,14 @@ Stage-organized implementation flow of the qc18bacc chip (column block, act bloc
 Every block / top is run from the repository root of a host-local copy of the repository on the build server
 (`QC_BUILD` default `/tmp/$USER/qc18bacc/build`, tools in `QC_TOOLS` default `/tmp/$USER/tools`, kit paths in the
 untracked `flow/tsmc65/site/*` files). P&R runs land in `$QC_BUILD/pnr/<tag>`.
+
+Unattended runs (R50): `common/queue.sh <logdir> <spec>` runs `blocks/<b>/run.sh` steps one after the other in a
+detached session (setsid + nohup; kill the queue with `kill -- -<pgid>`), one spec line per step
+`<wait> [VAR=val ...] <blk> <step> <run> [args]` (`<wait>`: `-` or `pid:N`, `file:PATH`, `grep:PATH:PAT`,
+`need:PATH:PAT`, comma-separated); it stops at the first failure and keeps `<logdir>/queue.state` (n blk step run
+status start end rc) and `q<n>_<blk>_<step>.out`.  One queue per host keeps one heavy job per host (30 GB).
+`common/status.sh <run_dir|tag>...` prints at most 15 lines per run: current step + elapsed, latest DRT iteration +
+markers, PT setup / hold / DRV per corner, last ERROR line, queue.state of the run.
 
 ## Column block qb_col_blk (`blocks/col`, production run r35_colb)
 
