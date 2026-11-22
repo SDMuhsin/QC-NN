@@ -1,0 +1,100 @@
+#!/usr/bin/env bash
+# Chip top qb_chip (config: blocks/top/top.env + top.cfg; flow/README.md).  On the build host, in this order:
+#   qc18bacc/flow/blocks/top/run.sh views      block views TOP_ABS + TOP_ETMO from the block outputs (RECONSTRUCTED:
+#                                              abs7 was assembled by hand; this step reproduces its links and files)
+#   qc18bacc/flow/blocks/top/run.sh fp <tag>   init, macro dump, floorplan/top_fp.py (<run>/mplace.tcl), floorplan + pdn,
+#                                              power-grid check ($B/pnr/<tag>)
+#   qc18bacc/flow/blocks/top/run.sh pnr <tag>  place .. GRT + post-GRT repair, db/grt.odb + route.guide (QC_PNR_FROM
+#                                              [place] / QC_PNR_TO select a step range)
+#   qc18bacc/flow/blocks/top/run.sh hold <tag> post-GRT hold + antenna repair in a fresh process (repair/top_hold.tcl;
+#                                              knobs R43_HGRT0 R43_HPAR R43_HINC R43_HOLD pass through)
+#   qc18bacc/flow/blocks/top/run.sh dr <tag>   detailed route + finish (route/dr.sh), SPEF tt + ss for PT
+#   qc18bacc/flow/blocks/top/run.sh antenna <tag>  LEF-rule antenna check of db/route_dr (signoff/antenna.tcl)
+#   qc18bacc/flow/blocks/top/run.sh pt <tag> [corners "tt ss"]  PrimeTime per corner (signoff/pt/top_chip.tcl) ->
+#                                              $B/pnr/<tag>/pt_<period>_<c>/
+#   qc18bacc/flow/blocks/top/run.sh lvs <tag> [rundir $B/drc/<tag>/lvs]  Calibre LVS with the hard blocks and SRAMs as
+#                                              LVS BOX black boxes (pin-only stubs from their LEFs)
+set -u
+here=$(cd "$(dirname "$0")" && pwd); . "$here/../../common/env.sh"; . "$here/top.env"
+step=${1:?step}; tag=${2:-}; d=$B/pnr/$tag; cfg=$here/top.cfg
+echo "TOP_STEP $step $tag $(date +%T)"
+# environment of every OpenROAD process that sources top.cfg (run_pnr.sh, route/dr.sh, common/or.sh)
+export QC_PNR_THREADS=${QC_PNR_THREADS:-16} QB8_DR_THREADS=16 QB_TOP_ABS=$TOP_ABS QB_TOP_ETMO=$TOP_ETMO \
+  QB_TOP_PERIOD=$TOP_PERIOD QB11_INS=$TOP_INS_COL QB14_HINS=$TOP_INS_HUB QB14_AINS=$TOP_INS_ACT QB15_GADJ_L=$TOP_GADJ_L \
+  QB35_GRTHOLD=$TOP_GRTHOLD QB43_GRTANT=$TOP_GRTANT
+pnr_env() {   # fp / pnr: netlist tag, initial IO latency, macro PDN (floorplan/pdn_macro.tcl), post-CTS hook
+    export QB_SYN=$TOP_SYN QB35_TOPL=$TOP_IO_LAT QB_IO_LAT=$TOP_IO_LAT QB_PDN_BLKX="qb_hub qb_act2_blk" \
+      QB43_SRAM_CONN="{M3 M7}" QB43_RF_M4OFF=9.4 QB_PC_HOOK=$QBF/repair/post_cts_none.tcl
+}
+case $step in
+views) A=$TOP_ABS; E=$QBF/signoff/etm; mkdir -p "$A" "$TOP_ETMO"
+     # act / hub: the block runs' ring LEFs (with antenna data) and ETMs
+     ln -sf "$TOP_ACT/qb_act2_blk_ant_ring.lef" "$A/qb_act2_blk.lef"; ln -sf "$TOP_HUB/qb_hub_ant_ring.lef" "$A/qb_hub.lef"
+     for c in tt ss ff; do for f in "$TOP_ACT/qb_act2_blk_$c.lib" "$TOP_ACT/qb_act2_blk_${c}_lib.db" "$TOP_HUB/qb_hub_$c.lib" \
+         "$TOP_HUB/qb_hub_${c}_lib.db" "$TOP_COL_ABS/qb_col_blk_${c}_ins.lib"; do ln -sf "$f" "$A/"; done; done
+     # column: ring LEF + insertion ETMs of R36 abs4; ss / ff as they are, tt with the second-stage table correction
+     # (11 tables; reference = the ss ETM); PT dbs: ss / ff raw, tt corrected the same way (etm_db.sh)
+     ln -sf "$TOP_COL_ABS/qb_col_blk.lef" "$A/"
+     for c in ss ff; do ln -sf "$TOP_COL_ABS/qb_col_blk_${c}_insfix.lib" "$A/"; ln -sf "$TOP_COL_ETM/qb_col_blk_${c}_lib.db" "$A/"; done
+     rm -f "$A/qb_col_blk_tt_insfix.lib"
+     "$PY" -I "$E/etm_tables.py" "$TOP_COL_ABS/qb_col_blk_tt_insfix.lib" "$A/qb_col_blk_tt_insfix.lib" 2.0 \
+         "$TOP_COL_ABS/qb_col_blk_ss_insfix.lib" 0.5 > "$A/etm43_tt.log"; tail -1 "$A/etm43_tt.log"
+     bash "$E/etm_db.sh" qb_col_blk "$TOP_COL_ETM" "$TOP_COL_PTFIX" tt
+     ln -sf "$TOP_COL_PTFIX/qb_col_blk_tt_lib.db" "$A/"
+     # act ETM copies without output-pin checks for OpenROAD (rsz repairEndHold crash, results/r46.md)
+     for c in tt ss ff; do "$PY" -I "$E/etm_nooutchk.py" "$A/qb_act2_blk_$c.lib" "$TOP_ETMO/qb_act2_blk_$c.lib" | tail -1; done
+     ls -la "$A" "$TOP_ETMO" ;;
+fp)  pnr_env
+     QC_PNR_TO=init "$ROOT/flow/tsmc65/pnr/run_pnr.sh" "$cfg" "$tag" || exit 1
+     ( cd "$d" && QB_RUN=$d "$OR" -no_init -no_splash -exit "$QBF/floorplan/dump_macros.tcl" > dump.log 2>&1 < /dev/null )
+     "$PY" -I "$QBF/floorplan/top_fp.py" "$d/macros.txt" "$TOP_ABS" "$d/mplace.tcl" $TOP_X0 $TOP_HUBX $TOP_NB || exit 1
+     QC_PNR_FROM=floorplan QC_PNR_TO=pdn "$ROOT/flow/tsmc65/pnr/run_pnr.sh" "$cfg" "$tag"
+     n=$(grep -c "check_power_grid true" "$d/summary.txt"); echo "TOP_PG check_power_grid true $n of 2"
+     # PSM cannot see through block abstracts: islands that lie inside a hard block (on its PG pins, joined by the
+     # block's own grid) are listed but tolerated; any unconnected node outside the hub bbox fails the step.
+     nin=$(grep PSM-0038 "$d/openroad.log" | wc -l)
+     nout=$(grep "PSM-0038.*location" "$d/openroad.log" | sed 's/.*location (\([0-9.]*\)um, \([0-9.]*\)um).*/\1 \2/' | awk -v B="$TOP_PGBB" 'BEGIN{split(B,b," ")} {if(!($1>=b[1]&&$1<=b[3]&&$2>=b[2]&&$2<=b[4])) n++} END{print n+0}')
+     echo "TOP_PG unconnected nodes $nin, outside the hub bbox ($TOP_PGBB) $nout"
+     [ "$n" = 2 ] || [ "$nout" = 0 ] || { echo "TOP_FAIL power grid check"; exit 1; } ;;
+pnr) pnr_env
+     QC_PNR_FROM=${QC_PNR_FROM:-place} "$ROOT/flow/tsmc65/pnr/run_pnr.sh" "$cfg" "$tag"
+     case ${QC_PNR_TO:-finish} in route|finish) [ -f "$d/db/grt.odb" ] || { echo "TOP_FAIL no db/grt.odb"; exit 1; } ;; esac ;;
+hold) "$QBF/common/or.sh" "$tag" "$QBF/repair/top_hold.tcl" r43_hold43.log
+     grep -q "r43 hold43 done" "$d/r43_hold43.log" || { echo "TOP_FAIL hold"; exit 1; } ;;
+dr)  rm -f "$d/db/init.odb" "$d/db/floorplan.odb"   # (disk: as the r43_a chains did)
+     "$QBF/route/dr.sh" "$tag" || exit 1
+     QC_SPEF_UNESC=1 "$QBF/signoff/spef.sh" "$tag" "tt ss" ;;
+antenna) R29_DB=route_dr R29_TAG=dr "$QBF/common/or.sh" "$tag" "$QBF/signoff/antenna.tcl" r29_antd.log
+     grep -hi "R29_ANTD\|found\|violat" "$d/r29_antd.log" | tail -4 ;;
+pt)  qb_kit
+     for c in ${3:-tt ss}; do o=$d/pt_${TOP_PERIOD}_$c; mkdir -p "$o"
+     ( cd "$d" && . ./kit.env; set -a; . "$B/syn/$TOP_SYN/run.env"; set +a
+       C=$(echo $c | tr a-z A-Z); v=QC_EXTRA_DB_$C; m=""
+       for f in ${!v}; do case $f in *qb_col_blk*) ;; *) m="$m $f" ;; esac; done
+       export QC_EXTRA_DB_$C="$m $TOP_ABS/qb_col_blk_${c}_lib.db $TOP_ABS/qb_hub_${c}_lib.db $TOP_ABS/qb_act2_blk_${c}_lib.db"
+       export QC_SDC=$here/pt_sdc.tcl QC_PERIOD=$TOP_PERIOD QB35_TOPL=0
+       QC_PNR_OUT=$d QC_TOP=$TOP QC_CORNER=$c qc_tool "pt_chip_$c.log" pt_shell -f "$QBF/signoff/pt/top_chip.tcl"
+       echo "PT_CHIP $c errors $(grep -c '^Error' pt_chip_$c.log)"; cat "pt_chip_$c.txt"
+       cp pt_chip_$c.txt pt_chip_$c.log rpt/r39_${c}_viol.txt rpt/pt_chip_${c}_*.rpt "$o/" 2>/dev/null ) > "$o/run.log" 2>&1 &
+     done; wait
+     for c in ${3:-tt ss}; do o=$d/pt_${TOP_PERIOD}_$c; echo "PT_DONE $tag $TOP_PERIOD $c"
+       grep -E "spef_nets|^all|^reg2reg|hold_reg2reg|violating|hub_ft|hub2act|act2col|io_|R39LAT|unconstrained" "$o/pt_chip_$c.txt"
+       grep R43_AUTOL "$o/pt_chip_$c.log"; done ;;
+lvs) r=${3:-$B/drc/$tag/lvs}; C=$QBF/signoff/calibre; KL=$TOOLS/kl/bin/klayout; mkdir -p "$r"; cd "$r" || exit 1
+     . "$d/kit.env"
+     # block LEFs (= MACRO_LEFS of the run: TOP_ABS) and SRAM LEFs; both become pin-only LVS BOX cells
+     bl=""; ml=""; for f in $MACRO_LEFS; do case $(basename "$f") in qb_col_blk.lef|qb_hub.lef|qb_act2_blk.lef) bl="$bl $f" ;; *) ml="$ml $f" ;; esac; done
+     echo "TOP_LVS lefs $MACRO_LEFS"
+     "$PY" -I "$C/lefstub.py" "$r/stubs.spi" "$r/stubs.box" $MACRO_LEFS
+     # LEF abstracts -> GDS cells: blocks without stack cuts (their PG pins cross on adjacent layers), SRAMs with them
+     # (R38 F5: M1-M3 pins at one spot)
+     "$KL" -b -r "$C/lef2gds.py" -rd lefs="$LEF $bl" -rd layer_map="$B/r36/gds/kl.map" -rd stack=0 -rd out="$r/abs_blk.gds"
+     "$KL" -b -r "$C/lef2gds.py" -rd lefs="$LEF $ml" -rd layer_map="$B/r36/gds/kl.map" -rd stack=1 -rd out="$r/abs_mac.gds"
+     QB38_GDS_EXTRA="$r/abs_blk.gds $r/abs_mac.gds" bash "$C/gds.sh" "$tag" "$d/out/$TOP.def" "$r/top.gds" $MACRO_LEFS
+     bash "$C/lvs_src.sh" "$d/out/${TOP}_pg.v" "$r/top.spi" "$r/stubs.spi"
+     { echo '/^LVS ISOLATE SHORTS YES/a\'; echo 'LAYOUT CASE YES\'; echo 'SOURCE CASE YES\';
+       sed '$!s/$/\\/' "$r/stubs.box"; } > "$r/deck.sed"
+     QB36_LVS_SED="-f $r/deck.sed" bash "$C/cal.sh" lvs "$r/top.gds" "$TOP" "$r/top.spi" "$r/cal" 8 ;;
+*) sed -n '2,20p' "$0"; exit 1 ;;
+esac
+echo "TOP_DONE $step $tag $(date +%T)"

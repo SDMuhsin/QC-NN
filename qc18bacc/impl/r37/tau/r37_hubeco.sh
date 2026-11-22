@@ -1,5 +1,0 @@
-# R37 hub ECO (impl/r35/hold35.tcl via run35.sh hold): sign-off IO budget at PT tt p50 L 1.669, in2out setup false, ss-derived
-# per-port tightening (r37_ssx_ports.txt) + setup repair (hubpre37.tcl), hold repair margin HM with outputs offset (QB37_OMIN)
-B=/tmp/ckp908/qc18bacc/build; R=/tmp/ckp908/qc18bacc/r35_snap/qc18bacc/impl/r37
-cd /tmp/ckp908/qc18bacc/r35_snap && export QB35_HDB=finish QB35_IO_TCL=$R/hubio37.tcl QB37_HUBIO=$B/r26_w/cfg_r35_hubC/hub_io.tcl QB35_PER=6.5 QB35_IOL=${IOL:-1.669} QB35_HOLD_M=${HM:-0.05} QB37_SSX=${SSX-$B/pnr/r35_hubC/r37_ssx_ports.txt} QB37_HPRE_TCL=$R/hubpre37.tcl QB37_OMIN=1 QB37_HPOST_TCL=${HPOST-$R/hpost37.tcl} QB37_HPOST_M=${HPM:-0.03} QB37_HPOST_N=${HPN:-2} QB37_ICGCLONE=${ICG-"u_top_clk_gate_g_wbc_ha_reg_7__7_/latch u_top_g_wbc_htp_reg_0_ u_top_g_wbc_htp_reg_1_ u_top_g_wbc_hct_reg_0_ u_top_g_wbc_hct_reg_1_"} QB37_SPCT=${SPCT:-5} QB37_SM=${SM:-0.0} QB15_GADJ_L="M5-M9 0.10 M2-M3 0.6" QB35_THREADS=${TH:-14}
-exec qc18bacc/impl/r35/run35.sh hold r35_hubC

@@ -1,3 +1,0 @@
-# R37 act hold ECO 2 (impl/r35/hold35.tcl via run35.sh hold): L = R37 PT tt L 0.985, act output budget QB7_AOUT 0.25 (results/r37.md sec. 6)
-cd /tmp/ckp908/qc18bacc/r35_snap && export QB35_HDB=finish QB35_IO_TCL=/tmp/ckp908/qc18bacc/r35_snap/qc18bacc/impl/r35/act_io.tcl QB35_PER=6.5 QB35_IOL=0.985 QB35_HOLD_M=${HM:-0.02} QB7_AOUT=0.25 QB37_HPOST_TCL=${HPOST-} QB37_HPOST_M=${HPM:-0.03} QB37_HPOST_N=${HPN:-2} QB37_IBHPWL=${IBH:-150} QB37_HPRE_TCL=${HPRE-/tmp/ckp908/qc18bacc/r35_snap/qc18bacc/impl/r37/inbuf37.tcl} QB15_GADJ_L="M2-M3 0.6" QB35_THREADS=${TH:-10}
-exec qc18bacc/impl/r35/run35.sh hold r35_act_c

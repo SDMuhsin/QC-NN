@@ -1,0 +1,105 @@
+#!/usr/bin/env bash
+# Act block qb_act2_blk (config: blocks/act/act.env + act.cfg; flow/README.md).  On the build host ($B/pnr/<tag>):
+#   qc18bacc/flow/blocks/act/run.sh pnr <tag>            floorplan .. place .. CTS, stop (db/cts.odb; QC_PNR_TO [cts])
+#   qc18bacc/flow/blocks/act/run.sh postcts <src> <tag>  <src>'s db/cts.odb -> re-spread + post-CTS repair -> db/cts_rt.odb
+#   qc18bacc/flow/blocks/act/run.sh route <src> <tag>    <src>'s db/cts_rt.odb -> GRT, antenna repair, DR, finish (route/act_route.tcl)
+#   qc18bacc/flow/blocks/act/run.sh eco1 <tag>           R37 hold ECO 1 in place (repair/hold_eco.sh: margin 0.0, L 0.99, P&R budget)
+#   qc18bacc/flow/blocks/act/run.sh eco6 <tag>           R37 hold ECO 6 in place (input-port buffers + output offset hook
+#                                                        repair/act_hold_pre.tcl, margin 0.03, L 0.985, ports ripped, incremental
+#                                                        re-route); production ran it on the ECO-1 db restored by hand
+#   qc18bacc/flow/blocks/act/run.sh reroute <src> <tag>  copy run of <src> (finish db -> db/<ACT_RR_DB>.odb), full re-route
+#                                                        (route/reroute.tcl; launch env not recorded, see act.env)
+#   qc18bacc/flow/blocks/act/run.sh hold <tag> [margin]  hold fix in FULL re-route mode (repair/hold_eco.sh, margin ACT_HOLD_M)
+#   qc18bacc/flow/blocks/act/run.sh post <tag>           SPEF tt / ss / ff, PT tt / ss, DRC histogram, LEF-rule antenna (finish db),
+#                                                        abstract + abutment check + ETMs tt / ss / ff, antenna data in the LEF,
+#                                                        ring LEFs, etmcheck -> $B/r9a_blk/<tag>
+#   qc18bacc/flow/blocks/act/run.sh calibre <tag>        GDS, LVS source, Calibre LVS (lvs_case.sed), DRC (drc_blk.sed), antenna
+#                                                        -> $B/drc/<tag>
+# Production: pnr r35_act_p; postcts r35_act_p r35_act_s; route r35_act_s r35_act_c; eco1 r35_act_c; eco6 r35_act_c;
+# reroute r35_act_c r38_act_rr2; hold r38_act_rr2; post r38_act_rr2; calibre r38_act_rr2 (results/r35.md, r37.md, r38.md).
+set -u
+here=$(cd "$(dirname "$0")" && pwd); . "$here/../../common/env.sh"; . "$here/act.env"
+step=${1:?step}; tag=${2:?tag}
+echo "ACT_STEP $* $(date +%T)"
+case $step in
+pnr) d=$B/pnr/$tag
+     QC_PNR_TO=${QC_PNR_TO:-cts} QC_PNR_THREADS=${QC_PNR_THREADS:-16} QB_SYN=$ACT_SYN QB_PNR_PERIOD=$ACT_PNR_PERIOD QB7_COLPINS=$ACT_COLPINS \
+       QB7_YOFF=$ACT_YOFF QB7_MAXTRAN=$ACT_MAXTRAN QB7_MAXFO=$ACT_MAXFO QB7_DPL_ARGS=$ACT_DPL \
+       /usr/bin/time -v -o "$B/pnr_$tag.time" "$ROOT/flow/tsmc65/pnr/run_pnr.sh" "$here/act.cfg" "$tag" || exit 1 ;;
+postcts) src=$B/pnr/$tag; tag=${3:?tag}; d=$B/pnr/$tag; per=$ACT_PNR_PERIOD
+     rm -rf "$d"; mkdir -p "$d/db" "$d/rpt"
+     cd "$src" && cp -r kit.env rc "$d/" && cp db/cts.odb "$d/db/" && grep -v postcts summary.txt > "$d/summary.txt"
+     half=$(awk -v p=$per 'BEGIN{print p/2}')
+     sed -E "s/(create_clock .*-period )[0-9.]+/\\1$per/; s/-waveform \\{0 [0-9.]+\\}/-waveform {0 $half}/" db/cts.sdc > "$d/db/cts.sdc"
+     QC_PNR_FROM=route QC_PNR_THREADS=${QC_PNR_THREADS:-16} QB_SYN=$ACT_SYN QB_PNR_PERIOD=$per QB_IO_LAT=$ACT_IO_LAT \
+       QB7_MAXTRAN=$ACT_MAXTRAN QB7_MAXFO=$ACT_MAXFO QB7_DPL_ARGS=$ACT_DPL QB_RT_LOOPS=$ACT_RT_LOOPS \
+       /usr/bin/time -v -o "$B/pnr_$tag.time" "$ROOT/flow/tsmc65/pnr/run_pnr.sh" "$here/act.cfg" "$tag"
+     ls -la "$d/db/cts_rt.odb" || exit 1 ;;
+route) src=$B/pnr/$tag; tag=${3:?tag}; d=$B/pnr/$tag
+     rm -rf "$d"; mkdir -p "$d/db" "$d/rpt"; cp "$src/config.tcl" "$src/kit.env" "$src/summary.txt" "$d/"
+     cp -r "$src/rc" "$d/"; cp "$src/db/cts_rt.odb" "$src/db/cts.sdc" "$d/db/"
+     ( qb_kit; cd "$d" && QC_FLOW=$FLOW QC_PNR_OUT=$d QC_PNR_THREADS=${QC_PNR_THREADS:-14} QB_SYN=$ACT_SYN QB15_GADJ_L=$ACT_GADJ_L \
+       /usr/bin/time -v -o route.time "$OR" -no_init -no_splash -exit -log openroad.log "$QBF/route/act_route.tcl" > openroad.out 2>&1 < /dev/null )
+     echo "ROUTE rc $?" ;;
+eco1) QB35_HDB=finish QB35_IO_TCL=$QBF/repair/act_hold_io.tcl QB35_PER=$ACT_PT_PERIOD QB35_IOL=0.99 QB35_HOLD_M=0.0 \
+       QB15_GADJ_L=$ACT_GADJ_L QB35_THREADS=10 "$QBF/repair/hold_eco.sh" "$tag" ;;
+eco6) QB35_HDB=finish QB35_IO_TCL=$QBF/repair/act_hold_io.tcl QB35_PER=$ACT_PT_PERIOD QB35_IOL=0.985 QB35_HOLD_M=0.03 \
+       QB7_AOUT=$ACT_AOUT QB37_HPRE_TCL=$QBF/repair/act_hold_pre.tcl QB37_RIP_PORTS=1 QB37_FIRM=1 QB35_HDR_FULL=0 \
+       QB15_GADJ_L=$ACT_GADJ_L QB35_THREADS=10 "$QBF/repair/hold_eco.sh" "$tag" ;;
+reroute) src=$B/pnr/$tag; tag=${3:?tag}; d=$B/pnr/$tag
+     rm -rf "$d"; mkdir -p "$d/db" "$d/rpt"; cp -r "$src/config.tcl" "$src/kit.env" "$src/rc" "$d/"
+     cp "$src/db/finish.odb" "$d/db/$ACT_RR_DB.odb"; cp "$src/db/finish.sdc" "$d/db/$ACT_RR_DB.sdc"
+     QB38_RRDB=$ACT_RR_DB QB38_RR_MIN=$ACT_RR_MIN QB35_THREADS=14 QB15_GADJ_L=$ACT_GADJ_L \
+       "$QBF/common/or.sh" "$tag" "$QBF/route/reroute.tcl" r38_rr.log
+     grep -h "R38_RR" "$d/r38_rr.log" | tail -3 ;;
+hold) d=$B/pnr/$tag
+     [ -e "$d/db/route_dr.odb" ] || touch "$d/db/route_dr.odb"     # hold_eco.tcl copies route_dr -> route_dr_prehold before its save
+     QB35_HDB=finish QB35_PER=$ACT_PT_PERIOD QB35_HOLD_M=${3:-$ACT_HOLD_M} QB35_HDR_FULL=1 QB35_FILL_BEFORE=1 QB37_FIRM=1 \
+       QB37_FORCE_SAVE=1 QB35_THREADS=${QB35_THREADS:-14} QB37_HPRE_TCL= QB37_HPOST_TCL= QB35_IO_TCL=$QBF/repair/act_hold_io.tcl \
+       QB35_IOL=$ACT_HOLD_IOL QB7_AOUT=$ACT_AOUT QB7_DIN=$ACT_DIN QB15_GADJ_L=$ACT_GADJ_L "$QBF/repair/hold_eco.sh" "$tag"
+     rm -f "$d/db/route_dr_prehold.odb" ;;
+post) d=$B/pnr/$tag; o=$B/r9a_blk/$tag; mkdir -p "$o"
+     ts() { echo "ACT_POST $tag $1 $(date -u +%T)"; }
+     ts post
+     ( export QC_SPEF_UNESC=1 QB_SYN=$ACT_SYN QB7_AOUT=$ACT_AOUT QB7_DIN=$ACT_DIN
+       "$QBF/signoff/spef.sh" "$tag" "tt ss ff"
+       ( . "$ROOT/flow/tsmc65/common/tool.sh"; . "$d/kit.env"; set -a; . "$(dirname "$NETLIST")/run.env"; set +a
+         export QC_SDC=$QBF/common/constraints.sdc QC_PT_HOOK= QC_PERIOD=$ACT_PT_PERIOD
+         cd "$d" || exit 1
+         for c in tt ss; do
+             QC_PNR_OUT=$d QC_TOP=$TOP QC_CORNER=$c qc_tool "pt_blk_$c.log" pt_shell -f "$QBF/signoff/pt/act_blk.tcl"
+             echo "PT_BLK $c errors $(grep -c '^Error' pt_blk_$c.log)"; cat "pt_blk_$c.txt"
+         done )
+       [ -f "$d/rpt/drt.drc.rpt" ] && "$PY" -I "$QBF/signoff/drc_hist.py" "$d/rpt/drt.drc.rpt" > "$d/drc_hist.txt" )
+     ts antd; R29_DB=finish R29_TAG=fin "$QBF/common/or.sh" "$tag" "$QBF/signoff/antenna.tcl" r29_antd.log
+     grep -h "Found\|R29_ANTD" "$d/r29_antd.log" | tail -3
+     ts abs
+     ( export QB_SYN=$ACT_SYN QB7_AOUT=$ACT_AOUT QB7_DIN=$ACT_DIN
+       ( qb_kit; cd "$d" && QC_FLOW=$FLOW QC_PNR_OUT=$d QB9_ABS_OUT=$o QB7_COLPINS=$ACT_COLPINS \
+         "$OR" -no_init -no_splash -exit -log abs.log "$QBF/signoff/etm/act_abs.tcl" > abs.out 2>&1 < /dev/null )
+       grep "QB9_" "$d/abs.log"
+       python3 -I "$QBF/signoff/etm/lef_size.py" "$o/qb_act2_blk.lef" "$d/abs.log" && \
+         ( cd "$o" && python3 -I "$QBF/signoff/etm/lef_ring.py" qb_act2_blk.lef qb_act2_blk_ring.lef )
+       ( . "$ROOT/flow/tsmc65/common/tool.sh"; . "$d/kit.env"; set -a; . "$(dirname "$NETLIST")/run.env"; set +a
+         export QC_SDC=$QBF/common/constraints.sdc QC_PT_HOOK= QC_PERIOD=$ACT_PT_PERIOD
+         cd "$d" || exit 1
+         for c in tt ss ff; do      # serial: parallel extract_model runs share the temp file ./<top>_lib.lib in the run dir
+             QC_PNR_OUT=$d QC_TOP=$TOP QC_CORNER=$c qc_tool "etm_$c.log" pt_shell -f "$QBF/signoff/etm/etm.tcl"
+         done
+         for c in tt ss ff; do echo "ETM $c errors $(grep -c '^Error' etm_$c.log)"; done )
+       cp "$d/out/qb_act2_blk.v" "$d"/out/etm/qb_act2_blk_{tt,ss,ff}.lib "$d"/out/etm/qb_act2_blk_{tt,ss,ff}_lib.db "$o/"
+       ls -la "$o" ) | tail -3
+     ts blkant; QB35_AOUT=$o/blkant.txt QB35_ADB=finish "$QBF/common/or.sh" "$tag" "$QBF/signoff/etm/blkant.tcl" r38_blkant.log
+     LEF=$(. "$d/kit.env"; echo $LEF); "$PY" -I "$QBF/signoff/etm/blkant.py" "$LEF" "$o/blkant.txt" "$o/qb_act2_blk.lef" "$o/qb_act2_blk_ant.lef" | tail -3
+     "$PY" -I "$QBF/signoff/etm/lef_ring.py" "$o/qb_act2_blk_ant.lef" "$o/qb_act2_blk_ant_ring.lef" | tail -2
+     for c in tt ss ff; do "$PY" -I "$QBF/signoff/etm/etmcheck.py" "$o/qb_act2_blk_$c.lib" 3.0; done ;;
+calibre) d=$B/pnr/$tag; o=$B/drc/$tag; C=$QBF/signoff/calibre; mkdir -p "$o"
+     bash "$C/gds.sh" "$tag" "$d/out/qb_act2_blk.def" "$o/act.gds" > "$o/gds.log" 2>&1; tail -2 "$o/gds.log"
+     bash "$C/lvs_src.sh" "$d/out/qb_act2_blk_pg.v" "$o/act_src.spi" > "$o/src.log" 2>&1; tail -3 "$o/src.log"
+     QB36_LVS_SED="-f $C/lvs_case.sed" bash "$C/cal.sh" lvs "$o/act.gds" qb_act2_blk "$o/act_src.spi" "$o/lvs" > "$o/lvs.log" 2>&1
+     QB36_DRC_SED="-f $C/drc_blk.sed" bash "$C/cal.sh" drc "$o/act.gds" qb_act2_blk "$o/drcb" > "$o/drcb.log" 2>&1
+     bash "$C/cal.sh" ant "$o/act.gds" qb_act2_blk "$o/ant" > "$o/ant.log" 2>&1
+     cat "$o/lvs.log" "$o/drcb.log" "$o/ant.log" ;;
+*) sed -n '2,20p' "$0"; exit 1 ;;
+esac
+echo "ACT_DONE $* $(date +%T)"
