@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""R38: LVS source fix-up of an OpenROAD write_verilog -include_pwr_gnd netlist (read-only on the input).
+"""R38: LVS source fix-up of a PG netlist (OpenROAD write_verilog -include_pwr_gnd, ICC2 write_verilog; read-only on the input).
    pgfix.py <in_pg.v> <cells.spi> <out.v>
  * instances of cells with no .subckt in the spice (FILL*: no devices) are dropped;
  * instances of cells whose subckt has VDD / VSS but whose statement lacks .VDD( / .VSS( get .VDD(VDD) / .VSS(VSS)
@@ -29,7 +29,7 @@ with open(vin) as f, open(vout, 'w') as o:
                 if cell.upper().startswith('FILL'):
                     drop[cell] += 1; buf = ''; continue
             elif cell in ports:
-                add = [p for p in ('VDD', 'VSS') if p in ports[cell] and '.%s(' % p not in body]
+                add = [p for p in ('VDD', 'VSS') if p in ports[cell] and not re.search(r'\.%s\s*\(' % p, body)]
                 if add:
                     patch[cell] += 1
                     extra = ', '.join('.%s(%s)' % (p, p) for p in add)
