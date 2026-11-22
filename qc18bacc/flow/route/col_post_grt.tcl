@@ -1,6 +1,12 @@
 # POST_GRT_TCL of blocks/col/col.cfg (results/pnr_slice3.md): estimates at global-route parasitics inside the route step (no
 # separate grt_est.tcl run): all-path summary, then IO delays removed and reg2reg worst slack, worst slack per class
-# (PE row, fused / wide lane, decode / BR), hold; nothing is changed in the design.
+# (PE row, fused / wide lane, decode / BR), hold.  First the max-transition / max-cap repair at GRT parasitics
+# (repair/drv.tcl qb_drv_grt, then the route step's GRT again); the reports change nothing in the design.
+source $::QBF/repair/drv.tcl
+# -allow_congestion (as act / hub / top): r48_col, the repaired netlist left 64 gcells at 1-3 tracks horizontal overflow
+# in the south pin strip (x 285-390, y 0-33 um: pf / pw input nets), results/r48.md; the detailed router resolves them
+qb_drv_grt postgrt -guide_file $::OUT/route.guide -congestion_iterations [p GR_ITER] -allow_congestion \
+    -congestion_report_file $::OUT/rpt/gr_congestion_drv.rpt
 qc_to $::OUT/rpt/grt_all.rpt { report_checks -path_delay max -format full_clock_expanded -fields {input_pins} -digits 3 }
 unset_input_delay -clock [get_clocks qb_clk] [all_inputs]
 unset_output_delay -clock [get_clocks qb_clk] [all_outputs]

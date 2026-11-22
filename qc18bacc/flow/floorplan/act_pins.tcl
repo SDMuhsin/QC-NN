@@ -5,7 +5,8 @@
 #   s_q    fixed on M6 at the south edge in the hub's physical order (hub s_q[m] at x = x0 + 0.4 k, k = 16 (m % 128) + m / 128,
 #          j-major) seen through the WB_COL transpose T (hw/rtl/qb_act2.sv s_qt): this block has no WB_COL, its s_q[n] is the
 #          logical word = s_qt[n] = hub s_q[m] with n = 128 (4G + b) + 32 q + 8 a + i, m = 128 (4G + a) + 32 b + 8 q + i, so
-#          block pin n sits at the x of hub pin m (x0 = 64 = hub x 40 + 24, r35.md): every block-to-hub s_q wire is vertical.
+#          block pin n sits at the x of hub pin m (x0 = 64.1 = hub x 40 + 24.1, r35.md): every block-to-hub s_q wire is vertical;
+#          x0 + 0.4 k is on the M6 track grid 0.1 + 0.2 n (R43: x0 = 64 was half a track off).
 #   other south pins by place_pins on M2 / M4 / M3 / M5 (no M6: the fixed s_q pins), min distance 2 tracks; m_q has no fixed
 #          hub order (the hub's m_q pins are place_pins too), so it is left to place_pins.
 proc qb13_pins {} {
@@ -13,7 +14,7 @@ proc qb13_pins {} {
     set u [[ord::get_db_tech] getDbUnitsPerMicron]
     set W [expr {[$die dx] / double($u)}]; set H [expr {[$die dy] / double($u)}]
     set yoff [qb_env QB7_YOFF [expr {3110.0 - $H}]]
-    set x0 64
+    set x0 64.1
     clear_io_pin_constraints
     set A {}; set C {}; set Q {}
     foreach b [$blk getBTerms] {

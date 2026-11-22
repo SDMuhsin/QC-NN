@@ -18,5 +18,8 @@ detailed_route -output_drc $::OUT/rpt/drt.drc.rpt -output_maze $::OUT/drt_maze.l
     -bottom_routing_layer $::QC_PNR_MIN_LAYER -top_routing_layer $::QC_PNR_MAX_LAYER \
     -droute_end_iter [p DR_END_ITER] -verbose 1 {*}[p DR_ARGS]
 qc_save route_dr
+# NOTE (qc18bacc R48): check_antennas of OpenROAD 2.0-12381 drops every detailed-route patch (RECT) from the db, and the
+# finish step writes the DEF from this db: designs that need the patches keep ANTENNA_CHECK 0 and check antennas on a
+# separate load
 if {[p ANTENNA_CHECK]} { check_antennas -verbose }
 if {[p POST_ROUTE_TCL] ne ""} { source [p POST_ROUTE_TCL] }

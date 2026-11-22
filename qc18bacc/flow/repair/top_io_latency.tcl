@@ -1,7 +1,7 @@
 # Top IO latency (results/r43.md, defect 6), OpenROAD side: the chip IO delays are shifted by the top-register
 # clock latency L (inputs 0.2 P + L, outputs 0.2 P - L).  L was a hand-copied QB36_TOPL (7.7 = a clk14 falling-edge
 # number, see cts/top_clk_measure.tcl).  q43_autol <tag>: L = median of the clk14 top-flop group medians (rising
-# edge) at the current parasitics; sets ::env(QB_IO_LAT) (read by repair/post_cts.tcl)
+# edge) at the current parasitics; sets ::env(QB_IO_LAT) and ::QB_IO_LAT_MEASURED (read by repair/post_cts.tcl)
 # and re-applies the IO delays now.  OR times tt only; PT measures each corner itself (signoff/pt/top_chip.tcl).
 proc q43_autol {tag} {
     q14_measure
@@ -9,7 +9,7 @@ proc q43_autol {tag} {
     foreach k [array names ::Q14_EFF] { if {![regexp {^(col\d|hub|act)$} $k]} { lappend l $::Q14_EFF($k) } }
     if {![llength $l]} { qc_log "r43 autol $tag: no top-flop groups"; return }
     set l [lsort -real $l]; set L [lindex $l [expr {[llength $l] / 2}]]
-    set ::env(QB_IO_LAT) [format %.3f $L]; set ::env(QB35_TOPL) $::env(QB_IO_LAT)
+    set ::env(QB_IO_LAT) [format %.3f $L]; set ::env(QB35_TOPL) $::env(QB_IO_LAT); set ::QB_IO_LAT_MEASURED 1
     set per [get_property [get_clocks qb_clk] period]
     set ins {}; set outs {}
     foreach b [[ord::get_db_block] getBTerms] {

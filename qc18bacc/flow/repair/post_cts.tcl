@@ -1,11 +1,13 @@
 # Post-CTS timing repair at tt with placement parasitics (results/pnr_slice.md, pnr_slice2.md), sourced by the blocks'
 # PRE_ROUTE_TCL hooks (blocks/col/route_pre.tcl, route/postcts_grt.tcl, act / hub / top hooks); done there instead of in
 # the flow's cts step (P(REPAIR_TIMING) 0) so that db/cts.odb holds the un-repaired clock tree:
+#   0. max-transition / max-cap repair of the CTS result (repair/drv.tcl), legalised
 #   1. IO delays relative to the propagated clock: the block IO budget QB_IO_BUDGET (a Tcl file with qb5_io_apply) or 20 %
-#      of the period, shifted by the insertion delay QB_IO_LAT; reports before repair
+#      of the period, shifted by the insertion delay L measured on this design's own tree (cts/clk_lat.tcl; the top
+#      measures its top-flop latency first, repair/top_io_latency.tcl, and sets ::QB_IO_LAT_MEASURED); reports before repair
 #   2. QB_PC_HOOK set: that script runs its own repair / legalisation sequence (hub, top); else repair_timing -setup
 #      (margin 0, QB_TNS [100] % of the violating endpoints), legalise, repair_timing -hold (margin P(HOLD_MARGIN), at most
-#      10 % new buffers), legalise, then QB_RT_LOOPS [2] rounds of setup repair + hold repair where hold violations reappear
+#      10 % new buffers) + DRV repair, legalise, then QB_RT_LOOPS [2] rounds of setup repair + hold repair where hold violations reappear
 #   3. reports, checkpoint db/cts_rt.odb
 proc qb_counts {tag} {
     set s [sta::worst_slack_corner [sta::find_corner tt] max]; set h [sta::worst_slack_corner [sta::find_corner tt] min]
@@ -15,13 +17,16 @@ proc qb_counts {tag} {
     qc_summary [format "%s tt setup_wns_ns %.3f setup_viol_endpoints %s hold_wns_ns %.3f hold_viol_endpoints %s %s" $tag \
         [expr {$s * 1e9}] $ns [expr {$h * 1e9}] $nh [qc_util]]
 }
+source $::QBF/repair/drv.tcl
+source $::QBF/cts/clk_lat.tcl
 estimate_parasitics -placement
+if {[qb_drv postcts]} { detailed_placement {*}[p DPL_ARGS]; estimate_parasitics -placement }
 # IO delays relative to the propagated clock: the DC SDC gives 20 % of the period relative to the ideal edge, so after
 # CTS every input -> register path is a hold violation of ~ the insertion delay (qcs_w1: 8 016 hold endpoints, worst
 # pf -> parameter bank -0.649 ns, latency 0.73 - 1.06 ns) and every register -> output path loses that latency in
 # setup.  The neighbours of the slice (S macros, activation supply, parameter store) sit on the same clock tree, so
-# the IO delays are shifted by QB_IO_LAT (default 0.85 ns, the mid insertion delay of this tree): input + L, output - L.
-set L [qb_env QB_IO_LAT 0.85]
+# the IO delays are shifted by L, the measured insertion delay of this tree (p50 clock-pin latency): input + L, output - L.
+set L [expr {[info exists ::QB_IO_LAT_MEASURED] ? $::env(QB_IO_LAT) : [qb_clk_lat postcts]}]
 set per [get_property [get_clocks qb_clk] period]
 set io_d [expr {0.2 * $per}]
 set ins {}; set outs {}
@@ -61,6 +66,7 @@ proc qb_hold {} {
     if {[catch { repair_timing -hold -hold_margin [p HOLD_MARGIN] -max_buffer_percent 10 \
             -max_utilization [p MAX_UTIL] } e]} { qc_log "repair_timing -hold stopped: $e" }
     qc_log "repair_timing -hold [expr {[clock seconds] - $t}] s"
+    qb_drv postcts_hold
 }
 # QB_PC_HOOK (R24 results/r24.md; hub, top): a script sourced here (after the IO delays and the qb_* procs) that
 # runs its own repair / legalisation sequence; the reports + db/cts_rt.odb below still follow.

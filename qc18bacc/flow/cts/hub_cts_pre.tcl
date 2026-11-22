@@ -3,8 +3,8 @@
 #      behind: a buffer b1 whose output net has one load, a buffer b2 within 10 um -> b1 is removed and its input net
 #      drives b2 (run on db/place.odb before CTS)
 #   2. (R33 defect 3) repair_clock_nets with BUFF* / INV* dont_use, so the clock nets get CK cells only
-#   3. ICG sizing by gated-sink count + move to the sink centroid (cts/icg_size.tcl), legalised by the CTS step's
-#      detailed placement
+#   3. ICG split (gap QB44_SPLIT [400] um) + sizing by gated-sink count + move to the sink centroid (cts/icg_pre.tcl),
+#      legalised by the CTS step's detailed placement
 proc qb34_isbuf {m} { return [regexp {^(BUFF|CKBD)} [$m getName]] }
 proc qb34_census {tag} {
     set nb 0; set ab 0.0; set a 0.0; set u [[ord::get_db_tech] getDbUnitsPerMicron]
@@ -65,4 +65,4 @@ if {[info commands qb34_rcn_orig] eq ""} {
         qc_log "r34: repair_clock_nets with BUFF* / INV* dont_use (CK cells only)"
     }
 }
-source $::QBF/cts/icg_size.tcl; qb6c_icg
+source $::QBF/cts/icg_pre.tcl

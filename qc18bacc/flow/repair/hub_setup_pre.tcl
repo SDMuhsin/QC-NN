@@ -1,14 +1,12 @@
 # Hub QB37_HPRE_TCL hook of repair/hold_eco.tcl (results/r37.md sec. 9, r38.md, r40.md): a setup repair against the
 # QB35_IO_TCL constraints (repair/hub_io.tcl: per-port tightening QB37_SSX that stands in for ss) before the hold repair.
-# Per-ECO knobs (blocks/hub/run.sh eco / hold): QB37_ICGCLONE, QB37_RESIZE, QB37_PORTBUF_UP, QB37_DONTTOUCH, QB37_SM,
+# Per-ECO knobs (blocks/hub/run.sh eco / hold): QB37_RESIZE, QB37_PORTBUF_UP, QB37_DONTTOUCH, QB37_SM,
 # QB37_SPCT, QB37_HUNC.
 proc _w37 {tag} {
     set s [sta::worst_slack_corner [sta::find_corner tt] max]; set ns NA; catch { set ns [sta::endpoint_violation_count max] }
     puts [format "R37_HPRE %s setup_wns %.3f setup_viol %s" $tag [expr {$s * 1e9}] $ns]
 }
 # (pin swap and gate cloning off: they rewire kept nets that an incremental re-route would not rip)
-# QB37_ICGCLONE: ICG clone for the far sinks of the late g_wbc gated subtree (repair/hub_icg_clone.tcl)
-if {[qc_env QB37_ICGCLONE ""] ne ""} { source $::QBF/repair/hub_icg_clone.tcl }
 # QB37_RESIZE "<inst> <master> ...": e.g. a port buffer upsized for the LEF-rule antenna ratio of its long input net
 foreach {_i _m} [qc_env QB37_RESIZE ""] {
     set _ii [[ord::get_db_block] findInst $_i]; set _mm [[ord::get_db] findMaster $_m]

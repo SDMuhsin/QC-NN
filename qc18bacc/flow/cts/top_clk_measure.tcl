@@ -1,6 +1,6 @@
 # Top clock measurement (results/r14.md, r43.md; sourced by cts/top_balance.tcl and route/top_post_grt.tcl): effective clock arrival per sink group =
-# clock arrival at the pin (propagated, current parasitics) + the block's internal insertion (column QB11_INS [0.96],
-# hub QB14_HINS [0.90], act QB14_AINS [0.55] ns tt; top flops 0).  Groups: col0..7, hub, act, top flops by region
+# clock arrival at the pin (propagated, current parasitics) + the block's internal insertion (column QB11_INS, hub
+# QB14_HINS, act QB14_AINS: each block's own measured tt p50, blocks/top/run.sh from the views' ins_tt.txt; top flops 0).  Groups: col0..7, hub, act, top flops by region
 # (gap / nw / n0..n3 as cts/top_clock_tree.tcl; 250 flops sampled per group).  q14_report <file> writes the table +
 # the global effective skew (max - min over every sampled sink); without a file it only fills ::Q14_EFF (median).
 proc q14_arr {name} {
@@ -28,9 +28,9 @@ proc q14_groups {} {
     set ns 250
     foreach i [$b getInsts] {
         set m [[$i getMaster] getName]
-        if {$m eq "qb_hub"} { set g(hub) [list [list [$i getName]/clk [qb_env QB14_HINS 0.90]]]; continue }
-        if {$m eq "qb_act2_blk"} { set g(act) [list [list [$i getName]/clk [qb_env QB14_AINS 0.55]]]; continue }
-        if {$m eq "qb_col_blk"} { regexp {g_c_(\d+)_} [$i getName] -> c; set g(col$c) [list [list [$i getName]/clk [qb_env QB11_INS 0.96]]]; continue }
+        if {$m eq "qb_hub"} { set g(hub) [list [list [$i getName]/clk $::env(QB14_HINS)]]; continue }
+        if {$m eq "qb_act2_blk"} { set g(act) [list [list [$i getName]/clk $::env(QB14_AINS)]]; continue }
+        if {$m eq "qb_col_blk"} { regexp {g_c_(\d+)_} [$i getName] -> c; set g(col$c) [list [list [$i getName]/clk $::env(QB11_INS)]]; continue }
         if {[string match CKLN* $m] || [$i findITerm CP] eq "NULL"} { continue }
         set bb [$i getBBox]; set x [expr {([$bb xMin] + [$bb xMax]) / 2.0 / $u}]; set y [expr {([$bb yMin] + [$bb yMax]) / 2.0 / $u}]
         if {$x < $::QB14_X0 && $y < $ay1} { set k gap } elseif {$x < $::QB14_X0} { set k nw } else { set k n[expr {min(3, int(($x - $::QB14_X0) / 780.0))}] }

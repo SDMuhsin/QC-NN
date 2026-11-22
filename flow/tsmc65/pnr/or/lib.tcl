@@ -205,7 +205,8 @@ proc qc_summary {line} {
 # also resizes the driver of every net it visits towards its library target slew: on a DC-sized netlist that
 # changes most instances (Snitch FPU: 75k of 96k, +80-90 % area) and loses timing.  All other signal nets are
 # dont_touch while it runs, so DC's sizing is kept there; setup / hold sizing is left to repair_timing.
-proc qc_repair_drv {} {
+# Extra arguments go to repair_design (e.g. -cap_margin <pct>).
+proc qc_repair_drv {args} {
     set blk [ord::get_db_block]
     set rf $::OUT/rpt/drv_repair.tmp
     qc_to $rf { report_check_types -max_slew -max_capacitance -max_fanout -violators }
@@ -230,6 +231,6 @@ proc qc_repair_drv {} {
         $n setDoNotTouch 1; lappend dt $n
     }
     qc_log "repair_design on [array size v] nets with DRV violations ([llength $dt] nets kept)"
-    repair_design -max_utilization [p MAX_UTIL]
+    repair_design -max_utilization [p MAX_UTIL] {*}$args
     foreach n $dt { $n setDoNotTouch 0 }
 }

@@ -3,23 +3,24 @@
 #   run.sh all <tag>       gate prod dio dr fin antd pt                                   (results/r34.md, r35.md)
 #   run.sh gate <tag>      SDC + IO budget (sdc.py -> $QB9_W/cfg_<tag>/), init, floorplan (hub_mplace.py, hub_pins.py) + PDN,
 #                          place (QC_PNR_TO place) -> db/place.odb; gate GRT of place.odb -> grt_pl/ (congestion report)
-#   run.sh prod <tag>      CTS .. IO latency L measured (-> r34_L.txt) .. post-CTS repair .. GRT + setup / hold repair at GRT
-#                          parasitics + antenna repair -> db/grt.odb
+#   run.sh prod <tag>      ICG split / sizing, CTS .. IO latency L measured (cts/clk_lat.tcl) .. post-CTS DRV / setup / hold
+#                          repair .. GRT + setup / hold / DRV repair at GRT parasitics + antenna repair -> db/grt.odb
 #   run.sh dio <tag>       macro strap trim + macro-input buffers + diodes on db/grt.odb (route/hub_diodes.tcl)
-#   run.sh dr <tag>        detailed route (route/dr.sh, 64 iterations, fillers after DR) + SPEF tt
+#   run.sh dr <tag>        detailed route (route/dr.sh, 64 iterations, kit min-step / EOL rules, fillers after DR) + SPEF tt
 #   run.sh fin <tag>       antenna check (route_dr) | abstract LEF + ring LEF ($B/r22_<tag>) | SPEF ss ff, PT + ETMs tt ss ff
 #   run.sh antd <tag>      LEF-rule antenna check (signoff/antenna.tcl) of db/route_dr
 #   run.sh pt <tag>        PT summary tt / ss (signoff/pt/hub_summary.tcl)
 # Post-route ECOs and sign-off of the r35_hubC -> r38_hub_rr -> r40_hub lineage (results/r37.md, r38.md, r40.md):
 #   run.sh eco <tag> <margin>   incremental hold ECO on db/finish (R37): setup pre-repair against the ss-derived port
 #                          tightening (repair/hub_setup_pre.tcl) + hold repair, rip + GRT + DR of the changed nets.  Per-ECO
-#                          env: QB35_IOL (PT tt p50 L), QB37_SSX, QB37_ICGCLONE, QB37_RESIZE, QB37_DONTTOUCH, QB37_FR,
+#                          env: QB35_IOL [measured], QB37_SSX, QB37_RESIZE, QB37_DONTTOUCH, QB37_FR,
 #                          QB37_HUNC, QB37_PORTBUF_UP, QB37_RIP_PORTS / MACROS / NEAR, QB37_FORCE_SAVE, QB37_SM, QB37_SPCT
-#   run.sh copy <src> <tag>     copy of a run (run dir, cfg dir, kit.env / r34_L.txt fixed up) for a re-route / hold round
+#   run.sh copy <src> <tag>     copy of a run (run dir, cfg dir, kit.env fixed up) for a re-route / hold round
 #   run.sh reroute <tag>   full re-route of db/eco (route/reroute.tcl)
-#   run.sh hold <tag> [margin 0.05]   hold (+ setup) fix in FULL re-route mode (R38 / R40).  Env HUB_HOLD_IOL [1.604] (PT tt
-#                          p50 L), HUB_HOLD_DT (more dont_touch cells), QB37_RESIZE, HUB_HOLD_ANT (antenna repair after
+#   run.sh hold <tag> [margin 0.05]   hold (+ setup) + DRV fix in FULL re-route mode (R38 / R40; IO budget at the L measured on
+#                          the routed parasitics), env HUB_HOLD_DT (more dont_touch cells), QB37_RESIZE, HUB_HOLD_ANT (antenna repair after
 #                          GRT with -ratio_margin <pct>; R40: 25; empty: none, R38)
+#   run.sh drveco <tag>    PrimeTime DRV ECO ss + tt (signoff/pt/drv_eco.tcl) -> out/drv_eco_tt.tcl, applied by run.sh hold
 #   run.sh signoff <tag>   SPEF tt, fin, LEF-rule antenna + PT tt / ss (signoff/pt/hub_signoff.tcl), antenna data in the
 #                          LEF, ring LEF, ETM scan ($B/r22_<tag>); GDS (SRAM abstracts), LVS source, Calibre LVS (lvs_hub.sed +
 #                          lvs_hubpg.sed) and antenna (drc_xsram.sed) -> $B/drc/<tag>
@@ -29,7 +30,6 @@ step=${1:?step}; tag=${2:?tag}; d=$B/pnr/$tag; W=$HUB_W
 export QB_SYN=$HUB_SYN QB9_W=$W QC_PNR_THREADS=${QC_PNR_THREADS:-16}
 export QC_SPEF_UNESC=1 QC_SPEF_ORFIX=1 QB15_GADJ_L=$HUB_GADJ_L
 pnr() { QB_DPL_ARGS=$HUB_DPL_ARGS "$ROOT/flow/tsmc65/pnr/run_pnr.sh" "$here/hub.cfg" "$tag"; }
-lat() { [ -s "$d/r34_L.txt" ] || { echo "HUB_FAIL no $d/r34_L.txt"; exit 1; }; export QB_IO_LAT=$(cat "$d/r34_L.txt"); }
 # PrimeTime of the run at one corner in its own work dir w_<PTW [log]>_<corner>: pt <corner> <script> <log> [VAR=value ...]
 # (-> <run>/<log>_<corner>.log; extract_model writes ./<top>_lib.lib temporaries)
 pt() { local c=$1 s=$2 log=$3 w=${PTW:-$3}; shift 3
@@ -57,18 +57,18 @@ gate) qb_kit; mkdir -p "$W/cfg_$tag"
      ( cd "$d" && QC_PNR_OUT=$d /usr/bin/time -v -o "$g/grt.time" "$OR" -no_init -no_splash -exit -log "$g/grt.log" \
          "$QBF/route/hub_gate_grt.tcl" > "$g/grt.out" 2>&1 < /dev/null )
      grep -h "^R10B grt" "$g/grt.out"; grep -h "Elapsed\|Maximum res" "$g/grt.time" ;;
-prod) QB_IO_LAT=$HUB_IO_LAT0 QC_PNR_FROM=cts pnr
+prod) QC_PNR_FROM=cts pnr
      [ -s "$d/db/grt.odb" ] || { echo HUB_FAIL grt; exit 1; } ;;
 dio) "$QBF/common/or.sh" "$tag" "$QBF/route/hub_diodes.tcl" r29_dio.log; grep -h "R29_DIO" "$d/r29_dio.log"
      grep -q "R29_DIO done" "$d/r29_dio.log" || { echo HUB_DIO_FAILED; exit 1; } ;;
 dr)  QB_DPL_ARGS=$HUB_DPL_ARGS QB8_DR_FILL=0 QB8_DR_THREADS=16 "$QBF/route/dr.sh" "$tag" ;;
-fin) lat; o=$B/r22_$tag; mkdir -p "$o"
+fin) o=$B/r22_$tag; mkdir -p "$o"
      ( qb_kit; cd "$d" && QC_PNR_OUT=$d "$OR" -no_init -no_splash -exit -log ant.log "$QBF/signoff/hub_check_ant.tcl" > ant.out 2>&1 < /dev/null
        grep -h "R21_ANT\|Found" "$d/ant.log" ) > "$d/ant_step.out" 2>&1 &
      ( ( qb_kit; cd "$d" && QC_PNR_OUT=$d QB21_ABS_OUT=$o "$OR" -no_init -no_splash -exit -log abs.log "$QBF/signoff/etm/hub_abs.tcl" > abs.out 2>&1 < /dev/null )
-       grep "R21_ABS" "$d/abs.log"; python3 -I "$QBF/signoff/etm/lef_size.py" "$o/qb_hub.lef" "$d/abs.log"
+       grep "R21_ABS" "$d/abs.log"; "$PY" -I "$QBF/signoff/etm/lef_size.py" "$o/qb_hub.lef" "$d/abs.log"
        cp "$d/out/qb_hub.v" "$d"/out/etm/qb_hub_{tt,ss,ff}.lib "$d"/out/etm/qb_hub_{tt,ss,ff}_lib.db "$o/" 2>/dev/null; ls -la "$o"
-       ( cd "$o" && python3 -I "$QBF/signoff/etm/lef_ring.py" qb_hub.lef qb_hub_ring.lef ) && echo HUB_RING_LEF ok ) > "$d/abs_step.out" 2>&1 &
+       ( cd "$o" && "$PY" -I "$QBF/signoff/etm/lef_ring.py" qb_hub.lef qb_hub_ring.lef ) && echo HUB_RING_LEF ok ) > "$d/abs_step.out" 2>&1 &
      # SPEF ss / ff in parallel with PT + ETM tt (tt SPEF: dr step), then PT + ETM ss / ff (4 in parallel)
      ( for c in ss ff; do "$QBF/signoff/spef.sh" "$tag" $c > "$d/spef_$c.out" 2>&1 & done
        pt tt "$QBF/signoff/pt/hub.tcl" pt_hub QB21_ETM=0 & pt tt "$QBF/signoff/pt/hub.tcl" etm QB21_ETM=1 & wait
@@ -79,13 +79,13 @@ fin) lat; o=$B/r22_$tag; mkdir -p "$o"
      tail -n 3 "$d/ant_step.out" "$d/abs_step.out" ;;
 antd) R29_DB=route_dr R29_TAG=dr "$QBF/common/or.sh" "$tag" "$QBF/signoff/antenna.tcl" r29_antd.log
      grep -hi "R29_ANTD\|found\|violat" "$d/r29_antd.log" | tail -4 ;;
-pt)  lat; for c in tt ss; do
+pt)  for c in tt ss; do
        ( PTW=r31 pt $c "$QBF/signoff/pt/hub_summary.tcl" r31_pt31; rm -rf "$d/w_r31_$c"
          grep -h "^R31PT\|^R31CLK\|^R31HOLD" "$d/r31_pt31_$c.log" | cut -c1-400
          echo "R31_PT_ERRORS $c $(grep -c '^Error' "$d/r31_pt31_$c.log") PARA044 $(grep -c "PARA-044)" "$d/r31_pt31_$c.log")" ) &
      done; wait ;;
 eco) export QB35_HDB=finish QB35_IO_TCL=$QBF/repair/hub_io.tcl QB37_HUBIO=$W/cfg_$tag/hub_io.tcl QB35_PER=$HUB_PERIOD \
-       QB35_IOL=${QB35_IOL:?QB35_IOL} QB35_HOLD_M=${3:?margin} QB37_HPRE_TCL=$QBF/repair/hub_setup_pre.tcl QB37_HPOST_TCL= \
+       QB35_IOL=${QB35_IOL:-} QB35_HOLD_M=${3:?margin} QB37_HPRE_TCL=$QBF/repair/hub_setup_pre.tcl QB37_HPOST_TCL= \
        QB37_SPCT=${QB37_SPCT:-5} QB37_SM=${QB37_SM:-0.0} QB35_THREADS=${QB35_THREADS:-14} QB37_FIRM=1 QB35_HDR_FULL=0
      "$QBF/repair/hold_eco.sh" "$tag" ;;
 copy) src=${2:?src}; tag=${3:?tag}; d=$B/pnr/$tag; [ -e "$d" ] && { echo "HUB_FAIL $d exists"; exit 1; }
@@ -94,18 +94,24 @@ copy) src=${2:?src}; tag=${3:?tag}; d=$B/pnr/$tag; [ -e "$d" ] && { echo "HUB_FA
      sed -i "s#cfg_$src#cfg_$tag#g; s#/pnr/$src\b#/pnr/$tag#g" "$d/kit.env" ;;
 reroute) "$QBF/common/or.sh" "$tag" "$QBF/route/reroute.tcl" r38_rr.log; grep -h "R38_RR" "$d/r38_rr.log" | tail -3 ;;
 hold) [ -e "$d/db/route_dr.odb" ] || touch "$d/db/route_dr.odb"     # hold_eco.tcl copies route_dr -> route_dr_prehold before its save
-     export QB35_HDB=finish QB35_PER=$HUB_PERIOD QB35_HOLD_M=${3:-0.05} QB35_HDR_FULL=1 QB35_FILL_BEFORE=1 QB37_FIRM=1 \
+     export QB35_HDB=finish QB35_PER=$HUB_PERIOD QB35_HOLD_M=${3:-0.05} QB35_HDR_FULL=1 QB35_FILL_BEFORE=1 QB37_FIRM=0 \
        QB37_FORCE_SAVE=1 QB35_THREADS=${QB35_THREADS:-14} QB35_IO_TCL=$QBF/repair/hub_io.tcl QB37_HUBIO=$W/cfg_$tag/hub_io.tcl \
-       QB35_IOL=${HUB_HOLD_IOL:-1.604} QB37_FR="actout 0.26" QB37_DONTTOUCH="u_top_U92356${HUB_HOLD_DT:+ $HUB_HOLD_DT}" \
-       QB37_HPRE_TCL=$QBF/repair/hub_setup_pre.tcl QB37_ICGCLONE= QB37_SSX=$HUB_SSX QB37_SPCT=5 QB37_SM=0.0 \
-       QB37_HPOST_TCL=${HUB_HOLD_ANT:+$QBF/repair/hub_hold_ant.tcl} QB38_ANT_MARGIN=${HUB_HOLD_ANT:-}
+       QB37_FR="actout 0.26" QB37_DONTTOUCH="u_top_U92356${HUB_HOLD_DT:+ $HUB_HOLD_DT}" \
+       QB37_HPRE_TCL=$QBF/repair/hub_setup_pre.tcl QB37_SSX=$HUB_SSX QB37_SPCT=5 QB37_SM=0.0 \
+       QB37_HPOST_TCL=${HUB_HOLD_ANT:+$QBF/repair/hub_hold_ant.tcl} QB38_ANT_MARGIN=${HUB_HOLD_ANT:-} \
+       QB35_ECO_TCL=$([ -f "$d/out/drv_eco_tt.tcl" ] && echo "$d/out/drv_eco_tt.tcl")
      "$QBF/repair/hold_eco.sh" "$tag"
      rm -f "$d/db/route_dr_prehold.odb" ;;
+drveco) for c in ss tt; do   # PrimeTime DRV ECO (signoff/pt/drv_eco.tcl): ss, then tt on top (out/drv_eco_tt.tcl = both)
+       PTW=eco pt $c "$QBF/signoff/pt/drv_eco.tcl" drv_eco QB_PT_SCRIPT=$QBF/signoff/pt/hub.tcl \
+         QB_PT_PRE_ECO=$([ $c = tt ] && echo "$d/out/drv_eco_ss.tcl")
+       grep "^drv\|QB_DRV_ECO" "$d/drv_eco_$c.log"
+     done ;;
 signoff) o=$B/r22_$tag; c=$B/drc/$tag; C=$QBF/signoff/calibre; mkdir -p "$c"
      "$QBF/signoff/spef.sh" "$tag" tt
      "$0" fin "$tag" > "$d/r38_fin.out" 2>&1; tail -4 "$d/r38_fin.out"
      R29_DB=finish R29_TAG=fin "$QBF/common/or.sh" "$tag" "$QBF/signoff/antenna.tcl" r29_antd.log &
-     lat; for k in tt ss; do
+     for k in tt ss; do
        ( PTW=r37 pt $k "$QBF/signoff/pt/hub_signoff.tcl" r37_pt; rm -rf "$d/w_r37_$k"
          grep -h "^R37" "$d/r37_pt_$k.log"; cat "$d/pt_hub_$k.txt"; echo "R37_PT_ERRORS $k $(grep -c '^Error' "$d/r37_pt_$k.log")" ) > "$d/r38_pt_$k.out" 2>&1 &
      done; wait

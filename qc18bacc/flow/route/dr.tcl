@@ -1,5 +1,5 @@
 # impl/r8 run.sh dr: impl/r6c/dr.tcl (detailed route + finish in a fresh OpenROAD process from db/grt.odb +
-# route.guide) with two memory knobs (defaults = r6c behaviour):
+# route.guide; kit min-step / EOL rules route/drc_rules.tcl) with two memory knobs (defaults = r6c behaviour):
 #   QB8_DR_FILL [1]  0: filler cells inserted after detailed_route instead of before (r8_a: 568 k fillers = 44 % of the
 #                    1.30 M components DR loads into its region query)
 #   QB8_DR_THREADS [QC_PNR_THREADS or 8]
@@ -21,6 +21,7 @@ if {[p DCAP]} { set fill [concat $fill $::QC_PNR_DCAP] }
 if {[p FILL]} { set fill [concat $fill $::QC_PNR_FILL] }
 if {[llength $fill] && [qc_env QB8_DR_FILL 1]} { filler_placement $fill }
 check_placement
+source $::QBF/route/drc_rules.tcl
 set t [clock seconds]
 detailed_route -output_drc $::OUT/rpt/drt.drc.rpt -output_maze $::OUT/drt_maze.log \
     -bottom_routing_layer $::QC_PNR_MIN_LAYER -top_routing_layer $::QC_PNR_MAX_LAYER \

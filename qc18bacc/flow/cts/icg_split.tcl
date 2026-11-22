@@ -1,4 +1,4 @@
-# R44 (results/r44.md; cts/top_cts_pre.tcl: qb44_split <gap_um>): before CTS, split every ICG (CKLNQD*) whose gated sinks fall into two groups
+# R44 (results/r44.md; cts/icg_pre.tcl: qb44_split <gap_um>): before CTS, split every ICG (CKLNQD*) whose gated sinks fall into two groups
 # separated by a gap > gap_um in x or y.  The smaller group moves to a clone ICG (same master, same E / TE nets, CP on the
 # same clock net), so TritonCTS builds two compact gated trees instead of one H-tree centred between the groups.
 proc qb44_split {gap} {

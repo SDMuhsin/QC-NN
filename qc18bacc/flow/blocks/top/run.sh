@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Chip top qb_chip (config: blocks/top/top.env + top.cfg; flow/README.md).  On the build host, in this order:
-#   qc18bacc/flow/blocks/top/run.sh views      block views TOP_ABS + TOP_ETMO from the block outputs (RECONSTRUCTED:
-#                                              abs7 was assembled by hand; this step reproduces its links and files)
+#   qc18bacc/flow/blocks/top/run.sh views      block views TOP_ABS from the block runs (top.env): LEFs, ETMs (OpenROAD
+#                                              copies *_ins.lib / *_or.lib), PT dbs, measured insertion delays ins_tt.txt
 #   qc18bacc/flow/blocks/top/run.sh fp <tag>   init, macro dump, floorplan/top_fp.py (<run>/mplace.tcl), floorplan + pdn,
 #                                              power-grid check ($B/pnr/<tag>)
 #   qc18bacc/flow/blocks/top/run.sh pnr <tag>  place .. GRT + post-GRT repair, db/grt.odb + route.guide (QC_PNR_FROM
@@ -18,32 +18,34 @@ set -u
 here=$(cd "$(dirname "$0")" && pwd); . "$here/../../common/env.sh"; . "$here/top.env"
 step=${1:?step}; tag=${2:-}; d=$B/pnr/$tag; cfg=$here/top.cfg
 echo "TOP_STEP $step $tag $(date +%T)"
-# environment of every OpenROAD process that sources top.cfg (run_pnr.sh, route/dr.sh, common/or.sh)
-export QC_PNR_THREADS=${QC_PNR_THREADS:-16} QB8_DR_THREADS=16 QB_TOP_ABS=$TOP_ABS QB_TOP_ETMO=$TOP_ETMO \
-  QB_TOP_PERIOD=$TOP_PERIOD QB11_INS=$TOP_INS_COL QB14_HINS=$TOP_INS_HUB QB14_AINS=$TOP_INS_ACT QB15_GADJ_L=$TOP_GADJ_L \
+# environment of every OpenROAD process that sources top.cfg (run_pnr.sh, route/dr.sh, common/or.sh); block insertion
+# delays from the views (each block's own measured tt p50)
+ins() { [ -s "$TOP_ABS/ins_tt.txt" ] && awk -v b=$1 '$1 == b {print $2}' "$TOP_ABS/ins_tt.txt"; }
+export QC_PNR_THREADS=${QC_PNR_THREADS:-16} QB8_DR_THREADS=16 QB_TOP_ABS=$TOP_ABS QB_TOP_PERIOD=$TOP_PERIOD \
+  QB11_INS=$(ins col) QB14_HINS=$(ins hub) QB14_AINS=$(ins act) QB15_GADJ_L=$TOP_GADJ_L \
   QB35_GRTHOLD=$TOP_GRTHOLD QB43_GRTANT=$TOP_GRTANT
-pnr_env() {   # fp / pnr: netlist tag, initial IO latency, macro PDN (floorplan/pdn_macro.tcl), post-CTS hook
-    export QB_SYN=$TOP_SYN QB35_TOPL=$TOP_IO_LAT QB_IO_LAT=$TOP_IO_LAT QB_PDN_BLKX="qb_hub qb_act2_blk" \
+pnr_env() {   # fp / pnr: netlist tag, macro PDN (floorplan/pdn_macro.tcl), post-CTS hook (the chip IO latency is 0 until
+              # it is measured after CTS, repair/top_io_latency.tcl)
+    export QB_SYN=$TOP_SYN QB_PDN_BLKX="qb_hub qb_act2_blk" \
       QB43_SRAM_CONN="{M3 M7}" QB43_RF_M4OFF=9.4 QB_PC_HOOK=$QBF/repair/post_cts_none.tcl
 }
 case $step in
-views) A=$TOP_ABS; E=$QBF/signoff/etm; mkdir -p "$A" "$TOP_ETMO"
-     # act / hub: the block runs' ring LEFs (with antenna data) and ETMs
+views) A=$TOP_ABS; E=$QBF/signoff/etm; mkdir -p "$A"
+     # act / hub: the block runs' ring LEFs with antenna data, ETMs, PT dbs; column: ring LEF of its antenna abstract
      ln -sf "$TOP_ACT/qb_act2_blk_ant_ring.lef" "$A/qb_act2_blk.lef"; ln -sf "$TOP_HUB/qb_hub_ant_ring.lef" "$A/qb_hub.lef"
-     for c in tt ss ff; do for f in "$TOP_ACT/qb_act2_blk_$c.lib" "$TOP_ACT/qb_act2_blk_${c}_lib.db" "$TOP_HUB/qb_hub_$c.lib" \
-         "$TOP_HUB/qb_hub_${c}_lib.db" "$TOP_COL_ABS/qb_col_blk_${c}_ins.lib"; do ln -sf "$f" "$A/"; done; done
-     # column: ring LEF + insertion ETMs of R36 abs4; ss / ff as they are, tt with the second-stage table correction
-     # (11 tables; reference = the ss ETM); PT dbs: ss / ff raw, tt corrected the same way (etm_db.sh)
-     ln -sf "$TOP_COL_ABS/qb_col_blk.lef" "$A/"
-     for c in ss ff; do ln -sf "$TOP_COL_ABS/qb_col_blk_${c}_insfix.lib" "$A/"; ln -sf "$TOP_COL_ETM/qb_col_blk_${c}_lib.db" "$A/"; done
-     rm -f "$A/qb_col_blk_tt_insfix.lib"
-     "$PY" -I "$E/etm_tables.py" "$TOP_COL_ABS/qb_col_blk_tt_insfix.lib" "$A/qb_col_blk_tt_insfix.lib" 2.0 \
-         "$TOP_COL_ABS/qb_col_blk_ss_insfix.lib" 0.5 > "$A/etm43_tt.log"; tail -1 "$A/etm43_tt.log"
-     bash "$E/etm_db.sh" qb_col_blk "$TOP_COL_ETM" "$TOP_COL_PTFIX" tt
-     ln -sf "$TOP_COL_PTFIX/qb_col_blk_tt_lib.db" "$A/"
-     # act ETM copies without output-pin checks for OpenROAD (rsz repairEndHold crash, results/r46.md)
-     for c in tt ss ff; do "$PY" -I "$E/etm_nooutchk.py" "$A/qb_act2_blk_$c.lib" "$TOP_ETMO/qb_act2_blk_$c.lib" | tail -1; done
-     ls -la "$A" "$TOP_ETMO" ;;
+     "$PY" -I "$E/lef_ring.py" "$TOP_COL_RUN/out/qb_col_blk_ant.lef" "$A/qb_col_blk.lef" 1.5 | head -3
+     for c in tt ss ff; do
+       for f in "$TOP_ACT/qb_act2_blk_$c.lib" "$TOP_ACT/qb_act2_blk_${c}_lib.db" "$TOP_HUB/qb_hub_$c.lib" "$TOP_HUB/qb_hub_${c}_lib.db" \
+           "$TOP_COL_RUN/out/etm/qb_col_blk_${c}_lib.db"; do ln -sf "$f" "$A/"; done
+       # column OpenROAD ETM: its own measured latency range of this corner as clock-tree-path arcs ("p50 min max")
+       set -- $(cat "$TOP_COL_RUN/out/clk_lat_$c.txt")
+       "$PY" -I "$E/etm_ins.py" "$TOP_COL_RUN/out/etm/qb_col_blk_$c.lib" "$A/qb_col_blk_${c}_ins.lib" "$3" "$2"
+       # act OpenROAD ETM without output-pin checks (rsz repairEndHold crash on clk -> pin check endpoints, results/r46.md)
+       "$PY" -I "$E/etm_nooutchk.py" "$TOP_ACT/qb_act2_blk_$c.lib" "$A/qb_act2_blk_${c}_or.lib" | tail -1
+     done
+     # block insertion delays (tt p50, ns) for the top clock tree / balancing / class reports
+     for b in col:$TOP_COL_RUN hub:$TOP_HUB_RUN act:$TOP_ACT_RUN; do echo "${b%%:*} $(cut -d' ' -f1 "${b#*:}/out/clk_lat_tt.txt")"; done > "$A/ins_tt.txt"
+     cat "$A/ins_tt.txt"; ls -la "$A" ;;
 fp)  pnr_env
      QC_PNR_TO=init "$ROOT/flow/tsmc65/pnr/run_pnr.sh" "$cfg" "$tag" || exit 1
      ( cd "$d" && QB_RUN=$d "$OR" -no_init -no_splash -exit "$QBF/floorplan/dump_macros.tcl" > dump.log 2>&1 < /dev/null )

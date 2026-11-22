@@ -1,10 +1,12 @@
 # PIN_TCL of blocks/hub/hub.cfg (results/r9b.md, r10b.md): hub pins from <run>/pins9_data.tcl (floorplan/hub_pins.py),
 # north edge only:
 #   column south pins  fixed straight below the column pins (same layer / width / x)
-#   act-port S-read pins u_top_s_q[*] (2048)  fixed on M6 at the north edge of the west strip, x = 24 + 0.4 k,
+#   act-port S-read pins u_top_s_q[*] (2048)  fixed on M6 at the north edge of the west strip, x = 24.1 + 0.4 k (on the
+#                      M6 track grid 0.1 + 0.2 n; R43: 24 + 0.4 k was half a track off),
 #                      k = 16 j + w for s_q[128 w + j] (j-major: the 16 words of bit j side by side, so each bit slice of the
 #                      lane rotator is local); placed first: place_pins skips fixed pins
-#   column north nets (t2, rst_n)  M8 pins under column c, evenly spaced (no other pin uses M8; place_pins does not avoid
+#   column north nets (t2, rst_n)  M8 pins under column c, evenly spaced, snapped to the M8 track grid 0.1 + 0.8 n (R43:
+#                      the 0.4 grid put t2_s half a track off; no other pin uses M8; place_pins does not avoid
 #                      the fixed column-south pins, r9b_d: GRT-0080 two pins at one position)
 #   the other west-strip pins  place_pins on M3 / M5 + M2 / M4 (no layer shared with the fixed M6 pins), x 12 .. x0 - 12
 source $::OUT/pins9_data.tcl
@@ -28,7 +30,7 @@ proc qb9_pins {} {
     foreach c [lsort -integer [array names ::QB9_NORTH]] {
         set l $::QB9_NORTH($c); set k 0; set step [expr {380.0 / max(1, [llength $l])}]
         foreach p $l {
-            set x [expr {round(($x0 + 390 * $c + 5 + ($k + 0.5) * $step) / 0.4) * 0.4}]
+            set x [expr {0.1 + round(($x0 + 390 * $c + 5 + ($k + 0.5) * $step - 0.1) / 0.8) * 0.8}]
             place_pin -pin_name $p -layer M8 -location [list $x [expr {$H - 0.4}]] -pin_size {0.4 0.8}
             incr k; incr nn
         }
@@ -37,7 +39,7 @@ proc qb9_pins {} {
     qc_log "r9b pins: fixed column-south $n, column-north $nn, west strip [llength $::QB9_WEST]"
 }
 set _H [expr {[[[ord::get_db_block] getDieArea] yMax] / double([[ord::get_db_tech] getDbUnitsPerMicron])}]
-set _x0 24
+set _x0 24.1
 foreach e $_sq {
     lassign $e p b
     set k [expr {16 * ($b % 128) + $b / 128}]

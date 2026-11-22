@@ -3,10 +3,9 @@
 # results/r8.md, r36.md), with an RSS / swap log (rpt/dr_rss.txt), then the SPEFs of the P&R corners (OpenROAD + PrimeTime
 # copies) and the DRC / antenna counts in summary.txt.
 #   qc18bacc/flow/route/dr.sh <tag>     env: QB_DR_ITER, QB8_DR_THREADS, QB8_DR_FILL, QB_DR_ARGS (route/dr.tcl)
-# Configs re-sourced by dr.tcl see QB_SYN [r7h_rp] (as R8 ran it).
+# Configs re-sourced by dr.tcl see the caller's design environment (blocks/<b>/run.sh).
 set -u
 . "$(dirname "$0")/../common/env.sh"
-export QB_SYN=${QB_SYN:-r7h_rp}
 tag=${1:?tag}; d=$B/pnr/$tag
 . "$ROOT/flow/tsmc65/common/tool.sh"; cd "$d" || exit 1
 QC_KIT=$(tcsh -f -c "source $FLOW/site/site.csh >& /dev/null; printenv QC_KIT"); export QC_KIT QC_PY=$PY QC_PNR_OUT=$d QC_BUILD=$B

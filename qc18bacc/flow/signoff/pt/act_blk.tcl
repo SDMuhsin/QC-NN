@@ -1,7 +1,7 @@
 # PrimeTime sign-off of the routed act-supply block qb_act2_blk at one corner (results/r7c.md; blocks/act/run.sh post), as
 # signoff/pt/col_blk.tcl: routed netlist + def2spef SPEF, propagated clock, IO budget blocks/act/io_budget.tcl (QB7_DIN /
-# QB7_AOUT) shifted by the insertion delay L.
-# Classes: reg2reg (fmax), data in (s_q / m_q) -> reg, ctl in -> reg, reg -> act, reg -> ctl out, hold.
+# QB7_AOUT) shifted by the insertion delay L (p50, per corner).
+# Classes: reg2reg (fmax), data in (s_q / m_q) -> reg, ctl in -> reg, reg -> act, reg -> ctl out, hold, DRV.
 set t0 [clock seconds]
 source $::env(QC_FLOW)/common/lib.tcl
 set top $::env(QC_TOP); set corner $::env(QC_CORNER); set dir $::env(QC_PNR_OUT)
@@ -16,12 +16,9 @@ set_propagated_clock [all_clocks]
 read_parasitics -format spef $dir/out/${top}_${corner}_pt.spef
 update_timing
 set per [get_attribute [get_clocks qb_clk] period]
-redirect -variable cs { report_clock_timing -type summary -clock qb_clk -nosplit }
-set lat {}
-foreach k {{Maximum setup launch latency} {Minimum setup capture latency}} {
-    if {[regexp "$k:\\s*\\n\\s*\\S+\\s+(\[-0-9.\]+)" $cs -> v]} { lappend lat $v }
-}
-set L [expr {[llength $lat] ? ([tcl::mathfunc::max {*}$lat] + [tcl::mathfunc::min {*}$lat]) / 2.0 : 0.6}]
+source [file normalize $::env(QC_FLOW)/../../qc18bacc/flow/signoff/pt/common.tcl]
+# insertion delay L of this corner (p50 clock-pin latency, as the P&R)
+set L [qb_pt_lat $dir $corner]
 source [file normalize $::env(QC_FLOW)/../../qc18bacc/flow/blocks/act/io_budget.tcl]
 qb7_io_apply $per $L
 update_timing
@@ -30,7 +27,7 @@ redirect -variable ann { report_annotated_parasitics }
 set nets NA
 if {[regexp {\n\s*\|\s*(\d+)\s*\|\s*\d+\s*\|\s*\d+\s*\|\s*(\d+)\s*\|\s*(\d+)\s*\|} $ann -> tot rc na]} { set nets "total $tot rc_network $rc not_annotated $na" }
 puts $fh "design $top corner $corner period $per lib $::QC_LIB($corner) spef_nets $nets"
-puts $fh [format "insertion_delay_L_ns %.3f (latencies %s)" $L $lat]
+puts $fh [format "insertion_delay_L_ns %.3f (p50 clock-pin latency)" $L]
 set regs [all_registers -data_pins]
 set io [add_to_collection [all_inputs] [all_outputs]]
 proc fl {fh k p per {fmax 0}} {
@@ -61,6 +58,7 @@ redirect -variable hv { report_constraint -min_delay -all_violators -nosplit }
 puts $fh "hold_violating_endpoints [regexp -all -line {VIOLATED} $hv]"
 redirect -variable sv { report_constraint -max_delay -all_violators -nosplit }
 puts $fh "setup_violating_endpoints [regexp -all -line {VIOLATED} $sv]"
+qb_pt_drv $fh
 file mkdir $dir/rpt
 redirect $dir/rpt/pt_blk_${corner}_reg2reg.rpt { report_timing -max_paths 5 -nosplit -exclude $io -input_pins -nets -capacitance -transition_time }
 redirect $dir/rpt/pt_blk_${corner}_r2r20.rpt { report_timing -max_paths 200 -nworst 1 -path_type end -nosplit -exclude $io }

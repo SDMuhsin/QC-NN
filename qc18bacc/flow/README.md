@@ -29,7 +29,11 @@ qc18bacc/flow/blocks/col/run.sh pnr <tag>       # floorplan .. place, then CTS .
 qc18bacc/flow/blocks/col/run.sh post <tag>      # SPEF tt/ss/ff, PT tt/ss at 6.5 ns, abstract LEF + abutment check, ETMs, antenna
 qc18bacc/flow/blocks/col/run.sh views <tag>     # antenna data in the abstract (out/qb_col_blk_ant.lef), ETM scan
 qc18bacc/flow/blocks/col/run.sh calibre <tag>   # GDS, LVS source, Calibre LVS / DRC (block deck) / antenna -> $QC_BUILD/drc/<tag>
+qc18bacc/flow/blocks/col/run.sh drveco <tag>    # PrimeTime DRV ECO ss + tt -> out/drv_eco_tt.tcl (R48)
+qc18bacc/flow/blocks/col/run.sh eco <tag>       # apply it + hold repair, full re-route (repair/hold_eco.sh); then post / views / calibre again
 ```
+R48 production: `pnr r48_col; post; views; calibre; drveco; eco; post; views; calibre; drveco; eco; post; views; calibre`
+(two ECO rounds: the full re-route of round 1 creates a few new violators; results/r48.md).
 Inputs (frozen artifacts of earlier rounds, see results/r5b.md, r5d.md): netlist `$B/syn/qb_col_blk_r5d_s20_tt_p1.65_topo`,
 PE tiles `$B/r5d_Ctiles`, reference abstract `$B/r5b_blk/qb_col_blk_ring.lef` (pin positions). Parameters: `col.env`.
 
@@ -45,8 +49,10 @@ qc18bacc/flow/blocks/act/run.sh hold <tag>             # hold fix in full re-rou
 qc18bacc/flow/blocks/act/run.sh post <tag>             # SPEF, PT, antenna, abstract + ETMs, antenna data, ring LEFs -> $B/r9a_blk/<tag>
 qc18bacc/flow/blocks/act/run.sh calibre <tag>          # GDS, LVS source, Calibre LVS / DRC / antenna
 ```
-Production: `pnr r35_act_p; postcts r35_act_p r35_act_s; route r35_act_s r35_act_c; eco1 r35_act_c; eco6 r35_act_c;
-reroute r35_act_c r38_act_rr2; hold r38_act_rr2; post r38_act_rr2; calibre r38_act_rr2`.  Inputs: `$B/syn/r35_act`,
+Production (R38): `pnr r35_act_p; postcts r35_act_p r35_act_s; route r35_act_s r35_act_c; eco1 r35_act_c; eco6 r35_act_c;
+reroute r35_act_c r38_act_rr2; hold r38_act_rr2; post r38_act_rr2; calibre r38_act_rr2`.  R48: `pnr r48_act_p; postcts
+r48_act_p r48_act_s; route r48_act_s r48_act; post; drveco; hold (applies out/drv_eco_tt.tcl); post; calibre` - the hold
+step stopped at DRT-0218 (results/r48.md).  Inputs: `$B/syn/r35_act`,
 `$B/r35/col_act_pins.txt` (synth/run.sh act / actpins).
 
 ## Hub block qb_hub (`blocks/hub`, production lineage r35_hubC -> r38_hub_rr -> r40_hub)
@@ -64,7 +70,7 @@ Inputs: `$B/syn/r26_ptr`, partition `$B/r26_w` (synth/run.sh chip / part), colum
 ## Chip top qb_chip (`blocks/top`, production run r43_a + R46 opt-ins)
 
 ```
-qc18bacc/flow/blocks/top/run.sh views           # block views TOP_ABS + TOP_ETMO (reconstructed: abs7 was assembled by hand)
+qc18bacc/flow/blocks/top/run.sh views           # block views TOP_ABS from the block runs named in top.env (R48)
 qc18bacc/flow/blocks/top/run.sh fp <tag>        # init, macro dump, floorplan/top_fp.py, floorplan + PDN, power-grid check
 qc18bacc/flow/blocks/top/run.sh pnr <tag>       # place .. GRT + post-GRT repair -> db/grt.odb + route.guide
 qc18bacc/flow/blocks/top/run.sh hold <tag>      # post-GRT hold + antenna repair in a fresh process (repair/top_hold.tcl)
@@ -154,7 +160,7 @@ signoff; top hold, dr, antenna, pt, lvs, views (views reproduced abs7 byte-for-b
 | r36/pdn36.tcl | floorplan/top_pdn.tcl |
 | r37/hubio37.tcl | repair/hub_io.tcl |
 | r37/hubpre37.tcl | repair/hub_setup_pre.tcl |
-| r37/icgclone37.tcl | repair/hub_icg_clone.tcl |
+| r37/icgclone37.tcl | deleted in R48 (ICG split before CTS, cts/icg_pre.tcl) |
 | r37/inbuf37.tcl | repair/act_hold_pre.tcl |
 | r37/pt37.tcl | signoff/pt/hub_signoff.tcl |
 | r38/drc_blk.sed | signoff/calibre/drc_blk.sed |
@@ -175,7 +181,7 @@ signoff; top hold, dr, antenna, pt, lvs, views (views reproduced abs7 byte-for-b
 | r4/macros.txt | synth/macros.txt |
 | r4/pt_class.tcl | synth/chip_pt_class.tcl |
 | r43/autol43_or.tcl | repair/top_io_latency.tcl |
-| r43/etm43.py | signoff/etm/etm_tables.py |
+| r43/etm43.py | deleted in R48 (ETM without input driving cells) |
 | r43/hold43.tcl | repair/top_hold.tcl |
 | r43/keepout43.tcl | place/keepout.tcl |
 | r44/icgsplit44.tcl | cts/icg_split.tcl |
@@ -198,7 +204,7 @@ signoff; top hold, dr, antenna, pt, lvs, views (views reproduced abs7 byte-for-b
 | r5e/macros.txt | synth/macros_fc.txt |
 | r6a/cuts.py | synth/part_cuts.py |
 | r6c/icg.tcl | cts/icg_size.tcl |
-| r7b/etm_fix.py | signoff/etm/etm_fix.py |
+| r7b/etm_fix.py | deleted in R48 (ETM without input driving cells) |
 | r7c/budget.tcl | blocks/act/io_budget.tcl |
 | r7c/col_pins.py | synth/col_act_pins.py |
 | r7c/pt_blk.tcl | signoff/pt/act_blk.tcl |
@@ -259,7 +265,7 @@ signoff; top hold, dr, antenna, pt, lvs, views (views reproduced abs7 byte-for-b
 | r36/pc_none.tcl | repair/post_cts_none.tcl |
 | r43/ant43.tcl | repair/top_antenna.tcl |
 | r5b/pt_chip.tcl r43/autol43_pt.tcl r42/pt42x.tcl r39/pt39x.tcl | signoff/pt/top_chip.tcl |
-| r36/etmdb.sh | signoff/etm/etm_db.sh |
+| r36/etmdb.sh | deleted in R48 (ETM without input driving cells) |
 | r36/gds36.sh | signoff/calibre/gds.sh (top LVS now uses the shared GDS step) |
 | run.sh | synth/dc.sh |
 | r4/run.sh | synth/chip_dc.sh |
@@ -273,7 +279,17 @@ One-off diagnostics, probes, superseded rounds and opt-ins no production flow us
 inputs): the PE tiles `$B/r5d_Ctiles` (r5d/run.sh tiles, r5c/pe_tile.cfg, r5c/place_dump.tcl, hard/pe_pins.tcl), the
 column reference views `$B/r5b_blk` (r5b/run.sh blk, r5a/post.sh) and the top's column views `$B/r36/abs4` (run36.sh abs,
 r5b/etm_ins.py).  R44 / R45 fix candidates that are not in production yet (e.g. r45/lef57db45.tcl, r45/etmnodrv45.tcl) are
-deleted too; R48 takes them from commit 2f4055b.
+deleted too; R48 took them from commit 2f4055b.
+
+## R48 additions (results/r48.md)
+| file | what |
+|---|---|
+| route/drc_rules.tcl | kit min-step / EOL rules written into the tech before every detailed_route (was r45/lef57db45.tcl) |
+| repair/drv.tcl | max-transition / max-cap repair (qb_drv, qb_drv_grt) after CTS, hold insertion, GRT |
+| cts/icg_pre.tcl | ICG split (QB44_SPLIT 400) + sizing / move before CTS in every design |
+| cts/clk_lat.tcl | measured insertion delay L (p50 clock-pin latency) for the IO budget shift |
+| signoff/pt/common.tcl | PT: per-corner L (out/clk_lat_<c>.txt), DRV counts, ETM input context (was r45/etmnodrv45.tcl) |
+| signoff/etm/etm_ins.py | column ETM + measured insertion arcs for the top (was r5b/etm_ins.py) |
 
 - `r4/` (19): area_summary.py, core_stub.sv, dat_energy.sh, dat_energy.txt, dc_rpt.tcl, gls.sh, macro_counts.py, macros_d.txt, nocore.sh, power.py, prog_shapes.txt, pt_power.tcl, pwr.sh, qb_chip_tech_flops.f, saif_fix.py, saif_scale.py, saif_window.py, seq.f, seq_m.f
 - `r4b/` (13): exp/rot.f, exp/rot.sv, exp/t2p.f, exp/t2p.sv, exp/tb_rot.sv, exp/wb.f, exp/wb.sv, exp/wby.f, exp/wby.sv, reg_audit.tcl, sdc_chk.sdc, seq.sdc, seq_rt.f

@@ -2,19 +2,23 @@
 # Column block qb_col_blk (config: blocks/col/col.env + col.cfg; flow/README.md).  On the build host:
 #   qc18bacc/flow/blocks/col/run.sh pnr <tag>    floorplan .. place, then CTS .. route .. finish from db/place.odb ($B/pnr/<tag>;
 #                                                QC_PNR_FROM / QC_PNR_TO select a step range)
-#   qc18bacc/flow/blocks/col/run.sh post <tag>   SPEF tt / ss / ff, PrimeTime tt / ss, abstract LEF + abutment check, ETMs
+#   qc18bacc/flow/blocks/col/run.sh post <tag>   SPEF tt / ss / ff, PrimeTime tt / ss / ff (ff: latency for the top), abstract LEF + abutment check, ETMs
 #                                                tt / ss / ff, LEF-rule antenna check (signoff/antenna.tcl on db/route)
 #   qc18bacc/flow/blocks/col/run.sh views <tag>  antenna data in the abstract (out/qb_col_blk_ant.lef), ETM scan (etmcheck 3 ns)
+#   qc18bacc/flow/blocks/col/run.sh drveco <tag> PrimeTime DRV ECO ss + tt (signoff/pt/drv_eco.tcl) -> out/drv_eco_<c>.tcl
+#   qc18bacc/flow/blocks/col/run.sh eco <tag>    apply the DRV ECO sizes + hold repair, full re-route (repair/hold_eco.sh)
 #   qc18bacc/flow/blocks/col/run.sh calibre <tag>  GDS, LVS source, Calibre LVS (lvs_case.sed), DRC (block deck drc_blk.sed),
 #                                                antenna -> $B/drc/<tag>  (the top's ring LEF is made by blocks/top/run.sh)
 set -u
 here=$(cd "$(dirname "$0")" && pwd); . "$here/../../common/env.sh"; . "$here/col.env"
 step=${1:?step}; tag=${2:?tag}; d=$B/pnr/$tag
+# design environment of every OpenROAD process that re-sources the run's config (run_pnr.sh, common/or.sh)
+export QB_SYN=$COL_SYN QB_PNR_PERIOD=$COL_PNR_PERIOD
 echo "COL_STEP $step $tag $(date +%T)"
 case $step in
 pnr) mkdir -p "$B/col"; "$PY" -I "$QBF/floorplan/abstract_pins.py" "$COL_REFLEF" "$B/col/colpins.tcl" || exit 1
-     export QC_PNR_THREADS=${QC_PNR_THREADS:-15} QB_SYN=$COL_SYN QB_PNR_PERIOD=$COL_PNR_PERIOD QB_RT_LOOPS=0 QB_TILE_DIR=$COL_TILES \
-       QB15_GADJ_L=$COL_GADJ_L QB35_COLPINS=$B/col/colpins.tcl QB_IO_LAT=$COL_IO_LAT
+     export QC_PNR_THREADS=${QC_PNR_THREADS:-15} QB_RT_LOOPS=0 QB_TILE_DIR=$COL_TILES \
+       QB15_GADJ_L=$COL_GADJ_L QB35_COLPINS=$B/col/colpins.tcl
      # two sessions as r35_col + r35_colb were built: init .. place, then CTS .. finish restarted from db/place.odb
      to=${QC_PNR_TO:-finish}; from=${QC_PNR_FROM:-init}
      if [ "$from" = init ]; then QC_PNR_TO=place "$ROOT/flow/tsmc65/pnr/run_pnr.sh" "$here/col.cfg" "$tag" || exit 1; from=cts; fi
@@ -24,7 +28,7 @@ post) QC_SPEF_UNESC=1 "$QBF/signoff/spef.sh" "$tag" "tt ss ff"
      ( set -a; . "$(dirname "$NETLIST")/run.env"; set +a
        export QC_SDC=$QBF/common/constraints.sdc QC_PT_HOOK= QC_PERIOD=$COL_PT_PERIOD
        cd "$d" || exit 1
-       for c in tt ss; do
+       for c in tt ss ff; do
            QC_PNR_OUT=$d QC_TOP=$TOP QC_CORNER=$c qc_tool "pt_blk_$c.log" pt_shell -f "$QBF/signoff/pt/col_blk.tcl"
            echo "PT_BLK $c errors $(grep -c '^Error' pt_blk_$c.log)"; cat "pt_blk_$c.txt"
        done )
@@ -44,6 +48,19 @@ views) LEF=$(. "$d/kit.env"; echo $LEF); o=$d/out
      QB35_AOUT=$o/blkant.txt "$QBF/common/or.sh" "$tag" "$QBF/signoff/etm/blkant.tcl" r35_blkant.log
      "$PY" -I "$QBF/signoff/etm/blkant.py" "$LEF" "$o/blkant.txt" "$o/qb_col_blk.lef" "$o/qb_col_blk_ant.lef" | tail -3
      for c in tt ss ff; do "$PY" -I "$QBF/signoff/etm/etmcheck.py" "$o/etm/qb_col_blk_$c.lib" 3.0; done ;;
+drveco) qb_kit; . "$d/kit.env"   # PrimeTime DRV ECO (signoff/pt/drv_eco.tcl): ss, then tt on top of the ss changes
+     ( set -a; . "$(dirname "$NETLIST")/run.env"; set +a
+       export QC_SDC=$QBF/common/constraints.sdc QC_PT_HOOK= QC_PERIOD=$COL_PT_PERIOD QB_PT_SCRIPT=$QBF/signoff/pt/col_blk.tcl
+       for c in ss tt; do mkdir -p "$d/w_eco_$c"; cd "$d/w_eco_$c" || exit 1
+           QB_PT_PRE_ECO=$([ $c = tt ] && echo "$d/out/drv_eco_ss.tcl") QC_PNR_OUT=$d QC_TOP=$TOP QC_CORNER=$c \
+             qc_tool "$d/drv_eco_$c.log" pt_shell -f "$QBF/signoff/pt/drv_eco.tcl"
+           grep "^drv\|QB_DRV_ECO" "$d/drv_eco_$c.log"; echo "size_cell $(grep -c ^size_cell "$d/out/drv_eco_$c.tcl")"
+       done ) ;;
+eco) [ -e "$d/db/route_dr.odb" ] || touch "$d/db/route_dr.odb"   # DRV ECO sizes (if any) + hold + DRV repair, full re-route (repair/hold_eco.sh)
+     QB35_HDB=finish QB35_ECO_TCL=$([ -f "$d/out/drv_eco_tt.tcl" ] && echo "$d/out/drv_eco_tt.tcl") QB35_HOLD_M=0.02 QB35_HDR_FULL=1 QB35_FILL_BEFORE=1 \
+       QB37_FIRM=0 QB37_FORCE_SAVE=1 QB35_THREADS=${QB35_THREADS:-15} QB37_HPRE_TCL= QB37_HPOST_TCL= QB35_IO_TCL= QB35_IOL= \
+       QB15_GADJ_L=$COL_GADJ_L "$QBF/repair/hold_eco.sh" "$tag"
+     rm -f "$d/db/route_dr_prehold.odb" ;;
 calibre) o=$B/drc/$tag; C=$QBF/signoff/calibre; mkdir -p "$o"
      bash "$C/gds.sh" "$tag" "$d/out/qb_col_blk.def" "$o/col.gds" > "$o/gds.log" 2>&1; tail -2 "$o/gds.log"
      bash "$C/lvs_src.sh" "$d/out/qb_col_blk_pg.v" "$o/col_src.spi" > "$o/src.log" 2>&1; tail -3 "$o/src.log"

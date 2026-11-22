@@ -1,10 +1,12 @@
 # R35 opt-in post-route hold repair (results/r35.md), run in a routed run dir (common/or.sh <tag> hold35.tcl <log>):
 #   1. db/<QB35_HDB [route_dr]> + its SDC (+ QB35_IO_TCL IO budget at QB35_IOL), propagated clock, routed parasitics read_spef out/<top>_tt.spef (OpenROAD copy;
 #      def2spef with QC_SPEF_ORFIX 1)
-#   2. repair_timing -hold -hold_margin QB35_HOLD_M [0.05] (all paths incl. IO; setup kept by repair_timing's own check)
+#   2. max-transition / max-cap repair (repair/drv.tcl), then repair_timing -hold -hold_margin QB35_HOLD_M [0.05] (all paths
+#      incl. IO; setup kept by repair_timing's own check)
 #   3. fillers removed, detailed_placement (incremental), every net of a new buffer or of a moved cell loses its wires
 #   4. global_route (-allow_congestion) and detailed_route (QB35_HDR_ITER [64]) of every net (QB35_HDR_FULL [1]; 0: only
-#      the touched nets, on top of the kept routing - fails in this OpenROAD build, see below), fillers back, db/route_dr (old one kept as route_dr_prehold), route, finish
+#      the touched nets, on top of the kept routing - fails in this OpenROAD build, see below; kit min-step / EOL rules
+#      route/drc_rules.tcl), fillers back, db/route_dr (old one kept as route_dr_prehold), route, finish
 # QB35_HOLD_DRY 1: steps 1-2 only (report what the repair would do, nothing saved).
 set ::T0 [clock seconds]
 source $::env(QC_FLOW)/pnr/or/lib.tcl
@@ -19,9 +21,78 @@ set_propagated_clock [all_clocks]
 set top [p TOP]
 set _sp [qc_env QB35_SPEF $::OUT/out/${top}_tt.spef]
 read_spef $_sp
-# QB35_IO_TCL: re-apply the block IO budget at the sign-off insertion delay QB35_IOL (e.g. impl/r35/col_io.tcl), so the
-# repair sees the IO hold windows PrimeTime checks (the db SDC carries the P&R-time QB_IO_LAT)
+# QB35_IO_TCL: re-apply the block IO budget at the insertion delay QB35_IOL, by default measured here on the routed
+# parasitics (cts/clk_lat.tcl, p50 clock-pin latency, the definition the PrimeTime sign-off uses per corner), so the
+# repair sees the IO hold windows PrimeTime checks (the db SDC carries the post-CTS L)
+source $::QBF/cts/clk_lat.tcl
+if {[qc_env QB35_IOL] eq ""} { set ::env(QB35_IOL) [qb_clk_lat hold_routed] }
 if {[qc_env QB35_IO_TCL ""] ne ""} { source $::env(QB35_IO_TCL) }
+# QB35_ECO_TCL: PrimeTime DRV ECO change files (signoff/pt/drv_eco.tcl; R48) applied before the repair, in file order:
+# "size_cell {inst} {cell}" (replace_cell) and "insert_buffer [get_pins|get_ports {p ...}] <cell> -new_net_names {n}
+# -new_cell_names {c}" (p a driver pin or an input port: the buffer drives all its loads; p load pins: the buffer drives
+# those).  Run with QB37_FIRM 0 (full re-route): with every old cell FIRM the upsized cells cannot be legalised (r48_col:
+# DPL-0033, 10 overlaps, 165 unreachable buffer pins).
+proc r48_pin {name} {
+    set k [string last / $name]
+    if {$k < 0} { return [list bterm [[ord::get_db_block] findBTerm $name]] }
+    set i [[ord::get_db_block] findInst [string range $name 0 [expr {$k - 1}]]]
+    if {$i eq "NULL"} { return {iterm NULL} }
+    return [list iterm [$i findITerm [string range $name [expr {$k + 1}] end]]]
+}
+proc r48_insbuf {pins cell nn cn} {
+    set blk [ord::get_db_block]; set m [[ord::get_db] findMaster $cell]
+    lassign [r48_pin [lindex $pins 0]] k0 p0
+    if {$m eq "NULL" || $p0 eq "NULL" || [$p0 getNet] eq "NULL"} { return 0 }
+    set net [$p0 getNet]
+    if {$k0 eq "iterm" && [$p0 isOutputSignal]} {
+        set loads {}; foreach it [$net getITerms] { if {$it ne $p0} { lappend loads [list iterm $it] } }
+        foreach bt [$net getBTerms] { lappend loads [list bterm $bt] }
+        lassign [[$p0 getInst] getLocation] x y
+    } elseif {$k0 eq "bterm" && [$p0 getIoType] eq "INPUT"} {
+        # input port: the buffer sits at the port and drives every load of the port net
+        set loads {}; foreach it [$net getITerms] { lappend loads [list iterm $it] }
+        set bb [$p0 getBBox]; set x [$bb xMin]; set y [$bb yMin]
+    } else {
+        set loads {}; set sx 0; set sy 0
+        foreach p $pins { lassign [r48_pin $p] k o; if {$o eq "NULL"} { return 0 }; lappend loads [list $k $o]
+            if {$k eq "iterm"} { lassign [[$o getInst] getLocation] a b; set sx [expr {$sx + $a}]; set sy [expr {$sy + $b}] } }
+        set x [expr {round($sx / [llength $loads])}]; set y [expr {round($sy / [llength $loads])}]
+    }
+    set b [odb::dbInst_create $blk $m $cn]; $b setLocation $x $y; $b setPlacementStatus PLACED
+    set n2 [odb::dbNet_create $blk $nn]; $n2 setSigType SIGNAL
+    foreach l $loads { lassign $l k o; $o disconnect; $o connect $n2 }
+    [$b findITerm I] connect $net; [$b findITerm Z] connect $n2
+    lappend ::r37_newinst $b
+    return 1
+}
+if {[qc_env QB35_ECO_TCL ""] ne ""} {
+    set _n 0; set _nb 0; set _miss 0
+    foreach _ef $::env(QB35_ECO_TCL) {
+        set _f [open $_ef]
+        while {[gets $_f _l] >= 0} {
+            set _l [string map {"\\/" "/"} $_l]
+            if {[regexp {^size_cell \{(.*)\} \{(.*)\}\s*$} $_l -> _in _cn]} {
+                set _i [[ord::get_db_block] findInst $_in]
+                # replace_cell refuses masters OpenSTA does not see as equivalent (MAOI222D1 -> MAOI222D2, AOI211D1 ->
+                # AOI211XD2: same pins; r48_col 278, r48_act 49 cells), but the odb master is already swapped when it raises
+                # STA-1000: odb and STA then disagree and the cell's pins fall outside every route guide (r48_act
+                # u_act/u_s1/u_b12/U2673: DRT-0218, results/r48.md).  Such sizes are skipped, the odb master is swapped back.
+                if {$_i eq "NULL"} { incr _miss; continue }
+                set _m0 [$_i getMaster]
+                if {[catch { replace_cell $_in $_cn }]} {
+                    if {[$_i getMaster] ne $_m0} { catch { $_i swapMaster $_m0 } }
+                    if {[[$_i getMaster] getName] ne [$_m0 getName]} { puts "R48_ECO ERROR $_in left as [[$_i getMaster] getName]" }
+                    incr _miss; continue
+                }
+                lappend ::r37_newinst $_i; incr _n
+            } elseif {[regexp {^insert_buffer \[get_(?:pins|ports) \{(.*)\}\] (\S+) -new_net_names \{(\S+)\} -new_cell_names \{(\S+)\}} $_l -> _ps _cn _nn _bn]} {
+                if {[r48_insbuf $_ps $_cn $_nn $_bn]} { incr _nb } else { incr _miss }
+            }
+        }
+        close $_f
+    }
+    puts "R48_ECO size_cell $_n insert_buffer $_nb missing $_miss ($::env(QB35_ECO_TCL))"
+}
 # R37 opt-in QB37_HPRE_TCL: a hook before the repair (e.g. repair/act_hold_pre.tcl input-port buffers; results/r37.md)
 if {[qc_env QB37_HPRE_TCL ""] ne ""} { source $::env(QB37_HPRE_TCL) }
 proc h35 {tag} {
@@ -32,6 +103,9 @@ proc h35 {tag} {
 h35 before
 set blk [ord::get_db_block]
 array set old {}; foreach i [$blk getInsts] { set old([$i getName]) [$i getLocation] }
+# DRV repair first (repair/drv.tcl), then hold: DRV buffers / resizes after the hold repair re-broke hold (r48_act try 4)
+source $::QBF/repair/drv.tcl
+qb_drv hold_routed
 set t [clock seconds]
 if {[catch { repair_timing -hold -hold_margin [qc_env QB35_HOLD_M 0.05] -max_buffer_percent [qc_env QB35_HOLD_PCT 20] \
         -max_utilization [qc_env QB35_MAXU 95] } e]} { puts "R35_HOLD repair stopped: $e" }
@@ -109,6 +183,7 @@ h35 after_legal_grt_est
 # R37 opt-in QB37_HPOST_TCL: more hold rounds at global-route parasitics (impl/r37/hpost37.tcl; results/r37.md)
 if {[qc_env QB37_HPOST_TCL ""] ne ""} { source $::env(QB37_HPOST_TCL) }
 if {[llength $fill] && [qc_env QB35_FILL_BEFORE 0]} { filler_placement $fill }
+source $::QBF/route/drc_rules.tcl
 set t [clock seconds]
 detailed_route -output_drc $::OUT/rpt/drt_hold.drc.rpt -bottom_routing_layer $::QC_PNR_MIN_LAYER -top_routing_layer $::QC_PNR_MAX_LAYER \
     -droute_end_iter [qc_env QB35_HDR_ITER 64] -verbose 1

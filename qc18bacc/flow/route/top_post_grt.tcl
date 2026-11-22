@@ -7,8 +7,8 @@
 #              (the pin latencies are removed again afterwards, R43: else the block clk pins stay ideal at -INS)
 #   repair     IO latency re-measured (repair/top_io_latency.tcl); inside an incremental GRT: setup repair (chip inputs
 #              false-pathed for the repair only, rst_n false path restored, no gate cloning: OR 2.0-12381 ODB-0373 on the
-#              dont_touch split14 trunks), QB35_GRTHOLD 1: hold repair (margin 0.05, <= 10 % buffers; block inputs on
-#              dont_touch nets hold-false-pathed for the repair: repairEndHold SEGFAULT, R43 defect 2), legalisation;
+#              dont_touch split14 trunks), QB35_GRTHOLD 1: hold repair (margin 0.05, <= 10 % buffers; OpenROAD reads the act
+#              ETM without output-pin checks, R46: no repairEndHold SEGFAULT), DRV repair (repair/drv.tcl), legalisation;
 #              QB43_GRTANT 1: antenna repair (repair/top_antenna.tcl); route.guide rewritten (R39: DRT-0218 otherwise)
 #   then route/grt_stop.tcl (reports, db/grt.odb, exit)
 foreach {_f _p} [list clk14.tcl $::QBF/cts/top_clk_measure.tcl drv_post.tcl $::QBF/route/top_drv_post.tcl] {
@@ -29,9 +29,9 @@ catch { source $::QBF/route/top_classes.tcl } _e; qc_log "r11 classes (propagate
 catch { file rename -force $::OUT/rpt/classes_tt.txt $::OUT/rpt/classes_tt_prop.txt }
 catch {
     unset_propagated_clock [all_clocks]
-    set_clock_latency [expr {-[qb_env QB11_INS 0.96]}] [get_pins u_top_u_core_u_arr_g_c_*__u_col/clk]
-    set_clock_latency [expr {-[qb_env QB14_HINS 0.90]}] [get_pins u_hub/clk]
-    set_clock_latency [expr {-[qb_env QB14_AINS 0.55]}] [get_pins u_act_blk/clk]
+    set_clock_latency [expr {-$::env(QB11_INS)}] [get_pins u_top_u_core_u_arr_g_c_*__u_col/clk]
+    set_clock_latency [expr {-$::env(QB14_HINS)}] [get_pins u_hub/clk]
+    set_clock_latency [expr {-$::env(QB14_AINS)}] [get_pins u_act_blk/clk]
     source $::QBF/route/top_classes.tcl
     file rename -force $::OUT/rpt/classes_tt.txt $::OUT/rpt/classes_tt_ideal.txt
     set_propagated_clock [all_clocks]
@@ -55,15 +55,11 @@ repair_timing -setup -setup_margin 0.0 -repair_tns 100 -max_utilization [p MAX_U
 unset_path_exceptions -from [all_inputs]
 set_false_path -from [get_ports rst_n]
 qb35_stat grt_setup_repair
-set _hfp {}
-foreach _i [[ord::get_db_block] getInsts] { if {[[$_i getMaster] getName] in {qb_hub qb_act2_blk qb_col_blk}} {
-    foreach _it [$_i getITerms] { if {[$_it isInputSignal] && [$_it getNet] ne "NULL" && [[$_it getNet] isDoNotTouch]} { lappend _hfp [$_i getName]/[[$_it getMTerm] getName] } } } }
-if {[llength $_hfp]} { set_false_path -hold -to [get_pins $_hfp] }
-qc_log "r43: [llength $_hfp] block input pins on dont_touch nets hold-false-pathed for the repair"
 if {$::env(QB35_GRTHOLD) && [catch { repair_timing -hold -hold_margin 0.05 -max_buffer_percent 10 \
         -max_utilization [p MAX_UTIL] } e]} { qc_log "r35: post-GRT hold repair stopped: $e" }
-if {[llength $_hfp]} { unset_path_exceptions -hold -to [get_pins $_hfp] }
 qb35_stat grt_hold_repair
+source $::QBF/repair/drv.tcl
+qb_drv postgrt
 detailed_placement {*}[p DPL_ARGS]
 catch { check_placement } e; qc_log "r35 check_placement: $e"
 global_route -end_incremental
