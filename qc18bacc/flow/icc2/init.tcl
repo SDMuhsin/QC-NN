@@ -14,11 +14,11 @@ proc qb_sdc {} {
     source $::QBF/common/block_sdc.tcl
     set f [open $P(SDC)]; set t [read $f]; close $f
     regexp -line {^create_clock .*-period ([0-9.]+)} $t -> per
-    regsub -all -line {^set_operating_conditions .*$} $t {} t
+    regsub -all -line {^set_operating_conditions .*\n} $t {} t
     regsub -all {(set_driving_cell [^\[]*)-library \S+ } $t {\1} t
     set nio 0
     if {[info exists P(IO_BUDGET)]} {
-        set nio [regsub -all -line {^set_(input|output)_delay .*$} $t {} t]
+        set nio [regsub -all -line {^set_(input|output)_delay .*\n} $t {} t]
         source $P(IO_BUDGET)
         append t "\n# IO budget [file tail $P(IO_BUDGET)], period $per\n[qb5_io_lines $per]\n"
     }
@@ -36,6 +36,18 @@ set sdc [qb_sdc]
 read_verilog -top $P(TOP) $P(NETLIST)
 link_block
 qb_timer
+# feedthrough buffers (P(FEEDTHRU): output ports each driven by one netlist buffer from an input port, e.g. the column's
+# act -> act_o, which the abutted chip relies on to re-buffer act): size_only, so optimisation may still resize them for
+# timing / DRV but never removes them (R59: place_opt removed all 4608 BUFFD2/3/4, the netlist became assign act_o = act,
+# LVS merged the ports, ETM MEXT-97).  dont_touch would also forbid sizing; set_size_only does not stop buffering of the
+# net, which is allowed.
+if {[info exists P(FEEDTHRU)]} {
+    set ftp [get_ports $P(FEEDTHRU)]
+    set ft [get_cells -of_objects [get_pins -of_objects [get_nets -of_objects $ftp] -filter "direction==out"]]
+    set_size_only $ft true
+    qb_line "init feedthrough size_only cells [sizeof_collection $ft] ports [sizeof_collection $ftp] ($P(FEEDTHRU))"
+    if {[sizeof_collection $ft] != [sizeof_collection $ftp]} { error "QB feedthrough: [sizeof_collection $ft] driver cells for [sizeof_collection $ftp] ports" }
+}
 
 create_mode func
 foreach c $::QC_CORNERS {

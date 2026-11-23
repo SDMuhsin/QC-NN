@@ -10,8 +10,9 @@ set P(NETLIST) $_s/$P(TOP).v
 if {[info exists ::env(QC_PNR_OUT)] && [file exists $_s/$P(TOP).sdc]} {
     set _f [open $_s/$P(TOP).sdc]; set _t [read $_f]; close $_f
     regsub -all {\\\n\s*-min \S+ -min_library \S+} $_t {} _t
-    # DC topographical writes its estimated per-net load / resistance (1.2 M lines): drop them, P&R has real RC
-    regsub -all -line {^set_(load|resistance) .*\[get_nets .*$} $_t {} _t
+    # DC topographical writes its estimated per-net load / resistance (1.2 M lines): delete them (with their newline: R59
+    # left 1.43 M blank lines in the ICC2 SDC), P&R has real RC
+    regsub -all -line {^set_(load|resistance) .*\[get_nets .*\n} $_t {} _t
     # QB_PNR_PERIOD (results/pnr_slice2.md): DC synthesised with a setup margin (shorter period); P&R re-times the
     # netlist at this period: clock period, IO delays (20 % of it) and max transition (min(0.5, 0.1 P))
     if {[info exists ::env(QB_PNR_PERIOD)]} {

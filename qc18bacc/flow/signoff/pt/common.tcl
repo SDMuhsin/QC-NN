@@ -1,11 +1,14 @@
 # PrimeTime helpers shared by the block sign-off / ETM scripts (signoff/pt/col_blk.tcl, act_blk.tcl, hub.tcl,
-# signoff/etm/etm.tcl).  Sourcing it also sets the sign-off timer options (the callers update_timing after it):
+# signoff/etm/etm.tcl).  Sourcing it also sets the sign-off timer options (the callers read the SPEF and update_timing
+# after it):
 #   timing_crpr_threshold_ps 1 (PT default 5): exact clock reconvergence pessimism removal.  The CCS receiver model gives
 #   the clock leaf nets different early / late loads (r55 ff: 0.214 / 0.348 pF behind cts_inv_32429549), so a flop pair on
 #   one leaf net has ~5 ps of common-path pessimism; at the default threshold PT credited 0.4 ps of it (last common pin
 #   placed 3 levels up), ICC2 (exact CRPR) 5.7 ps: the R54 / R55 ff hold misses on direct flop-to-flop paths (R55 [M]).
 #   1 ps is PT's floor (R59 [M]: set to 0 / 0.1 it reads back 1), so a leaf-net split below ~1 ps still gets ~0 credit
 #   (R59: t1_reg_10_ -> t2_reg_10_ PT 0.06 ps vs ICC2 1.6 ps); the analysis is already on_chip_variation (report_design).
+#   si_enable_analysis true (R62): crosstalk delta delay / noise-aware timing on the coupled ICC2 SPEF (flow/icc2 qb_timer
+#   time.si_enable_analysis); sourced before read_parasitics, otherwise PT grounds the SPEF coupling capacitances.
 #   qb_pt_lat <dir> <corner>  insertion delay L of this corner: p50 of the rise arrival at every register / macro clock pin
 #                             (the definition the P&R uses, cts/clk_lat.tcl); "<p50> <min> <max>" written to
 #                             <dir>/out/clk_lat_<corner>.txt, which the chip top reads (blocks/top/run.sh views)
@@ -14,6 +17,7 @@
 #                             the hub SDC put a BUFFD4 there, extract_model then varied the BUFFD4 *input* slew: MEXT-81
 #                             and the column tt outlier tables), ideal input ramp: the ETM index is the port slew
 set_app_var timing_crpr_threshold_ps 1
+set_app_var si_enable_analysis true
 proc qb_pt_lat {dir corner} {
     set v {}
     foreach a [get_attribute -quiet [all_registers -clock_pins] max_rise_arrival] { if {[string is double -strict $a]} { lappend v $a } }

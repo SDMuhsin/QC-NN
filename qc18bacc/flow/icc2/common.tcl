@@ -8,6 +8,9 @@
 #   qb_timer            timer options of every design step: CCS receiver capacitance in delay / slew / max_cap
 #                       (time.enable_ccs_rcv_cap, default false: ICC2 then loads nets with the NLDM pin cap while
 #                       PrimeTime uses the CCS receiver model of the same _ccs.db, R55: 0.06 vs 0.09 pF on n1690)
+#                       and crosstalk (time.si_enable_analysis, default false; R59 route_opt ran without SI, ROPT-002,
+#                       and the SPEF had no coupling capacitance): SI delta delays in route_opt / eco timing, extraction
+#                       keeps the coupling capacitances, so outputs.tcl writes a coupled SPEF (PT sign-off runs SI too)
 #   qb_done <step> [as] save (as 1: save the current block as label <step>, the init step), log the step end in
 #                       <run>/summary.txt, QB_ICC2_DONE marker for the wrapper
 #   qb_qor <step>       QoR lines (cells, utilization, DRV count, WNS / TNS / NVE per scenario) + rpt/<step>_{qor,drv}.rpt
@@ -42,6 +45,7 @@ proc qb_open {from to} {
 }
 proc qb_timer {} {
     set_app_options -name time.enable_ccs_rcv_cap -value true
+    set_app_options -name time.si_enable_analysis -value true
 }
 # one QoR line: setup WNS / TNS / violators per scenario, hold WNS per scenario, DRV counts, utilization
 proc qb_qor {step} {

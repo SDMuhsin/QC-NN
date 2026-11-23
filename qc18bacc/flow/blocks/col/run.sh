@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Column block qb_col_blk (config: blocks/col/col.env + icc2.cfg; flow/README.md).  On the build host:
 #   qc18bacc/flow/blocks/col/run.sh pnr <tag>      ICC2 (flow/icc2): libs init floorplan place cts route outputs in
-#                                                  $B/icc2/col/<tag> (QC_PNR_FROM / QC_PNR_TO select a step range)
+#                                                  $B/icc2/col/<tag> (QC_PNR_FROM / QC_PNR_TO select a step range);
+#                                                  every outputs netlist passes signoff/portcheck.py (also after eco)
 #   qc18bacc/flow/blocks/col/run.sh eco <tag>      one sign-off ECO round on the routed run: PrimeTime DMSA tt / ss / ff
 #                                                  (signoff/pt/drv_eco.tcl: DRV, then hold) -> out/eco/pt_eco.tcl, applied by
 #                                                  ICC2 (flow/icc2/eco.tcl: label route -> eco), outputs of label eco;
@@ -24,11 +25,15 @@ pt_env() {   # PrimeTime environment of the block sign-off script (signoff/pt/co
     export QC_SDC=$QBF/common/constraints.sdc QC_PT_HOOK= QC_PERIOD=$COL_PT_PERIOD QC_PNR_OUT=$d QC_TOP=$COL_TOP
     cd "$d"
 }
+portcheck() {   # gate on the outputs netlist: port bits as the DC netlist, no port-to-port assign (signoff/portcheck.py)
+    "$PY" -I "$QBF/signoff/portcheck.py" "$B/syn/$COL_SYN/$COL_TOP.v" "$d/out/$COL_TOP.v" "$COL_TOP"
+}
 case $step in
 pnr) on=0
      for s in libs init floorplan place cts route outputs; do
          [ "$s" = "${QC_PNR_FROM:-libs}" ] && on=1; [ $on = 1 ] || continue
          qb_icc2 "$d" $s "$([ $s = libs ] && echo icc2_lm_shell)" || exit 1
+         [ $s = outputs ] && { portcheck || exit 1; }
          [ "$s" = "${QC_PNR_TO:-outputs}" ] && break
      done
      cat "$d/summary.txt" | tail -40 ;;
@@ -39,6 +44,7 @@ eco) export QB_ECO_FROM=$(cat "$d/out/label.txt" 2>/dev/null || echo route)
      cat "$d/out/eco/eco_summary.txt"
      qb_icc2 "$d" eco || exit 1
      QB_ICC2_LABEL=eco qb_icc2 "$d" outputs || exit 1
+     portcheck || exit 1
      grep '^eco' "$d/summary.txt" | tail -20 ;;
 post) ( pt_env || exit 1
        for c in tt ss ff; do

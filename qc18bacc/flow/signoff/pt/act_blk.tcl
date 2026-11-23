@@ -13,10 +13,11 @@ current_design $top
 link_design
 qc_apply_constraints $corner
 set_propagated_clock [all_clocks]
+# sign-off timer options (SI on) before the SPEF is read: PT keeps its coupling capacitances
+source [file normalize $::env(QC_FLOW)/../../qc18bacc/flow/signoff/pt/common.tcl]
 read_parasitics -format spef $dir/out/${top}_${corner}_pt.spef
 update_timing
 set per [get_attribute [get_clocks qb_clk] period]
-source [file normalize $::env(QC_FLOW)/../../qc18bacc/flow/signoff/pt/common.tcl]
 # insertion delay L of this corner (p50 clock-pin latency, as the P&R)
 set L [qb_pt_lat $dir $corner]
 source [file normalize $::env(QC_FLOW)/../../qc18bacc/flow/blocks/act/io_budget.tcl]
