@@ -34,8 +34,9 @@ proc qb_line {t} {
 proc qb_open {from to} {
     global P
     open_lib $::QB_LIB
-    if {$from ne $to} { copy_block -from_block $P(TOP)/$from -to_block $P(TOP)/$to -force }
-    current_block $P(TOP)/$to
+    # (open_lib opens no block: from = to needs open_block, R60; copy_block leaves the copy open)
+    if {$from ne $to} { copy_block -from_block $P(TOP)/$from -to_block $P(TOP)/$to -force; current_block $P(TOP)/$to } \
+    else { open_block $P(TOP)/$to }
     link_block
     qb_timer
 }
