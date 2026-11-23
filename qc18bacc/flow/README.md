@@ -42,7 +42,7 @@ stops at that step.  The OpenROAD steps are unchanged.
 qc18bacc/flow/blocks/col/run.sh pnr <tag>       # ICC2 libs init floorplan place cts route outputs -> $QC_BUILD/icc2/col/<tag>
 qc18bacc/flow/blocks/col/run.sh eco <tag>       # one PT DMSA ECO round tt/ss/ff (signoff/pt/drv_eco.tcl: DRV, hold) applied by ICC2 eco.tcl, outputs of label eco
 qc18bacc/flow/blocks/col/run.sh post <tag>      # PT tt/ss/ff at 6.5 ns on the ICC2 netlist + SPEF, ETMs
-qc18bacc/flow/blocks/col/run.sh views <tag>     # ICC2 abstract LEF + port antenna data (out/qb_col_blk_ant.lef), etmcheck (read by blocks/top/run.sh views)
+qc18bacc/flow/blocks/col/run.sh views <tag>     # ICC2 abstract LEF with port antenna data + antenna / abutment / PG pin gates (out/qb_col_blk.lef), etmcheck (read by blocks/top/run.sh views)
 qc18bacc/flow/blocks/col/run.sh calibre <tag>   # LVS source, Calibre LVS / DRC (block deck) / antenna on the ICC2 GDS -> <run>/calibre
 ```
 Inputs: netlist + SDC `$B/syn/qb_col_blk_r5d_s20_tt_p1.65_topo` (P&R SDC: common/block_sdc.tcl + blocks/col/io_budget.tcl

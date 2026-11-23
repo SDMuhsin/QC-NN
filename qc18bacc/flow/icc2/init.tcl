@@ -4,7 +4,8 @@
 #   (P(IO_BUDGET), qb5_io_lines at that period) in place of DC's IO delays (block_sdc's IO rescale does not match DC's
 #   "-clock qb_clk  -max" lines); ICC2 picks each corner's library by operating condition, so DC's
 #   set_operating_conditions and the -library of set_driving_cell are dropped.  Written to <run>/<top>_icc2.sdc.
-#   Scenarios: ss setup, tt + ff hold, max transition / capacitance everywhere.
+#   Scenarios: ss setup, tt + ff hold, max transition / capacitance everywhere.  Netlist-dependent input driving cells
+#   (qb_io_drive: column act[b] = its own act_o[b] driver) replace the SDC's on those ports.
 source [file dirname [info script]]/common.tcl
 array set ::QB_SCEN {ss {setup 1 hold 0} tt {setup 0 hold 1} ff {setup 0 hold 1}}
 
@@ -64,6 +65,7 @@ foreach c $::QC_CORNERS {
         -min_capacitance false -leakage_power false -dynamic_power false
 }
 qb_timer
+qb_io_drive
 set du {}; foreach p $::QC_DONT_USE { lappend du */$p }
 set_lib_cell_purpose -exclude all [get_lib_cells $du]
 redirect -tee $::R/rpt/init_scen.rpt { report_scenarios; report_pvt }

@@ -19,6 +19,12 @@
 #   qb_pt_ann                 SPEF annotation line "total N rc_network N coupled_network N not_annotated N" (totals row
 #                             of report_annotated_parasitics; with coupling kept it has the Coupled network column, R64)
 #   qb_pt_drv <fh>            sign-off DRV line: max-transition and max-capacitance violators (design + library limits)
+#   qb_pt_si_checks <fh> <rpt> sign-off checks beyond delta delay (R67): crosstalk noise / glitch (update_noise on the
+#                             coupled SPEF against the CCS-noise immunity of the libraries; report_noise -all_violators,
+#                             every listed pin counts, above_low and below_high) and the clock pulse checks
+#                             (report_constraint -min_pulse_width / -min_period -all_violators) -> <rpt>_noise.rpt,
+#                             <rpt>_pulse.rpt, a "signoff ..." line to fh and QB_PT_SIGNOFF on stdout, which common/env.sh
+#                             qb_pt gates (a non-zero count fails the PT run)
 #   qb_etm_inputs             ETM extraction context (R45 bug 2): no driving cell on any input, clk included
 #                             (constraints.sdc / the hub SDC put a BUFFD4 on the data inputs and a CKBD8 on clk,
 #                             extract_model then varied the driving cell's *input* slew: MEXT-81, and the R63 clock
@@ -66,4 +72,16 @@ proc qb_etm_inputs {} {
     set_app_var extract_model_data_transition_limit $mt
     set_app_var extract_model_clock_transition_limit $mt
     puts "QB_ETM inputs: driving cells removed, input transition = table limit = max_transition $mt on [sizeof_collection $in] ports"
+}
+proc qb_pt_si_checks {fh rpt} {
+    update_noise
+    redirect -variable n { report_noise -all_violators -nosplit }
+    redirect ${rpt}_noise.rpt { puts $n }
+    set nv [regexp -all -line {^\s*\S+ \(\S+\)\s+[-0-9.]+\s+[-0-9.]+\s+[-0-9.]+\s*$} $n]
+    redirect -variable w { report_constraint -min_pulse_width -all_violators -nosplit }
+    redirect -variable p { report_constraint -min_period -all_violators -nosplit }
+    redirect ${rpt}_pulse.rpt { puts $w; puts $p }
+    set l "noise $nv min_pulse_width [regexp -all -line {VIOLATED} $w] min_period [regexp -all -line {VIOLATED} $p]"
+    puts $fh "signoff $l"
+    puts "QB_PT_SIGNOFF $l"
 }

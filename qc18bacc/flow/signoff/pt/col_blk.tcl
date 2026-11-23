@@ -1,7 +1,7 @@
 # PrimeTime sign-off of the routed column block qb_col_blk at one corner (results/r5a.md): routed netlist + def2spef
 # SPEF, propagated clock, IO budget of blocks/col/io_budget.tcl shifted by the block insertion delay L (p50, per corner) (top-level flops balanced with
 # the block's sinks).  Reports per class: reg2reg, act -> reg, act -> act_o (feedthrough), north in -> reg,
-# south in -> reg, reg -> south out, hold, DRV.  fmax = 1 / (period - WNS) of reg2reg.
+# south in -> reg, reg -> south out, hold, DRV, noise / min pulse width / min period (signoff/pt/common.tcl qb_pt_si_checks).  fmax = 1 / (period - WNS) of reg2reg.
 set t0 [clock seconds]
 source $::env(QC_FLOW)/common/lib.tcl
 set top    $::env(QC_TOP)
@@ -24,6 +24,8 @@ set per [get_attribute [get_clocks qb_clk] period]
 set L [qb_pt_lat $dir $corner]
 source [file normalize $::env(QC_FLOW)/../../qc18bacc/flow/blocks/col/io_budget.tcl]
 qb5_io_apply $per $L
+# act[b] driving cell = this block's own act_o[b] driver (the previous column's feedthrough), per bit
+qb5_act_drv_apply [qb5_act_drv]
 # act_o load = this block's own act[b] net (next column's act pin), per bit, on the routed SPEF
 qb5_act_o_load [qb5_act_o_caps {apply {p {get_attribute [get_nets -of_objects $p] total_capacitance_max}}}]
 update_timing
@@ -67,6 +69,7 @@ puts $fh "hold_violating_endpoints [regexp -all -line {VIOLATED} $hv]"
 redirect -variable sv { report_constraint -max_delay -all_violators -nosplit }
 puts $fh "setup_violating_endpoints [regexp -all -line {VIOLATED} $sv]"
 qb_pt_drv $fh
+qb_pt_si_checks $fh $dir/rpt/pt_blk_$corner
 redirect $dir/rpt/pt_blk_${corner}_reg2reg.rpt { report_timing -max_paths 5 -nosplit -exclude $io -input_pins -nets -capacitance -transition_time }
 redirect $dir/rpt/pt_blk_${corner}_io.rpt { report_timing -max_paths 2 -nosplit -input_pins -nets -capacitance -transition_time -from [all_inputs]; report_timing -max_paths 2 -nosplit -input_pins -to [all_outputs] }
 redirect $dir/rpt/pt_blk_${corner}_min.rpt { report_timing -delay_type min -max_paths 3 -nosplit -path_type full_clock_expanded -input_pins }

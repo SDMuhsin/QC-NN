@@ -7,12 +7,14 @@
 #                                                  (signoff/pt/drv_eco.tcl: DRV, then hold) -> out/eco/pt_eco.tcl, applied by
 #                                                  ICC2 (flow/icc2/eco.tcl: label route -> eco), outputs of label eco;
 #                                                  a later round starts from the label of out/ (out/label.txt: eco)
-#   qc18bacc/flow/blocks/col/run.sh post <tag>     PrimeTime tt / ss / ff on the ICC2 netlist + SPEF, ETMs tt / ss / ff
-#                                                  (fails on MEXT-81 / MEXT-97 in an ETM log)
+#   qc18bacc/flow/blocks/col/run.sh post <tag>     PrimeTime tt / ss / ff on the ICC2 netlist + SPEF (fails on a noise /
+#                                                  min pulse width / min period violator, common/env.sh qb_pt), ETMs
+#                                                  tt / ss / ff (fails on MEXT-81 / MEXT-97 in an ETM log)
 #   qc18bacc/flow/blocks/col/run.sh views <tag>    views for the chip top (blocks/top/run.sh views reads them): ICC2
-#                                                  abstract LEF + port antenna data + abutment check (flow/icc2/abstract.tcl,
+#                                                  abstract LEF with ICC2's port antenna data + antenna / abutment / PG
+#                                                  pin gates (flow/icc2/abstract.tcl,
 #                                                  label QB_ICC2_LABEL [the label of out/, out/label.txt, as eco]) ->
-#                                                  out/<top>_ant.lef; ETM scan (etmcheck 3 ns: fails on an input pin
+#                                                  out/<top>.lef; ETM scan (etmcheck 3 ns: fails on an input pin
 #                                                  without max_transition) of the post step's out/etm/<top>_<c>.lib
 #   qc18bacc/flow/blocks/col/run.sh calibre <tag>  kit dummy metal fill (fill_blk.sed) on the ICC2 GDS, then on the
 #                                                  filled GDS: LVS source, Calibre LVS (lvs_case.sed), DRC (block deck
@@ -49,10 +51,12 @@ eco) export QB_ECO_FROM=$(cat "$d/out/label.txt" 2>/dev/null || echo route)
      portcheck || exit 1
      grep '^eco' "$d/summary.txt" | tail -20 ;;
 post) ( pt_env || exit 1
-       for c in tt ss ff; do
-           QC_CORNER=$c qb_pt "pt_blk_$c.log" pt_shell -f "$QBF/signoff/pt/col_blk.tcl" || exit 1
+       r=0
+       for c in tt ss ff; do   # every corner is reported before a failure stops the step (R67)
+           QC_CORNER=$c qb_pt "pt_blk_$c.log" pt_shell -f "$QBF/signoff/pt/col_blk.tcl" || r=1
            cat "pt_blk_$c.txt"
        done
+       [ $r = 0 ] || exit 1
        for c in tt ss ff; do
            QC_CORNER=$c qb_pt "etm_$c.log" pt_shell -f "$QBF/signoff/etm/etm.tcl" || exit 1
            ! grep -m 3 'MEXT-81\|MEXT-97' "etm_$c.log" || { echo "ETM $c: driving cell / feedthrough warnings"; exit 1; }

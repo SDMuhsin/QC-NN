@@ -65,6 +65,7 @@ redirect -variable sv { report_constraint -max_delay -all_violators -nosplit }
 puts $fh "setup_violating_endpoints [regexp -all -line {VIOLATED} $sv]"
 qb_pt_drv $fh
 file mkdir $dir/rpt
+qb_pt_si_checks $fh $dir/rpt/pt_hub_${corner}
 redirect $dir/rpt/pt_hub_${corner}_r2r.rpt { report_timing -max_paths 5 -nosplit -exclude $io -input_pins -nets -capacitance -transition_time }
 redirect $dir/rpt/pt_hub_${corner}_end.rpt { report_timing -max_paths 300 -nworst 1 -path_type end -nosplit }
 redirect $dir/rpt/pt_hub_${corner}_io.rpt { report_timing -max_paths 3 -nosplit -input_pins -nets -from [all_inputs]; report_timing -max_paths 3 -nosplit -input_pins -nets -to [all_outputs] }

@@ -22,6 +22,16 @@ qc_apply_constraints $corner
 set_propagated_clock [all_clocks]
 # sign-off timer options (SI on), then the SPEF with its coupling capacitances (qb_pt_spef)
 source [file normalize $::env(QC_FLOW)/../../qc18bacc/flow/signoff/pt/common.tcl]
+# hard-block ETMs: extract_model bakes the block's OCV derate (common/derate.tcl, sourced by etm.tcl / the block scripts)
+# into the ETM arcs (R67 [M], r65 column tt extracted with and without the derate: cell_rise / cell_fall median x1.023,
+# setup / hold constraints x1.04, transitions x1.000), so the ETM instances' cell delays are not derated a second time;
+# the top nets to their pins and the ARM macros (real libraries) keep the derate
+set _etm [get_cells -quiet -hierarchical -filter "ref_name==qb_col_blk || ref_name==qb_hub || ref_name==qb_act2_blk"]
+if {[sizeof_collection $_etm]} {
+    set_timing_derate -late  -cell_delay 1.0 $_etm
+    set_timing_derate -early -cell_delay 1.0 $_etm
+    puts "QB_ETM_DERATE [sizeof_collection $_etm] ETM instances at cell derate 1.0 (derate baked into the ETM)"
+}
 qb_pt_spef $dir/out/${top}_${corner}_pt.spef
 update_timing
 # IO shift L (results/r43.md defect 6) = p50 of the propagated clock arrival at the top registers' clock pins (blocks /
@@ -127,6 +137,7 @@ if {$n} { puts $fh [format "R39LAT %s top_reg_clk_pins %d p10 %.3f p50 %.3f p90 
 foreach c [list $hub $act] { foreach_in_collection q [get_pins -of_objects $c -filter "lib_pin_name==clk"] { puts $fh [format "R39BLKCLK %s %s" [get_object_name $q] [get_attribute -quiet $q max_rise_arrival]] } }
 # R42: a sample of the nets PT reports as not annotated
 redirect $dir/rpt/r42_${corner}_notann.rpt { report_annotated_parasitics -list_not_annotated -max_nets 3000 }
+qb_pt_si_checks $fh $dir/rpt/pt_chip_$corner
 puts $fh "pt_wall_s [expr {[clock seconds] - $t0}]"
 close $fh
 exit

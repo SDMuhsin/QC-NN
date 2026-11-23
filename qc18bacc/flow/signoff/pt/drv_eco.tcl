@@ -2,14 +2,15 @@
 # col_blk.tcl, act_blk.tcl, hub.tcl) up to its design setup (netlist, SDC, SPEF, propagated clock, IO budget: the script
 # returns there when ::QB_PT_SETUP_ONLY exists), plus the shared dont_use list (site.tcl QC_DONT_USE, read by DC too).  Two modes:
 # * one corner QC_CORNER (pt_shell; act / hub run.sh drveco, OpenROAD, R48): DRV only (fix_eco_drc max_transition /
-#   max_capacitance, size_cell + insert_buffer BUFFD2 / 4 / 8); a QB_PT_PRE_ECO file (the changes of an earlier corner)
+#   max_capacitance / noise, size_cell + insert_buffer BUFFD2 / 4 / 8); a QB_PT_PRE_ECO file (the changes of an earlier corner)
 #   is applied first, so the last corner's <QC_PNR_OUT>/out/drv_eco_<corner>.tcl (icctcl) is the cumulative ECO for
 #   OpenROAD (repair/hold_eco.tcl QB35_ECO_TCL).
 # * one sign-off round at every corner of QB_ECO_CORNERS together (pt_shell -multi_scenario, DMSA; column run.sh eco,
 #   ICC2, R56 results/r56.md): one scenario process per corner, physically aware (occupied_site) on the ICC2 design
 #   library QB_ECO_NLIB / block QB_ECO_BLOCK when set;
-#     1. fix_eco_drc max_transition, then max_capacitance (as above)
-#     2. fix_eco_timing -type hold (size_cell, insert_buffer BUFFD1 / 2); PT keeps setup / DRV of every scenario clean
+#     1. fix_eco_drc max_transition, then max_capacitance, then crosstalk noise (R67; update_noise in the setup)
+#     2. fix_eco_timing -type setup (size_cell, insert_buffer BUFFD2 / 4 / 8; R67)
+#     3. fix_eco_timing -type hold (size_cell, insert_buffer BUFFD1 / 2); PT keeps setup / DRV of every scenario clean
 #   No fixing margins.  Writes <QC_PNR_OUT>/out/eco/pt_eco.tcl (icc2tcl, sourced by flow/icc2/eco.tcl), eco_summary.txt
 #   (setup / hold violators, max_tran / max_cap pins per corner before / after DRV / after hold; ECO size), the
 #   unfixable-hold reasons hold_unfixable*.
@@ -22,9 +23,11 @@ proc qb_eco_setup {corner} {
     uplevel #0 { source $::env(QC_FLOW)/site/pnr.tcl }
     foreach p $::QC_DONT_USE { set c [get_lib_cells -quiet */$p]; if {[sizeof_collection $c]} { set_dont_use $c } }
     uplevel #0 { set eco_report_unfixed_reason_max_endpoints 1000 }
+    # crosstalk noise of the sign-off (signoff/pt/common.tcl qb_pt_si_checks), fixed by fix_eco_drc -type noise
+    update_noise
 }
 proc qb_eco_drc {pmode} {
-    foreach ty {max_transition max_capacitance} {
+    foreach ty {max_transition max_capacitance noise} {
         fix_eco_drc -type $ty -methods {size_cell insert_buffer} -buffer_list {BUFFD2 BUFFD4 BUFFD8} \
             -cell_type {combinational sequential} -physical_mode $pmode -verbose
     }
@@ -73,7 +76,8 @@ proc qb_eco_state {sf tag} {
         redirect -variable h { report_constraint -min_delay -all_violators -nosplit }
         redirect -variable t { report_constraint -max_transition -all_violators -nosplit }
         redirect -variable k { report_constraint -max_capacitance -all_violators -nosplit }
-        puts "QB_ECO_STATE $::qb_eco_corner setup [regexp -all -line {VIOLATED} $s] hold [regexp -all -line {VIOLATED} $h] max_tran [regexp -all -line {VIOLATED} $t] max_cap [regexp -all -line {VIOLATED} $k] cells [sizeof_collection [get_cells -hier -filter is_hierarchical==false]]"
+        redirect -variable n { report_noise -all_violators -nosplit }
+        puts "QB_ECO_STATE $::qb_eco_corner setup [regexp -all -line {VIOLATED} $s] hold [regexp -all -line {VIOLATED} $h] max_tran [regexp -all -line {VIOLATED} $t] max_cap [regexp -all -line {VIOLATED} $k] noise [regexp -all -line {^\s*\S+ \(\S+\)\s+[-0-9.]+\s+[-0-9.]+\s+[-0-9.]+\s*$} $n] cells [sizeof_collection [get_cells -hier -filter is_hierarchical==false]]"
     } }
     foreach l [split $r "\n"] {
         if {[regexp {QB_ECO_STATE (\w+ setup \d+ .*)$} $l -> x]} { puts $sf "$tag $x"; puts "QB_ECO $tag $x" }
@@ -84,6 +88,12 @@ qb_eco_state $sf before
 puts $sf "physical_mode $pmode"
 qb_eco_drc $pmode
 qb_eco_state $sf drc
+# setup (R67): the column's act[b] is driven by the block's own act_o[b] driver (io_budget.tcl qb5_act_drv), which ICC2
+# resizes after its last driving-cell snapshot, so act -> act_o / act -> reg can miss setup at sign-off although ICC2
+# met them; upsizing that driver shortens both its own arc and (next round, re-measured) the act input drive
+fix_eco_timing -type setup -methods {size_cell insert_buffer} -buffer_list {BUFFD2 BUFFD4 BUFFD8} -physical_mode $pmode \
+    -verbose -unfixable_reasons_prefix $o/setup_unfixable -unfixable_reasons_format text
+qb_eco_state $sf setup
 fix_eco_timing -type hold -methods {size_cell insert_buffer} -buffer_list {BUFFD1 BUFFD2} -physical_mode $pmode \
     -verbose -unfixable_reasons_prefix $o/hold_unfixable -unfixable_reasons_format text
 qb_eco_state $sf hold

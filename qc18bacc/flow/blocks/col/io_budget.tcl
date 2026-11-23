@@ -15,6 +15,10 @@
 #                          bit b is exactly that of the same net in the next column (R63 [M] ss ETM act pins p50 0.037,
 #                          max 0.088 pF), so the max would over-load most of the 4608 feedthroughs ~2x.  It replaces the
 #                          common 4 x INVD4 (constraints.sdc, 0.0187 pF), which is not what an abutted act_o drives.
+#   act driving cell       qb5_act_drv: column c's act[b] is driven by column c-1's act_o[b] driver, the same netlist
+#                          cell (and size) as this block's own act_o[b] driver, so act[b] gets that lib cell / pin as its
+#                          driving cell, per bit (R67: the common BUFFD4 of constraints.sdc was stronger than 3447 of the
+#                          4608 feedthroughs).  Measured on the current netlist (ICC2 sizes the size_only feedthroughs).
 proc qb5_budget {} {
     set si [expr {[info exists ::env(QB5_SOUTH_IN)] ? $::env(QB5_SOUTH_IN) : 0.20}]
     return [subst -nocommands {
@@ -60,4 +64,27 @@ proc qb5_act_o_load {ld} {
     set v [lsort -real $v]; set n [llength $v]
     puts [format "QB5_ACT_O_LOAD %d act_o ports, per-bit load = own act net: min %.4f p50 %.4f max %.4f pF" $n \
         [lindex $v 0] [lindex $v [expr {$n / 2}]] [lindex $v end]]
+}
+# act[b] driving cell = the leaf driver of this block's own act_o[b] net.  qb5_act_drv: {b lib_cell pin ...} of every
+# act_o[b] (one driver per bit, else an error); qb5_act_drv_apply <drv>: set_driving_cell of each act[b] (grouped by
+# lib cell / pin; the library is the tool's for the current corner) + one QB5_ACT_DRV line (bits per lib cell).
+proc qb5_act_drv {} {
+    set dv {}
+    foreach_in_collection p [get_ports {act_o[*]}] {
+        regexp {\[(\d+)\]$} [get_object_name $p] -> b
+        set d [get_pins -quiet -leaf -of_objects [get_nets -of_objects $p] -filter "direction==out"]
+        if {[sizeof_collection $d] != 1} { error "qb5_act_drv: [sizeof_collection $d] drivers on [get_object_name $p]" }
+        lappend dv $b [get_attribute [get_cells -of_objects $d] ref_name] [lindex [split [get_object_name $d] /] end]
+    }
+    return $dv
+}
+proc qb5_act_drv_apply {dv} {
+    foreach {b c pin} $dv { lappend g([list $c $pin]) "act\[$b\]" }
+    set h {}
+    foreach k [lsort [array names g]] {
+        lassign $k c pin
+        set_driving_cell -lib_cell $c -pin $pin [get_ports $g($k)]
+        lappend h "$c/$pin [llength $g($k)]"
+    }
+    puts "QB5_ACT_DRV [expr {[llength $dv] / 3}] act ports, driving cell = own act_o driver: [join $h {, }]"
 }
