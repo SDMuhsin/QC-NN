@@ -1,12 +1,9 @@
 # Kit config template (copy to site.tcl, git-ignored, and fill in every <PLACEHOLDER>).
-# Sourced by common/lib.tcl in DC and PrimeTime.  Corners: ss = setup signoff, tt = typical, ff = hold.
+# Sourced by common/lib.tcl in DC and PrimeTime (and the ICC2 / OpenROAD flows).
 set ::QC_KIT $::env(QC_KIT)
-set ::QC_CORNERS {ss tt ff}                     ;# corners sta/run_pt.sh times by default
 
-# ---- standard-cell timing libraries (.db): file root name and operating condition per corner
+# ---- standard-cell timing libraries (.db directory; the libraries per corner come from the corner table below)
 set ::QC_LIBDIR <STDCELL_DB_DIR>
-array set ::QC_LIB {ss <LIB_SS> tt <LIB_TT> ff <LIB_FF>}
-array set ::QC_OC  {ss <OPCOND_SS> tt <OPCOND_TT> ff <OPCOND_FF>}
 
 # ---- wire-load mode (QC_TOPO=0): area-based wire_load_selection group of the library (empty: library default;
 #      check it is not a zero model, see common/lib.tcl qc_wire_load)
@@ -17,7 +14,24 @@ set ::QC_TF      <TECHFILE>
 set ::QC_MW_REF  <MILKYWAY_REFERENCE_LIB>
 set ::QC_TLU     <TLUPLUS_DIR>
 set ::QC_TLU_MAP <TLUPLUS_LAYER_MAP>
-array set ::QC_TLU_FILE {ss <TLU_WORST> tt <TLU_TYPICAL> ff <TLU_BEST>}
+
+# ---- sign-off corners: the one corner table (name, library root, operating condition, TLU+ file, ICC2 role setup / hold);
+#      every tool derives QC_LIB / QC_OC / QC_TLU_FILE / QC_ROLE / QC_SIGNOFF_CORNERS from it.  Take the corners from the
+#      library release note's characterization-corner table: setup at the slow process / low voltage at both temperature
+#      ends (temperature inversion) x {Cworst RCworst}, hold at the fast process / high voltage at both ends x
+#      {Cbest RCbest}, plus typical.  ss / tt / ff must exist (the base corners below).
+set ::QC_SIGNOFF {
+    ss      <LIB_WC>  <OPCOND_WC>  <TLU_CWORST>  setup
+    tt      <LIB_TC>  <OPCOND_TC>  <TLU_TYPICAL> hold
+    ff      <LIB_LT>  <OPCOND_LT>  <TLU_CBEST>   hold
+}
+set ::QC_SIGNOFF_CORNERS {}
+foreach {c l oc tlu role} $::QC_SIGNOFF {
+    set ::QC_LIB($c) $l; set ::QC_OC($c) $oc; set ::QC_TLU_FILE($c) $tlu; set ::QC_ROLE($c) $role
+    lappend ::QC_SIGNOFF_CORNERS $c
+}
+# base corners (subset of the table): DC, sta/run_pt.sh default, OpenROAD blocks, the block ETMs the chip top reads
+set ::QC_CORNERS {ss tt ff}
 
 # ---- reference cells used by the generated constraints and the summary
 set ::QC_NAND2    <NAND2_X1_CELL>               ;# gate-equivalent unit

@@ -16,11 +16,7 @@
 #                       <run>/summary.txt, QB_ICC2_DONE marker for the wrapper
 #   qb_io_load          IO loads that depend on the block's own layout: P(IO_LOAD) = {measure apply} procs of P(IO_BUDGET)
 #                       (column: blocks/col/io_budget.tcl qb5_act_o_caps / qb5_act_o_load, act_o[b] = own act[b] net),
-#                       called per scenario on the current timing (placement estimate or routed); cts.tcl, route.tcl;
-#                       it first re-applies qb_io_drive (optimisation resizes the feedthroughs)
-#   qb_io_drive         input driving cells that depend on the block's own netlist: P(IO_DRIVE) = {measure apply} procs
-#                       of P(IO_BUDGET) (column: qb5_act_drv / qb5_act_drv_apply, act[b] driven by the lib cell of the
-#                       block's own act_o[b] driver), applied in every scenario; init.tcl (after the SDC), qb_io_load
+#                       called per scenario on the current timing (placement estimate or routed); cts.tcl, route.tcl
 #   qb_qor <step>       QoR lines (cells, utilization, DRV count, WNS / TNS / NVE per scenario) + rpt/<step>_{qor,drv}.rpt
 #   qb_line <text>      append a line to <run>/summary.txt (and the log)
 #   qb_antenna_rules    kit antenna rules (route / eco via qb_route_setup, abstract.tcl)
@@ -74,7 +70,6 @@ proc qb_io_load {} {
     if {![info exists P(IO_LOAD)]} return
     lassign $P(IO_LOAD) measure apply
     source $P(IO_BUDGET)
-    qb_io_drive
     update_timing
     set s0 [current_scenario]
     # every scenario measured before the first set_load (it invalidates the timing and clears the net parasitics)
@@ -90,17 +85,6 @@ proc qb_io_load {} {
         qb_line "io_load [get_object_name $s]: [lindex [regexp -inline -line {QB.*_LOAD.*$} $r] 0]"
     }
     current_scenario $s0
-}
-proc qb_io_drive {} {
-    global P
-    if {![info exists P(IO_DRIVE)]} return
-    lassign $P(IO_DRIVE) measure apply
-    source $P(IO_BUDGET)
-    set d [$measure]
-    set s0 [current_scenario]
-    foreach_in_collection s [get_scenarios] { current_scenario $s; redirect -variable r { $apply $d } }
-    current_scenario $s0
-    qb_line "io_drive: [lindex [regexp -inline -line {QB.*_DRV.*$} $r] 0]"
 }
 # one QoR line: setup WNS / TNS / violators per scenario, hold WNS per scenario, DRV counts, utilization
 proc qb_qor {step} {

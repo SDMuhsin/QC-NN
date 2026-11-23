@@ -1,4 +1,5 @@
-# G1 (icc2_lm_shell): standard-cell NDM reference library from the kit liberty (.db, every corner of site.tcl QC_LIB)
+# G1 (icc2_lm_shell): standard-cell NDM reference library from the kit liberty (.db of every library of the site.tcl corner
+# table, QC_SIGNOFF_CORNERS: wc / wcl / tc / lt / ml since R68)
 # + the 9-metal cell LEF (site/pnr.tcl QC_PNR_LEF) on the ICC2 tech file (site.tcl QC_TF, tsmcn65_9lmT2 = 6X2Z).
 # lib.workspace.keep_all_physical_cells keeps the LEF-only physical cells (FILL*: no liberty model).
 # The kit LEF has the antenna diode (site/pnr.tcl QC_PNR_DIODE, ANTENNA, pin I) as CLASS CORE, not CORE ANTENNACELL, so
@@ -12,8 +13,8 @@ if {![file exists $::QB_NDM]} {
     set ws [file rootname [file tail $::QB_NDM]]
     set_app_options -name lib.workspace.keep_all_physical_cells -value true
     create_workspace $ws -flow normal -technology $::QC_TF
-    set dbs {}; foreach c $::QC_CORNERS { lappend dbs [qc_db $c] }
-    read_db $dbs
+    set dbs {}; foreach c $::QC_SIGNOFF_CORNERS { lappend dbs [qc_db $c] }
+    read_db [lsort -unique $dbs]
     read_lef $::QC_PNR_LEF
     set dio [get_lib_cells */[lindex $::QC_PNR_DIODE 0]]
     set dpin [get_lib_pins */[lindex $::QC_PNR_DIODE 0]/[lindex $::QC_PNR_DIODE 1]]
@@ -23,5 +24,5 @@ if {![file exists $::QB_NDM]} {
     redirect -tee $::R/rpt/libs_check.rpt { check_workspace }
     commit_workspace -output $::QB_NDM
 }
-qb_line "libs ndm $::QB_NDM tf [file tail $::QC_TF] lef [file tail $::QC_PNR_LEF] corners $::QC_CORNERS"
+qb_line "libs ndm $::QB_NDM tf [file tail $::QC_TF] lef [file tail $::QC_PNR_LEF] corners $::QC_SIGNOFF_CORNERS"
 puts "QB_ICC2_DONE libs"

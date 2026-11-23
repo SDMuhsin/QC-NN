@@ -88,9 +88,7 @@ qb_eco_state $sf before
 puts $sf "physical_mode $pmode"
 qb_eco_drc $pmode
 qb_eco_state $sf drc
-# setup (R67): the column's act[b] is driven by the block's own act_o[b] driver (io_budget.tcl qb5_act_drv), which ICC2
-# resizes after its last driving-cell snapshot, so act -> act_o / act -> reg can miss setup at sign-off although ICC2
-# met them; upsizing that driver shortens both its own arc and (next round, re-measured) the act input drive
+# setup (R67): residual setup violators of the sign-off timing (the column's act feedthroughs are dont_touch, R68)
 fix_eco_timing -type setup -methods {size_cell insert_buffer} -buffer_list {BUFFD2 BUFFD4 BUFFD8} -physical_mode $pmode \
     -verbose -unfixable_reasons_prefix $o/setup_unfixable -unfixable_reasons_format text
 qb_eco_state $sf setup

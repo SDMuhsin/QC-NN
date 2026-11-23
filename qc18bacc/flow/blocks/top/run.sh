@@ -34,7 +34,7 @@ views) A=$TOP_ABS; E=$QBF/signoff/etm; mkdir -p "$A"
      # act / hub: the block runs' ring LEFs with antenna data, ETMs, PT dbs; column: ring LEF of its antenna abstract
      ln -sf "$TOP_ACT/qb_act2_blk_ant_ring.lef" "$A/qb_act2_blk.lef"; ln -sf "$TOP_HUB/qb_hub_ant_ring.lef" "$A/qb_hub.lef"
      "$PY" -I "$E/lef_ring.py" "$TOP_COL_RUN/out/qb_col_blk.lef" "$A/qb_col_blk.lef" 1.5 | head -3
-     for c in tt ss ff; do
+     for c in $(qb_corners base); do   # the block ETM corners = site.tcl QC_CORNERS (blocks/col/run.sh post writes those)
        for f in "$TOP_ACT/qb_act2_blk_$c.lib" "$TOP_ACT/qb_act2_blk_${c}_lib.db" "$TOP_HUB/qb_hub_$c.lib" "$TOP_HUB/qb_hub_${c}_lib.db" \
            "$TOP_COL_RUN/out/etm/qb_col_blk_${c}_lib.db"; do ln -sf "$f" "$A/"; done
        # column OpenROAD ETM: its own measured latency range of this corner as clock-tree-path arcs ("p50 min max")

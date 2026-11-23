@@ -2,23 +2,30 @@
 # Column block qb_col_blk (config: blocks/col/col.env + icc2.cfg; flow/README.md).  On the build host:
 #   qc18bacc/flow/blocks/col/run.sh pnr <tag>      ICC2 (flow/icc2): libs init floorplan place cts route outputs in
 #                                                  $B/icc2/col/<tag> (QC_PNR_FROM / QC_PNR_TO select a step range);
-#                                                  every outputs netlist passes signoff/portcheck.py (also after eco)
-#   qc18bacc/flow/blocks/col/run.sh eco <tag>      one sign-off ECO round on the routed run: PrimeTime DMSA tt / ss / ff
-#                                                  (signoff/pt/drv_eco.tcl: DRV, then hold) -> out/eco/pt_eco.tcl, applied by
-#                                                  ICC2 (flow/icc2/eco.tcl: label route -> eco), outputs of label eco;
-#                                                  a later round starts from the label of out/ (out/label.txt: eco)
-#   qc18bacc/flow/blocks/col/run.sh post <tag>     PrimeTime tt / ss / ff on the ICC2 netlist + SPEF (fails on a noise /
-#                                                  min pulse width / min period violator, common/env.sh qb_pt), ETMs
-#                                                  tt / ss / ff (fails on MEXT-81 / MEXT-97 in an ETM log)
+#                                                  every outputs netlist passes signoff/portcheck.py (also after eco),
+#                                                  then fill (below)
+#   qc18bacc/flow/blocks/col/run.sh fill <tag>     kit dummy metal fill (Calibre, fill_blk.sed) of the outputs GDS ->
+#                                                  <run>/calibre/fill, its shapes as DEF FILLS (signoff/calibre/fill_def.py),
+#                                                  fill-aware ICC2 extraction (flow/icc2/extract.tcl) -> out/<top>_<c>_pt.spef
+#                                                  for every sign-off corner c (R68; site.tcl corner table, env.sh qb_corners)
+#   qc18bacc/flow/blocks/col/run.sh eco <tag>      one sign-off ECO round on the routed run: PrimeTime DMSA in every
+#                                                  sign-off corner (signoff/pt/drv_eco.tcl: DRV, setup, hold) ->
+#                                                  out/eco/pt_eco.tcl, applied by ICC2 (flow/icc2/eco.tcl: label route ->
+#                                                  eco), outputs + fill of label eco; a later round starts from the label
+#                                                  of out/ (out/label.txt: eco)
+#   qc18bacc/flow/blocks/col/run.sh post <tag>     PrimeTime in every sign-off corner on the ICC2 netlist + SPEF (fails on a
+#                                                  noise / min pulse width / min period violator, common/env.sh qb_pt), ETMs
+#                                                  of the base corners (site.tcl QC_CORNERS, the ones the chip top reads;
+#                                                  fails on MEXT-81 / MEXT-97 in an ETM log)
 #   qc18bacc/flow/blocks/col/run.sh views <tag>    views for the chip top (blocks/top/run.sh views reads them): ICC2
 #                                                  abstract LEF with ICC2's port antenna data + antenna / abutment / PG
 #                                                  pin gates (flow/icc2/abstract.tcl,
 #                                                  label QB_ICC2_LABEL [the label of out/, out/label.txt, as eco]) ->
 #                                                  out/<top>.lef; ETM scan (etmcheck 3 ns: fails on an input pin
 #                                                  without max_transition) of the post step's out/etm/<top>_<c>.lib
-#   qc18bacc/flow/blocks/col/run.sh calibre <tag>  kit dummy metal fill (fill_blk.sed) on the ICC2 GDS, then on the
-#                                                  filled GDS: LVS source, Calibre LVS (lvs_case.sed), DRC (block deck
-#                                                  drc_blk.sed), antenna -> <run>/calibre
+#   qc18bacc/flow/blocks/col/run.sh calibre <tag>  on the filled GDS of the fill step (the one the SPEFs saw): LVS source,
+#                                                  Calibre LVS (lvs_case.sed), DRC (block deck drc_blk.sed), antenna
+#                                                  -> <run>/calibre
 set -u
 here=$(cd "$(dirname "$0")" && pwd); . "$here/../../common/env.sh"; . "$here/col.env"
 step=${1:?step}; tag=${2:?tag}; d=$B/icc2/col/$tag
@@ -29,6 +36,15 @@ pt_env() {   # PrimeTime environment of the block sign-off script (signoff/pt/co
     export QC_SDC=$QBF/common/constraints.sdc QC_PT_HOOK= QC_PERIOD=$COL_PT_PERIOD QC_PNR_OUT=$d QC_TOP=$COL_TOP
     cd "$d"
 }
+fill() {   # Calibre dummy metal of out/<top>.gds -> DEF FILLS -> fill-aware SPEFs (flow/icc2/extract.tcl), label of out/
+    local o=$d/calibre C=$QBF/signoff/calibre; mkdir -p "$o"
+    QB55_FILL_SED="-f $C/fill_blk.sed" bash "$C/cal.sh" fill "$d/out/$COL_TOP.gds" "$COL_TOP" "$o/fill" > "$o/fill.log" 2>&1 \
+        || { cat "$o/fill.log"; return 1; }
+    grep -v '^CAL55_FILL' "$o/fill.log"
+    ( . "$C/kl.sh"; kl_run "$C/fill_def.py" -rd gds="$o/fill/DM.gds" -rd design="$COL_TOP" -rd out="$d/out/${COL_TOP}_fill.def" ) || return 1
+    QB_ICC2_LABEL=$(cat "$d/out/label.txt") qb_icc2 "$d" extract || return 1
+    grep '^extract' "$d/summary.txt" | tail -n 4
+}
 portcheck() {   # gate on the outputs netlist: port bits as the DC netlist, no port-to-port assign (signoff/portcheck.py)
     "$PY" -I "$QBF/signoff/portcheck.py" "$B/syn/$COL_SYN/$COL_TOP.v" "$d/out/$COL_TOP.v" "$COL_TOP"
 }
@@ -37,44 +53,43 @@ pnr) on=0
      for s in libs init floorplan place cts route outputs; do
          [ "$s" = "${QC_PNR_FROM:-libs}" ] && on=1; [ $on = 1 ] || continue
          qb_icc2 "$d" $s "$([ $s = libs ] && echo icc2_lm_shell)" || exit 1
-         [ $s = outputs ] && { portcheck || exit 1; }
+         [ $s = outputs ] && { portcheck && fill || exit 1; }
          [ "$s" = "${QC_PNR_TO:-outputs}" ] && break
      done
      cat "$d/summary.txt" | tail -40 ;;
 eco) export QB_ECO_FROM=$(cat "$d/out/label.txt" 2>/dev/null || echo route)
      ( pt_env || exit 1
-       QB_PT_SCRIPT=$QBF/signoff/pt/col_blk.tcl QB_ECO_CORNERS="tt ss ff" QB_ECO_NLIB=$d/$COL_TOP.nlib QB_ECO_BLOCK=$COL_TOP/$QB_ECO_FROM \
+       QB_PT_SCRIPT=$QBF/signoff/pt/col_blk.tcl QB_ECO_CORNERS="$(qb_corners)" QB_ECO_NLIB=$d/$COL_TOP.nlib QB_ECO_BLOCK=$COL_TOP/$QB_ECO_FROM \
            qb_pt pt_eco.log pt_shell -multi_scenario -f "$QBF/signoff/pt/drv_eco.tcl" ) || exit 1
      cat "$d/out/eco/eco_summary.txt"
      qb_icc2 "$d" eco || exit 1
      QB_ICC2_LABEL=eco qb_icc2 "$d" outputs || exit 1
-     portcheck || exit 1
+     portcheck && fill || exit 1
      grep '^eco' "$d/summary.txt" | tail -20 ;;
 post) ( pt_env || exit 1
        r=0
-       for c in tt ss ff; do   # every corner is reported before a failure stops the step (R67)
+       for c in $(qb_corners); do   # every corner is reported before a failure stops the step (R67)
            QC_CORNER=$c qb_pt "pt_blk_$c.log" pt_shell -f "$QBF/signoff/pt/col_blk.tcl" || r=1
            cat "pt_blk_$c.txt"
        done
        [ $r = 0 ] || exit 1
-       for c in tt ss ff; do
+       for c in $(qb_corners base); do
            QC_CORNER=$c qb_pt "etm_$c.log" pt_shell -f "$QBF/signoff/etm/etm.tcl" || exit 1
            ! grep -m 3 'MEXT-81\|MEXT-97' "etm_$c.log" || { echo "ETM $c: driving cell / feedthrough warnings"; exit 1; }
            echo "ETM $c $(ls out/etm/ 2>/dev/null | tr '\n' ' ')"
        done ) || exit 1 ;;
 views) QB_ICC2_LABEL=${QB_ICC2_LABEL:-$(cat "$d/out/label.txt" 2>/dev/null || echo route)} QB_PY=$PY qb_icc2 "$d" abstract || exit 1
      grep '^abstract' "$d/summary.txt" | tail -3
-     for c in tt ss ff; do "$PY" -I "$QBF/signoff/etm/etmcheck.py" "$d/out/etm/${COL_TOP}_$c.lib" 3.0 || exit 1; done ;;
-calibre) o=$d/calibre; C=$QBF/signoff/calibre; mkdir -p "$o"
-     QB55_FILL_SED="-f $C/fill_blk.sed" bash "$C/cal.sh" fill "$d/out/$COL_TOP.gds" "$COL_TOP" "$o/fill" > "$o/fill.log" 2>&1 \
-         || { cat "$o/fill.log"; exit 1; }
-     cat "$o/fill.log"; g=$o/fill/${COL_TOP}_fill.gds
+     for c in $(qb_corners base); do "$PY" -I "$QBF/signoff/etm/etmcheck.py" "$d/out/etm/${COL_TOP}_$c.lib" 3.0 || exit 1; done ;;
+fill) fill || exit 1 ;;
+calibre) o=$d/calibre; C=$QBF/signoff/calibre; g=$o/fill/${COL_TOP}_fill.gds
+     [ "$g" -nt "$d/out/$COL_TOP.gds" ] || { echo "COL_FAIL $g missing or older than out/$COL_TOP.gds (run.sh fill)"; exit 1; }
      bash "$C/lvs_src.sh" "$d/out/${COL_TOP}_pg.v" "$o/col_src.spi" > "$o/src.log" 2>&1; r=$?; tail -3 "$o/src.log"; [ $r = 0 ] || exit 1
      r=0
      QB36_LVS_SED="-f $C/lvs_case.sed" bash "$C/cal.sh" lvs "$g" "$COL_TOP" "$o/col_src.spi" "$o/lvs" > "$o/lvs.log" 2>&1 || r=1
      QB36_DRC_SED="-f $C/drc_blk.sed" bash "$C/cal.sh" drc "$g" "$COL_TOP" "$o/drcb" > "$o/drcb.log" 2>&1 || r=1
      bash "$C/cal.sh" ant "$g" "$COL_TOP" "$o/ant" > "$o/ant.log" 2>&1 || r=1
      cat "$o/lvs.log" "$o/drcb.log" "$o/ant.log"; [ $r = 0 ] || exit 1 ;;
-*) sed -n '2,15p' "$0"; exit 1 ;;
+*) sed -n '2,/^set -u/{/^#/p}' "$0"; exit 1 ;;
 esac
 echo "COL_DONE $step $tag $(date +%T)"

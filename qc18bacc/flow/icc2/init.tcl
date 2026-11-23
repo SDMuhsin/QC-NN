@@ -1,13 +1,13 @@
 # G1 + design setup: design library on the ICC2 tech file + the standard-cell NDM, TLU+ per corner (kit layer map),
-# netlist, MCMM (one mode, corners tt / ss / ff = site.tcl QC_LIB / QC_OC), P&R SDC -> block label init.
+# netlist, MCMM (one mode, one scenario func_<c> per sign-off corner c of the site.tcl corner table: QC_SIGNOFF_CORNERS,
+# library by QC_OC, TLU+ QC_TLU_FILE, role QC_ROLE setup or hold), P&R SDC -> block label init.
 #   SDC: common/block_sdc.tcl (DC SDC without the per-net estimates, period QB_PNR_PERIOD) + the block IO budget
 #   (P(IO_BUDGET), qb5_io_lines at that period) in place of DC's IO delays (block_sdc's IO rescale does not match DC's
 #   "-clock qb_clk  -max" lines); ICC2 picks each corner's library by operating condition, so DC's
 #   set_operating_conditions and the -library of set_driving_cell are dropped.  Written to <run>/<top>_icc2.sdc.
-#   Scenarios: ss setup, tt + ff hold, max transition / capacitance everywhere.  Netlist-dependent input driving cells
-#   (qb_io_drive: column act[b] = its own act_o[b] driver) replace the SDC's on those ports.
+#   Scenarios: setup or hold by QC_ROLE (R68: setup wc / wcl x Cworst / RCworst, hold lt / ml x Cbest / RCbest + tc),
+#   max transition / capacitance everywhere.
 source [file dirname [info script]]/common.tcl
-array set ::QB_SCEN {ss {setup 1 hold 0} tt {setup 0 hold 1} ff {setup 0 hold 1}}
 
 proc qb_sdc {} {
     global P
@@ -30,42 +30,49 @@ proc qb_sdc {} {
 }
 
 create_lib $::QB_LIB -technology $::QC_TF -ref_libs [list $::QB_NDM]
-foreach c $::QC_CORNERS {
-    read_parasitic_tech -name $c -tlup $::QC_TLU/$::QC_TLU_FILE($c) -layermap $::QC_TLU_MAP
+# one parasitic tech per TLU+ file (named after it), shared by the corners that use it
+foreach c $::QC_SIGNOFF_CORNERS { set ptech($c) [file rootname $::QC_TLU_FILE($c)] }
+foreach t [lsort -unique [lmap c $::QC_SIGNOFF_CORNERS { set ptech($c) }]] {
+    read_parasitic_tech -name $t -tlup $::QC_TLU/$t.tluplus -layermap $::QC_TLU_MAP
 }
 set sdc [qb_sdc]
 read_verilog -top $P(TOP) $P(NETLIST)
 link_block
 qb_timer
 # feedthrough buffers (P(FEEDTHRU): output ports each driven by one netlist buffer from an input port, e.g. the column's
-# act -> act_o, which the abutted chip relies on to re-buffer act): size_only, so optimisation may still resize them for
-# timing / DRV but never removes them (R59: place_opt removed all 4608 BUFFD2/3/4, the netlist became assign act_o = act,
-# LVS merged the ports, ETM MEXT-97).  dont_touch would also forbid sizing; set_size_only does not stop buffering of the
-# net, which is allowed.
+# act -> act_o, which the abutted chip relies on to re-buffer act).  R68 (PI decision): every one sized to the one lib cell
+# P(FEEDTHRU_CELL) and dont_touch, and its net to the port dont_touch (no re-buffering), so the port's driver is exactly
+# that cell in every abutted copy, i.e. the driving cell the block's own SDC gives the matching input port (column:
+# blocks/col/io_budget.tcl QB5_FT), and optimisation can neither remove (R59: place_opt removed all 4608 free buffers,
+# netlist assign act_o = act, LVS merged the ports) nor resize it (R67: ICC2 resized size_only drivers after the
+# driving-cell model read them; PrimeTime then needed 4 setup ECO rounds).
 if {[info exists P(FEEDTHRU)]} {
     set ftp [get_ports $P(FEEDTHRU)]
-    set ft [get_cells -of_objects [get_pins -of_objects [get_nets -of_objects $ftp] -filter "direction==out"]]
-    set_size_only $ft true
-    qb_line "init feedthrough size_only cells [sizeof_collection $ft] ports [sizeof_collection $ftp] ($P(FEEDTHRU))"
+    set ftn [get_nets -of_objects $ftp]
+    set ft [get_cells -of_objects [get_pins -of_objects $ftn -filter "direction==out"]]
     if {[sizeof_collection $ft] != [sizeof_collection $ftp]} { error "QB feedthrough: [sizeof_collection $ft] driver cells for [sizeof_collection $ftp] ports" }
+    set r0 [lsort -unique [get_attribute $ft ref_name]]
+    size_cell $ft -lib_cell [index_collection [get_lib_cells */$P(FEEDTHRU_CELL)] 0]
+    set_dont_touch $ft true
+    set_dont_touch $ftn true
+    qb_line "init feedthrough cells [sizeof_collection $ft] ports [sizeof_collection $ftp] ($P(FEEDTHRU)) [join $r0 /] -> [lsort -unique [get_attribute $ft ref_name]], dont_touch cells + port nets"
 }
 
 create_mode func
-foreach c $::QC_CORNERS {
+foreach c $::QC_SIGNOFF_CORNERS {
     create_corner $c
     create_scenario -name func_$c -mode func -corner $c
 }
-foreach c $::QC_CORNERS {
+foreach c $::QC_SIGNOFF_CORNERS {
     current_scenario func_$c
     set_operating_conditions $::QC_OC($c)
-    set_parasitic_parameters -early_spec $c -late_spec $c
+    set_parasitic_parameters -early_spec $ptech($c) -late_spec $ptech($c)
     source $sdc
-    array set s $::QB_SCEN($c)
-    set_scenario_status func_$c -active true -setup $s(setup) -hold $s(hold) -max_transition true -max_capacitance true \
+    set su [expr {$::QC_ROLE($c) eq "setup"}]
+    set_scenario_status func_$c -active true -setup $su -hold [expr {!$su}] -max_transition true -max_capacitance true \
         -min_capacitance false -leakage_power false -dynamic_power false
 }
 qb_timer
-qb_io_drive
 set du {}; foreach p $::QC_DONT_USE { lappend du */$p }
 set_lib_cell_purpose -exclude all [get_lib_cells $du]
 redirect -tee $::R/rpt/init_scen.rpt { report_scenarios; report_pvt }

@@ -15,7 +15,7 @@ Stage-organized implementation flow of the qc18bacc chip (column block, act bloc
 | `cts/` | pre-CTS hooks (ICG sizing / splitting), clock balancing |
 | `route/` | global / detailed route hooks and drivers (`dr.sh`), re-route |
 | `repair/` | post-CTS repair (`post_cts.tcl`), post-route hold ECO (`hold_eco.sh` / `.tcl`), antenna repair |
-| `icc2/` | IC Compiler II steps (R54): `common.tcl` (kit + block config, `qb_open` / `qb_done` / `qb_qor`), `libs.tcl` (std-cell NDM, icc2_lm_shell), `init.tcl` (design library, TLU+, netlist, MCMM, SDC), `floorplan.tcl`, `place.tcl`, `cts.tcl`, `route.tcl` (`qb_route_setup` / `qb_fillers` / `qb_route_checks` in common.tcl), `eco.tcl` (R56: sources the PrimeTime change list, legalise, route_eco, refill), `outputs.tcl` (label `QB_ICC2_LABEL`), `abstract.tcl` (abstract LEF + port antenna data + abutment check for the top); block facts in `blocks/<b>/icc2.cfg` |
+| `icc2/` | IC Compiler II steps (R54): `common.tcl` (kit + block config, `qb_open` / `qb_done` / `qb_qor`), `libs.tcl` (std-cell NDM, icc2_lm_shell), `init.tcl` (design library, TLU+, netlist, MCMM, SDC), `floorplan.tcl`, `place.tcl`, `cts.tcl`, `route.tcl` (`qb_route_setup` / `qb_fillers` / `qb_route_checks` in common.tcl), `eco.tcl` (R56: sources the PrimeTime change list, legalise, route_eco, refill), `outputs.tcl` (label `QB_ICC2_LABEL`), `extract.tcl` (R68: Calibre fill read back as DEF FILLS, fill-aware SPEF per sign-off corner), `abstract.tcl` (abstract LEF + port antenna data + abutment check for the top); block facts in `blocks/<b>/icc2.cfg` |
 | `signoff/` | `spef.sh`, `antenna.tcl` (LEF-rule antenna check); `pt/` PrimeTime; `etm/` abstracts, ETMs, antenna data in LEFs; `calibre/` GDS, LVS source, Calibre DRC / LVS / antenna |
 | `blocks/<b>/` | per design: `<b>.env` (parameters), `<b>.cfg` (the one OpenROAD design config), `run.sh` (steps), design data |
 
@@ -39,12 +39,18 @@ stops at that step.  The OpenROAD steps are unchanged.
 ## Column block qb_col_blk (`blocks/col`, ICC2 since R54, results/r54.md)
 
 ```
-qc18bacc/flow/blocks/col/run.sh pnr <tag>       # ICC2 libs init floorplan place cts route outputs -> $QC_BUILD/icc2/col/<tag>
-qc18bacc/flow/blocks/col/run.sh eco <tag>       # one PT DMSA ECO round tt/ss/ff (signoff/pt/drv_eco.tcl: DRV, hold) applied by ICC2 eco.tcl, outputs of label eco
-qc18bacc/flow/blocks/col/run.sh post <tag>      # PT tt/ss/ff at 6.5 ns on the ICC2 netlist + SPEF, ETMs
+qc18bacc/flow/blocks/col/run.sh pnr <tag>       # ICC2 libs init floorplan place cts route outputs + fill -> $QC_BUILD/icc2/col/<tag>
+qc18bacc/flow/blocks/col/run.sh fill <tag>      # Calibre dummy metal of the outputs GDS -> DEF FILLS (signoff/calibre/fill_def.py) -> fill-aware ICC2 SPEFs (icc2/extract.tcl), every sign-off corner
+qc18bacc/flow/blocks/col/run.sh eco <tag>       # one PT DMSA ECO round in every sign-off corner (signoff/pt/drv_eco.tcl: DRV, setup, hold) applied by ICC2 eco.tcl, outputs + fill of label eco
+qc18bacc/flow/blocks/col/run.sh post <tag>      # PT in every sign-off corner at 6.5 ns on the ICC2 netlist + fill-aware SPEF, ETMs of the base corners
 qc18bacc/flow/blocks/col/run.sh views <tag>     # ICC2 abstract LEF with port antenna data + antenna / abutment / PG pin gates (out/qb_col_blk.lef), etmcheck (read by blocks/top/run.sh views)
-qc18bacc/flow/blocks/col/run.sh calibre <tag>   # LVS source, Calibre LVS / DRC (block deck) / antenna on the ICC2 GDS -> <run>/calibre
+qc18bacc/flow/blocks/col/run.sh calibre <tag>   # LVS source, Calibre LVS / DRC (block deck) / antenna on the filled GDS of the fill step -> <run>/calibre
 ```
+Corners (R68): one table, `flow/tsmc65/site/site.tcl` QC_SIGNOFF (kit release note RN_TCBN65GPLUS_140B NOTE I): setup
+{wc wcl} x {Cworst RCworst} (ss ss_rcw wcl wcl_rcw), hold {lt ml} x {Cbest RCbest} (ff ff_rcb ml ml_rcb), tc typical (tt);
+ICC2 MCMM, PT sign-off and the DMSA ECO use all of them (bash: common/env.sh `qb_corners`), DC / OpenROAD / the block
+ETMs the chip top reads use the base corners QC_CORNERS {ss tt ff}.  Feedthroughs act -> act_o: one fixed lib cell
+(blocks/col/io_budget.tcl QB5_FT, the act driving cell), dont_touch with their act_o nets (icc2/init.tcl, PT col_blk.tcl).
 Inputs: netlist + SDC `$B/syn/qb_col_blk_r5d_s20_tt_p1.65_topo` (P&R SDC: common/block_sdc.tcl + blocks/col/io_budget.tcl
 at 5.0 ns), pin positions from the r48 column DEF (`COL_PIN_DEF`). Parameters: `col.env`, `icc2.cfg`.  The OpenROAD
 config `col.cfg` / `route_pre.tcl` (OpenROAD, R48) were deleted in R54 (git history).

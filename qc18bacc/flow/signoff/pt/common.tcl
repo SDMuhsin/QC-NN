@@ -18,7 +18,8 @@
 #                             <dir>/out/clk_lat_<corner>.txt, which the chip top reads (blocks/top/run.sh views)
 #   qb_pt_ann                 SPEF annotation line "total N rc_network N coupled_network N not_annotated N" (totals row
 #                             of report_annotated_parasitics; with coupling kept it has the Coupled network column, R64)
-#   qb_pt_drv <fh>            sign-off DRV line: max-transition and max-capacitance violators (design + library limits)
+#   qb_pt_drv <fh>            sign-off DRV line: max-transition and max-capacitance violators (design + library limits);
+#                             returns "max_transition N max_capacitance N" (a QB_PT_SIGNOFF gate line, col_blk.tcl)
 #   qb_pt_si_checks <fh> <rpt> sign-off checks beyond delta delay (R67): crosstalk noise / glitch (update_noise on the
 #                             coupled SPEF against the CCS-noise immunity of the libraries; report_noise -all_violators,
 #                             every listed pin counts, above_low and below_high) and the clock pulse checks
@@ -60,6 +61,7 @@ proc qb_pt_drv {fh} {
     redirect -variable t { report_constraint -max_transition -all_violators -nosplit }
     redirect -variable c { report_constraint -max_capacitance -all_violators -nosplit }
     puts $fh "drv max_transition_violators [regexp -all -line {VIOLATED} $t] max_capacitance_violators [regexp -all -line {VIOLATED} $c] (design max_transition [get_attribute [current_design] max_transition])"
+    return "max_transition [regexp -all -line {VIOLATED} $t] max_capacitance [regexp -all -line {VIOLATED} $c]"
 }
 proc qb_pt_spef {spef} {
     read_parasitics -keep_capacitive_coupling -format spef $spef

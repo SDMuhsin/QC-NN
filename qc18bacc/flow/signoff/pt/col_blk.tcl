@@ -23,9 +23,12 @@ set per [get_attribute [get_clocks qb_clk] period]
 # insertion delay L of this corner (p50 clock-pin latency, as the P&R)
 set L [qb_pt_lat $dir $corner]
 source [file normalize $::env(QC_FLOW)/../../qc18bacc/flow/blocks/col/io_budget.tcl]
+# (with the act driving cell = the fixed feedthrough cell QB5_FT, R68)
 qb5_io_apply $per $L
-# act[b] driving cell = this block's own act_o[b] driver (the previous column's feedthrough), per bit
-qb5_act_drv_apply [qb5_act_drv]
+# feedthroughs: each act_o driven by one QB5_FT cell (error otherwise), cells and act_o nets dont_touch as in ICC2 init
+# (the DMSA ECO neither resizes nor re-buffers them)
+set_dont_touch [qb5_ft_cells] true
+set_dont_touch [get_nets -of_objects [get_ports {act_o[*]}]] true
 # act_o load = this block's own act[b] net (next column's act pin), per bit, on the routed SPEF
 qb5_act_o_load [qb5_act_o_caps {apply {p {get_attribute [get_nets -of_objects $p] total_capacitance_max}}}]
 update_timing
@@ -68,7 +71,10 @@ redirect -variable hv { report_constraint -min_delay -all_violators -nosplit }
 puts $fh "hold_violating_endpoints [regexp -all -line {VIOLATED} $hv]"
 redirect -variable sv { report_constraint -max_delay -all_violators -nosplit }
 puts $fh "setup_violating_endpoints [regexp -all -line {VIOLATED} $sv]"
-qb_pt_drv $fh
+set drv [qb_pt_drv $fh]
+# R68: setup / hold / DRV violators gate the run too (common/env.sh qb_pt fails on any non-zero QB_PT_SIGNOFF count;
+# before, only noise / pulse / period did, so a DRV violator was reported but passed the post step)
+puts "QB_PT_SIGNOFF setup [regexp -all -line {VIOLATED} $sv] hold [regexp -all -line {VIOLATED} $hv] $drv"
 qb_pt_si_checks $fh $dir/rpt/pt_blk_$corner
 redirect $dir/rpt/pt_blk_${corner}_reg2reg.rpt { report_timing -max_paths 5 -nosplit -exclude $io -input_pins -nets -capacitance -transition_time }
 redirect $dir/rpt/pt_blk_${corner}_io.rpt { report_timing -max_paths 2 -nosplit -input_pins -nets -capacitance -transition_time -from [all_inputs]; report_timing -max_paths 2 -nosplit -input_pins -to [all_outputs] }

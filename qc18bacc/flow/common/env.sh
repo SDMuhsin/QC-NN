@@ -4,6 +4,7 @@
 #   TOOLS QC_TOOLS [/tmp/$USER/tools]; PY / OR = its python3 / openroad
 #   qb_kit  sources flow/tsmc65 common/tool.sh (FLOW, qc_tool) and exports QC_KIT, QC_PY
 #   qb_pt   PrimeTime run + error check;  qb_wait  wait for background jobs, non-zero if one failed;  qb_icc2  ICC2 step (flow/icc2) in a run dir
+#   qb_corners [signoff|base]  corner names of the one corner table, flow/tsmc65/site/site.tcl (R68)
 QBF=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd); ROOT=$(cd "$QBF/../.." && pwd)
 export QC_BUILD=${QC_BUILD:-/tmp/$USER/qc18bacc/build}; B=$QC_BUILD
 TOOLS=${QC_TOOLS:-/tmp/$USER/tools}; PY=$TOOLS/env/bin/python3; OR=$TOOLS/env/bin/openroad
@@ -17,7 +18,7 @@ qb_kit() {
 # "Reduced coupling capacitances" count in the logs this run wrote: <log>, ./parasitics_command.log, and the DMSA scenario
 # logs (out.log, parasitics_command.log under the run dir); PT prints the reduced line only when it grounds coupling, the
 # kept count is "Annotated coupling capacitances" (logged).  ./parasitics_command.log is kept as <log>_parasitics.log.
-# Sign-off gate (R67, signoff/pt/common.tcl qb_pt_si_checks): non-zero on any non-zero count of a QB_PT_SIGNOFF line of
+# Sign-off gate (R67, signoff/pt/common.tcl qb_pt_si_checks; R68 col_blk.tcl: setup / hold / DRV): non-zero on any non-zero count of a QB_PT_SIGNOFF line of
 # <log> (noise, min pulse width, min period violators).
 qb_pt() {
     local log=$1 rc e p=0 x c k v t0 F; rm -f parasitics_command.log; t0=$(date +%s)
@@ -32,6 +33,11 @@ qb_pt() {
     v=$(grep -h '^QB_PT_SIGNOFF' "$log" | awk '{for (i = 3; i <= NF; i += 2) if ($i + 0) b++} END {print b + 0}')
     echo "PT_ERRORS $(basename "$log") rc $rc errors ${e:-NA} parasitics_errors $p xtalk011 $x reduced_coupling $c coupling_annotated $k signoff_fails $v"
     [ $rc = 0 ] && [ "$e" = 0 ] && [ "$p" = 0 ] && [ "$x" = 0 ] && [ "${c%% *}" = 0 ] && [ "$v" = 0 ]
+}
+# qb_corners [signoff|base]: site.tcl QC_SIGNOFF_CORNERS (every sign-off corner: PrimeTime sign-off / DMSA ECO, ICC2 MCMM)
+# or QC_CORNERS (base corners: DC, OpenROAD blocks, the block ETMs the chip top reads), read from the corner table itself
+qb_corners() {
+    QC_KIT=${QC_KIT:--} tclsh <<< "source $ROOT/flow/tsmc65/site/site.tcl; puts \$::QC_$([ "${1:-signoff}" = base ] && echo CORNERS || echo SIGNOFF_CORNERS)"
 }
 # qb_wait: wait for every background job of this shell; non-zero if any of them failed
 qb_wait() { local j r=0; for j in $(jobs -p); do wait "$j" || r=1; done; return $r; }

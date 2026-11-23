@@ -3,7 +3,7 @@
 #   <top>.v         netlist for PrimeTime (no PG, no physical-only cells)
 #   <top>_pg.v      netlist with PG connections and physical cells for the Calibre LVS source (signoff/calibre/lvs_src.sh)
 #   <top>.def.gz    DEF;  <top>.gds  GDS (1000 dbu / um, the Calibre decks' precision) with the kit cell GDS merged, pin text on the TSMC text layers
-#   <top>_<c>_pt.spef  ICC2 extraction (TLU+ of corner c; no StarRC nxtgrd for the 6X2Z stack in the kit)
+#   (the SPEFs come from flow/icc2/extract.tcl after the Calibre dummy metal fill of this GDS, R68)
 #   label.txt       the block label these outputs were written from (blocks/<b>/run.sh eco starts the next ECO round there)
 source [file dirname [info script]]/common.tcl
 open_lib $::QB_LIB
@@ -21,13 +21,6 @@ set f [open $::R/out/gds_text.map w]
 foreach l [get_object_name [get_layers M?]] { set n [expr {30 + [string range $l 1 end]}]; puts $f "text $n:*:*:* [expr {100 + $n}]:0" }
 close $f
 write_gds -units 1000 -long_names -layer_map $::R/out/gds_text.map -merge_files [list $::QC_PNR_GDS] -output_pin all $o.gds
-update_timing -full
-write_parasitics -output $o
-foreach c $::QC_CORNERS {
-    set s [lindex [glob -nocomplain $o.${c}_*.spef] 0]
-    if {$s ne ""} { file rename -force $s ${o}_${c}_pt.spef }
-    qb_line "outputs spef $c [expr {[file exists ${o}_${c}_pt.spef] ? [file size ${o}_${c}_pt.spef] : "MISSING"}]"
-}
 set f [open $::R/out/label.txt w]; puts $f $label; close $f
 qb_line "outputs [join [lmap x [glob $::R/out/*] { file tail $x }] { }]"
 puts "QB_ICC2_DONE outputs"

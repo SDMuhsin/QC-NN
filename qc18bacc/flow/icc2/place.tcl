@@ -1,4 +1,4 @@
-# Placement + pre-CTS optimisation: MCMM place_opt (ss setup, max transition / capacitance in every scenario), tie cells
+# Placement + pre-CTS optimisation: MCMM place_opt (setup scenarios of site.tcl QC_ROLE, max transition / capacitance in every scenario), tie cells
 # of site/pnr.tcl allowed, no scan DEF (the DC netlist has no stitched chains), clock nets on M3-M6 with double spacing
 # (latency estimates here, the tree in cts.tcl).  Block label floorplan -> place.
 source [file dirname [info script]]/common.tcl

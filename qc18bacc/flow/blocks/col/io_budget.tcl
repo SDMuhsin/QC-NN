@@ -15,10 +15,14 @@
 #                          bit b is exactly that of the same net in the next column (R63 [M] ss ETM act pins p50 0.037,
 #                          max 0.088 pF), so the max would over-load most of the 4608 feedthroughs ~2x.  It replaces the
 #                          common 4 x INVD4 (constraints.sdc, 0.0187 pF), which is not what an abutted act_o drives.
-#   act driving cell       qb5_act_drv: column c's act[b] is driven by column c-1's act_o[b] driver, the same netlist
-#                          cell (and size) as this block's own act_o[b] driver, so act[b] gets that lib cell / pin as its
-#                          driving cell, per bit (R67: the common BUFFD4 of constraints.sdc was stronger than 3447 of the
-#                          4608 feedthroughs).  Measured on the current netlist (ICC2 sizes the size_only feedthroughs).
+#   act driving cell       column c's act[b] is driven by column c-1's act_o[b] feedthrough buffer.  R68 (PI decision):
+#                          the 4608 feedthroughs are one fixed lib cell QB5_FT, sized and dont_touch in ICC2 init
+#                          (flow/icc2/init.tcl P(FEEDTHRU_CELL)) and dont_touch in PrimeTime (qb5_ft_cells), so act[*]
+#                          gets exactly that cell as its driving cell (a line of qb5_io_lines, every corner, P&R and
+#                          sign-off alike) and ICC2 closes act -> act_o itself (R67: ICC2 resized the per-bit drivers
+#                          after reading them, PT needed 4 setup ECO rounds).  Size: the smallest BUFFD* that meets the
+#                          0.07 P feedthrough budget at the worst setup corner with the per-bit act_o load (results/r68.md).
+set ::QB5_FT {BUFFD4 Z}
 proc qb5_budget {} {
     set si [expr {[info exists ::env(QB5_SOUTH_IN)] ? $::env(QB5_SOUTH_IN) : 0.20}]
     return [subst -nocommands {
@@ -29,7 +33,7 @@ proc qb5_budget {} {
         out {f_y[*] f_b[*] w_y[*] w_b[*] f_vld_o w_vld_o b2[*] b2_vld} 0.25 0.0
     }]
 }
-# SDC lines of the budget at period per, shifted by the insertion delay L (0 for ideal clocks)
+# SDC lines of the budget at period per, shifted by the insertion delay L (0 for ideal clocks), + the act driving cell QB5_FT
 proc qb5_io_lines {per {L 0.0}} {
     set out {}
     set U [expr {[info exists ::env(QC_UNC_SETUP)] ? $::env(QC_UNC_SETUP) : 0.25}]
@@ -40,6 +44,7 @@ proc qb5_io_lines {per {L 0.0}} {
         lappend out [format "%s -max %.4f -clock qb_clk \[get_ports {%s}\]" $cmd [expr {$mx * $per + $s - $su}] $pats]
         lappend out [format "%s -min %.4f -clock qb_clk \[get_ports {%s}\]" $cmd [expr {$mn * $per + $s}] $pats]
     }
+    lappend out "set_driving_cell -lib_cell [lindex $::QB5_FT 0] -pin [lindex $::QB5_FT 1] \[get_ports {act\[*\]}\]"
     return [join $out "\n"]
 }
 proc qb5_io_apply {per {L 0.0}} { foreach l [split [qb5_io_lines $per $L] "\n"] { uplevel #0 $l } }
@@ -65,26 +70,14 @@ proc qb5_act_o_load {ld} {
     puts [format "QB5_ACT_O_LOAD %d act_o ports, per-bit load = own act net: min %.4f p50 %.4f max %.4f pF" $n \
         [lindex $v 0] [lindex $v [expr {$n / 2}]] [lindex $v end]]
 }
-# act[b] driving cell = the leaf driver of this block's own act_o[b] net.  qb5_act_drv: {b lib_cell pin ...} of every
-# act_o[b] (one driver per bit, else an error); qb5_act_drv_apply <drv>: set_driving_cell of each act[b] (grouped by
-# lib cell / pin; the library is the tool's for the current corner) + one QB5_ACT_DRV line (bits per lib cell).
-proc qb5_act_drv {} {
-    set dv {}
-    foreach_in_collection p [get_ports {act_o[*]}] {
-        regexp {\[(\d+)\]$} [get_object_name $p] -> b
-        set d [get_pins -quiet -leaf -of_objects [get_nets -of_objects $p] -filter "direction==out"]
-        if {[sizeof_collection $d] != 1} { error "qb5_act_drv: [sizeof_collection $d] drivers on [get_object_name $p]" }
-        lappend dv $b [get_attribute [get_cells -of_objects $d] ref_name] [lindex [split [get_object_name $d] /] end]
-    }
-    return $dv
-}
-proc qb5_act_drv_apply {dv} {
-    foreach {b c pin} $dv { lappend g([list $c $pin]) "act\[$b\]" }
-    set h {}
-    foreach k [lsort [array names g]] {
-        lassign $k c pin
-        set_driving_cell -lib_cell $c -pin $pin [get_ports $g($k)]
-        lappend h "$c/$pin [llength $g($k)]"
-    }
-    puts "QB5_ACT_DRV [expr {[llength $dv] / 3}] act ports, driving cell = own act_o driver: [join $h {, }]"
+# the feedthrough buffers (ICC2 init sized them to QB5_FT, flow/icc2/init.tcl): the one leaf driver of every act_o[b]
+# net, each a QB5_FT cell (error otherwise); PrimeTime (signoff/pt/col_blk.tcl) checks and dont_touches them
+proc qb5_ft_cells {} {
+    set d [get_pins -quiet -leaf -of_objects [get_nets -of_objects [get_ports {act_o[*]}]] -filter "direction==out"]
+    set c [get_cells -of_objects $d]
+    set n [sizeof_collection [get_ports {act_o[*]}]]
+    if {[sizeof_collection $d] != $n || [sizeof_collection $c] != $n} { error "qb5_ft_cells: [sizeof_collection $d] drivers / [sizeof_collection $c] cells for $n act_o ports" }
+    set bad [filter_collection $c "ref_name != [lindex $::QB5_FT 0]"]
+    if {[sizeof_collection $bad]} { error "qb5_ft_cells: [sizeof_collection $bad] feedthroughs not [lindex $::QB5_FT 0], e.g. [get_object_name [index_collection $bad 0]] [get_attribute [index_collection $bad 0] ref_name]" }
+    return $c
 }
