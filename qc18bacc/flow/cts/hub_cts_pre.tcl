@@ -61,7 +61,7 @@ if {[info commands qb34_rcn_orig] eq ""} {
         set c [get_lib_cells {BUFF* INV*}]
         set_dont_use $c
         qb34_rcn_orig {*}$args
-        unset_dont_use $c; set_dont_use $::QC_PNR_DONT_USE
+        unset_dont_use $c; set_dont_use $::QC_DONT_USE
         qc_log "r34: repair_clock_nets with BUFF* / INV* dont_use (CK cells only)"
     }
 }

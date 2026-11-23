@@ -46,7 +46,7 @@ repair_design -max_utilization [p MAX_UTIL]
 foreach net $sn_dt { $net setDoNotTouch 0 }
 unset sn_dt; array unset sn_vnet
 unset_dont_use $sn_big
-set_dont_use $::QC_PNR_DONT_USE
+set_dont_use $::QC_DONT_USE
 qc_summary "repair_design [qc_util]"
 # target density for the grown cell area: (cells + padding) / row area + 5 %, at least PLACE_DENSITY
 set ra 0.0; set ca 0.0; set n 0

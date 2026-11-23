@@ -12,7 +12,7 @@ set ::STEPS {init floorplan pdn place cts route finish}
 set ::T0 [clock seconds]
 qc_read_liberty
 read_db $::OUT/db/cts_rt.odb
-set_dont_use $::QC_PNR_DONT_USE
+set_dont_use $::QC_DONT_USE
 read_sdc $::OUT/db/cts.sdc
 qc_set_rc
 set_propagated_clock [all_clocks]

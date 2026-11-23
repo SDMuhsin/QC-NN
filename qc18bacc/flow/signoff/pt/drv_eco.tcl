@@ -1,6 +1,6 @@
 # PrimeTime ECO of a routed block.  The design setup is the block's own sign-off script QB_PT_SCRIPT (signoff/pt/
 # col_blk.tcl, act_blk.tcl, hub.tcl) up to its design setup (netlist, SDC, SPEF, propagated clock, IO budget: the script
-# returns there when ::QB_PT_SETUP_ONLY exists), plus the P&R dont_use list (site/pnr.tcl QC_PNR_DONT_USE).  Two modes:
+# returns there when ::QB_PT_SETUP_ONLY exists), plus the shared dont_use list (site.tcl QC_DONT_USE, read by DC too).  Two modes:
 # * one corner QC_CORNER (pt_shell; act / hub run.sh drveco, OpenROAD, R48): DRV only (fix_eco_drc max_transition /
 #   max_capacitance, size_cell + insert_buffer BUFFD2 / 4 / 8); a QB_PT_PRE_ECO file (the changes of an earlier corner)
 #   is applied first, so the last corner's <QC_PNR_OUT>/out/drv_eco_<corner>.tcl (icctcl) is the cumulative ECO for
@@ -18,8 +18,9 @@ proc qb_eco_setup {corner} {
     set ::env(QC_CORNER) $corner
     set ::QB_PT_SETUP_ONLY 1
     uplevel #0 { source $::env(QB_PT_SCRIPT) }
+    # site/pnr.tcl: decap / filler cells of set_eco_options; the dont_use list is site.tcl's (sourced by the PT script)
     uplevel #0 { source $::env(QC_FLOW)/site/pnr.tcl }
-    foreach p $::QC_PNR_DONT_USE { set c [get_lib_cells -quiet */$p]; if {[sizeof_collection $c]} { set_dont_use $c } }
+    foreach p $::QC_DONT_USE { set c [get_lib_cells -quiet */$p]; if {[sizeof_collection $c]} { set_dont_use $c } }
     uplevel #0 { set eco_report_unfixed_reason_max_endpoints 1000 }
 }
 proc qb_eco_drc {pmode} {

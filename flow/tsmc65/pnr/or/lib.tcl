@@ -81,7 +81,7 @@ proc qc_read_libs {} {
 proc qc_read_design {} {
     read_verilog [p NETLIST]
     link_design [p TOP]
-    set_dont_use $::QC_PNR_DONT_USE
+    set_dont_use $::QC_DONT_USE
 }
 proc qc_read_sdc {} { read_sdc [p SDC] }
 
@@ -136,7 +136,7 @@ proc qc_save {step} {
 proc qc_load {step} {
     qc_read_liberty
     read_db $::OUT/db/$step.odb
-    set_dont_use $::QC_PNR_DONT_USE
+    set_dont_use $::QC_DONT_USE
     read_sdc $::OUT/db/$step.sdc
     qc_set_rc
     if {[lsearch $::STEPS $step] >= [lsearch $::STEPS cts]} { set_propagated_clock [all_clocks] }

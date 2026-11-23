@@ -24,4 +24,4 @@ set ::QC_NAND2    <NAND2_X1_CELL>               ;# gate-equivalent unit
 set ::QC_DRV_IN   {<INPUT_DRIVER_CELL> <PIN>}   ;# driving cell of data inputs
 set ::QC_DRV_CLK  {<CLOCK_DRIVER_CELL> <PIN>}   ;# driving cell of clock inputs
 set ::QC_LOAD_PIN <LOAD_CELL>/<PIN>             ;# outputs see 4 x this pin's capacitance
-set ::QC_DONT_USE {}                            ;# lib-cell globs DC must not use (optional)
+set ::QC_DONT_USE {}                            ;# lib-cell globs no tool may use: DC and P&R / ECO (optional)
