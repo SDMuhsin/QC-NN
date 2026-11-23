@@ -4,7 +4,8 @@
 #                                                  $B/icc2/col/<tag> (QC_PNR_FROM / QC_PNR_TO select a step range)
 #   qc18bacc/flow/blocks/col/run.sh eco <tag>      one sign-off ECO round on the routed run: PrimeTime DMSA tt / ss / ff
 #                                                  (signoff/pt/drv_eco.tcl: DRV, then hold) -> out/eco/pt_eco.tcl, applied by
-#                                                  ICC2 (flow/icc2/eco.tcl: label route -> eco), outputs of label eco
+#                                                  ICC2 (flow/icc2/eco.tcl: label route -> eco), outputs of label eco;
+#                                                  a later round starts from the label of out/ (out/label.txt: eco)
 #   qc18bacc/flow/blocks/col/run.sh post <tag>     PrimeTime tt / ss / ff on the ICC2 netlist + SPEF, ETMs tt / ss / ff
 #   qc18bacc/flow/blocks/col/run.sh views <tag>    views for the chip top (blocks/top/run.sh views reads them): ICC2
 #                                                  abstract LEF + port antenna data + abutment check (flow/icc2/abstract.tcl,
@@ -31,8 +32,9 @@ pnr) on=0
          [ "$s" = "${QC_PNR_TO:-outputs}" ] && break
      done
      cat "$d/summary.txt" | tail -40 ;;
-eco) ( pt_env || exit 1
-       QB_PT_SCRIPT=$QBF/signoff/pt/col_blk.tcl QB_ECO_CORNERS="tt ss ff" QB_ECO_NLIB=$d/$COL_TOP.nlib QB_ECO_BLOCK=$COL_TOP/route \
+eco) export QB_ECO_FROM=$(cat "$d/out/label.txt" 2>/dev/null || echo route)
+     ( pt_env || exit 1
+       QB_PT_SCRIPT=$QBF/signoff/pt/col_blk.tcl QB_ECO_CORNERS="tt ss ff" QB_ECO_NLIB=$d/$COL_TOP.nlib QB_ECO_BLOCK=$COL_TOP/$QB_ECO_FROM \
            qb_pt pt_eco.log pt_shell -multi_scenario -f "$QBF/signoff/pt/drv_eco.tcl" ) || exit 1
      cat "$d/out/eco/eco_summary.txt"
      qb_icc2 "$d" eco || exit 1

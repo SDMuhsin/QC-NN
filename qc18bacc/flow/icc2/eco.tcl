@@ -1,10 +1,11 @@
 # Sign-off ECO of the routed block (R56, results/r56.md): the PrimeTime change list of signoff/pt/drv_eco.tcl
-# (<run>/out/eco/pt_eco.tcl, icc2tcl: size_cell / insert_buffer) on block label route -> eco.  New cells without a PT
+# (<run>/out/eco/pt_eco.tcl, icc2tcl: size_cell / insert_buffer) on the block label PT analysed, QB_ECO_FROM (route, or eco
+# in a later round: <run>/out/label.txt) -> eco.  New cells without a PT
 # location are placed (place_eco_cells), then every changed cell is legalised on free sites (filler / decap cells under
 # it removed), ECO-routed (route_eco, routing options of route.tcl), the emptied sites refilled (decap then FILL, as
 # route.tcl), check_routes / check_lvs.  No optimisation here: the change list is the whole ECO.
 source [file dirname [info script]]/common.tcl
-qb_open route eco
+qb_open [qc_env QB_ECO_FROM route] eco
 qb_route_setup
 set chg $::R/out/eco/pt_eco.tcl
 set n0 [sizeof_collection [get_flat_cells]]

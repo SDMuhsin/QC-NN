@@ -4,9 +4,11 @@
 #   <top>_pg.v      netlist with PG connections and physical cells for the Calibre LVS source (signoff/calibre/lvs_src.sh)
 #   <top>.def.gz    DEF;  <top>.gds  GDS (1000 dbu / um, the Calibre decks' precision) with the kit cell GDS merged, pin text on the TSMC text layers
 #   <top>_<c>_pt.spef  ICC2 extraction (TLU+ of corner c; no StarRC nxtgrd for the 6X2Z stack in the kit)
+#   label.txt       the block label these outputs were written from (blocks/<b>/run.sh eco starts the next ECO round there)
 source [file dirname [info script]]/common.tcl
 open_lib $::QB_LIB
-open_block $P(TOP)/[qc_env QB_ICC2_LABEL route]
+set label [qc_env QB_ICC2_LABEL route]
+open_block $P(TOP)/$label
 link_block
 qb_timer
 set o $::R/out/$P(TOP)
@@ -26,5 +28,6 @@ foreach c $::QC_CORNERS {
     if {$s ne ""} { file rename -force $s ${o}_${c}_pt.spef }
     qb_line "outputs spef $c [expr {[file exists ${o}_${c}_pt.spef] ? [file size ${o}_${c}_pt.spef] : "MISSING"}]"
 }
+set f [open $::R/out/label.txt w]; puts $f $label; close $f
 qb_line "outputs [join [lmap x [glob $::R/out/*] { file tail $x }] { }]"
 puts "QB_ICC2_DONE outputs"
