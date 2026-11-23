@@ -2,14 +2,15 @@
 # col_blk.tcl, act_blk.tcl, hub.tcl) up to its design setup (netlist, SDC, SPEF, propagated clock, IO budget: the script
 # returns there when ::QB_PT_SETUP_ONLY exists), plus the shared dont_use list (site.tcl QC_DONT_USE, read by DC too).  Two modes:
 # * one corner QC_CORNER (pt_shell; act / hub run.sh drveco, OpenROAD, R48): DRV only (fix_eco_drc max_transition /
-#   max_capacitance / noise, size_cell + insert_buffer BUFFD2 / 4 / 8); a QB_PT_PRE_ECO file (the changes of an earlier corner)
+#   max_capacitance / noise, size_cell + insert_buffer of qb_eco_buffers); a QB_PT_PRE_ECO file (the changes of an earlier corner)
 #   is applied first, so the last corner's <QC_PNR_OUT>/out/drv_eco_<corner>.tcl (icctcl) is the cumulative ECO for
 #   OpenROAD (repair/hold_eco.tcl QB35_ECO_TCL).
 # * one sign-off round at every corner of QB_ECO_CORNERS together (pt_shell -multi_scenario, DMSA; column run.sh eco,
 #   ICC2, R56 results/r56.md): one scenario process per corner, physically aware (occupied_site) on the ICC2 design
 #   library QB_ECO_NLIB / block QB_ECO_BLOCK when set;
-#     1. fix_eco_drc max_transition, then max_capacitance, then crosstalk noise (R67; update_noise in the setup)
-#     2. fix_eco_timing -type setup (size_cell, insert_buffer BUFFD2 / 4 / 8; R67)
+#     1. fix_eco_drc max_transition, then max_capacitance, then crosstalk noise (R67; update_noise in the setup), each
+#        physically aware, then without physical constraints for what remains (R69, qb_eco_drc)
+#     2. fix_eco_timing -type setup (size_cell, insert_buffer of qb_eco_buffers: every BUFFD* not dont_use; R67, R69)
 #     3. fix_eco_timing -type hold (size_cell, insert_buffer BUFFD1 / 2); PT keeps setup / DRV of every scenario clean
 #   No fixing margins.  Writes <QC_PNR_OUT>/out/eco/pt_eco.tcl (icc2tcl, sourced by flow/icc2/eco.tcl), eco_summary.txt
 #   (setup / hold violators, max_tran / max_cap pins per corner before / after DRV / after hold; ECO size), the
@@ -26,10 +27,21 @@ proc qb_eco_setup {corner} {
     # crosstalk noise of the sign-off (signoff/pt/common.tcl qb_pt_si_checks), fixed by fix_eco_drc -type noise
     update_noise
 }
-proc qb_eco_drc {pmode} {
+# ECO buffers: every BUFFD* lib cell the dont_use list allows (R69: the former hand list BUFFD2 / 4 / 8 left a 1.5 mm
+# BUFFD16 HFS net at ml max_transition unfixable, reason D; with BUFFD12 / 16 allowed one BUFFD16 fixes it [M])
+proc qb_eco_buffers {} {
+    return [lsort -unique [lmap c [get_object_name [get_lib_cells -filter dont_use==false */BUFFD*]] { file tail $c }]]
+}
+# DRV / noise fixing: physically aware first (pmode), then, for what that leaves, without physical constraints: the new
+# cells have no PT location and ICC2 places + legalises them (flow/icc2/eco.tcl place_eco_cells).  R69 [M]: a port-
+# driven victim net (column s_rd[523], 800 um, 0.13 pF coupling) is unfixable in occupied_site (reasons I P, any buffer
+# list) and fixed by one BUFFD8 without physical constraints.
+proc qb_eco_drc {pmode bufs} {
     foreach ty {max_transition max_capacitance noise} {
-        fix_eco_drc -type $ty -methods {size_cell insert_buffer} -buffer_list {BUFFD2 BUFFD4 BUFFD8} \
-            -cell_type {combinational sequential} -physical_mode $pmode -verbose
+        foreach pm [expr {$pmode eq "none" ? "none" : [list $pmode none]}] {
+            fix_eco_drc -type $ty -methods {size_cell insert_buffer} -buffer_list $bufs \
+                -cell_type {combinational sequential} -physical_mode $pm -verbose
+        }
     }
 }
 if {[info exists ::qb_eco_corner]} {
@@ -49,7 +61,7 @@ if {![info exists ::env(QB_ECO_CORNERS)]} {
     if {[info exists ::env(QB_PT_PRE_ECO)] && [file exists $::env(QB_PT_PRE_ECO)]} { source $::env(QB_PT_PRE_ECO); puts "QB_DRV_ECO applied $::env(QB_PT_PRE_ECO)" }
     update_timing
     qb_pt_drv stdout
-    qb_eco_drc none
+    qb_eco_drc none [qb_eco_buffers]
     qb_pt_drv stdout
     write_changes -format icctcl -output $dir/out/drv_eco_$corner.tcl
     puts "QB_DRV_ECO done $corner"
@@ -85,11 +97,16 @@ proc qb_eco_state {sf tag} {
     flush $sf
 }
 qb_eco_state $sf before
-puts $sf "physical_mode $pmode"
-qb_eco_drc $pmode
+# buffer list of the scenario processes (the master has no libraries; every scenario has the same dont_use list)
+current_scenario [lindex $corners 0]
+redirect -variable r { remote_execute -verbose { puts "QB_ECO_BUFS [qb_eco_buffers]" } }
+current_scenario -all
+if {![regexp {QB_ECO_BUFS (BUFF[^\n]*)} $r -> bufs]} { error "QB_PT_ECO: no ECO buffer list from [lindex $corners 0]" }
+puts $sf "physical_mode $pmode then none; buffers $bufs"
+qb_eco_drc $pmode $bufs
 qb_eco_state $sf drc
 # setup (R67): residual setup violators of the sign-off timing (the column's act feedthroughs are dont_touch, R68)
-fix_eco_timing -type setup -methods {size_cell insert_buffer} -buffer_list {BUFFD2 BUFFD4 BUFFD8} -physical_mode $pmode \
+fix_eco_timing -type setup -methods {size_cell insert_buffer} -buffer_list $bufs -physical_mode $pmode \
     -verbose -unfixable_reasons_prefix $o/setup_unfixable -unfixable_reasons_format text
 qb_eco_state $sf setup
 fix_eco_timing -type hold -methods {size_cell insert_buffer} -buffer_list {BUFFD1 BUFFD2} -physical_mode $pmode \
