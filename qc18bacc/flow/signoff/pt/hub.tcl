@@ -26,6 +26,8 @@ source [file normalize $::env(QC_FLOW)/../../qc18bacc/flow/signoff/pt/common.tcl
 set L [qb_pt_lat $dir $corner]
 qb9_io_apply $per $L
 update_timing
+# design setup ends here for the PrimeTime ECO (signoff/pt/drv_eco.tcl)
+if {[info exists ::QB_PT_SETUP_ONLY]} { return }
 if {[qc_env QB21_ETM 0]} {
     qb_etm_inputs
     file mkdir $dir/out/etm

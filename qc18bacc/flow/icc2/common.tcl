@@ -11,6 +11,10 @@
 #                       <run>/summary.txt, QB_ICC2_DONE marker for the wrapper
 #   qb_qor <step>       QoR lines (cells, utilization, DRV count, WNS / TNS / NVE per scenario) + rpt/<step>_{qor,drv}.rpt
 #   qb_line <text>      append a line to <run>/summary.txt (and the log)
+#   qb_route_setup      routing options of route.tcl / eco.tcl: kit antenna rules, antenna-aware detail routing with
+#                       ANTENNA diodes, timing-driven global / track / detail routing
+#   qb_fillers          decap (DCAP*, removed where they violate) then metal-free FILL* cells in every empty site
+#   qb_route_checks <step>  check_routes / check_lvs -> rpt/<step>_check_{routes,lvs}.rpt + summary lines
 set ::QBF [file normalize [file dirname [info script]]/..]
 set ::QC_BUILD $::env(QC_BUILD)
 source $::env(QC_FLOW)/common/lib.tcl
@@ -53,4 +57,35 @@ proc qb_done {step {as 0}} {
     save_lib
     qb_line "$step done [clock format [clock seconds] -format %T -gmt 1]"
     puts "QB_ICC2_DONE $step"
+}
+# the kit antenna file is ICC1 Tcl: drop the Milkyway library argument and its set_parameter / current_mw_lib / report lines
+proc qb_route_setup {} {
+    set nm [regexp -inline {[0-9]+lm} [file tail $::QC_TF]]
+    set fh [open $::QC_MW/clf/antennaRule_n65_$nm.tcl]; set t [read $fh]; close $fh
+    regsub -all -line {^\s*(set_parameter|set lib|remove_antenna_rules|report_antenna_rules).*$} $t {} t
+    regsub -all {(define_antenna_(?:layer_)?rule)\s+\$lib} $t {\1} t
+    uplevel #0 $t
+    redirect $::R/rpt/antenna_rules.rpt { report_antenna_rules }
+    set_app_options -name route.detail.antenna -value true
+    set_app_options -name route.detail.insert_diodes_during_routing -value true
+    set_app_options -name route.detail.diode_libcell_names -value [lindex $::QC_PNR_DIODE 0]
+    foreach o {route.global.timing_driven route.track.timing_driven route.detail.timing_driven} { set_app_options -name $o -value true }
+}
+# decaps (they carry M1) first and removed where they violate, then the metal-free FILL* close every remaining gap
+# (R54 ran both in one create_stdcell_fillers: the removed DCAPs left empty gaps, Calibre NW.S.1 / OD2.S.5 27 004)
+proc qb_fillers {} {
+    foreach {lc chk} [list $::QC_PNR_DCAP 1 $::QC_PNR_FILL 0] {
+        set fl {}; foreach c $lc { lappend fl */$c }
+        create_stdcell_fillers -lib_cells [get_lib_cells $fl]
+        connect_pg_net -automatic
+        if {$chk} { remove_stdcell_fillers_with_violation }
+    }
+}
+proc qb_route_checks {step} {
+    redirect $::R/rpt/${step}_check_routes.rpt { check_routes }
+    redirect $::R/rpt/${step}_check_lvs.rpt { check_lvs -max_errors 0 }
+    foreach r {check_routes check_lvs} {
+        set t [exec cat $::R/rpt/${step}_$r.rpt]
+        foreach l [split $t "\n"] { if {[regexp -nocase {total number|total.*(error|violation)|open|short} $l]} { qb_line "$step $r [string trim $l]" } }
+    }
 }

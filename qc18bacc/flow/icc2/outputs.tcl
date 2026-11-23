@@ -1,11 +1,12 @@
-# Outputs of the routed block (label route) to <run>/out for sign-off (blocks/<b>/run.sh post / calibre):
+# Outputs of the routed block (label QB_ICC2_LABEL: route, or eco after blocks/<b>/run.sh eco) to <run>/out for sign-off
+# (blocks/<b>/run.sh post / calibre):
 #   <top>.v         netlist for PrimeTime (no PG, no physical-only cells)
 #   <top>_pg.v      netlist with PG connections and physical cells for the Calibre LVS source (signoff/calibre/lvs_src.sh)
 #   <top>.def.gz    DEF;  <top>.gds  GDS (1000 dbu / um, the Calibre decks' precision) with the kit cell GDS merged, pin text on the TSMC text layers
 #   <top>_<c>_pt.spef  ICC2 extraction (TLU+ of corner c; no StarRC nxtgrd for the 6X2Z stack in the kit)
 source [file dirname [info script]]/common.tcl
 open_lib $::QB_LIB
-open_block $P(TOP)/route
+open_block $P(TOP)/[qc_env QB_ICC2_LABEL route]
 link_block
 qb_timer
 set o $::R/out/$P(TOP)

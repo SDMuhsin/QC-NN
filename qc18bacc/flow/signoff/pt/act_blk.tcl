@@ -22,6 +22,8 @@ set L [qb_pt_lat $dir $corner]
 source [file normalize $::env(QC_FLOW)/../../qc18bacc/flow/blocks/act/io_budget.tcl]
 qb7_io_apply $per $L
 update_timing
+# design setup ends here for the PrimeTime ECO (signoff/pt/drv_eco.tcl)
+if {[info exists ::QB_PT_SETUP_ONLY]} { return }
 set fh [open $dir/pt_blk_$corner.txt w]
 redirect -variable ann { report_annotated_parasitics }
 set nets NA

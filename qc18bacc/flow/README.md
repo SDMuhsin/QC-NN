@@ -15,7 +15,7 @@ Stage-organized implementation flow of the qc18bacc chip (column block, act bloc
 | `cts/` | pre-CTS hooks (ICG sizing / splitting), clock balancing |
 | `route/` | global / detailed route hooks and drivers (`dr.sh`), re-route |
 | `repair/` | post-CTS repair (`post_cts.tcl`), post-route hold ECO (`hold_eco.sh` / `.tcl`), antenna repair |
-| `icc2/` | IC Compiler II steps (R54): `common.tcl` (kit + block config, `qb_open` / `qb_done` / `qb_qor`), `libs.tcl` (std-cell NDM, icc2_lm_shell), `init.tcl` (design library, TLU+, netlist, MCMM, SDC), `floorplan.tcl`, `place.tcl`, `cts.tcl`, `route.tcl`, `outputs.tcl`; block facts in `blocks/<b>/icc2.cfg` |
+| `icc2/` | IC Compiler II steps (R54): `common.tcl` (kit + block config, `qb_open` / `qb_done` / `qb_qor`), `libs.tcl` (std-cell NDM, icc2_lm_shell), `init.tcl` (design library, TLU+, netlist, MCMM, SDC), `floorplan.tcl`, `place.tcl`, `cts.tcl`, `route.tcl` (`qb_route_setup` / `qb_fillers` / `qb_route_checks` in common.tcl), `eco.tcl` (R56: sources the PrimeTime change list, legalise, route_eco, refill), `outputs.tcl` (label `QB_ICC2_LABEL`), `abstract.tcl` (abstract LEF + port antenna data + abutment check for the top); block facts in `blocks/<b>/icc2.cfg` |
 | `signoff/` | `spef.sh`, `antenna.tcl` (LEF-rule antenna check); `pt/` PrimeTime; `etm/` abstracts, ETMs, antenna data in LEFs; `calibre/` GDS, LVS source, Calibre DRC / LVS / antenna |
 | `blocks/<b>/` | per design: `<b>.env` (parameters), `<b>.cfg` (the one OpenROAD design config), `run.sh` (steps), design data |
 
@@ -40,7 +40,9 @@ stops at that step.  The OpenROAD steps are unchanged.
 
 ```
 qc18bacc/flow/blocks/col/run.sh pnr <tag>       # ICC2 libs init floorplan place cts route outputs -> $QC_BUILD/icc2/col/<tag>
+qc18bacc/flow/blocks/col/run.sh eco <tag>       # one PT DMSA ECO round tt/ss/ff (signoff/pt/drv_eco.tcl: DRV, hold) applied by ICC2 eco.tcl, outputs of label eco
 qc18bacc/flow/blocks/col/run.sh post <tag>      # PT tt/ss/ff at 6.5 ns on the ICC2 netlist + SPEF, ETMs
+qc18bacc/flow/blocks/col/run.sh views <tag>     # ICC2 abstract LEF + port antenna data (out/qb_col_blk_ant.lef), etmcheck (read by blocks/top/run.sh views)
 qc18bacc/flow/blocks/col/run.sh calibre <tag>   # LVS source, Calibre LVS / DRC (block deck) / antenna on the ICC2 GDS -> <run>/calibre
 ```
 Inputs: netlist + SDC `$B/syn/qb_col_blk_r5d_s20_tt_p1.65_topo` (P&R SDC: common/block_sdc.tcl + blocks/col/io_budget.tcl
@@ -234,7 +236,7 @@ signoff; top hold, dr, antenna, pt, lvs, views (views reproduced abs7 byte-for-b
 | r9b/route_pre.tcl | route/postcts_grt.tcl |
 | r9b/sdc.py | blocks/hub/sdc.py |
 | pnr/slice.cfg pnr/slice3.cfg r5a/col.cfg r5c/col.cfg r35/col.cfg | blocks/col/col.cfg (netlist / P&R SDC part: common/block_sdc.tcl) |
-| r35/run35.sh (col, colfrom, colpost) r5a/post.sh pnr/run.sh (pnr, spef) | blocks/col/run.sh; spef step -> signoff/spef.sh; abstract heredoc -> signoff/etm/col_abs.tcl |
+| r35/run35.sh (col, colfrom, colpost) r5a/post.sh pnr/run.sh (pnr, spef) | blocks/col/run.sh; spef step -> signoff/spef.sh; abstract heredoc -> signoff/etm/col_abs.tcl (OpenROAD; replaced by icc2/abstract.tcl and deleted in R56) |
 | r35/col_pins.tcl | floorplan/col_pins.tcl |
 | pnr/slice3_place.tcl r5c/place.tcl r5c/spread.tcl | place/col_place.tcl |
 | r35/col_route_pre.tcl | blocks/col/route_pre.tcl + route/gadj_layers.tcl (one per-layer GRT adjustment wrapper for every design) |
