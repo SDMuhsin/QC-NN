@@ -1,5 +1,5 @@
 # PrimeTime ETM of a routed hard block (column, act) at one corner (results/r5a.md, r45.md): routed netlist + def2spef SPEF,
-# propagated clock, data inputs without driving cell (signoff/pt/common.tcl qb_etm_inputs), extract_model -library_cell
+# propagated clock, inputs without driving cell (signoff/pt/common.tcl qb_etm_inputs), extract_model -library_cell
 # -> <run>/out/etm/<top>_<c>.lib/.db
 source $::env(QC_FLOW)/common/lib.tcl
 set corner $::env(QC_CORNER); set dir $::env(QC_PNR_OUT); set top $::env(QC_TOP)
@@ -12,7 +12,7 @@ qc_apply_constraints $corner
 set_propagated_clock [all_clocks]
 source [file normalize $::env(QC_FLOW)/../../qc18bacc/flow/signoff/pt/common.tcl]
 qb_etm_inputs
-read_parasitics -format spef $dir/out/${top}_${corner}_pt.spef
+qb_pt_spef $dir/out/${top}_${corner}_pt.spef
 update_timing
 file mkdir $dir/out/etm
 extract_model -library_cell -output $dir/out/etm/${top}_$corner -format {lib db}

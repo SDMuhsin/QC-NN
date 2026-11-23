@@ -18,9 +18,9 @@ create_clock -name qb_clk -period $per -waveform [list 0 [expr {$per / 2.0}]] [g
 set_clock_uncertainty -setup 0.25 [get_clocks qb_clk]; set_clock_uncertainty -hold 0.05 [get_clocks qb_clk]
 set_clock_transition 0.15 [get_clocks qb_clk]
 set_propagated_clock [all_clocks]
-if {[file exists $dir/out/${top}_${corner}_pt.spef]} { read_parasitics -format spef $dir/out/${top}_${corner}_pt.spef } else { puts "R21 no SPEF (dry run)" }
-update_timing
 source [file normalize $::env(QC_FLOW)/../../qc18bacc/flow/signoff/pt/common.tcl]
+if {[file exists $dir/out/${top}_${corner}_pt.spef]} { qb_pt_spef $dir/out/${top}_${corner}_pt.spef } else { puts "R21 no SPEF (dry run)" }
+update_timing
 # IO budget shift: this corner's insertion delay L (p50 clock-pin latency, the P&R's definition, cts/clk_lat.tcl; R21: not
 # the (max + min) / 2 mid-latency, which the hub's few late ICG subtrees would move)
 set L [qb_pt_lat $dir $corner]
@@ -36,9 +36,7 @@ if {[qc_env QB21_ETM 0]} {
     exit
 }
 set fh [open $dir/pt_hub_$corner.txt w]
-redirect -variable ann { report_annotated_parasitics }
-set nets NA
-if {[regexp {\n\s*\|\s*(\d+)\s*\|\s*\d+\s*\|\s*\d+\s*\|\s*(\d+)\s*\|\s*(\d+)\s*\|} $ann -> tot rc na]} { set nets "total $tot rc_network $rc not_annotated $na" }
+set nets [qb_pt_ann]
 puts $fh "design $top corner $corner period $per lib $::QC_LIB($corner) spef_nets $nets"
 puts $fh [format "io_shift_L_ns %.3f (p50 clock-pin latency)" $L]
 set io [add_to_collection [all_inputs] [all_outputs]]

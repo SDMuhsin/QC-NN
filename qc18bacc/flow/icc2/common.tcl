@@ -10,9 +10,13 @@
 #                       PrimeTime uses the CCS receiver model of the same _ccs.db, R55: 0.06 vs 0.09 pF on n1690)
 #                       and crosstalk (time.si_enable_analysis, default false; R59 route_opt ran without SI, ROPT-002,
 #                       and the SPEF had no coupling capacitance): SI delta delays in route_opt / eco timing, extraction
-#                       keeps the coupling capacitances, so outputs.tcl writes a coupled SPEF (PT sign-off runs SI too)
+#                       keeps the coupling capacitances, so outputs.tcl writes a coupled SPEF (PT sign-off runs SI too);
+#                       the OCV derate of common/derate.tcl (late 1.05 / early 0.95) on every scenario
 #   qb_done <step> [as] save (as 1: save the current block as label <step>, the init step), log the step end in
 #                       <run>/summary.txt, QB_ICC2_DONE marker for the wrapper
+#   qb_io_load          IO loads that depend on the block's own layout: P(IO_LOAD) = {measure apply} procs of P(IO_BUDGET)
+#                       (column: blocks/col/io_budget.tcl qb5_act_o_caps / qb5_act_o_load, act_o[b] = own act[b] net),
+#                       called per scenario on the current timing (placement estimate or routed); cts.tcl, route.tcl
 #   qb_qor <step>       QoR lines (cells, utilization, DRV count, WNS / TNS / NVE per scenario) + rpt/<step>_{qor,drv}.rpt
 #   qb_line <text>      append a line to <run>/summary.txt (and the log)
 #   qb_route_setup      routing options of route.tcl / eco.tcl: kit antenna rules, antenna-aware detail routing with
@@ -43,9 +47,37 @@ proc qb_open {from to} {
     link_block
     qb_timer
 }
+source $::QBF/common/derate.tcl
 proc qb_timer {} {
     set_app_options -name time.enable_ccs_rcv_cap -value true
     set_app_options -name time.si_enable_analysis -value true
+    # OCV derate (common/derate.tcl) on every scenario's corner (none yet in init before create_scenario: init.tcl
+    # calls qb_timer again after them)
+    if {![sizeof_collection [get_scenarios -quiet]]} return
+    set s0 [current_scenario]
+    foreach_in_collection s [get_scenarios] { current_scenario $s; qb_derate }
+    current_scenario $s0
+}
+proc qb_io_load {} {
+    global P
+    if {![info exists P(IO_LOAD)]} return
+    lassign $P(IO_LOAD) measure apply
+    source $P(IO_BUDGET)
+    update_timing
+    set s0 [current_scenario]
+    # every scenario measured before the first set_load (it invalidates the timing and clears the net parasitics)
+    foreach_in_collection s [get_scenarios] {
+        current_scenario $s
+        # port max_rise_load_cap of an input port = its net's pin + wire capacitance (R64 [M]: = PrimeTime's net
+        # total_capacitance_max on the routed r62 block, 0.067407 pF act[0] ss)
+        set m([get_object_name $s]) [$measure {apply {p {get_attribute $p max_rise_load_cap}}}]
+    }
+    foreach_in_collection s [get_scenarios] {
+        current_scenario $s
+        redirect -variable r { $apply $m([get_object_name $s]) }
+        qb_line "io_load [get_object_name $s]: [lindex [regexp -inline -line {QB.*_LOAD.*$} $r] 0]"
+    }
+    current_scenario $s0
 }
 # one QoR line: setup WNS / TNS / violators per scenario, hold WNS per scenario, DRV counts, utilization
 proc qb_qor {step} {

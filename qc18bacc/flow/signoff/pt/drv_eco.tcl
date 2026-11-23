@@ -89,6 +89,9 @@ qb_eco_state $sf hold
 current_scenario [lindex $corners 0]
 remote_execute "write_changes -format icc2tcl -output $o/pt_eco.tcl"
 current_scenario -all
+# write_changes writes no file when the round made no change (R64 [M]: round 2 at its fixed point); the change list is
+# then empty, so flow/icc2/eco.tcl applies nothing
+if {![file exists $o/pt_eco.tcl]} { set f [open $o/pt_eco.tcl w]; puts $f "# no ECO changes"; close $f }
 set t [exec cat $o/pt_eco.tcl]
 puts $sf "eco size_cell [regexp -all -line {^\s*size_cell} $t] insert_buffer [regexp -all -line {^\s*(insert_buffer|add_buffer\S*)} $t] lines [llength [split $t "\n"]]"
 close $sf

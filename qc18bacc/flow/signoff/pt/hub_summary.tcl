@@ -9,9 +9,7 @@
 set f [open $::env(R31_PTHUB)]; set t [read $f]; close $f
 eval [string range $t 0 [expr {[string first "if \{\[qc_env QB21_ETM 0\]\}" $t] - 1}]]
 set C $corner
-redirect -variable ann { report_annotated_parasitics }
-regexp {\n\s*\|\s*(\d+)\s*\|\s*\d+\s*\|\s*\d+\s*\|\s*(\d+)\s*\|\s*(\d+)\s*\|} $ann -> tot rc na
-puts "R31PT $C ann nets $tot rc $rc not_annotated $na"
+puts "R31PT $C ann nets [qb_pt_ann]"
 set cp [get_pins -quiet -hierarchical * -filter "defined(user_case_value)"]
 set nm {}; set nq 0
 foreach_in_collection p $cp { regsub {\[.*} [get_attribute $p lib_pin_name] {} b; dict incr nm $b; if {[get_attribute $p direction] ne "in"} { incr nq } }

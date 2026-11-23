@@ -1,7 +1,7 @@
 # Block views for the chip top from the routed block (label QB_ICC2_LABEL: route, or eco; blocks/<b>/run.sh views):
 #   out/<top>.lef       abstract LEF of the frame view (exact metal shapes as OBS, no merging: the top's ring LEF is
 #                       made from it by signoff/etm/lef_ring.py), pins on their routing layers
-#   out/blkant.txt      per signal port the leaf pins on its net, "port master pin in|out" (the input of
+#   out/blkant.txt      per non-supply port the leaf pins on its net, "port master pin in|out" (the input of
 #                       signoff/etm/blkant.py, as the OpenROAD-era blkant.tcl); out/<top>_ant.lef = the LEF with the
 #                       ports' ANTENNAGATEAREA / ANTENNADIFFAREA from the cell LEF (site/pnr.tcl QC_PNR_LEF), env QB_PY
 #   abutment check: every act[b] / act_o[b] pair on the same layer and y, act on the west and act_o on the east die edge
@@ -28,7 +28,8 @@ foreach_in_collection p [get_ports {act[*]}] {
 }
 qb_line "abstract abutment act pairs ok $ok bad [llength $bad] [lrange $bad 0 4] die $die"
 set f [open $::R/out/blkant.txt w]; set n 0
-foreach_in_collection p [get_ports -filter "port_type==signal"] {
+# every port but the supplies: clk has port_type clock (R63: a port_type==signal filter dropped its antenna data)
+foreach_in_collection p [get_ports -filter "port_type!=power && port_type!=ground"] {
     set net [get_nets -quiet -of_objects $p]; if {![sizeof_collection $net]} continue
     foreach_in_collection q [get_pins -quiet -physical_context -of_objects $net] {
         set d [get_attribute $q direction]

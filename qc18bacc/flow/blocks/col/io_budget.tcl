@@ -9,6 +9,12 @@
 #                          w_vld / w_sh (PPU controls): QB5_SOUTH_IN (default 0.20 P, as the column / slice runs)
 #   south outputs          f_y / f_b / w_y / w_b / *_vld_o (lane results), b2 / b2_vld: 0.25 P
 #   min (hold) input delay 0.05 P everywhere (column 0 act, near flops); output min 0
+#   act_o load             qb5_act_o_load: column c's act_o[b] drives column c+1's act[b] (abutment: same bit, same y, an
+#                          identical block), so act_o[b] gets the capacitance of this block's own act[b] net, per bit
+#                          (pins + wire of the current timing state).  Per bit, not the max over the bits: the load of
+#                          bit b is exactly that of the same net in the next column (R63 [M] ss ETM act pins p50 0.037,
+#                          max 0.088 pF), so the max would over-load most of the 4608 feedthroughs ~2x.  It replaces the
+#                          common 4 x INVD4 (constraints.sdc, 0.0187 pF), which is not what an abutted act_o drives.
 proc qb5_budget {} {
     set si [expr {[info exists ::env(QB5_SOUTH_IN)] ? $::env(QB5_SOUTH_IN) : 0.20}]
     return [subst -nocommands {
@@ -33,3 +39,25 @@ proc qb5_io_lines {per {L 0.0}} {
     return [join $out "\n"]
 }
 proc qb5_io_apply {per {L 0.0}} { foreach l [split [qb5_io_lines $per $L] "\n"] { uplevel #0 $l } }
+# act_o[b] load = capacitance of the act[b] net.  qb5_act_o_caps <capof>: {b cap ...} of every act[b], capof = command
+# prefix called with the act port, returning that net's capacitance in the tool's current timing state; qb5_act_o_load
+# <caps>: set_load of each act_o[b].  Separate, because a set_load invalidates the timing (ICC2 also clears the net
+# parasitics, TIM-123: R64 [M] reading on after it gave empty / 0 caps), so every corner is measured before the first
+# set_load (PrimeTime signoff/pt/col_blk.tcl, ICC2 flow/icc2 qb_io_load).
+proc qb5_act_o_caps {capof} {
+    set ld {}
+    foreach_in_collection p [get_ports {act[*]}] {
+        regexp {\[(\d+)\]$} [get_object_name $p] -> b
+        set c [{*}$capof $p]
+        if {![string is double -strict $c] || $c <= 0} { error "qb5_act_o_caps: no capacitance on [get_object_name $p] ($c)" }
+        lappend ld $b $c
+    }
+    return $ld
+}
+proc qb5_act_o_load {ld} {
+    set v {}
+    foreach {b c} $ld { set_load $c [get_ports "act_o\[$b\]"]; lappend v $c }
+    set v [lsort -real $v]; set n [llength $v]
+    puts [format "QB5_ACT_O_LOAD %d act_o ports, per-bit load = own act net: min %.4f p50 %.4f max %.4f pF" $n \
+        [lindex $v 0] [lindex $v [expr {$n / 2}]] [lindex $v end]]
+}

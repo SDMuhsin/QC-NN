@@ -8,10 +8,12 @@
 #                                                  ICC2 (flow/icc2/eco.tcl: label route -> eco), outputs of label eco;
 #                                                  a later round starts from the label of out/ (out/label.txt: eco)
 #   qc18bacc/flow/blocks/col/run.sh post <tag>     PrimeTime tt / ss / ff on the ICC2 netlist + SPEF, ETMs tt / ss / ff
+#                                                  (fails on MEXT-81 / MEXT-97 in an ETM log)
 #   qc18bacc/flow/blocks/col/run.sh views <tag>    views for the chip top (blocks/top/run.sh views reads them): ICC2
 #                                                  abstract LEF + port antenna data + abutment check (flow/icc2/abstract.tcl,
-#                                                  label QB_ICC2_LABEL [eco]) -> out/<top>_ant.lef; ETM scan (etmcheck 3 ns)
-#                                                  of the post step's out/etm/<top>_<c>.lib
+#                                                  label QB_ICC2_LABEL [the label of out/, out/label.txt, as eco]) ->
+#                                                  out/<top>_ant.lef; ETM scan (etmcheck 3 ns: fails on an input pin
+#                                                  without max_transition) of the post step's out/etm/<top>_<c>.lib
 #   qc18bacc/flow/blocks/col/run.sh calibre <tag>  kit dummy metal fill (fill_blk.sed) on the ICC2 GDS, then on the
 #                                                  filled GDS: LVS source, Calibre LVS (lvs_case.sed), DRC (block deck
 #                                                  drc_blk.sed), antenna -> <run>/calibre
@@ -53,9 +55,10 @@ post) ( pt_env || exit 1
        done
        for c in tt ss ff; do
            QC_CORNER=$c qb_pt "etm_$c.log" pt_shell -f "$QBF/signoff/etm/etm.tcl" || exit 1
+           ! grep -m 3 'MEXT-81\|MEXT-97' "etm_$c.log" || { echo "ETM $c: driving cell / feedthrough warnings"; exit 1; }
            echo "ETM $c $(ls out/etm/ 2>/dev/null | tr '\n' ' ')"
        done ) || exit 1 ;;
-views) QB_ICC2_LABEL=${QB_ICC2_LABEL:-eco} QB_PY=$PY qb_icc2 "$d" abstract || exit 1
+views) QB_ICC2_LABEL=${QB_ICC2_LABEL:-$(cat "$d/out/label.txt" 2>/dev/null || echo route)} QB_PY=$PY qb_icc2 "$d" abstract || exit 1
      grep '^abstract' "$d/summary.txt" | tail -3
      for c in tt ss ff; do "$PY" -I "$QBF/signoff/etm/etmcheck.py" "$d/out/etm/${COL_TOP}_$c.lib" 3.0 || exit 1; done ;;
 calibre) o=$d/calibre; C=$QBF/signoff/calibre; mkdir -p "$o"

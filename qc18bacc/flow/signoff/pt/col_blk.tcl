@@ -15,23 +15,23 @@ current_design $top
 link_design
 qc_apply_constraints $corner
 set_propagated_clock [all_clocks]
-# sign-off timer options (SI on) before the SPEF is read: PT keeps its coupling capacitances
+# sign-off timer options (SI on), then the SPEF with its coupling capacitances (qb_pt_spef)
 source [file normalize $::env(QC_FLOW)/../../qc18bacc/flow/signoff/pt/common.tcl]
-read_parasitics -format spef $dir/out/${top}_${corner}_pt.spef
+qb_pt_spef $dir/out/${top}_${corner}_pt.spef
 update_timing
 set per [get_attribute [get_clocks qb_clk] period]
 # insertion delay L of this corner (p50 clock-pin latency, as the P&R)
 set L [qb_pt_lat $dir $corner]
 source [file normalize $::env(QC_FLOW)/../../qc18bacc/flow/blocks/col/io_budget.tcl]
 qb5_io_apply $per $L
+# act_o load = this block's own act[b] net (next column's act pin), per bit, on the routed SPEF
+qb5_act_o_load [qb5_act_o_caps {apply {p {get_attribute [get_nets -of_objects $p] total_capacitance_max}}}]
 update_timing
 # design setup ends here for the PrimeTime ECO (signoff/pt/drv_eco.tcl)
 if {[info exists ::QB_PT_SETUP_ONLY]} { return }
 file mkdir $dir/rpt
 set fh [open $dir/pt_blk_$corner.txt w]
-redirect -variable ann { report_annotated_parasitics }
-set nets NA
-if {[regexp {\n\s*\|\s*(\d+)\s*\|\s*\d+\s*\|\s*\d+\s*\|\s*(\d+)\s*\|\s*(\d+)\s*\|} $ann -> tot rc na]} { set nets "total $tot rc_network $rc not_annotated $na" }
+set nets [qb_pt_ann]
 puts $fh "design $top corner $corner period $per lib $::QC_LIB($corner) spef_nets $nets"
 puts $fh [format "insertion_delay_L_ns %.3f (p50 clock-pin latency)" $L]
 set regs [all_registers -data_pins]; set regc [all_registers -clock_pins]

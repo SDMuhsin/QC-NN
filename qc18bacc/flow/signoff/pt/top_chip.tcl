@@ -20,7 +20,9 @@ current_design $top
 link_design
 qc_apply_constraints $corner
 set_propagated_clock [all_clocks]
-read_parasitics -format spef $dir/out/${top}_${corner}_pt.spef
+# sign-off timer options (SI on), then the SPEF with its coupling capacitances (qb_pt_spef)
+source [file normalize $::env(QC_FLOW)/../../qc18bacc/flow/signoff/pt/common.tcl]
+qb_pt_spef $dir/out/${top}_${corner}_pt.spef
 update_timing
 # IO shift L (results/r43.md defect 6) = p50 of the propagated clock arrival at the top registers' clock pins (blocks /
 # macros excluded, as R39LAT below) of THIS corner, measured after update_timing; the IO delays are re-applied with it
@@ -42,9 +44,7 @@ if {[llength $_v]} {
 }
 file mkdir $dir/rpt
 set fh [open $dir/pt_chip_$corner.txt w]
-redirect -variable ann { report_annotated_parasitics }
-set nets NA
-if {[regexp {\n\s*\|\s*(\d+)\s*\|\s*\d+\s*\|\s*\d+\s*\|\s*(\d+)\s*\|\s*(\d+)\s*\|} $ann -> tot rc na]} { set nets "total $tot rc_network $rc not_annotated $na" }
+set nets [qb_pt_ann]
 set per [get_attribute [get_clocks qb_clk] period]
 puts $fh "design $top corner $corner period $per lib $::QC_LIB($corner) spef_nets $nets"
 set io [add_to_collection [all_inputs] [all_outputs]]

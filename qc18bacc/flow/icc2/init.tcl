@@ -63,6 +63,7 @@ foreach c $::QC_CORNERS {
     set_scenario_status func_$c -active true -setup $s(setup) -hold $s(hold) -max_transition true -max_capacitance true \
         -min_capacitance false -leakage_power false -dynamic_power false
 }
+qb_timer
 set du {}; foreach p $::QC_PNR_DONT_USE { lappend du */$p }
 set_lib_cell_purpose -exclude all [get_lib_cells $du]
 redirect -tee $::R/rpt/init_scen.rpt { report_scenarios; report_pvt }

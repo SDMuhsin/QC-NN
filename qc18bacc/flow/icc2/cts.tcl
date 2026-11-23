@@ -7,6 +7,7 @@ set_lib_cell_purpose -exclude cts [get_lib_cells */*]
 set ck {}; foreach c [concat $::QC_PNR_CTS_BUF {CKND* CKLNQD*}] { lappend ck */$c }
 set_lib_cell_purpose -include cts [get_lib_cells $ck]
 set_app_options -name clock_opt.flow.enable_ccd -value false
+qb_io_load
 clock_opt
 compute_clock_latency
 redirect $::R/rpt/cts_clock_qor.rpt { report_clock_qor -type summary }

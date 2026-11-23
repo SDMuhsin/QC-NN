@@ -12,13 +12,23 @@ qb_kit() {
     QC_KIT=$(tcsh -f -c "source $FLOW/site/site.csh >& /dev/null; printenv QC_KIT"); export QC_KIT QC_PY=$PY
 }
 # qb_pt <log> <command ...>: qc_tool of a PrimeTime run in the current dir; one PT_ERRORS line; non-zero unless the tool
-# exited 0 and neither the log nor ./parasitics_command.log (read_parasitics, e.g. SPFP-103) has an '^Error' line
+# exited 0 and neither the log nor ./parasitics_command.log (read_parasitics, e.g. SPFP-103) has an '^Error' line.
+# SI gate (R64, signoff/pt/common.tcl qb_pt_spef): also non-zero on any XTALK-011 (SI on, no SI data) or a non-zero
+# "Reduced coupling capacitances" count in the logs this run wrote: <log>, ./parasitics_command.log, and the DMSA scenario
+# logs (out.log, parasitics_command.log under the run dir); PT prints the reduced line only when it grounds coupling, the
+# kept count is "Annotated coupling capacitances" (logged).  ./parasitics_command.log is kept as <log>_parasitics.log.
 qb_pt() {
-    local log=$1 rc e p=0; rm -f parasitics_command.log
+    local log=$1 rc e p=0 x c k t0 F; rm -f parasitics_command.log; t0=$(date +%s)
     qc_tool "$@"; rc=$?
     e=$(grep -c '^Error' "$log"); [ -f parasitics_command.log ] && p=$(grep -c '^Error' parasitics_command.log)
-    echo "PT_ERRORS $(basename "$log") rc $rc errors ${e:-NA} parasitics_errors $p"
-    [ $rc = 0 ] && [ "$e" = 0 ] && [ "$p" = 0 ]
+    F=$(find . -maxdepth 5 -name '*.nlib' -prune -o -type f \( -name parasitics_command.log -o -name out.log \) \
+        -newermt "@$t0" -print)
+    x=$(cat "$log" $F /dev/null | grep -c 'XTALK-011')
+    c=$(cat $F /dev/null | grep -h 'Reduced coupling capacitances' | awk '{s += $NF; n++} END {printf "%d (%d lines)", s, n}')
+    k=$(cat $F /dev/null | grep -h 'Annotated coupling capacitances' | awk '{s += $NF; n++} END {printf "%d (%d reads)", s, n}')
+    [ -f parasitics_command.log ] && cp parasitics_command.log "${log%.log}_parasitics.log"
+    echo "PT_ERRORS $(basename "$log") rc $rc errors ${e:-NA} parasitics_errors $p xtalk011 $x reduced_coupling $c coupling_annotated $k"
+    [ $rc = 0 ] && [ "$e" = 0 ] && [ "$p" = 0 ] && [ "$x" = 0 ] && [ "${c%% *}" = 0 ]
 }
 # qb_wait: wait for every background job of this shell; non-zero if any of them failed
 qb_wait() { local j r=0; for j in $(jobs -p); do wait "$j" || r=1; done; return $r; }
