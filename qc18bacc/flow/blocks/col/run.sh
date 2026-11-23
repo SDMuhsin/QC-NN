@@ -6,7 +6,7 @@
 #                                                  then fill (below)
 #   qc18bacc/flow/blocks/col/run.sh fill <tag>     kit dummy metal fill (Calibre, fill_blk.sed) of the outputs GDS ->
 #                                                  <run>/calibre/fill, its shapes as DEF FILLS (signoff/calibre/fill_def.py),
-#                                                  fill-aware ICC2 extraction (flow/icc2/extract.tcl) -> out/<top>_<c>_pt.spef
+#                                                  fill-aware ICC2 extraction (flow/icc2/extract.tcl) -> out/<top>_<c>_pt.spef.gz
 #                                                  for every sign-off corner c (R68; site.tcl corner table, env.sh qb_corners)
 #   qc18bacc/flow/blocks/col/run.sh eco <tag>      one sign-off ECO round on the routed run: PrimeTime DMSA in every
 #                                                  sign-off corner (signoff/pt/drv_eco.tcl: DRV, setup, hold) ->
@@ -15,8 +15,8 @@
 #                                                  of out/ (out/label.txt: eco)
 #   qc18bacc/flow/blocks/col/run.sh post <tag>     PrimeTime in every sign-off corner on the ICC2 netlist + SPEF (fails on a
 #                                                  noise / min pulse width / min period violator, common/env.sh qb_pt), ETMs
-#                                                  of the base corners (site.tcl QC_CORNERS, the ones the chip top reads;
-#                                                  fails on MEXT-81 / MEXT-97 in an ETM log)
+#                                                  of every sign-off corner (R71; the chip top reads the same list; fails on
+#                                                  MEXT-6 / MEXT-81 / MEXT-97 in an ETM log)
 #   qc18bacc/flow/blocks/col/run.sh views <tag>    views for the chip top (blocks/top/run.sh views reads them): ICC2
 #                                                  abstract LEF with ICC2's port antenna data + antenna / abutment / PG
 #                                                  pin gates (flow/icc2/abstract.tcl,
@@ -61,6 +61,7 @@ eco) export QB_ECO_FROM=$(cat "$d/out/label.txt" 2>/dev/null || echo route)
      ( pt_env || exit 1
        QB_PT_SCRIPT=$QBF/signoff/pt/col_blk.tcl QB_ECO_CORNERS="$(qb_corners)" QB_ECO_NLIB=$d/$COL_TOP.nlib QB_ECO_BLOCK=$COL_TOP/$QB_ECO_FROM \
            qb_pt pt_eco.log pt_shell -multi_scenario -f "$QBF/signoff/pt/drv_eco.tcl" ) || exit 1
+     rm -f "$d"/out/eco/work/.eco_ndm_*   # (the DMSA workers' NDM copies, ~0.42 GB each: disk, R71; their logs stay)
      cat "$d/out/eco/eco_summary.txt"
      qb_icc2 "$d" eco || exit 1
      QB_ICC2_LABEL=eco qb_icc2 "$d" outputs || exit 1
@@ -73,14 +74,14 @@ post) ( pt_env || exit 1
            cat "pt_blk_$c.txt"
        done
        [ $r = 0 ] || exit 1
-       for c in $(qb_corners base); do
-           QC_CORNER=$c qb_pt "etm_$c.log" pt_shell -f "$QBF/signoff/etm/etm.tcl" || exit 1
-           ! grep -m 3 'MEXT-81\|MEXT-97' "etm_$c.log" || { echo "ETM $c: driving cell / feedthrough warnings"; exit 1; }
-           echo "ETM $c $(ls out/etm/ 2>/dev/null | tr '\n' ' ')"
-       done ) || exit 1 ;;
+       for c in $(qb_corners); do
+           QC_CORNER=$c qb_pt "etm_$c.log" pt_shell -f "$QBF/signoff/etm/etm.tcl" || r=1
+           ! grep -m 3 'MEXT-6)\|MEXT-81\|MEXT-97' "etm_$c.log" || { echo "ETM $c: table limit / driving cell / feedthrough warnings"; r=1; }
+           echo "ETM $c $(ls out/etm/ 2>/dev/null | grep -c '_lib.db$') dbs, $(grep -c 'RC-011' "etm_$c.log") RC-011 lines"
+       done; exit $r ) || exit 1 ;;
 views) QB_ICC2_LABEL=${QB_ICC2_LABEL:-$(cat "$d/out/label.txt" 2>/dev/null || echo route)} QB_PY=$PY qb_icc2 "$d" abstract || exit 1
      grep '^abstract' "$d/summary.txt" | tail -3
-     for c in $(qb_corners base); do "$PY" -I "$QBF/signoff/etm/etmcheck.py" "$d/out/etm/${COL_TOP}_$c.lib" 3.0 || exit 1; done ;;
+     for c in $(qb_corners); do "$PY" -I "$QBF/signoff/etm/etmcheck.py" "$d/out/etm/${COL_TOP}_$c.lib" 3.0 || exit 1; done ;;
 fill) fill || exit 1 ;;
 calibre) o=$d/calibre; C=$QBF/signoff/calibre; g=$o/fill/${COL_TOP}_fill.gds
      [ "$g" -nt "$d/out/$COL_TOP.gds" ] || { echo "COL_FAIL $g missing or older than out/$COL_TOP.gds (run.sh fill)"; exit 1; }

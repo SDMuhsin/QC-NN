@@ -22,6 +22,19 @@
 #                          sign-off alike) and ICC2 closes act -> act_o itself (R67: ICC2 resized the per-bit drivers
 #                          after reading them, PT needed 4 setup ECO rounds).  Size: the smallest BUFFD* that meets the
 #                          0.07 P feedthrough budget at the worst setup corner with the per-bit act_o load (results/r68.md).
+#                          That driving cell is the pre-layout estimate only (ICC2 init / place).
+#   act input transition   R71 (PI decision): act[b] of column c is the abutted act_o[b] of column c-1, an identical block,
+#                          so its transition is this block's own act_o[b] port transition of the same corner: the QB5_FT
+#                          cell through the act_o wire into the act_o load above, measured by the timer per bit (rise /
+#                          fall x max / min, qb5_act_tran) and set as the act[b] input transition (qb5_act_tran_apply;
+#                          ICC2 qb_io_load from CTS on, per scenario; PrimeTime col_blk.tcl until the act_o transitions
+#                          it re-measures agree, qb5_act_tran_fix).  No driving cell with it: set_input_transition and
+#                          set_driving_cell replace each other per edge (R71 [M] PrimeTime: set_input_transition -rise
+#                          -max on act[8] left only the fall / min BUFFD4 entries), and the upstream cell's delay into
+#                          this act net is part of the upstream column's act -> act_o path (port to port, timed with this
+#                          net as its load), which the 0.55 P act input delay already counts, so the driving cell counted
+#                          it twice.  R71 [M] r68 ss: act_o[8] 0.218 / 0.141 ns rise / fall vs 0.034 / 0.024 from the
+#                          bare BUFFD4 at act[8].
 set ::QB5_FT {BUFFD4 Z}
 proc qb5_budget {} {
     set si [expr {[info exists ::env(QB5_SOUTH_IN)] ? $::env(QB5_SOUTH_IN) : 0.20}]
@@ -80,4 +93,56 @@ proc qb5_ft_cells {} {
     set bad [filter_collection $c "ref_name != [lindex $::QB5_FT 0]"]
     if {[sizeof_collection $bad]} { error "qb5_ft_cells: [sizeof_collection $bad] feedthroughs not [lindex $::QB5_FT 0], e.g. [get_object_name [index_collection $bad 0]] [get_attribute [index_collection $bad 0] ref_name]" }
     return $c
+}
+# act[b] input transition = this block's act_o[b] port transition (see the header).  qb5_act_tran: {b {rise_max fall_max
+# rise_min fall_min} ...} of every act_o[b] in the tool's current timing state (PrimeTime and ICC2 port attributes
+# actual_{rise,fall}_transition_{max,min}); qb5_act_tran_apply <tran>: act[*] driving cell removed, set_input_transition per
+# bit and edge (ICC2: the current scenario); qb5_act_tran_fix: measure / apply until a re-measure moves no value by more
+# than QB5_TRAN_TOL ns (the act_o transition depends a little on the act slew through the QB5_FT input), error after
+# QB5_TRAN_ROUNDS rounds; returns the last residual.
+set ::QB5_TRAN_TOL 0.001
+set ::QB5_TRAN_ROUNDS 4
+proc qb5_act_tran {} {
+    set t {}
+    foreach_in_collection p [get_ports {act_o[*]}] {
+        regexp {\[(\d+)\]$} [get_object_name $p] -> b
+        set v {}
+        foreach a {actual_rise_transition_max actual_fall_transition_max actual_rise_transition_min actual_fall_transition_min} {
+            set x [get_attribute $p $a]
+            if {![string is double -strict $x] || $x <= 0} { error "qb5_act_tran: no $a on [get_object_name $p] ($x)" }
+            lappend v $x
+        }
+        lappend t $b $v
+    }
+    return $t
+}
+proc qb5_act_tran_apply {t} {
+    remove_driving_cell [get_ports {act[*]}]
+    set v {}
+    foreach {b x} $t {
+        set p [get_ports "act\[$b\]"]
+        foreach {e m} {rise max fall max rise min fall min} y $x { set_input_transition -$e -$m $y $p }
+        lappend v {*}[lrange $x 0 1]
+    }
+    set v [lsort -real $v]; set n [llength $v]
+    puts [format "QB5_ACT_TRAN %d act ports, input transition = own act_o transition (rise / fall max): min %.4f p50 %.4f max %.4f ns" \
+        [expr {[llength $t] / 2}] [lindex $v 0] [lindex $v [expr {$n / 2}]] [lindex $v end]]
+}
+proc qb5_act_tran_diff {t0 t1} {
+    set d 0.0
+    foreach {b x} $t0 {b1 y} $t1 { foreach u $x w $y { set d [expr {max($d, abs($u - $w))}] } }
+    return $d
+}
+proc qb5_act_tran_fix {} {
+    set t [qb5_act_tran]
+    for {set i 1} {$i <= $::QB5_TRAN_ROUNDS} {incr i} {
+        qb5_act_tran_apply $t
+        update_timing
+        set t1 [qb5_act_tran]
+        set d [qb5_act_tran_diff $t $t1]
+        puts [format "QB5_ACT_TRAN_FIX round %d residual %.5f ns" $i $d]
+        if {$d <= $::QB5_TRAN_TOL} { return $d }
+        set t $t1
+    }
+    error "qb5_act_tran_fix: act_o transitions still move by [format %.5f $d] ns after $::QB5_TRAN_ROUNDS rounds"
 }

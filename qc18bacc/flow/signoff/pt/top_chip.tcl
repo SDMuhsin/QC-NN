@@ -85,8 +85,8 @@ redirect -variable hv { report_constraint -min_delay -all_violators -nosplit }
 puts $fh "hold_violating_endpoints [regexp -all -line {VIOLATED} $hv]"
 redirect -variable sv { report_constraint -max_delay -all_violators -nosplit }
 puts $fh "setup_violating_endpoints [regexp -all -line {VIOLATED} $sv]"
-redirect $dir/rpt/pt_chip_${corner}_reg2reg.rpt { report_timing -max_paths 10 -nosplit -exclude $io -input_pins -nets -capacitance -transition_time }
-redirect $dir/rpt/pt_chip_${corner}_min.rpt { report_timing -delay_type min -max_paths 3 -nosplit -exclude $io -path_type full_clock_expanded -input_pins }
+qb_pt_paths $dir/rpt/pt_chip_${corner}_reg2reg.rpt [list -max_paths 10 -exclude $io -input_pins -nets -capacitance -transition_time]
+qb_pt_paths $dir/rpt/pt_chip_${corner}_min.rpt [list -delay_type min -max_paths 3 -exclude $io -path_type full_clock_expanded -input_pins]
 redirect $dir/rpt/pt_chip_${corner}_viol.rpt { report_constraint -max_delay -all_violators -nosplit }
 redirect -variable lat { report_clock_timing -type summary -clock qb_clk -nosplit }
 puts $fh "clock_summary [string map {"\n" " | "} [regsub -all {[ \t]+} $lat " "]]"
@@ -102,7 +102,7 @@ set hi [get_pins -of_objects $hub -filter "direction==in"]; set ho [get_pins -of
 # R43 (results/r43.md, defect 8): hub_ft = every data path through a hub data input AND a hub output (the hub clk pin
 # excluded: clk -> output arcs are launches, not feed-throughs), all slacks counted (get_timing_paths returns only
 # violating paths unless -slack_lesser_than is given)
-set hi [filter_collection $hi "lib_pin_name!=clk"]; set _ftsl [list -slack_lesser_than 1e9]
+set hi [filter_collection $hi "lib_pin_name!=clk"]; set _ftsl [list -slack_lesser_than $::QB_PT_ANY_SLACK]
 set ai [get_pins -of_objects $act -filter "direction==in"]; set ao [get_pins -of_objects $act -filter "direction==out"]
 foreach dt {max min} {
     set k [expr {$dt eq "max" ? "" : "hold_"}]

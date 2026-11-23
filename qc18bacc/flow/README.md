@@ -42,15 +42,17 @@ stops at that step.  The OpenROAD steps are unchanged.
 qc18bacc/flow/blocks/col/run.sh pnr <tag>       # ICC2 libs init floorplan place cts route outputs + fill -> $QC_BUILD/icc2/col/<tag>
 qc18bacc/flow/blocks/col/run.sh fill <tag>      # Calibre dummy metal of the outputs GDS -> DEF FILLS (signoff/calibre/fill_def.py) -> fill-aware ICC2 SPEFs (icc2/extract.tcl), every sign-off corner
 qc18bacc/flow/blocks/col/run.sh eco <tag>       # one PT DMSA ECO round in every sign-off corner (signoff/pt/drv_eco.tcl: DRV, setup, hold) applied by ICC2 eco.tcl, outputs + fill of label eco
-qc18bacc/flow/blocks/col/run.sh post <tag>      # PT in every sign-off corner at 6.5 ns on the ICC2 netlist + fill-aware SPEF, ETMs of the base corners
+qc18bacc/flow/blocks/col/run.sh post <tag>      # PT in every sign-off corner at 6.5 ns on the ICC2 netlist + fill-aware SPEF (gzip), ETMs of every sign-off corner
 qc18bacc/flow/blocks/col/run.sh views <tag>     # ICC2 abstract LEF with port antenna data + antenna / abutment / PG pin gates (out/qb_col_blk.lef), etmcheck (read by blocks/top/run.sh views)
 qc18bacc/flow/blocks/col/run.sh calibre <tag>   # LVS source, Calibre LVS / DRC (block deck) / antenna on the filled GDS of the fill step -> <run>/calibre
 ```
 Corners (R68): one table, `flow/tsmc65/site/site.tcl` QC_SIGNOFF (kit release note RN_TCBN65GPLUS_140B NOTE I): setup
 {wc wcl} x {Cworst RCworst} (ss ss_rcw wcl wcl_rcw), hold {lt ml} x {Cbest RCbest} (ff ff_rcb ml ml_rcb), tc typical (tt);
-ICC2 MCMM, PT sign-off and the DMSA ECO use all of them (bash: common/env.sh `qb_corners`), DC / OpenROAD / the block
-ETMs the chip top reads use the base corners QC_CORNERS {ss tt ff}.  Feedthroughs act -> act_o: one fixed lib cell
-(blocks/col/io_budget.tcl QB5_FT, the act driving cell), dont_touch with their act_o nets (icc2/init.tcl, PT col_blk.tcl).
+ICC2 MCMM, PT sign-off, the DMSA ECO, the block ETMs and the chip top use all of them (bash: common/env.sh `qb_corners`;
+R71), DC / the OpenROAD act / hub blocks the base corners QC_CORNERS {ss tt ff}.  Feedthroughs act -> act_o: one fixed lib
+cell (blocks/col/io_budget.tcl QB5_FT), dont_touch with their act_o nets (icc2/init.tcl, PT col_blk.tcl); act[b] input
+transition = the block's own measured act_o[b] transition per corner (io_budget.tcl qb5_act_tran*, R71).  Abstract: M1 ..
+M7 blocked over the die except the pins (icc2/abstract.tcl, R71).  Routing: redundant vias after every detail route (R71).
 Inputs: netlist + SDC `$B/syn/qb_col_blk_r5d_s20_tt_p1.65_topo` (P&R SDC: common/block_sdc.tcl + blocks/col/io_budget.tcl
 at 5.0 ns), pin positions from the r48 column DEF (`COL_PIN_DEF`). Parameters: `col.env`, `icc2.cfg`.  The OpenROAD
 config `col.cfg` / `route_pre.tcl` (OpenROAD, R48) were deleted in R54 (git history).

@@ -8,9 +8,10 @@
 #                                              [place] / QC_PNR_TO select a step range)
 #   qc18bacc/flow/blocks/top/run.sh hold <tag> post-GRT hold + antenna repair in a fresh process (repair/top_hold.tcl;
 #                                              knobs R43_HGRT0 R43_HPAR R43_HINC R43_HOLD pass through)
-#   qc18bacc/flow/blocks/top/run.sh dr <tag>   detailed route + finish (route/dr.sh), SPEF tt + ss for PT
+#   qc18bacc/flow/blocks/top/run.sh dr <tag>   detailed route + finish (route/dr.sh), SPEF of every sign-off corner for PT
 #   qc18bacc/flow/blocks/top/run.sh antenna <tag>  LEF-rule antenna check of db/route_dr (signoff/antenna.tcl)
-#   qc18bacc/flow/blocks/top/run.sh pt <tag> [corners "tt ss"]  PrimeTime per corner (signoff/pt/top_chip.tcl) ->
+#   qc18bacc/flow/blocks/top/run.sh pt <tag> [corners]  PrimeTime per corner (default: every sign-off corner, site.tcl
+#                                              QC_SIGNOFF via common/env.sh qb_corners; signoff/pt/top_chip.tcl) ->
 #                                              $B/pnr/<tag>/pt_<period>_<c>/
 #   qc18bacc/flow/blocks/top/run.sh lvs <tag> [rundir $B/drc/<tag>/lvs]  Calibre LVS with the hard blocks and SRAMs as
 #                                              LVS BOX black boxes (pin-only stubs from their LEFs)
@@ -31,10 +32,11 @@ pnr_env() {   # fp / pnr: netlist tag, macro PDN (floorplan/pdn_macro.tcl), post
 }
 case $step in
 views) A=$TOP_ABS; E=$QBF/signoff/etm; mkdir -p "$A"
-     # act / hub: the block runs' ring LEFs with antenna data, ETMs, PT dbs; column: ring LEF of its antenna abstract
+     # act / hub: the block runs' ring LEFs with antenna data, ETMs, PT dbs; column: its ICC2 abstract as is (M1 .. M7
+     # blocked over the die except the pins, flow/icc2/abstract.tcl, R71)
      ln -sf "$TOP_ACT/qb_act2_blk_ant_ring.lef" "$A/qb_act2_blk.lef"; ln -sf "$TOP_HUB/qb_hub_ant_ring.lef" "$A/qb_hub.lef"
-     "$PY" -I "$E/lef_ring.py" "$TOP_COL_RUN/out/qb_col_blk.lef" "$A/qb_col_blk.lef" 1.5 | head -3
-     for c in $(qb_corners base); do   # the block ETM corners = site.tcl QC_CORNERS (blocks/col/run.sh post writes those)
+     ln -sf "$TOP_COL_RUN/out/qb_col_blk.lef" "$A/qb_col_blk.lef"
+     for c in $(qb_corners); do   # every sign-off corner (site.tcl QC_SIGNOFF; blocks/col/run.sh post writes those ETMs, R71)
        for f in "$TOP_ACT/qb_act2_blk_$c.lib" "$TOP_ACT/qb_act2_blk_${c}_lib.db" "$TOP_HUB/qb_hub_$c.lib" "$TOP_HUB/qb_hub_${c}_lib.db" \
            "$TOP_COL_RUN/out/etm/qb_col_blk_${c}_lib.db"; do ln -sf "$f" "$A/"; done
        # column OpenROAD ETM: its own measured latency range of this corner as clock-tree-path arcs ("p50 min max")
@@ -65,11 +67,12 @@ hold) "$QBF/common/or.sh" "$tag" "$QBF/repair/top_hold.tcl" r43_hold43.log
      grep -q "r43 hold43 done" "$d/r43_hold43.log" || { echo "TOP_FAIL hold"; exit 1; } ;;
 dr)  rm -f "$d/db/init.odb" "$d/db/floorplan.odb"   # (disk: as the r43_a chains did)
      "$QBF/route/dr.sh" "$tag" || exit 1
-     QC_SPEF_UNESC=1 "$QBF/signoff/spef.sh" "$tag" "tt ss" ;;
+     QC_SPEF_UNESC=1 "$QBF/signoff/spef.sh" "$tag" "$(qb_corners)" ;;
 antenna) R29_DB=route_dr R29_TAG=dr "$QBF/common/or.sh" "$tag" "$QBF/signoff/antenna.tcl" r29_antd.log
      grep -hi "R29_ANTD\|found\|violat" "$d/r29_antd.log" | tail -4 ;;
 pt)  qb_kit
-     for c in ${3:-tt ss}; do o=$d/pt_${TOP_PERIOD}_$c; mkdir -p "$o"
+     cs=${3:-$(qb_corners)}
+     for c in $cs; do o=$d/pt_${TOP_PERIOD}_$c; mkdir -p "$o"
      ( cd "$d" && . ./kit.env; set -a; . "$B/syn/$TOP_SYN/run.env"; set +a
        C=$(echo $c | tr a-z A-Z); v=QC_EXTRA_DB_$C; m=""
        for f in ${!v}; do case $f in *qb_col_blk*) ;; *) m="$m $f" ;; esac; done
@@ -79,7 +82,7 @@ pt)  qb_kit
        cat "pt_chip_$c.txt"
        cp pt_chip_$c.txt pt_chip_$c.log rpt/r39_${c}_viol.txt rpt/pt_chip_${c}_*.rpt "$o/" 2>/dev/null; exit $r ) > "$o/run.log" 2>&1 &
      done; qb_wait; r=$?
-     for c in ${3:-tt ss}; do o=$d/pt_${TOP_PERIOD}_$c; echo "PT_DONE $tag $TOP_PERIOD $c"
+     for c in $cs; do o=$d/pt_${TOP_PERIOD}_$c; echo "PT_DONE $tag $TOP_PERIOD $c"
        grep -E "spef_nets|^all|^reg2reg|hold_reg2reg|violating|hub_ft|hub2act|act2col|io_|R39LAT|unconstrained" "$o/pt_chip_$c.txt"
        grep R43_AUTOL "$o/pt_chip_$c.log"; grep PT_ERRORS "$o/run.log"; done; [ $r = 0 ] || exit 1 ;;
 lvs) r=${3:-$B/drc/$tag/lvs}; C=$QBF/signoff/calibre; mkdir -p "$r"; cd "$r" || exit 1

@@ -4,7 +4,7 @@
 #   TOOLS QC_TOOLS [/tmp/$USER/tools]; PY / OR = its python3 / openroad
 #   qb_kit  sources flow/tsmc65 common/tool.sh (FLOW, qc_tool) and exports QC_KIT, QC_PY
 #   qb_pt   PrimeTime run + error check;  qb_wait  wait for background jobs, non-zero if one failed;  qb_icc2  ICC2 step (flow/icc2) in a run dir
-#   qb_corners [signoff|base]  corner names of the one corner table, flow/tsmc65/site/site.tcl (R68)
+#   qb_corners  the sign-off corner names of the one corner table, flow/tsmc65/site/site.tcl (R68)
 QBF=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd); ROOT=$(cd "$QBF/../.." && pwd)
 export QC_BUILD=${QC_BUILD:-/tmp/$USER/qc18bacc/build}; B=$QC_BUILD
 TOOLS=${QC_TOOLS:-/tmp/$USER/tools}; PY=$TOOLS/env/bin/python3; OR=$TOOLS/env/bin/openroad
@@ -34,11 +34,9 @@ qb_pt() {
     echo "PT_ERRORS $(basename "$log") rc $rc errors ${e:-NA} parasitics_errors $p xtalk011 $x reduced_coupling $c coupling_annotated $k signoff_fails $v"
     [ $rc = 0 ] && [ "$e" = 0 ] && [ "$p" = 0 ] && [ "$x" = 0 ] && [ "${c%% *}" = 0 ] && [ "$v" = 0 ]
 }
-# qb_corners [signoff|base]: site.tcl QC_SIGNOFF_CORNERS (every sign-off corner: PrimeTime sign-off / DMSA ECO, ICC2 MCMM)
-# or QC_CORNERS (base corners: DC, OpenROAD blocks, the block ETMs the chip top reads), read from the corner table itself
-qb_corners() {
-    QC_KIT=${QC_KIT:--} tclsh <<< "source $ROOT/flow/tsmc65/site/site.tcl; puts \$::QC_$([ "${1:-signoff}" = base ] && echo CORNERS || echo SIGNOFF_CORNERS)"
-}
+# qb_corners: site.tcl QC_SIGNOFF_CORNERS (every sign-off corner: PrimeTime sign-off / DMSA ECO, ICC2 MCMM, the block ETMs
+# and the chip top, R71), read from the corner table itself
+qb_corners() { QC_KIT=${QC_KIT:--} tclsh <<< "source $ROOT/flow/tsmc65/site/site.tcl; puts \$::QC_SIGNOFF_CORNERS"; }
 # qb_wait: wait for every background job of this shell; non-zero if any of them failed
 qb_wait() { local j r=0; for j in $(jobs -p); do wait "$j" || r=1; done; return $r; }
 # qb_icc2 <rundir> <step> [icc2_shell|icc2_lm_shell]: ICC2 step flow/icc2/<step>.tcl (Q-2019.12-SP2) in <rundir>, log

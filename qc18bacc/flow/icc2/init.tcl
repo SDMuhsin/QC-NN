@@ -63,6 +63,10 @@ foreach c $::QC_SIGNOFF_CORNERS {
     create_corner $c
     create_scenario -name func_$c -mode func -corner $c
 }
+# the corner "default" that the new block brings (no scenario, no parasitic tech: R68 NEX-018 "no valid parasitic for
+# default corner" on every extraction, 40 in route, 872 in place) is not a sign-off corner (R71)
+set dc [get_corners -quiet default]
+if {[sizeof_collection $dc]} { remove_corners $dc }
 foreach c $::QC_SIGNOFF_CORNERS {
     current_scenario func_$c
     set_operating_conditions $::QC_OC($c)
@@ -76,6 +80,7 @@ qb_timer
 set du {}; foreach p $::QC_DONT_USE { lappend du */$p }
 set_lib_cell_purpose -exclude all [get_lib_cells $du]
 redirect -tee $::R/rpt/init_scen.rpt { report_scenarios; report_pvt }
+qb_line "init corners [get_object_name [get_corners *]] modes [get_object_name [get_modes *]]"
 redirect $::R/rpt/init_ptech.rpt { report_parasitic_parameters }
 redirect $::R/rpt/init_check_timing.rpt { check_timing }
 # IO delays as loaded (func_ss): external delay of one port per budget class

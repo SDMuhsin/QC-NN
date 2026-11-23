@@ -30,7 +30,7 @@ foreach {c l oc tlu role} $::QC_SIGNOFF {
     set ::QC_LIB($c) $l; set ::QC_OC($c) $oc; set ::QC_TLU_FILE($c) $tlu; set ::QC_ROLE($c) $role
     lappend ::QC_SIGNOFF_CORNERS $c
 }
-# base corners (subset of the table): DC, sta/run_pt.sh default, OpenROAD blocks, the block ETMs the chip top reads
+# base corners (subset of the table): DC, sta/run_pt.sh default, OpenROAD blocks (block ETMs / chip top: every sign-off corner)
 set ::QC_CORNERS {ss tt ff}
 
 # ---- reference cells used by the generated constraints and the summary

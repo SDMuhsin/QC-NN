@@ -17,13 +17,13 @@ qc_apply_constraints $corner
 set_propagated_clock [all_clocks]
 # sign-off timer options (SI on), then the SPEF with its coupling capacitances (qb_pt_spef)
 source [file normalize $::env(QC_FLOW)/../../qc18bacc/flow/signoff/pt/common.tcl]
-qb_pt_spef $dir/out/${top}_${corner}_pt.spef
+qb_pt_spef [qb_pt_spef_file $dir $top $corner]
 update_timing
 set per [get_attribute [get_clocks qb_clk] period]
 # insertion delay L of this corner (p50 clock-pin latency, as the P&R)
 set L [qb_pt_lat $dir $corner]
 source [file normalize $::env(QC_FLOW)/../../qc18bacc/flow/blocks/col/io_budget.tcl]
-# (with the act driving cell = the fixed feedthrough cell QB5_FT, R68)
+# (with the act driving cell QB5_FT, replaced by the measured act transition below, R71)
 qb5_io_apply $per $L
 # feedthroughs: each act_o driven by one QB5_FT cell (error otherwise), cells and act_o nets dont_touch as in ICC2 init
 # (the DMSA ECO neither resizes nor re-buffers them)
@@ -32,6 +32,8 @@ set_dont_touch [get_nets -of_objects [get_ports {act_o[*]}]] true
 # act_o load = this block's own act[b] net (next column's act pin), per bit, on the routed SPEF
 qb5_act_o_load [qb5_act_o_caps {apply {p {get_attribute [get_nets -of_objects $p] total_capacitance_max}}}]
 update_timing
+# act[b] input transition = own act_o[b] transition, iterated to a fixed point (io_budget.tcl qb5_act_tran_fix, R71)
+set ::QB5_TRAN_RES [qb5_act_tran_fix]
 # design setup ends here for the PrimeTime ECO (signoff/pt/drv_eco.tcl)
 if {[info exists ::QB_PT_SETUP_ONLY]} { return }
 file mkdir $dir/rpt
@@ -39,6 +41,7 @@ set fh [open $dir/pt_blk_$corner.txt w]
 set nets [qb_pt_ann]
 puts $fh "design $top corner $corner period $per lib $::QC_LIB($corner) spef_nets $nets"
 puts $fh [format "insertion_delay_L_ns %.3f (p50 clock-pin latency)" $L]
+puts $fh [format "act_input_transition own act_o transition per bit, fixed-point residual %.5f ns" $::QB5_TRAN_RES]
 set regs [all_registers -data_pins]; set regc [all_registers -clock_pins]
 set io [add_to_collection [all_inputs] [all_outputs]]
 proc fl {fh k p per {fmax 0}} {
@@ -76,9 +79,14 @@ set drv [qb_pt_drv $fh]
 # before, only noise / pulse / period did, so a DRV violator was reported but passed the post step)
 puts "QB_PT_SIGNOFF setup [regexp -all -line {VIOLATED} $sv] hold [regexp -all -line {VIOLATED} $hv] $drv"
 qb_pt_si_checks $fh $dir/rpt/pt_blk_$corner
-redirect $dir/rpt/pt_blk_${corner}_reg2reg.rpt { report_timing -max_paths 5 -nosplit -exclude $io -input_pins -nets -capacitance -transition_time }
-redirect $dir/rpt/pt_blk_${corner}_io.rpt { report_timing -max_paths 2 -nosplit -input_pins -nets -capacitance -transition_time -from [all_inputs]; report_timing -max_paths 2 -nosplit -input_pins -to [all_outputs] }
-redirect $dir/rpt/pt_blk_${corner}_min.rpt { report_timing -delay_type min -max_paths 3 -nosplit -path_type full_clock_expanded -input_pins }
+# path evidence (worst N per class whatever the slack, signoff/pt/common.tcl qb_pt_paths)
+set r $dir/rpt/pt_blk_$corner
+set pd {-input_pins -nets -capacitance -transition_time}
+qb_pt_paths ${r}_reg2reg.rpt [list -max_paths 5 -exclude $io {*}$pd]
+qb_pt_paths ${r}_io.rpt [list -max_paths 2 -from [all_inputs] {*}$pd] [list -max_paths 2 -to [all_outputs] {*}$pd]
+qb_pt_paths ${r}_ft.rpt [list -max_paths 3 -from [get_ports {act[*]}] -to [get_ports {act_o[*]}] {*}$pd] \
+    [list -delay_type min -max_paths 3 -from [get_ports {act[*]}] -to [get_ports {act_o[*]}] {*}$pd]
+qb_pt_paths ${r}_min.rpt [list -delay_type min -max_paths 3 -path_type full_clock_expanded -input_pins]
 redirect $dir/rpt/pt_blk_${corner}_clk.rpt { report_clock_timing -type summary -clock qb_clk -nosplit; report_clock_timing -type skew -nworst 3 -nosplit }
 redirect $dir/rpt/pt_blk_${corner}_drv.rpt { report_constraint -max_transition -max_capacitance -all_violators -nosplit }
 puts $fh "pt_wall_s [expr {[clock seconds] - $t0}]"

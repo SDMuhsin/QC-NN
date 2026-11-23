@@ -29,7 +29,7 @@ update_timing
 # design setup ends here for the PrimeTime ECO (signoff/pt/drv_eco.tcl)
 if {[info exists ::QB_PT_SETUP_ONLY]} { return }
 if {[qc_env QB21_ETM 0]} {
-    qb_etm_inputs
+    qb_etm_context
     file mkdir $dir/out/etm
     extract_model -library_cell -output $dir/out/etm/${top}_$corner -format {lib db}
     puts "QB21_ETM_DONE $corner L $L"
@@ -66,10 +66,11 @@ puts $fh "setup_violating_endpoints [regexp -all -line {VIOLATED} $sv]"
 qb_pt_drv $fh
 file mkdir $dir/rpt
 qb_pt_si_checks $fh $dir/rpt/pt_hub_${corner}
-redirect $dir/rpt/pt_hub_${corner}_r2r.rpt { report_timing -max_paths 5 -nosplit -exclude $io -input_pins -nets -capacitance -transition_time }
-redirect $dir/rpt/pt_hub_${corner}_end.rpt { report_timing -max_paths 300 -nworst 1 -path_type end -nosplit }
-redirect $dir/rpt/pt_hub_${corner}_io.rpt { report_timing -max_paths 3 -nosplit -input_pins -nets -from [all_inputs]; report_timing -max_paths 3 -nosplit -input_pins -nets -to [all_outputs] }
-redirect $dir/rpt/pt_hub_${corner}_min.rpt { report_timing -delay_type min -max_paths 5 -nosplit -path_type full_clock_expanded -input_pins }
+set r $dir/rpt/pt_hub_$corner
+qb_pt_paths ${r}_r2r.rpt [list -max_paths 5 -exclude $io -input_pins -nets -capacitance -transition_time]
+qb_pt_paths ${r}_end.rpt {-max_paths 300 -nworst 1 -path_type end}
+qb_pt_paths ${r}_io.rpt [list -max_paths 3 -input_pins -nets -from [all_inputs]] [list -max_paths 3 -input_pins -nets -to [all_outputs]]
+qb_pt_paths ${r}_min.rpt {-delay_type min -max_paths 5 -path_type full_clock_expanded -input_pins}
 redirect $dir/rpt/pt_hub_${corner}_clk.rpt { report_clock_timing -type summary -clock qb_clk -nosplit; report_clock_timing -type skew -nworst 3 -nosplit }
 redirect $dir/rpt/pt_hub_${corner}_drv.rpt { report_constraint -max_transition -max_capacitance -all_violators -nosplit }
 puts $fh "pt_wall_s [expr {[clock seconds] - $t0}]"

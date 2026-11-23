@@ -2,7 +2,7 @@
 """R35 (results/r35a.md bug 1): sanity scan of a block ETM .lib - input pin capacitance (max / count above CAP fF),
 the largest index_1 (input transition) of the constraint tables, and setup / hold / clk->out values outside +-LIM ns.
 R64 (results/r64.md): input pins' max_transition (min / max); exit 1 if an input pin has none or 0 (R63: the ETM context
-set_input_transition 0 gave max_transition 0 on all 6958 data inputs, signoff/pt/common.tcl qb_etm_inputs).
+set_input_transition 0 gave max_transition 0 on all 6958 data inputs, signoff/pt/common.tcl qb_etm_context).
 usage: etmcheck.py <etm.lib> [LIM=3.0] [CAP=0.065]"""
 import re, sys
 src = sys.argv[1]; LIM = float(sys.argv[2]) if len(sys.argv) > 2 else 3.0; CAP = float(sys.argv[3]) if len(sys.argv) > 3 else 0.065

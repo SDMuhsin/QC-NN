@@ -16,13 +16,15 @@
 #                       <run>/summary.txt, QB_ICC2_DONE marker for the wrapper
 #   qb_io_load          IO loads that depend on the block's own layout: P(IO_LOAD) = {measure apply} procs of P(IO_BUDGET)
 #                       (column: blocks/col/io_budget.tcl qb5_act_o_caps / qb5_act_o_load, act_o[b] = own act[b] net),
-#                       called per scenario on the current timing (placement estimate or routed); cts.tcl, route.tcl
+#                       called per scenario on the current timing (placement estimate or routed); cts.tcl, route.tcl;
+#                       then P(IO_TRAN) = {measure apply diff} input transitions from the block's own outputs (column:
+#                       act[b] = own act_o[b] transition, R71), two measure / apply rounds, residual logged
 #   qb_qor <step>       QoR lines (cells, utilization, DRV count, WNS / TNS / NVE per scenario) + rpt/<step>_{qor,drv}.rpt
 #   qb_line <text>      append a line to <run>/summary.txt (and the log)
 #   qb_antenna_rules    kit antenna rules (route / eco via qb_route_setup, abstract.tcl)
 #   qb_route_setup      routing options of route.tcl / eco.tcl: kit antenna rules, antenna-aware detail routing with
 #                       ANTENNA diodes, port nets checked with a minimum outside gate (no ZRT-311), timing-driven
-#                       global / track / detail routing
+#                       global / track / detail routing, redundant via insertion after every detail route (R71)
 #   qb_fillers          decap (DCAP*, removed where they violate) then metal-free FILL* cells in every empty site
 #   qb_route_checks <step>  check_routes / check_lvs -> rpt/<step>_check_{routes,lvs}.rpt + summary lines
 #   qb_pg_check <step>  PG pin gate (R67; floorplan.tcl, abstract.tcl): the VDD / VSS terminals are exactly the straps of
@@ -84,6 +86,25 @@ proc qb_io_load {} {
         redirect -variable r { $apply $m([get_object_name $s]) }
         qb_line "io_load [get_object_name $s]: [lindex [regexp -inline -line {QB.*_LOAD.*$} $r] 0]"
     }
+    # input transitions measured on the block's own outputs (P(IO_TRAN) = {measure apply diff}; column: act[b] = own
+    # act_o[b] transition, io_budget.tcl qb5_act_tran*), after the loads: every scenario measured, then applied; the second
+    # round logs how far the first moved them (PrimeTime iterates to its fixed point at sign-off, col_blk.tcl)
+    if {[info exists P(IO_TRAN)]} {
+        lassign $P(IO_TRAN) tmeasure tapply tdiff
+        foreach i {1 2} {
+            update_timing
+            foreach_in_collection s [get_scenarios] { current_scenario $s; set t([get_object_name $s]) [$tmeasure] }
+            set d 0.0
+            foreach_in_collection s [get_scenarios] {
+                set n [get_object_name $s]; current_scenario $s
+                if {[info exists t0($n)]} { set d [expr {max($d, [$tdiff $t0($n) $t($n)])}] }
+                redirect -variable r { $tapply $t($n) }
+                qb_line "io_tran $i $n: [lindex [regexp -inline -line {QB.*_TRAN .*$} $r] 0]"
+            }
+            if {$i > 1} { qb_line [format "io_tran residual %.5f ns (round 2 vs 1, max over scenarios)" $d] }
+            array set t0 [array get t]
+        }
+    }
     current_scenario $s0
 }
 # one QoR line: setup WNS / TNS / violators per scenario, hold WNS per scenario, DRV counts, utilization
@@ -129,6 +150,10 @@ proc qb_route_setup {} {
     set_app_options -name route.detail.insert_diodes_during_routing -value true
     set_app_options -name route.detail.diode_libcell_names -value [lindex $::QC_PNR_DIODE 0]
     foreach o {route.global.timing_driven route.track.timing_driven route.detail.timing_driven} { set_app_options -name $o -value true }
+    # redundant vias (R71; Synopsys RM route settings): every detail route (route_auto, route_opt's ECO routing, route_eco)
+    # ends with redundant via insertion at medium effort (single-cut vias -> 2-cut arrays where DRC-clean; no
+    # add_via_mapping, the tool's default mapping).  R68 [M] without it: double-via rate 0.38 % (route.log).
+    set_app_options -name route.common.post_detail_route_redundant_via_insertion -value medium
 }
 # decaps (they carry M1) first and removed where they violate, then the metal-free FILL* close every remaining gap
 # (R54 ran both in one create_stdcell_fillers: the removed DCAPs left empty gaps, Calibre NW.S.1 / OD2.S.5 27 004)

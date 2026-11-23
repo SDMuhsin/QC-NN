@@ -62,10 +62,12 @@ puts $fh "setup_violating_endpoints [regexp -all -line {VIOLATED} $sv]"
 qb_pt_drv $fh
 file mkdir $dir/rpt
 qb_pt_si_checks $fh $dir/rpt/pt_blk_${corner}
-redirect $dir/rpt/pt_blk_${corner}_reg2reg.rpt { report_timing -max_paths 5 -nosplit -exclude $io -input_pins -nets -capacitance -transition_time }
-redirect $dir/rpt/pt_blk_${corner}_r2r20.rpt { report_timing -max_paths 200 -nworst 1 -path_type end -nosplit -exclude $io }
-redirect $dir/rpt/pt_blk_${corner}_io.rpt { report_timing -max_paths 2 -nosplit -input_pins -nets -capacitance -transition_time -from [all_inputs]; report_timing -max_paths 2 -nosplit -input_pins -nets -capacitance -transition_time -to [all_outputs] }
-redirect $dir/rpt/pt_blk_${corner}_min.rpt { report_timing -delay_type min -max_paths 3 -nosplit -path_type full_clock_expanded -input_pins }
+set r $dir/rpt/pt_blk_$corner
+set pd {-input_pins -nets -capacitance -transition_time}
+qb_pt_paths ${r}_reg2reg.rpt [list -max_paths 5 -exclude $io {*}$pd]
+qb_pt_paths ${r}_r2r20.rpt [list -max_paths 200 -nworst 1 -path_type end -exclude $io]
+qb_pt_paths ${r}_io.rpt [list -max_paths 2 -from [all_inputs] {*}$pd] [list -max_paths 2 -to [all_outputs] {*}$pd]
+qb_pt_paths ${r}_min.rpt [list -delay_type min -max_paths 3 -path_type full_clock_expanded -input_pins]
 redirect $dir/rpt/pt_blk_${corner}_clk.rpt { report_clock_timing -type summary -clock qb_clk -nosplit; report_clock_timing -type skew -nworst 3 -nosplit }
 redirect $dir/rpt/pt_blk_${corner}_drv.rpt { report_constraint -max_transition -max_capacitance -all_violators -nosplit }
 puts $fh "pt_wall_s [expr {[clock seconds] - $t0}]"

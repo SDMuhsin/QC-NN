@@ -1,12 +1,16 @@
 # Block views for the chip top from the routed block (label QB_ICC2_LABEL: route, or eco; blocks/<b>/run.sh views):
-#   out/<top>.lef       abstract LEF of the frame view (exact metal shapes as OBS, no merging: the top's ring LEF is
-#                       made from it by signoff/etm/lef_ring.py), pins on their routing layers, with the ports' LEF 5.8
+#   out/<top>.lef       abstract LEF of the frame view, pins on their routing layers, every block routing layer (P(LAYERS):
+#                       M1 .. its top layer, M7) one zero-spacing blockage over the whole die except around the pins
+#                       (create_frame -block_all <top layer>; R71 PI decision: the GDS carries ~321k Calibre DM7 fill
+#                       shapes that no exact-shape OBS showed, so the top may not route M1 .. M7 over a column; M8 / M9
+#                       stay free for the top), with the ports' LEF 5.8
 #                       hierarchical antenna data of ICC2 (derive_hier_antenna_property on the frame, kit antenna rules
 #                       of qb_antenna_rules): ANTENNAPARTIALMETALAREA / PARTIALMETALSIDEAREA / PARTIALCUTAREA per layer
 #                       (the block-side metal the top router adds to the net), ANTENNAGATEAREA / DIFFAREA, MAX*CAR (R67:
 #                       replaces the gate / diff-only patch of signoff/etm/blkant.py, which gave the top no metal data)
 #   gates (error on failure, one summary line each):
 #     antenna   every signal PIN of the LEF has ANTENNAPARTIALMETALAREA and ANTENNAPARTIALCUTAREA
+#     blockage  OBS on every metal layer up to P(LAYERS)'s top layer, none above (R71)
 #     abutment  every act[b] / act_o[b] pair on the same layer and y, act on the west and act_o on the east die edge
 #     pg_pins   qb_pg_check: VDD / VSS pins = the chip PG grid's pin-layer straps (floorplan/pg_grid.tcl)
 source [file dirname [info script]]/common.tcl
@@ -15,7 +19,7 @@ open_block $P(TOP)/[qc_env QB_ICC2_LABEL route]
 link_block
 set o $::R/out/$P(TOP)
 qb_antenna_rules
-create_frame -block_all false -merge_metal_blockage false
+create_frame -block_all [lindex $P(LAYERS) end]
 save_block
 # (the label-qualified block name: derive_hier_antenna_property on a <lib>:<block>.design name fails, ZRT-554, R67 [M])
 derive_hier_antenna_property -design_name $P(TOP)/[qc_env QB_ICC2_LABEL route]
@@ -36,6 +40,26 @@ qb_line "abstract lef [file size $o.lef] bytes, signal PIN $np (ports $ns), ante
 if {$np != $ns || $nm || $nc} { error "QB abstract antenna: signal PIN $np of $ns ports, missing PARTIALMETAL $nm PARTIALCUT $nc" }
 set die [get_attribute [current_block] boundary_bbox]
 set x0 [lindex $die 0 0]; set x1 [lindex $die 1 0]
+# blockage gate (R71): OBS on every metal layer up to the block's top routing layer, none above it (the top's layers);
+# per layer the summed OBS rect area / die area (the blockage less the pin cut-outs) is logged
+set ob [exec awk {
+    /^  OBS/                  { o = 1; next }
+    o && $1 == "END"          { o = 0; next }
+    o && $1 == "LAYER"        { l = $2; next }
+    o && $1 == "RECT"         { a[l] += ($4 - $2) * ($5 - $3) }
+    END { for (l in a) printf "%s %.1f ", l, a[l] }
+} $o.lef]
+array set oba $ob
+set da [expr {([lindex $die 1 0] - $x0) * ([lindex $die 1 1] - [lindex $die 0 1])}]
+set top [lindex $P(LAYERS) end]; set bad {}; set cov {}
+foreach l [lsort -dictionary [get_object_name [get_layers M?]]] {
+    set below [expr {[string range $l 1 end] <= [string range $top 1 end]}]
+    set a [expr {[info exists oba($l)] ? $oba($l) : 0.0}]
+    lappend cov [format "%s %.3f" $l [expr {$a / $da}]]
+    if {$below != ($a > 0)} { lappend bad $l }
+}
+qb_line "abstract obs (area / die) [join $cov {, }] top_blocked $top bad [llength $bad] $bad"
+if {[llength $bad]} { error "QB abstract blockage: OBS missing up to $top or present above it on $bad" }
 # (a terminal has no layer_name attribute: get_attribute read "" for both pins of every pair until R67, so the layer
 # comparison passed vacuously; layer.name is the layer)
 proc qb_term {name} {
