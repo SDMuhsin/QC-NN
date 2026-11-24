@@ -21,9 +21,13 @@ proc qb_sdc {} {
     set nio 0
     if {[info exists P(IO_BUDGET)]} { set nio [regsub -all -line {^set_(input|output)_delay .*\n} $t {} t] }
     set ::QB_PNR_PER $per
+    # hold uncertainty of this SDC (DC wrote it from QC_UNC_HOLD); the block IO budget's act_o -min hands back the same
+    # U_hold (blocks/col/io_budget.tcl qb5_unc_hold, R79), so the two must agree
+    set uh [expr {[regexp -line {^set_clock_uncertainty -hold ([0-9.]+)} $t -> uh] ? $uh : "none"}]
+    if {[llength [info procs qb5_unc_hold]] && $uh != [qb5_unc_hold]} { error "qb_sdc: SDC hold uncertainty $uh != io budget U_hold [qb5_unc_hold]" }
     set out $::R/$P(TOP)_icc2.sdc
     set f [open $out w]; puts -nonewline $f $t; close $f
-    qb_line "init sdc $out period $per dc_io_delay_lines_replaced $nio"
+    qb_line "init sdc $out period $per hold_uncertainty $uh dc_io_delay_lines_replaced $nio"
     return $out
 }
 

@@ -31,11 +31,11 @@
 set -u
 here=$(cd "$(dirname "$0")" && pwd); . "$here/../../common/env.sh"; . "$here/col.env"
 step=${1:?step}; tag=${2:?tag}; d=$B/icc2/col/$tag
-export QB_SYN=$COL_SYN QB_PNR_PERIOD=$COL_PNR_PERIOD COL_TOP COL_PIN_DEF QB_ICC2_CFG=$here/icc2.cfg
+export QB_SYN=$COL_SYN QB_PNR_PERIOD=$COL_PERIOD COL_TOP COL_PIN_DEF QB_ICC2_CFG=$here/icc2.cfg
 echo "COL_STEP $step $tag $(date +%T)"
 pt_env() {   # PrimeTime environment of the block sign-off script (signoff/pt/col_blk.tcl), run in the subshell of the caller
     qb_kit; set -a; . "$B/syn/$COL_SYN/run.env"; set +a
-    export QC_SDC=$QBF/common/constraints.sdc QC_PT_HOOK= QC_PERIOD=$COL_PT_PERIOD QC_PNR_OUT=$d QC_TOP=$COL_TOP
+    export QC_SDC=$QBF/common/constraints.sdc QC_PT_HOOK= QC_PERIOD=$COL_PERIOD QC_PNR_OUT=$d QC_TOP=$COL_TOP
     cd "$d"
 }
 fill() {   # Calibre dummy metal + dummy OD / PO of out/<top>.gds; metal -> DEF FILLS -> fill-aware SPEFs (flow/icc2/extract.tcl), label of out/
