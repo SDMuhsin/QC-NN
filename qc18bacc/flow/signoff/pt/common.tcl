@@ -17,8 +17,8 @@
 #                             run, so two PT runs in one dir never share parasitics_command.log; R74 lost a log that way)
 #   qb_pt_spef_file <dir> <top> <corner>  the block SPEF of a corner: <dir>/out/<top>_<corner>_pt.spef.gz (ICC2
 #                             flow/icc2/extract.tcl, R71) or _pt.spef (OpenROAD def2spef flows); error if none or both
-#   qb_pt_lat <dir> <corner>  insertion delay L of this corner: p50 of the rise arrival at every register / macro clock pin
-#                             (the definition the P&R uses, cts/clk_lat.tcl); "<p50> <min> <max>" written to
+#   qb_pt_lat <dir> <corner>  insertion delay L of this corner: p50 of the late rise arrival at every register / macro clock
+#                             pin (signoff/pt/io_lat.tcl qb_clk_arrival late); "<p50> <min> <max>" written to
 #                             <dir>/out/clk_lat_<corner>.txt, which the chip top reads (blocks/top/run.sh views)
 #   qb_pt_ann                 SPEF annotation line "total N rc_network N coupled_network N not_annotated N" (totals row
 #                             of report_annotated_parasitics; with coupling kept it has the Coupled network column, R64)
@@ -61,15 +61,11 @@ set_app_var timing_crpr_threshold_ps 1
 set_app_var si_enable_analysis true
 source [file normalize [file dirname [info script]]/../../common/derate.tcl]
 qb_derate
+source [file normalize [file dirname [info script]]/io_lat.tcl]
 proc qb_pt_lat {dir corner} {
-    set v {}
-    foreach a [get_attribute -quiet [all_registers -clock_pins] max_rise_arrival] { if {[string is double -strict $a]} { lappend v $a } }
-    set v [lsort -real $v]; set n [llength $v]
-    if {!$n} { puts "QB_PT_LAT no clock-pin arrivals"; return 0.0 }
-    set L [format %.3f [lindex $v [expr {$n / 2}]]]
-    file mkdir $dir/out; set f [open $dir/out/clk_lat_$corner.txt w]; puts $f "$L [lindex $v 0] [lindex $v end]"; close $f
-    puts [format "QB_PT_LAT %s L %s (p50 of %d clock pins; p10 %.3f p90 %.3f max %.3f)" $corner $L $n \
-        [lindex $v [expr {$n / 10}]] [lindex $v [expr {9 * $n / 10}]] [lindex $v end]]
+    lassign [qb_clk_arrival late] L n mn mx p10 p90
+    file mkdir $dir/out; set f [open $dir/out/clk_lat_$corner.txt w]; puts $f "$L $mn $mx"; close $f
+    puts [format "QB_PT_LAT %s L %s (p50 of %d clock pins; p10 %.3f p90 %.3f max %.3f)" $corner $L $n $p10 $p90 $mx]
     return $L
 }
 proc qb_pt_ann {} {

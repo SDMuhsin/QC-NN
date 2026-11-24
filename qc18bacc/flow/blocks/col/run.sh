@@ -6,7 +6,8 @@
 #                                                  every outputs netlist passes signoff/portcheck.py (also after eco),
 #                                                  then fill (below)
 #   qc18bacc/flow/blocks/col/run.sh fill <tag>     kit dummy metal fill (Calibre, fill_blk.sed) of the outputs GDS ->
-#                                                  <run>/calibre/fill, its shapes as DEF FILLS (signoff/calibre/fill_def.py),
+#                                                  <run>/calibre/fill, then kit dummy OD / PO (odpo_blk.sed, R77) ->
+#                                                  <run>/calibre/odpo; metal shapes as DEF FILLS (signoff/calibre/fill_def.py),
 #                                                  fill-aware ICC2 extraction (flow/icc2/extract.tcl) -> out/<top>_<c>_pt.spef.gz
 #                                                  for every sign-off corner c (R68; site.tcl corner table, env.sh qb_corners)
 #   qc18bacc/flow/blocks/col/run.sh eco <tag>      one sign-off ECO round on the routed run: PrimeTime DMSA in every
@@ -24,7 +25,7 @@
 #                                                  label QB_ICC2_LABEL [the label of out/, out/label.txt, as eco]) ->
 #                                                  out/<top>.lef; ETM scan (etmcheck 3 ns: fails on an input pin
 #                                                  without max_transition) of the post step's out/etm/<top>_<c>.lib
-#   qc18bacc/flow/blocks/col/run.sh calibre <tag>  on the filled GDS of the fill step (the one the SPEFs saw): LVS source,
+#   qc18bacc/flow/blocks/col/run.sh calibre <tag>  on the filled GDS of the fill step (metal: the one the SPEFs saw; + OD / PO): LVS source,
 #                                                  Calibre LVS (lvs_case.sed), DRC (block deck drc_blk.sed), antenna
 #                                                  -> <run>/calibre
 set -u
@@ -37,11 +38,23 @@ pt_env() {   # PrimeTime environment of the block sign-off script (signoff/pt/co
     export QC_SDC=$QBF/common/constraints.sdc QC_PT_HOOK= QC_PERIOD=$COL_PT_PERIOD QC_PNR_OUT=$d QC_TOP=$COL_TOP
     cd "$d"
 }
-fill() {   # Calibre dummy metal of out/<top>.gds -> DEF FILLS -> fill-aware SPEFs (flow/icc2/extract.tcl), label of out/
-    local o=$d/calibre C=$QBF/signoff/calibre; mkdir -p "$o"
+fill() {   # Calibre dummy metal + dummy OD / PO of out/<top>.gds; metal -> DEF FILLS -> fill-aware SPEFs (flow/icc2/extract.tcl), label of out/
+    local o=$d/calibre C=$QBF/signoff/calibre w; mkdir -p "$o"
     QB55_FILL_SED="-f $C/fill_blk.sed" bash "$C/cal.sh" fill "$d/out/$COL_TOP.gds" "$COL_TOP" "$o/fill" > "$o/fill.log" 2>&1 \
         || { cat "$o/fill.log"; return 1; }
-    grep -v '^CAL55_FILL' "$o/fill.log"
+    grep -v '^CAL55_fill' "$o/fill.log"
+    # dummy OD / PO (R77) on the metal-filled GDS, chip window = the DEF DIEAREA (signoff/calibre/odpo_blk.sed) -> odpo/<top>_fill.gds:
+    # the GDS of Calibre LVS / DRC / antenna (calibre step).  FEOL dummies only: no effect on the metal SPEFs.
+    # (DIEAREA as a rectangle or, as ICC2 writes it, a polygon: its bounding box)
+    w=$(zcat "$d/out/$COL_TOP.def.gz" | awk '$1 == "UNITS" { u = $4 } $1 == "DIEAREA" { n = 0
+        for (i = 2; i <= NF; i++) if ($i ~ /^-?[0-9.]+$/) v[n++] = $i / u
+        x0 = x1 = v[0]; y0 = y1 = v[1]
+        for (i = 2; i + 1 < n; i += 2) { x0 = v[i] < x0 ? v[i] : x0; x1 = v[i] > x1 ? v[i] : x1; y0 = v[i+1] < y0 ? v[i+1] : y0; y1 = v[i+1] > y1 ? v[i+1] : y1 }
+        printf "%s %s %s %s", x0, y0, x1, y1; exit }')
+    set -- $w; [ $# = 4 ] || { echo "COL_FAIL no DIEAREA in out/$COL_TOP.def.gz"; return 1; }
+    printf 's#^VARIABLE xLB .*#VARIABLE xLB %s#\ns#^VARIABLE yLB .*#VARIABLE yLB %s#\ns#^VARIABLE xRT .*#VARIABLE xRT %s#\ns#^VARIABLE yRT .*#VARIABLE yRT %s#\n' "$@" > "$o/odpo_window.sed"
+    QB77_ODPO_SED="-f $C/odpo_blk.sed -f $o/odpo_window.sed" bash "$C/cal.sh" odpo "$o/fill/${COL_TOP}_fill.gds" "$COL_TOP" "$o/odpo" > "$o/odpo.log" 2>&1 || { cat "$o/odpo.log"; return 1; }
+    cat "$o/odpo.log"
     ( . "$C/kl.sh"; kl_run "$C/fill_def.py" -rd gds="$o/fill/DM.gds" -rd design="$COL_TOP" -rd out="$d/out/${COL_TOP}_fill.def" ) || return 1
     QB_ICC2_LABEL=$(cat "$d/out/label.txt") qb_icc2 "$d" extract || return 1
     grep '^extract' "$d/summary.txt" | tail -n 4
@@ -86,7 +99,7 @@ views) QB_ICC2_LABEL=${QB_ICC2_LABEL:-$(cat "$d/out/label.txt" 2>/dev/null || ec
      grep '^abstract' "$d/summary.txt" | tail -3
      for c in $(qb_corners); do "$PY" -I "$QBF/signoff/etm/etmcheck.py" "$d/out/etm/${COL_TOP}_$c.lib" 3.0 || exit 1; done ;;
 fill) fill || exit 1 ;;
-calibre) o=$d/calibre; C=$QBF/signoff/calibre; g=$o/fill/${COL_TOP}_fill.gds
+calibre) o=$d/calibre; C=$QBF/signoff/calibre; g=$o/odpo/${COL_TOP}_fill.gds
      [ "$g" -nt "$d/out/$COL_TOP.gds" ] || { echo "COL_FAIL $g missing or older than out/$COL_TOP.gds (run.sh fill)"; exit 1; }
      bash "$C/lvs_src.sh" "$d/out/${COL_TOP}_pg.v" "$o/col_src.spi" > "$o/src.log" 2>&1; r=$?; tail -3 "$o/src.log"; [ $r = 0 ] || exit 1
      r=0

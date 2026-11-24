@@ -1,6 +1,14 @@
 # IO budget of the column hard block qb_col_blk (results/r5a.md) for the R5b top, as fractions of the period P.
 # Delays are relative to the clock at the top-level flops; the top-level tree is balanced with the block's internal
-# sinks, so after CTS (P&R post-CTS, PrimeTime) they are shifted by the block insertion delay L: inputs + L, outputs - L.
+# sinks, so after CTS they are shifted by the clock arrival at those flops: PrimeTime the p50 late arrival Ll (late OCV
+# derate on the clock path) and the p50 early arrival Le (early derate) of the block's own register clock pins, measured
+# per corner (signoff/pt/io_lat.tcl qb_clk_arrival; R77); ICC2 the same ends through compute_clock_latency (median sink
+# latency as the I/O clock latency, derated late / early per check: flow/icc2/common.tcl qb_io_lat), so it applies the
+# unshifted budget (Ll = Le = 0 here).  Each check takes the external register's clock arrival that is pessimistic for
+# it, as OCV does for an internal path (late launch / early capture for setup, early launch / late capture for hold):
+#   input  -max  budget + Ll     (upstream register launches late)       input  -min  Le + Tq (below)
+#   output -max  budget - Le     (downstream register captures early)    output -min  0 - Ll (captures late)
+# R75 shifted both -max and -min by the late p50 (L x ~1.05), optimistic for input hold and output setup / hold.
 #   act (west, 16 x 288)   max 0.55 P: launch flop + top wire (0.06 P) + 7 upstream feedthroughs (7 x 0.07 P) = column 7
 #   act_o (east)           output 0.38 P - U = P - 0.55 P - 0.07 P - U: feedthrough act -> act_o <= 0.07 P per column
 #                          (U = setup uncertainty QC_UNC_SETUP 0.25 ns, counted once on the top-level flop -> flop path)
@@ -8,7 +16,16 @@
 #   south inputs           pf / pw / p_ld / w_ld (parameter loads), s_rd / w_r (stream reads), f_vld / f_src / f_sh /
 #                          w_vld / w_sh (PPU controls): QB5_SOUTH_IN (default 0.20 P, as the column / slice runs)
 #   south outputs          f_y / f_b / w_y / w_b / *_vld_o (lane results), b2 / b2_vld: 0.25 P
-#   min (hold) input delay 0.05 P everywhere (column 0 act, near flops); output min 0
+#   min (hold) input delay Tq on every input (R77; was 0.05 P, which grew with the period: 0.325 ns at the 6.5 ns sign-off
+#                          vs 0.25 in P&R): the earliest an input can change after its launching clock edge is the
+#                          fastest clock -> Q of any library flip-flop at that corner (common/lib_tcq.py: smallest
+#                          cell_rise / cell_fall entry of every non-dont_use flop's clock -> Q arc, i.e. at the lowest
+#                          characterised slew and load), x the early OCV derate, with zero wire / logic after it: a lower
+#                          bound for every input whatever drives it (column 0 act from a near flop, the north / south
+#                          inputs from hub registers, act of column c > 0 through c feedthroughs that only add delay),
+#                          independent of the period, the same in ICC2 and PrimeTime (common/lib_cells.tcl qb_lib_tcq;
+#                          after CTS + Le, in ICC2 through compute_clock_latency);
+#                          output min 0
 #   act_o load             qb5_act_o_load: column c's act_o[b] drives column c+1's act[b] (abutment: same bit, same y, an
 #                          identical block), so act_o[b] gets the capacitance of this block's own act[b] net, per bit
 #                          (pins + wire of the current timing state).  Per bit, not the max over the bits: the load of
@@ -39,28 +56,34 @@ set ::QB5_FT {BUFFD4 Z}
 proc qb5_budget {} {
     set si [expr {[info exists ::env(QB5_SOUTH_IN)] ? $::env(QB5_SOUTH_IN) : 0.20}]
     return [subst -nocommands {
-        in  {act[*]}                                   0.55 0.05
-        in  {cd[*] ctl[*] t2[*]}                       0.30 0.05
-        in  {pf[*] pw[*] p_ld w_ld s_rd[*] w_r[*] f_vld f_src f_sh w_vld w_sh} $si 0.05
-        out {act_o[*]}                                 0.38 0.0
-        out {f_y[*] f_b[*] w_y[*] w_b[*] f_vld_o w_vld_o b2[*] b2_vld} 0.25 0.0
+        in  {act[*]}                                   0.55
+        in  {cd[*] ctl[*] t2[*]}                       0.30
+        in  {pf[*] pw[*] p_ld w_ld s_rd[*] w_r[*] f_vld f_src f_sh w_vld w_sh} $si
+        out {act_o[*]}                                 0.38
+        out {f_y[*] f_b[*] w_y[*] w_b[*] f_vld_o w_vld_o b2[*] b2_vld} 0.25
     }]
 }
-# SDC lines of the budget at period per, shifted by the insertion delay L (0 for ideal clocks), + the act driving cell QB5_FT
-proc qb5_io_lines {per {L 0.0}} {
+# SDC lines of the budget at period per for one corner: clock arrivals Ll (late) / Le (early) at the external registers
+# (0 for ideal clocks), Tq = the corner's fastest library clock -> Q (common/lib_cells.tcl qb_lib_tcq, ns, before derate),
+# + the act driving cell QB5_FT
+proc qb5_io_lines {per Ll Le Tq} {
     set out {}
     set U [expr {[info exists ::env(QC_UNC_SETUP)] ? $::env(QC_UNC_SETUP) : 0.25}]
-    foreach {d pats mx mn} [qb5_budget] {
-        set s [expr {$d eq "in" ? $L : -$L}]
+    set inmin [expr {$Le + $Tq * $::QB_DERATE_EARLY}]
+    foreach {d pats mx} [qb5_budget] {
         set su [expr {[string match act_o* $pats] ? $U : 0.0}]
-        set cmd [expr {$d eq "in" ? "set_input_delay" : "set_output_delay"}]
-        lappend out [format "%s -max %.4f -clock qb_clk \[get_ports {%s}\]" $cmd [expr {$mx * $per + $s - $su}] $pats]
-        lappend out [format "%s -min %.4f -clock qb_clk \[get_ports {%s}\]" $cmd [expr {$mn * $per + $s}] $pats]
+        if {$d eq "in"} {
+            lappend out [format "set_input_delay -max %.4f -clock qb_clk \[get_ports {%s}\]" [expr {$mx * $per + $Ll}] $pats]
+            lappend out [format "set_input_delay -min %.4f -clock qb_clk \[get_ports {%s}\]" $inmin $pats]
+        } else {
+            lappend out [format "set_output_delay -max %.4f -clock qb_clk \[get_ports {%s}\]" [expr {$mx * $per - $Le - $su}] $pats]
+            lappend out [format "set_output_delay -min %.4f -clock qb_clk \[get_ports {%s}\]" [expr {-$Ll}] $pats]
+        }
     }
     lappend out "set_driving_cell -lib_cell [lindex $::QB5_FT 0] -pin [lindex $::QB5_FT 1] \[get_ports {act\[*\]}\]"
     return [join $out "\n"]
 }
-proc qb5_io_apply {per {L 0.0}} { foreach l [split [qb5_io_lines $per $L] "\n"] { uplevel #0 $l } }
+proc qb5_io_apply {per Ll Le Tq} { foreach l [split [qb5_io_lines $per $Ll $Le $Tq] "\n"] { uplevel #0 $l } }
 # act_o[b] load = capacitance of the act[b] net.  qb5_act_o_caps <capof>: {b cap ...} of every act[b], capof = command
 # prefix called with the act port, returning that net's capacitance in the tool's current timing state; qb5_act_o_load
 # <caps>: set_load of each act_o[b].  Separate, because a set_load invalidates the timing (ICC2 also clears the net

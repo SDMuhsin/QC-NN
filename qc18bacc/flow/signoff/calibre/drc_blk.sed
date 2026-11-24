@@ -3,3 +3,9 @@
 s#^\#DEFINE FULL_CHIP#//\#DEFINE FULL_CHIP#
 s#^//\#DEFINE GP #\#DEFINE GP #
 s#^DRC MAXIMUM RESULTS 1000#DRC MAXIMUM RESULTS ALL#
+# R77: OD.DN.1 / PO.DN.1 (OD and poly density over the layout extent, after the kit dummy OD / PO fill, cal.sh odpo) on a
+# BLOCK.  The kit deck guards them with FULL_CHIP (off above); they move under QB_BLK_DN, the rest of those FULL_CHIP
+# sections (DOD.EN.2 chip-edge enclosure) stays off.
+s#^//\#DEFINE FULL_CHIP.*#&\n\#DEFINE QB_BLK_DN        // OD.DN.1 / PO.DN.1 on the block extent#
+s#^// OD.DN.1 is checked by#\#ENDIF\n\#IFDEF QB_BLK_DN\n&#
+s#^//PO.DN.1 is checked by#\#ENDIF\n\#IFDEF QB_BLK_DN\n&#

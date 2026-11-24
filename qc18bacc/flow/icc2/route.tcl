@@ -10,9 +10,9 @@
 # nets' coupling after CTS, and clock_opt final_opto and PrimeTime never change clock nets.  It sizes clock buffers /
 # inverters (R65 [M]: r65 ctsbuf_net_82788, 1 attempted, 1 committed); it does not resize clock gates (R75 [M], cts.tcl),
 # which the sign-off ECO's clock-network pass fixes (signoff/pt/drv_eco.tcl).
-# compute_clock_latency before each route_opt: the IO paths of a propagated clock are timed with the I/O latency the
-# command sets (median sink latency), which cts.tcl computed on CTS estimates (R63 [M] ss 0.815 ns vs routed PT p50 0.724:
-# ICC2 timed reg -> output 91 ps optimistic and input -> reg pessimistic against the sign-off IO budget shift L).
+# qb_io_lat (compute_clock_latency) before each route_opt: the IO paths of a propagated clock are timed with the I/O
+# latency the command sets (median sink latency, derated late / early per check: common.tcl), which cts.tcl computed on
+# CTS estimates (R63 [M] ss 0.815 ns vs routed PT p50 0.724).
 source [file dirname [info script]]/common.tcl
 qb_open cts route
 qb_route_setup
@@ -20,9 +20,9 @@ qb_feedthru_ndr
 route_auto
 qb_io_load
 set_app_options -name route_opt.flow.enable_ccd_clock_drc_fixing -value always_on
-compute_clock_latency
+qb_io_lat route1
 route_opt
-compute_clock_latency
+qb_io_lat route2
 route_opt
 qb_fillers
 qb_route_checks route

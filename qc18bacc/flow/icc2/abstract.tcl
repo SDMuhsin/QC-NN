@@ -1,4 +1,5 @@
-# Block views for the chip top from the routed block (label QB_ICC2_LABEL: route, or eco; blocks/<b>/run.sh views):
+# Block views for the chip top from the routed block (label QB_ICC2_LABEL: route, or eco, copied to label abstract;
+# blocks/<b>/run.sh views):
 #   out/<top>.lef       abstract LEF of the frame view, pins on their routing layers, every block routing layer (P(LAYERS):
 #                       M1 .. its top layer, M7) one zero-spacing blockage over the whole die except around the pins
 #                       (create_frame -block_all <top layer>; R71 PI decision: the GDS carries ~321k Calibre DM7 fill
@@ -13,16 +14,16 @@
 #     blockage  OBS on every metal layer up to P(LAYERS)'s top layer, none above (R71)
 #     abutment  every act[b] / act_o[b] pair on the same layer and y, act on the west and act_o on the east die edge
 #     pg_pins   qb_pg_check: VDD / VSS pins = the chip PG grid's pin-layer straps (floorplan/pg_grid.tcl)
+# The frame and its antenna data are made on a copy, block label "abstract" (R77): the label QB_ICC2_LABEL is the signed-off
+# design (post / calibre read its outputs) and is never saved after its own step (R75 saved the frame into label eco).
 source [file dirname [info script]]/common.tcl
-open_lib $::QB_LIB
-open_block $P(TOP)/[qc_env QB_ICC2_LABEL route]
-link_block
+qb_open [qc_env QB_ICC2_LABEL route] abstract
 set o $::R/out/$P(TOP)
 qb_antenna_rules
 create_frame -block_all [lindex $P(LAYERS) end]
 save_block
 # (the label-qualified block name: derive_hier_antenna_property on a <lib>:<block>.design name fails, ZRT-554, R67 [M])
-derive_hier_antenna_property -design_name $P(TOP)/[qc_env QB_ICC2_LABEL route]
+derive_hier_antenna_property -design_name $P(TOP)/abstract
 save_block
 write_lef -design [get_object_name [current_block]] $o.lef
 # antenna gate: per LEF PIN (USE POWER / GROUND excluded) the PARTIAL metal / cut statements

@@ -1,6 +1,6 @@
 # PrimeTime sign-off of the routed column block qb_col_blk at one corner (results/r5a.md): routed netlist + def2spef
-# SPEF, propagated clock, IO budget of blocks/col/io_budget.tcl shifted by the block insertion delay L (p50, per corner) (top-level flops balanced with
-# the block's sinks).  Reports per class: reg2reg, act -> reg, act -> act_o (feedthrough), north in -> reg,
+# SPEF, propagated clock, IO budget of blocks/col/io_budget.tcl shifted by the block's p50 late / early clock arrival per
+# corner (top-level flops balanced with the block's sinks).  Reports per class: reg2reg, act -> reg, act -> act_o (feedthrough), north in -> reg,
 # south in -> reg, reg -> south out, hold, DRV, noise / min pulse width / min period (signoff/pt/common.tcl qb_pt_si_checks).  fmax = 1 / (period - WNS) of reg2reg.
 set t0 [clock seconds]
 source $::env(QC_FLOW)/common/lib.tcl
@@ -20,11 +20,15 @@ source [file normalize $::env(QC_FLOW)/../../qc18bacc/flow/signoff/pt/common.tcl
 qb_pt_spef [qb_pt_spef_file $dir $top $corner]
 update_timing
 set per [get_attribute [get_clocks qb_clk] period]
-# insertion delay L of this corner (p50 clock-pin latency, as the P&R)
+# IO budget shift of this corner (R77, as ICC2 flow/icc2 qb_io_lat): p50 late (L) / early (Le) register clock arrival,
+# min input delay from the library's fastest clock -> Q Tq (blocks/col/io_budget.tcl)
+source [file normalize $::env(QC_FLOW)/../../qc18bacc/flow/common/lib_cells.tcl]
 set L [qb_pt_lat $dir $corner]
+set Le [lindex [qb_clk_arrival early] 0]
+set Tq [qb_lib_tcq $corner]
 source [file normalize $::env(QC_FLOW)/../../qc18bacc/flow/blocks/col/io_budget.tcl]
 # (with the act driving cell QB5_FT, replaced by the measured act transition below, R71)
-qb5_io_apply $per $L
+qb5_io_apply $per $L $Le $Tq
 # feedthroughs: each act_o driven by one QB5_FT cell (error otherwise), cells and act_o nets dont_touch as in ICC2 init
 # (the DMSA ECO neither resizes nor re-buffers them)
 set_dont_touch [qb5_ft_cells] true
@@ -40,7 +44,8 @@ file mkdir $dir/rpt
 set fh [open $dir/pt_blk_$corner.txt w]
 set nets [qb_pt_ann]
 puts $fh "design $top corner $corner period $per lib $::QC_LIB($corner) spef_nets $nets"
-puts $fh [format "insertion_delay_L_ns %.3f (p50 clock-pin latency)" $L]
+puts $fh [format "insertion_delay_L_ns %.3f early %.3f (p50 late / early clock-pin arrival) lib_tcq_ns %.4f min_input_delay_ns %.4f" $L $Le $Tq [expr {$Le + $Tq * $::QB_DERATE_EARLY}]]
+puts $fh [qb_dont_use_gate post_$corner 0]
 puts $fh [format "act_input_transition own act_o transition per bit, fixed-point residual %.5f ns" $::QB5_TRAN_RES]
 set regs [all_registers -data_pins]; set regc [all_registers -clock_pins]
 set io [add_to_collection [all_inputs] [all_outputs]]
@@ -67,7 +72,7 @@ fl $fh hold_act2act_o [get_timing_paths -delay_type min -max_paths 1 -from [get_
 # feedthrough delay act -> act_o (no IO delays): max / min over the 4608 bits
 set ft [get_timing_paths -delay_type max -max_paths 1 -from [get_ports {act[*]}] -to [get_ports {act_o[*]}]]
 set ftn [get_timing_paths -delay_type min -max_paths 1 -from [get_ports {act[*]}] -to [get_ports {act_o[*]}]]
-set ain [expr {0.55 * $per + $L}]; set ainm [expr {0.05 * $per + $L}]
+set ain [expr {0.55 * $per + $L}]; set ainm [expr {$Le + $Tq * $::QB_DERATE_EARLY}]
 if {[sizeof_collection $ft]} { puts $fh [format "feedthrough_delay_ns max %.3f min %.3f (budget %.3f = 0.07 P)" \
     [expr {[get_attribute $ft arrival] - $ain}] [expr {[get_attribute $ftn arrival] - $ainm}] [expr {0.07 * $per}]] }
 redirect -variable hv { report_constraint -min_delay -all_violators -nosplit }

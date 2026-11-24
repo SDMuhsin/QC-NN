@@ -22,11 +22,12 @@ proc qb_eco_setup {corner} {
     set ::QB_PT_SETUP_ONLY 1
     uplevel #0 { source $::env(QB_PT_SCRIPT) }
     # site/pnr.tcl: decap / filler cells of set_eco_options; the dont_use list is site.tcl's (sourced by the PT script)
-    uplevel #0 { source $::env(QC_FLOW)/site/pnr.tcl; source $::env(QC_FLOW)/../../qc18bacc/flow/common/clock_cells.tcl }
-    # clock-tree lib cells (common/clock_cells.tcl qb_clock_cells): the only sizing candidates of the clock-network pass (qb_eco_drc)
+    uplevel #0 { source $::env(QC_FLOW)/site/pnr.tcl; source $::env(QC_FLOW)/../../qc18bacc/flow/common/lib_cells.tcl }
+    # clock-tree lib cells (common/lib_cells.tcl qb_clock_cells): the only sizing candidates of the clock-network pass (qb_eco_drc)
     define_user_attribute -type boolean -class lib_cell qb_clock_cell
     set_user_attribute -quiet [get_lib_cells [lmap g [qb_clock_cells] { string cat */ $g }]] qb_clock_cell true
     foreach p $::QC_DONT_USE { set c [get_lib_cells -quiet */$p]; if {[sizeof_collection $c]} { set_dont_use $c } }
+    qb_dont_use_gate eco_$corner 1
     uplevel #0 { set eco_report_unfixed_reason_max_endpoints 1000 }
     # crosstalk noise of the sign-off (signoff/pt/common.tcl qb_pt_si_checks), fixed by fix_eco_drc -type noise
     update_noise

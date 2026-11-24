@@ -40,11 +40,11 @@ stops at that step.  The OpenROAD steps are unchanged.
 
 ```
 qc18bacc/flow/blocks/col/run.sh pnr <tag>       # ICC2 libs init floorplan place cts route outputs + fill -> $QC_BUILD/icc2/col/<tag>
-qc18bacc/flow/blocks/col/run.sh fill <tag>      # Calibre dummy metal of the outputs GDS -> DEF FILLS (signoff/calibre/fill_def.py) -> fill-aware ICC2 SPEFs (icc2/extract.tcl), every sign-off corner
+qc18bacc/flow/blocks/col/run.sh fill <tag>      # Calibre dummy metal of the outputs GDS -> DEF FILLS (signoff/calibre/fill_def.py) -> fill-aware ICC2 SPEFs (icc2/extract.tcl), every sign-off corner; kit dummy OD / PO (cal.sh odpo, odpo_blk.sed, R77)
 qc18bacc/flow/blocks/col/run.sh eco <tag>       # one PT DMSA ECO round in every sign-off corner (signoff/pt/drv_eco.tcl: DRV, setup, hold) applied by ICC2 eco.tcl, outputs + fill of label eco
 qc18bacc/flow/blocks/col/run.sh post <tag>      # PT in every sign-off corner at 6.5 ns on the ICC2 netlist + fill-aware SPEF (gzip), ETMs of every sign-off corner
 qc18bacc/flow/blocks/col/run.sh views <tag>     # ICC2 abstract LEF with port antenna data + antenna / abutment / PG pin gates (out/qb_col_blk.lef), etmcheck (read by blocks/top/run.sh views)
-qc18bacc/flow/blocks/col/run.sh calibre <tag>   # LVS source, Calibre LVS / DRC (block deck) / antenna on the filled GDS of the fill step -> <run>/calibre
+qc18bacc/flow/blocks/col/run.sh calibre <tag>   # LVS source, Calibre LVS / DRC (block deck + OD.DN.1 / PO.DN.1) / antenna on the metal + OD / PO filled GDS of the fill step -> <run>/calibre
 ```
 Corners (R68): one table, `flow/tsmc65/site/site.tcl` QC_SIGNOFF (kit release note RN_TCBN65GPLUS_140B NOTE I): setup
 {wc wcl} x {Cworst RCworst} (ss ss_rcw wcl wcl_rcw), hold {lt ml} x {Cbest RCbest} (ff ff_rcb ml ml_rcb), tc typical (tt);
@@ -52,7 +52,11 @@ ICC2 MCMM, PT sign-off, the DMSA ECO, the block ETMs and the chip top use all of
 R71), DC / the OpenROAD act / hub blocks the base corners QC_CORNERS {ss tt ff}.  Feedthroughs act -> act_o: one fixed lib
 cell (blocks/col/io_budget.tcl QB5_FT), dont_touch with their act_o nets (icc2/init.tcl, PT col_blk.tcl); act[b] input
 transition = the block's own measured act_o[b] transition per corner (io_budget.tcl qb5_act_tran*, R71).  Abstract: M1 ..
-M7 blocked over the die except the pins (icc2/abstract.tcl, R71).  Routing: redundant vias after every detail route (R71).
+M7 blocked over the die except the pins (icc2/abstract.tcl, R71; made on its own block label "abstract", R77).  Routing:
+redundant vias after every detail route (R71), route setup also before CTS (R77).  Lib cells (R77, common/lib_cells.tcl):
+clock-tree cells by exact family minus QC_DONT_USE, a dont_use gate in every ICC2 step / DMSA scenario / PT corner, and the
+library's fastest clock -> Q (common/lib_tcq.py) as the period-independent min input delay (io_budget.tcl); IO latency
+late / early per check (PT signoff/pt/io_lat.tcl, ICC2 compute_clock_latency).  Database unit = tech file 1000 / um (R77).
 Inputs: netlist + SDC `$B/syn/qb_col_blk_r5d_s20_tt_p1.65_topo` (P&R SDC: common/block_sdc.tcl + blocks/col/io_budget.tcl
 at 5.0 ns), pin positions of the reference abstract `$B/r5b_blk/qb_col_blk_ring.lef` (the ones r48 placed), written as the
 floorplan DEF `COL_PIN_DEF` by floorplan/abstract_pins.py in the pnr step (R72). Parameters: `col.env`, `icc2.cfg`.  The OpenROAD

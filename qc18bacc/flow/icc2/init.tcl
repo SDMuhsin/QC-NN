@@ -2,7 +2,8 @@
 # netlist, MCMM (one mode, one scenario func_<c> per sign-off corner c of the site.tcl corner table: QC_SIGNOFF_CORNERS,
 # library by QC_OC, TLU+ QC_TLU_FILE, role QC_ROLE setup or hold), P&R SDC -> block label init.
 #   SDC: common/block_sdc.tcl (DC SDC without the per-net estimates, period QB_PNR_PERIOD) + the block IO budget
-#   (P(IO_BUDGET), qb5_io_lines at that period) in place of DC's IO delays (block_sdc's IO rescale does not match DC's
+#   (P(IO_BUDGET), qb5_io_apply at that period per scenario: the min input delay is the corner's library clock -> Q, R77)
+#   in place of DC's IO delays (block_sdc's IO rescale does not match DC's
 #   "-clock qb_clk  -max" lines); ICC2 picks each corner's library by operating condition, so DC's
 #   set_operating_conditions and the -library of set_driving_cell are dropped.  Written to <run>/<top>_icc2.sdc.
 #   Scenarios: setup or hold by QC_ROLE (R68: setup wc / wcl x Cworst / RCworst, hold lt / ml x Cbest / RCbest + tc),
@@ -18,18 +19,15 @@ proc qb_sdc {} {
     regsub -all -line {^set_operating_conditions .*\n} $t {} t
     regsub -all {(set_driving_cell [^\[]*)-library \S+ } $t {\1} t
     set nio 0
-    if {[info exists P(IO_BUDGET)]} {
-        set nio [regsub -all -line {^set_(input|output)_delay .*\n} $t {} t]
-        source $P(IO_BUDGET)
-        append t "\n# IO budget [file tail $P(IO_BUDGET)], period $per\n[qb5_io_lines $per]\n"
-    }
+    if {[info exists P(IO_BUDGET)]} { set nio [regsub -all -line {^set_(input|output)_delay .*\n} $t {} t] }
+    set ::QB_PNR_PER $per
     set out $::R/$P(TOP)_icc2.sdc
     set f [open $out w]; puts -nonewline $f $t; close $f
     qb_line "init sdc $out period $per dc_io_delay_lines_replaced $nio"
     return $out
 }
 
-create_lib $::QB_LIB -technology $::QC_TF -ref_libs [list $::QB_NDM]
+create_lib $::QB_LIB -technology $::QC_TF -ref_libs [list $::QB_NDM] -scale_factor $::QB_DBU
 # one parasitic tech per TLU+ file (named after it), shared by the corners that use it
 foreach c $::QC_SIGNOFF_CORNERS { set ptech($c) [file rootname $::QC_TLU_FILE($c)] }
 foreach t [lsort -unique [lmap c $::QC_SIGNOFF_CORNERS { set ptech($c) }]] {
@@ -72,6 +70,8 @@ foreach c $::QC_SIGNOFF_CORNERS {
     set_operating_conditions $::QC_OC($c)
     set_parasitic_parameters -early_spec $ptech($c) -late_spec $ptech($c)
     source $sdc
+    # IO budget of this corner (ideal clock: no arrival shift; min input delay = the corner's library clock -> Q)
+    if {[info exists P(IO_BUDGET)]} { source $P(IO_BUDGET); qb5_io_apply $::QB_PNR_PER 0.0 0.0 [qb_lib_tcq $c] }
     set su [expr {$::QC_ROLE($c) eq "setup"}]
     set_scenario_status func_$c -active true -setup $su -hold [expr {!$su}] -max_transition true -max_capacitance true \
         -min_capacitance false -leakage_power false -dynamic_power false
@@ -79,6 +79,7 @@ foreach c $::QC_SIGNOFF_CORNERS {
 qb_timer
 set du {}; foreach p $::QC_DONT_USE { lappend du */$p }
 set_lib_cell_purpose -exclude all [get_lib_cells $du]
+set_dont_use [get_lib_cells $du]
 redirect -tee $::R/rpt/init_scen.rpt { report_scenarios; report_pvt }
 qb_line "init corners [get_object_name [get_corners *]] modes [get_object_name [get_modes *]]"
 redirect $::R/rpt/init_ptech.rpt { report_parasitic_parameters }

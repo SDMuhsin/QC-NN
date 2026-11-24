@@ -1,6 +1,7 @@
 # G1 (icc2_lm_shell): standard-cell NDM reference library from the kit liberty (.db of every library of the site.tcl corner
 # table, QC_SIGNOFF_CORNERS: wc / wcl / tc / lt / ml since R68)
-# + the 9-metal cell LEF (site/pnr.tcl QC_PNR_LEF) on the ICC2 tech file (site.tcl QC_TF, tsmcn65_9lmT2 = 6X2Z).
+# + the 9-metal cell LEF (site/pnr.tcl QC_PNR_LEF) on the ICC2 tech file (site.tcl QC_TF, tsmcn65_9lmT2 = 6X2Z), at the tech
+# file's database unit ::QB_DBU (common.tcl, R77).
 # lib.workspace.keep_all_physical_cells keeps the LEF-only physical cells (FILL*: no liberty model).
 # The kit LEF has the antenna diode (site/pnr.tcl QC_PNR_DIODE, ANTENNA, pin I) as CLASS CORE, not CORE ANTENNACELL, so
 # the NDM made it an ordinary lib_cell with a non-diode pin and Zroute found no diode (R59 route.log ZRT-302 / ZRT-301:
@@ -12,7 +13,7 @@ if {![file exists $::QB_NDM]} {
     file mkdir [file dirname $::QB_NDM]
     set ws [file rootname [file tail $::QB_NDM]]
     set_app_options -name lib.workspace.keep_all_physical_cells -value true
-    create_workspace $ws -flow normal -technology $::QC_TF
+    create_workspace $ws -flow normal -technology $::QC_TF -scale_factor $::QB_DBU
     set dbs {}; foreach c $::QC_SIGNOFF_CORNERS { lappend dbs [qc_db $c] }
     read_db [lsort -unique $dbs]
     read_lef $::QC_PNR_LEF

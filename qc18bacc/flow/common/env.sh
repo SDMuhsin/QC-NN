@@ -2,15 +2,16 @@
 #   QBF   this flow (qc18bacc/flow)          ROOT  repository root (flow/tsmc65 = the shared OpenROAD / DC / PT flow)
 #   B     build root QC_BUILD [/tmp/$USER/qc18bacc/build]; P&R runs in $B/pnr/<tag>
 #   TOOLS QC_TOOLS [/tmp/$USER/tools]; PY / OR = its python3 / openroad
-#   qb_kit  sources flow/tsmc65 common/tool.sh (FLOW, qc_tool) and exports QC_KIT, QC_PY
+#   qb_kit  sources flow/tsmc65 common/tool.sh (FLOW, qc_tool) and exports QC_KIT;  QC_PY = PY (exported)
 #   qb_pt   PrimeTime run + error check;  qb_wait  wait for background jobs, non-zero if one failed;  qb_icc2  ICC2 step (flow/icc2) in a run dir
 #   qb_corners  the sign-off corner names of the one corner table, flow/tsmc65/site/site.tcl (R68)
 QBF=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd); ROOT=$(cd "$QBF/../.." && pwd)
 export QC_BUILD=${QC_BUILD:-/tmp/$USER/qc18bacc/build}; B=$QC_BUILD
 TOOLS=${QC_TOOLS:-/tmp/$USER/tools}; PY=$TOOLS/env/bin/python3; OR=$TOOLS/env/bin/openroad
+export QC_PY=$PY   # (the tools' Tcl runs flow Python through it: common/lib_cells.tcl qb_lib_tcq, qb.tcl)
 qb_kit() {
     . "$ROOT/flow/tsmc65/common/tool.sh"
-    QC_KIT=$(tcsh -f -c "source $FLOW/site/site.csh >& /dev/null; printenv QC_KIT"); export QC_KIT QC_PY=$PY
+    QC_KIT=$(tcsh -f -c "source $FLOW/site/site.csh >& /dev/null; printenv QC_KIT"); export QC_KIT
 }
 # qb_pt <log> <command ...>: qc_tool of a PrimeTime run in the current dir; one PT_ERRORS line; non-zero unless the tool
 # exited 0 and neither the log nor its parasitics log (read_parasitics side process, e.g. SPFP-103) has an '^Error' line.

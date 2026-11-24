@@ -2,6 +2,7 @@
 # Environment: QC_FLOW (flow/tsmc65, set by its common/tool.sh), QB_ICC2_CFG (block config, e.g. blocks/col/icc2.cfg),
 #   QB_ICC2_RUN (run dir: <run>/<top>.nlib design library, rpt/, out/), QC_BUILD, QB_ICC2_CORES (default 16).
 # Kit facts come from the flow/tsmc65 site files (site.tcl: libraries, tf, TLU+; site/pnr.tcl: LEF, GDS, cells, layers).
+#   ::QB_DBU            database units / um = the tech file's lengthPrecision (NDM, design library, GDS; R77)
 #   ::QB_NDM            standard-cell NDM (flow/icc2/libs.tcl), shared by every block under $QC_BUILD/icc2/ndm
 #   qb_open <from> <to> open the design library, copy block label <from> to <to> (from = to: reopen it), make it current,
 #                       qb_timer
@@ -12,13 +13,15 @@
 #                       and the SPEF had no coupling capacitance): SI delta delays in route_opt / eco timing, extraction
 #                       keeps the coupling capacitances, so outputs.tcl writes a coupled SPEF (PT sign-off runs SI too);
 #                       the OCV derate of common/derate.tcl (late 1.05 / early 0.95) on every scenario
-#   qb_done <step> [as] save (as 1: save the current block as label <step>, the init step), log the step end in
-#                       <run>/summary.txt, QB_ICC2_DONE marker for the wrapper
+#   qb_done <step> [as] dont_use gate (common/lib_cells.tcl qb_dont_use_gate, R77: no QC_DONT_USE lib cell usable, no
+#                       instance of one), save (as 1: save the current block as label <step>, the init step), log the
+#                       step end in <run>/summary.txt, QB_ICC2_DONE marker for the wrapper
 #   qb_io_load          IO loads that depend on the block's own layout: P(IO_LOAD) = {measure apply} procs of P(IO_BUDGET)
 #                       (column: blocks/col/io_budget.tcl qb5_act_o_caps / qb5_act_o_load, act_o[b] = own act[b] net),
 #                       called per scenario on the current timing (placement estimate or routed); cts.tcl, route.tcl;
 #                       then P(IO_TRAN) = {measure apply diff} input transitions from the block's own outputs (column:
 #                       act[b] = own act_o[b] transition, R71), two measure / apply rounds, residual logged
+#   qb_io_lat <step>    compute_clock_latency (I/O latency = median sink latency, derated per check: R77, below) + log
 #   qb_qor <step>       QoR lines (cells, utilization, DRV count, WNS / TNS / NVE per scenario) + rpt/<step>_{qor,drv}.rpt
 #   qb_line <text>      append a line to <run>/summary.txt (and the log)
 #   qb_antenna_rules    kit antenna rules (route / eco via qb_route_setup, abstract.tcl)
@@ -36,10 +39,16 @@ set ::QBF [file normalize [file dirname [info script]]/..]
 set ::QC_BUILD $::env(QC_BUILD)
 source $::env(QC_FLOW)/common/lib.tcl
 source $::env(QC_FLOW)/site/pnr.tcl
-source $::QBF/common/clock_cells.tcl
+source $::QBF/common/lib_cells.tcl
 source $::env(QB_ICC2_CFG)
 set ::R $::env(QB_ICC2_RUN)
-set ::QB_NDM $::QC_BUILD/icc2/ndm/[file rootname [file tail $::QC_PNR_LEF]].ndm
+# database unit (R77): the tech file's lengthPrecision (tsmcn65_9lmT2.tf: 1000 / um, the kit's "1nm as layout database
+# unit" guideline, CLN65GP DR TN65CLDR001 3.7.1.1, and the Calibre decks' PRECISION 1000) for the NDM (libs.tcl), the
+# design library (init.tcl) and the GDS (outputs.tcl).  Before R77 the NDM took ICC2's default 10000, the design library
+# followed it, and write_gds -units 1000 warned of lost precision (LIB-058).  The NDM name carries it (the 10000 NDM of
+# earlier runs stays readable for their libraries).
+set _h [open $::QC_TF]; regexp {lengthPrecision\s*=\s*(\d+)} [read $_h] -> ::QB_DBU; close $_h
+set ::QB_NDM $::QC_BUILD/icc2/ndm/[file rootname [file tail $::QC_PNR_LEF]]_dbu$::QB_DBU.ndm
 set ::QB_LIB $::R/$P(TOP).nlib
 file mkdir $::R/rpt $::R/out
 if {[info commands set_host_options] ne ""} { set_host_options -max_cores [qc_env QB_ICC2_CORES 16] }
@@ -109,6 +118,23 @@ proc qb_io_load {} {
     }
     current_scenario $s0
 }
+# IO latency of the propagated clock (cts.tcl, route.tcl): compute_clock_latency sets the I/O ports' ideal clock latency
+# to the sinks' median latency, and ICC2 derates it per check like any clock path (R77 [M] r75 route label, func_ss
+# act[739] -> act_o[739]: launch 0.74 = late, capture 0.66 = early, vs PrimeTime's p50 late / early register clock
+# arrival 0.737 / ~0.667): input -max + late, output -max - early, input -min + early, output -min - late, which
+# PrimeTime applies explicitly (signoff/pt/col_blk.tcl, blocks/col/io_budget.tcl).  qb_io_lat <step>: compute_clock_latency
+# + one line per IO side of that latency (launch / capture, setup and hold scenario).
+proc qb_io_lat {step} {
+    compute_clock_latency
+    set s0 [current_scenario]
+    foreach sc [list [lindex [get_object_name [get_scenarios -filter setup==true]] 0] [lindex [get_object_name [get_scenarios -filter hold==true]] 0]] dt {max min} {
+        current_scenario $sc
+        redirect -variable r { report_timing -nosplit -delay_type $dt -from [get_ports {act[0]}] -to [get_ports {act_o[0]}] }
+        set v [lmap {- x} [regexp -all -inline -line {^\s*clock network delay \((?:ideal|propagated)\)\s+(-?[0-9.]+)} $r] { set x }]
+        qb_line "io_lat $step $sc $dt act\[0\] -> act_o\[0\] clock network delay launch / capture $v"
+    }
+    current_scenario $s0
+}
 # one QoR line: setup WNS / TNS / violators per scenario, hold WNS per scenario, DRV counts, utilization
 proc qb_qor {step} {
     redirect -variable q { report_qor -summary -nosplit }
@@ -121,6 +147,7 @@ proc qb_qor {step} {
 }
 proc qb_done {step {as 0}} {
     global P
+    qb_line [qb_dont_use_gate $step 1]
     if {$as} { save_block -as $P(TOP)/$step } else { save_block }
     save_lib
     qb_line "$step done [clock format [clock seconds] -format %T -gmt 1]"

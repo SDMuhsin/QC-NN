@@ -1,11 +1,17 @@
-# Clock tree + post-CTS optimisation: clock_opt (CTS with the site/pnr.tcl clock buffers, CKND inverters and the
-# netlist's CKLNQD gates; setup / hold / DRV in the MCMM scenarios; I/O latency = median sink latency, ICC2's
-# compute_clock_latency, which the IO budget assumes), no useful skew.  Block label place -> cts.
+# Clock tree + post-CTS optimisation: clock_opt (CTS with the clock-tree cells of common/lib_cells.tcl qb_clock_cells: the
+# site/pnr.tcl clock buffers, CKND<n> inverters and CKLNQD<n> gates, none dont_use; setup / hold / DRV in the MCMM
+# scenarios), no useful skew; then the I/O latency (common.tcl qb_io_lat: compute_clock_latency, the median sink latency,
+# derated late / early per check as PrimeTime's IO shift).  Block label place -> cts.
+# Routing options (qb_route_setup) before clock_opt (R77): clock_opt detail-routes the clock nets, and without the kit
+# antenna rules, diodes, port gate size and redundant vias it did so with antenna checking off on the clk port net
+# (r75 cts.log [M]: 2 x ZRT-311 on clk) and single vias.
 source [file dirname [info script]]/common.tcl
 qb_open place cts
 set_lib_cell_purpose -exclude cts [get_lib_cells */*]
 set ck {}; foreach c [qb_clock_cells] { lappend ck */$c }
 set_lib_cell_purpose -include cts [get_lib_cells $ck]
+qb_line "cts clock cells [llength $ck]: [join [lmap c $ck { file tail $c }] { }]"
+qb_route_setup
 set_app_options -name clock_opt.flow.enable_ccd -value false
 # Clock gates (R75 [M], results/r75.md): CTS sizes the netlist's CKLNQD1 gates (r74: -> 14 D1, 138 D2, 38 D3, 31 D4, 5 D6,
 # 1 D12) to zero slack on its net estimate, and after the detail clock routing below one ends 0.55 fF over its ss limit
@@ -15,7 +21,7 @@ set_app_options -name clock_opt.flow.enable_ccd -value false
 # the enable has 3.3 ns slack.  The sign-off ECO fixes it in the clock network (signoff/pt/drv_eco.tcl qb_eco_drc).
 qb_io_load
 clock_opt
-compute_clock_latency
+qb_io_lat cts
 redirect $::R/rpt/cts_clock_qor.rpt { report_clock_qor -type summary }
 foreach l [split [exec cat $::R/rpt/cts_clock_qor.rpt] "\n"] { if {[regexp {qb_clk} $l]} { qb_line "cts [regsub -all {\s+} [string trim $l] { }]" } }
 # clock DRC on the detail-routed clock nets, per scenario (tran / cap / fanout / length counts): a clock-gate output
