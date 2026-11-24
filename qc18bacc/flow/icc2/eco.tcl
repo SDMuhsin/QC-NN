@@ -4,6 +4,16 @@
 # location are placed (place_eco_cells), then every changed cell is legalised on free sites (filler / decap cells under
 # it removed), ECO-routed (route_eco, routing options of route.tcl), the emptied sites refilled (decap then FILL, as
 # route.tcl), check_routes / check_lvs.  No optimisation here: the change list is the whole ECO.
+# ECO routing touches only what PT changed (R73, results/r73.md): PT's DMSA predicts every net outside its change list
+# unchanged, so route_eco must not rip those up.  Two router settings did, every round, anywhere in the block:
+# * route.detail.eco_route_use_soft_spacing_for_timing_optimization (on with route.detail.timing_driven): route_eco's
+#   "timing optimization in DR" puts soft spacing rules around the nets ICC2 finds critical at the P&R SDC (r73 round 2,
+#   3 nets to route: 1385 soft DRCs, 1317 violations) and reroutes their neighbours.  r72 + r73 [M]: the same 13 nets
+#   (act / act_o feedthroughs, clock nets) within 20 um of g_col_0 u_dec net DP_OP_223_315_5193_n289 moved in round 2,
+#   ~395 um from the nearest ECO cell, and its ss transition went 0.500 -> 0.50155 (r72) / 0.52 ns (r73) with its own
+#   route unchanged; the same reroutes moved the act_o noise victims of round 1 to other bits.  Off here (route_eco only).
+# * -reroute any_nets (default): on the unchanged eco label route_eco changed 15 nets; modified_nets_first_then_others 0.
+#   modified_nets_only left 81 DRC violations (r73 round-1 change list) [M], so others may still move for real DRCs.
 source [file dirname [info script]]/common.tcl
 qb_open [qc_env QB_ECO_FROM route] eco
 qb_route_setup
@@ -18,7 +28,8 @@ if {[sizeof_collection $up]} { place_eco_cells -cells $up -remove_filler_referen
 place_eco_cells -eco_changed_cells -legalize_only -remove_filler_references $fill
 redirect -variable lg { check_legality }
 qb_line "eco check_legality: [regsub -all {\s+} [join [lrange [regexp -all -inline -line {^.*(?:[Vv]iolat|succeeded|failed).*$} $lg] 0 2] { | }] { }]"
-route_eco -utilize_dangling_wires true
+set_app_options -name route.detail.eco_route_use_soft_spacing_for_timing_optimization -value false
+route_eco -utilize_dangling_wires true -reroute modified_nets_first_then_others
 qb_fillers
 qb_route_checks eco
 qb_qor eco
