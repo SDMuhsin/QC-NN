@@ -100,14 +100,19 @@ proc qb5_ft_cells {} {
 # bit and edge (ICC2: the current scenario); qb5_act_tran_fix: measure / apply until a re-measure moves no value by more
 # than QB5_TRAN_TOL ns (the act_o transition depends a little on the act slew through the QB5_FT input), error after
 # QB5_TRAN_ROUNDS rounds; returns the last residual.
+# An ICC2 scenario without hold analysis (QC_ROLE setup: set_scenario_status -hold false) computes no min transitions
+# (R72 [M]: actual_*_transition_min empty on act_o in func_ss / ss_rcw / wcl / wcl_rcw, ATTR-3; the hold scenarios
+# give min = max); there the min input transition is never used, so it takes the max value.  PrimeTime: always strict.
 set ::QB5_TRAN_TOL 0.001
 set ::QB5_TRAN_ROUNDS 4
 proc qb5_act_tran {} {
     set t {}
+    set nomin [expr {[info exists ::synopsys_program_name] && [string match icc2* $::synopsys_program_name] && [get_attribute [current_scenario] hold] eq "false"}]
     foreach_in_collection p [get_ports {act_o[*]}] {
         regexp {\[(\d+)\]$} [get_object_name $p] -> b
         set v {}
         foreach a {actual_rise_transition_max actual_fall_transition_max actual_rise_transition_min actual_fall_transition_min} {
+            if {$nomin && [string match *_min $a]} { lappend v [lindex $v end-1]; continue }
             set x [get_attribute $p $a]
             if {![string is double -strict $x] || $x <= 0} { error "qb5_act_tran: no $a on [get_object_name $p] ($x)" }
             lappend v $x

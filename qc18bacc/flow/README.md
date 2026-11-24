@@ -54,7 +54,8 @@ cell (blocks/col/io_budget.tcl QB5_FT), dont_touch with their act_o nets (icc2/i
 transition = the block's own measured act_o[b] transition per corner (io_budget.tcl qb5_act_tran*, R71).  Abstract: M1 ..
 M7 blocked over the die except the pins (icc2/abstract.tcl, R71).  Routing: redundant vias after every detail route (R71).
 Inputs: netlist + SDC `$B/syn/qb_col_blk_r5d_s20_tt_p1.65_topo` (P&R SDC: common/block_sdc.tcl + blocks/col/io_budget.tcl
-at 5.0 ns), pin positions from the r48 column DEF (`COL_PIN_DEF`). Parameters: `col.env`, `icc2.cfg`.  The OpenROAD
+at 5.0 ns), pin positions of the reference abstract `$B/r5b_blk/qb_col_blk_ring.lef` (the ones r48 placed), written as the
+floorplan DEF `COL_PIN_DEF` by floorplan/abstract_pins.py in the pnr step (R72). Parameters: `col.env`, `icc2.cfg`.  The OpenROAD
 config `col.cfg` / `route_pre.tcl` (OpenROAD, R48) were deleted in R54 (git history).
 
 ## Act block qb_act2_blk (`blocks/act`, production lineage r35_act -> r38_act_rr2)
@@ -207,7 +208,7 @@ signoff; top hold, dr, antenna, pt, lvs, views (views reproduced abs7 byte-for-b
 | r5a/budget.tcl | blocks/col/io_budget.tcl |
 | r5a/drc_hist.py | signoff/drc_hist.py |
 | r5a/etm.tcl | signoff/etm/etm.tcl |
-| r5a/pins.tcl | floorplan/col_pins.tcl |
+| r5a/pins.tcl | (deleted R72: OpenROAD column pins; the ICC2 flow reads the pin DEF of floorplan/abstract_pins.py) |
 | r5a/pt_blk.tcl | signoff/pt/col_blk.tcl |
 | r5a/topo_col.tcl | synth/col_dc_hook.tcl |
 | r5b/core_blk.sv | synth/chip_core_blk.sv |

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Column block qb_col_blk (config: blocks/col/col.env + icc2.cfg; flow/README.md).  On the build host:
-#   qc18bacc/flow/blocks/col/run.sh pnr <tag>      ICC2 (flow/icc2): libs init floorplan place cts route outputs in
+#   qc18bacc/flow/blocks/col/run.sh pnr <tag>      pin DEF COL_PIN_DEF of the reference abstract COL_REFLEF
+#                                                  (floorplan/abstract_pins.py), ICC2 (flow/icc2): libs init floorplan place cts route outputs in
 #                                                  $B/icc2/col/<tag> (QC_PNR_FROM / QC_PNR_TO select a step range);
 #                                                  every outputs netlist passes signoff/portcheck.py (also after eco),
 #                                                  then fill (below)
@@ -49,7 +50,9 @@ portcheck() {   # gate on the outputs netlist: port bits as the DC netlist, no p
     "$PY" -I "$QBF/signoff/portcheck.py" "$B/syn/$COL_SYN/$COL_TOP.v" "$d/out/$COL_TOP.v" "$COL_TOP"
 }
 case $step in
-pnr) on=0
+pnr) mkdir -p "$(dirname "$COL_PIN_DEF")"
+     "$PY" -I "$QBF/floorplan/abstract_pins.py" "$COL_REFLEF" "$COL_PIN_DEF" || exit 1   # floorplan pin DEF (R72)
+     on=0
      for s in libs init floorplan place cts route outputs; do
          [ "$s" = "${QC_PNR_FROM:-libs}" ] && on=1; [ $on = 1 ] || continue
          qb_icc2 "$d" $s "$([ $s = libs ] && echo icc2_lm_shell)" || exit 1

@@ -41,12 +41,19 @@ if {$np != $ns || $nm || $nc} { error "QB abstract antenna: signal PIN $np of $n
 set die [get_attribute [current_block] boundary_bbox]
 set x0 [lindex $die 0 0]; set x1 [lindex $die 1 0]
 # blockage gate (R71): OBS on every metal layer up to the block's top routing layer, none above it (the top's layers);
-# per layer the summed OBS rect area / die area (the blockage less the pin cut-outs) is logged
+# per layer the summed OBS RECT + POLYGON area / die area (the blockage less the pin cut-outs) is logged (R72: write_lef
+# gives the cut-out blockage of the pin layers as POLYGONs, up to ~2300 per layer [M]; RECT-only logged M2 0.000);
+# a POLYGON may continue over several lines up to its ';' (shoelace area)
 set ob [exec awk {
+    function poly(   i, s) { s = 0; for (i = 1; i + 3 <= n; i += 2) s += v[i] * v[i + 3] - v[i + 2] * v[i + 1]
+                             s += v[n - 1] * v[2] - v[1] * v[n]; return (s < 0 ? -s : s) / 2 }
     /^  OBS/                  { o = 1; next }
     o && $1 == "END"          { o = 0; next }
     o && $1 == "LAYER"        { l = $2; next }
-    o && $1 == "RECT"         { a[l] += ($4 - $2) * ($5 - $3) }
+    o && $1 == "RECT"         { a[l] += ($4 - $2) * ($5 - $3); next }
+    o && $1 == "POLYGON"      { p = 1; n = 0; $1 = "" }
+    o && p                    { for (i = 1; i <= NF; i++) { t = $i; e = sub(/;$/, "", t); if (t != "") v[++n] = t + 0
+                                                            if (e) { p = 0; a[l] += poly(); break } } }
     END { for (l in a) printf "%s %.1f ", l, a[l] }
 } $o.lef]
 array set oba $ob
