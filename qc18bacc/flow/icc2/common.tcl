@@ -123,13 +123,26 @@ proc qb_io_load {} {
 # act[739] -> act_o[739]: launch 0.74 = late, capture 0.66 = early, vs PrimeTime's p50 late / early register clock
 # arrival 0.737 / ~0.667): input -max + late, output -max - early, input -min + early, output -min - late, which
 # PrimeTime applies explicitly (signoff/pt/col_blk.tcl, blocks/col/io_budget.tcl).  qb_io_lat <step>: compute_clock_latency
-# + one line per IO side of that latency (launch / capture, setup and hold scenario).
+# + one line per IO side of that latency (launch / capture, setup and hold scenario).  Then P(IO_MIN) = {measure apply}
+# (column: blocks/col/io_budget.tcl qb5_act_o_lat_icc2 / qb5_act_o_min_icc2, R78): every hold scenario func_<c> measured,
+# then each applied with Tq = qb_lib_tcq <c>: output -min
+# constraints measured on this latency (column: act_o -min = capture latency - (early latency + Tq)).
 proc qb_io_lat {step} {
+    global P
     compute_clock_latency
     set s0 [current_scenario]
+    if {[info exists P(IO_MIN)]} {
+        lassign $P(IO_MIN) measure apply
+        set hs [get_scenarios -filter hold==true]
+        foreach_in_collection sc $hs { current_scenario $sc; set m([get_object_name $sc]) [$measure] }
+        foreach_in_collection sc $hs {
+            current_scenario $sc; set n [get_object_name $sc]
+            qb_line "io_min $step $n [$apply $m($n) [qb_lib_tcq [regsub {^func_} $n {}]]]"
+        }
+    }
     foreach sc [list [lindex [get_object_name [get_scenarios -filter setup==true]] 0] [lindex [get_object_name [get_scenarios -filter hold==true]] 0]] dt {max min} {
         current_scenario $sc
-        redirect -variable r { report_timing -nosplit -delay_type $dt -from [get_ports {act[0]}] -to [get_ports {act_o[0]}] }
+        redirect -variable r { report_timing -nosplit -delay_type $dt -scenarios $sc -from [get_ports {act[0]}] -to [get_ports {act_o[0]}] }
         set v [lmap {- x} [regexp -all -inline -line {^\s*clock network delay \((?:ideal|propagated)\)\s+(-?[0-9.]+)} $r] { set x }]
         qb_line "io_lat $step $sc $dt act\[0\] -> act_o\[0\] clock network delay launch / capture $v"
     }

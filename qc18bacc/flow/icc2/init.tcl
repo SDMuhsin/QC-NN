@@ -6,7 +6,7 @@
 #   in place of DC's IO delays (block_sdc's IO rescale does not match DC's
 #   "-clock qb_clk  -max" lines); ICC2 picks each corner's library by operating condition, so DC's
 #   set_operating_conditions and the -library of set_driving_cell are dropped.  Written to <run>/<top>_icc2.sdc.
-#   Scenarios: setup or hold by QC_ROLE (R68: setup wc / wcl x Cworst / RCworst, hold lt / ml x Cbest / RCbest + tc),
+#   Scenarios: setup by QC_ROLE (R68: setup wc / wcl x Cworst / RCworst), hold in every scenario (R78; was hold lt / ml x Cbest / RCbest + tc only),
 #   max transition / capacitance everywhere.
 source [file dirname [info script]]/common.tcl
 
@@ -72,8 +72,10 @@ foreach c $::QC_SIGNOFF_CORNERS {
     source $sdc
     # IO budget of this corner (ideal clock: no arrival shift; min input delay = the corner's library clock -> Q)
     if {[info exists P(IO_BUDGET)]} { source $P(IO_BUDGET); qb5_io_apply $::QB_PNR_PER 0.0 0.0 [qb_lib_tcq $c] }
+    # hold in every scenario (R78): PrimeTime checks hold at all sign-off corners (r77 [M] pre-ECO 14 hold violators at
+    # ss / ss_rcw / wcl / wcl_rcw, where ICC2 had hold off, 2 left after the ECO: pw -> u_pbw); setup by QC_ROLE
     set su [expr {$::QC_ROLE($c) eq "setup"}]
-    set_scenario_status func_$c -active true -setup $su -hold [expr {!$su}] -max_transition true -max_capacitance true \
+    set_scenario_status func_$c -active true -setup $su -hold true -max_transition true -max_capacitance true \
         -min_capacitance false -leakage_power false -dynamic_power false
 }
 qb_timer

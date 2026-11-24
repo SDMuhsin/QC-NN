@@ -44,7 +44,7 @@ file mkdir $dir/rpt
 set fh [open $dir/pt_blk_$corner.txt w]
 set nets [qb_pt_ann]
 puts $fh "design $top corner $corner period $per lib $::QC_LIB($corner) spef_nets $nets"
-puts $fh [format "insertion_delay_L_ns %.3f early %.3f (p50 late / early clock-pin arrival) lib_tcq_ns %.4f min_input_delay_ns %.4f" $L $Le $Tq [expr {$Le + $Tq * $::QB_DERATE_EARLY}]]
+puts $fh [format "insertion_delay_L_ns %.3f early %.3f (p50 late / early clock-pin arrival) lib_tcq_ns %.4f min_input_delay_ns %.4f" $L $Le $Tq [qb5_hold_min $Le $Tq]]
 puts $fh [qb_dont_use_gate post_$corner 0]
 puts $fh [format "act_input_transition own act_o transition per bit, fixed-point residual %.5f ns" $::QB5_TRAN_RES]
 set regs [all_registers -data_pins]; set regc [all_registers -clock_pins]
@@ -72,7 +72,7 @@ fl $fh hold_act2act_o [get_timing_paths -delay_type min -max_paths 1 -from [get_
 # feedthrough delay act -> act_o (no IO delays): max / min over the 4608 bits
 set ft [get_timing_paths -delay_type max -max_paths 1 -from [get_ports {act[*]}] -to [get_ports {act_o[*]}]]
 set ftn [get_timing_paths -delay_type min -max_paths 1 -from [get_ports {act[*]}] -to [get_ports {act_o[*]}]]
-set ain [expr {0.55 * $per + $L}]; set ainm [expr {$Le + $Tq * $::QB_DERATE_EARLY}]
+set ain [expr {0.55 * $per + $L}]; set ainm [qb5_hold_min $Le $Tq]
 if {[sizeof_collection $ft]} { puts $fh [format "feedthrough_delay_ns max %.3f min %.3f (budget %.3f = 0.07 P)" \
     [expr {[get_attribute $ft arrival] - $ain}] [expr {[get_attribute $ftn arrival] - $ainm}] [expr {0.07 * $per}]] }
 redirect -variable hv { report_constraint -min_delay -all_violators -nosplit }

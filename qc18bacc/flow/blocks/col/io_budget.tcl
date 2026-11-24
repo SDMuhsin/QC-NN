@@ -8,7 +8,15 @@
 # it, as OCV does for an internal path (late launch / early capture for setup, early launch / late capture for hold):
 #   input  -max  budget + Ll     (upstream register launches late)       input  -min  Le + Tq (below)
 #   output -max  budget - Le     (downstream register captures early)    output -min  0 - Ll (captures late)
-# R75 shifted both -max and -min by the late p50 (L x ~1.05), optimistic for input hold and output setup / hold.
+#   act_o  -min  -(Le + Tq) (R78, PI decision): act_o[b] drives the next, identical column's act[b], whose hold checks
+#                assume act changes no earlier than Le + Tq (its input -min); act_o's hold contract is that same
+#                quantity, from the one proc qb5_hold_min (no capture flop with zero hold at the port exists).  Hold slack
+#                act -> act_o = feedthrough min delay - hold uncertainty by construction.  The value is relative to the
+#                port's capture clock: PrimeTime's port clock has no latency (capture 0), ICC2's compute_clock_latency
+#                I/O latency is late-derated in a hold check (R77 [M] r77 func_ff capture 0.34 vs launch 0.31 ns), so ICC2
+#                passes that capture latency Lc and gets Lc - (Le + Tq) (qb5_act_o_min_icc2).  (R78 [M]:
+#                -network_latency_included instead removed the capture latency from the act_o -max checks too: cts
+#                act -> act_o setup -0.64 ns on all 4608 bits.)
 #   act (west, 16 x 288)   max 0.55 P: launch flop + top wire (0.06 P) + 7 upstream feedthroughs (7 x 0.07 P) = column 7
 #   act_o (east)           output 0.38 P - U = P - 0.55 P - 0.07 P - U: feedthrough act -> act_o <= 0.07 P per column
 #                          (U = setup uncertainty QC_UNC_SETUP 0.25 ns, counted once on the top-level flop -> flop path)
@@ -66,10 +74,16 @@ proc qb5_budget {} {
 # SDC lines of the budget at period per for one corner: clock arrivals Ll (late) / Le (early) at the external registers
 # (0 for ideal clocks), Tq = the corner's fastest library clock -> Q (common/lib_cells.tcl qb_lib_tcq, ns, before derate),
 # + the act driving cell QB5_FT
+# hold contract of the IO min delays (R78): earliest change of an IO signal after the clock edge = early clock arrival Le +
+# the fastest library clock -> Q Tq x the early OCV derate; input -min = +, act_o output -min = - this quantity
+proc qb5_hold_min {Le Tq} { expr {$Le + $Tq * $::QB_DERATE_EARLY} }
+proc qb5_act_o_min_line {Le Tq {Lc 0.0}} {
+    format "set_output_delay -min %.4f -clock qb_clk \[get_ports {act_o\[*\]}\]" [expr {$Lc - [qb5_hold_min $Le $Tq]}]
+}
 proc qb5_io_lines {per Ll Le Tq} {
     set out {}
     set U [expr {[info exists ::env(QC_UNC_SETUP)] ? $::env(QC_UNC_SETUP) : 0.25}]
-    set inmin [expr {$Le + $Tq * $::QB_DERATE_EARLY}]
+    set inmin [qb5_hold_min $Le $Tq]
     foreach {d pats mx} [qb5_budget] {
         set su [expr {[string match act_o* $pats] ? $U : 0.0}]
         if {$d eq "in"} {
@@ -77,13 +91,30 @@ proc qb5_io_lines {per Ll Le Tq} {
             lappend out [format "set_input_delay -min %.4f -clock qb_clk \[get_ports {%s}\]" $inmin $pats]
         } else {
             lappend out [format "set_output_delay -max %.4f -clock qb_clk \[get_ports {%s}\]" [expr {$mx * $per - $Le - $su}] $pats]
-            lappend out [format "set_output_delay -min %.4f -clock qb_clk \[get_ports {%s}\]" [expr {-$Ll}] $pats]
+            lappend out [expr {[string match act_o* $pats] ? [qb5_act_o_min_line $Le $Tq] :
+                [format "set_output_delay -min %.4f -clock qb_clk \[get_ports {%s}\]" [expr {-$Ll}] $pats]}]
         }
     }
     lappend out "set_driving_cell -lib_cell [lindex $::QB5_FT 0] -pin [lindex $::QB5_FT 1] \[get_ports {act\[*\]}\]"
     return [join $out "\n"]
 }
 proc qb5_io_apply {per Ll Le Tq} { foreach l [split [qb5_io_lines $per $Ll $Le $Tq] "\n"] { uplevel #0 $l } }
+# ICC2 (flow/icc2/common.tcl qb_io_lat, P(IO_MIN) = {measure apply}, after compute_clock_latency): qb5_act_o_lat_icc2
+# measures Le / Lc = the current scenario's launch / capture clock network delay of the min path act[0] -> act_o[0]
+# (early / late-derated I/O latency; -scenarios: without it ICC2 reports the worst path over all scenarios, R78 [M]: Le
+# 0.340 in every scenario); qb5_act_o_min_icc2 <Le Lc> <Tq> sets act_o -min.  Every scenario is measured before the
+# first set (a set_output_delay invalidates the timing: R78 [M] measure / set alternating took ~3 min per scenario)
+proc qb5_act_o_lat_icc2 {} {
+    redirect -variable r { report_timing -nosplit -delay_type min -scenarios [current_scenario] -from [get_ports {act[0]}] -to [get_ports {act_o[0]}] }
+    set v [lmap {- x} [regexp -all -inline -line {^\s*clock network delay \((?:ideal|propagated)\)\s+(-?[0-9.]+)} $r] { set x }]
+    if {[llength $v] != 2} { error "qb5_act_o_lat_icc2: [llength $v] clock network delays on act\[0\] -> act_o\[0\] in [get_object_name [current_scenario]]" }
+    return $v
+}
+proc qb5_act_o_min_icc2 {lat Tq} {
+    lassign $lat Le Lc
+    uplevel #0 [qb5_act_o_min_line $Le $Tq $Lc]
+    return [format "Le %.3f Lc %.3f Tq %.4f act_o -min %.4f" $Le $Lc $Tq [expr {$Lc - [qb5_hold_min $Le $Tq]}]]
+}
 # act_o[b] load = capacitance of the act[b] net.  qb5_act_o_caps <capof>: {b cap ...} of every act[b], capof = command
 # prefix called with the act port, returning that net's capacitance in the tool's current timing state; qb5_act_o_load
 # <caps>: set_load of each act_o[b].  Separate, because a set_load invalidates the timing (ICC2 also clears the net
@@ -123,19 +154,14 @@ proc qb5_ft_cells {} {
 # bit and edge (ICC2: the current scenario); qb5_act_tran_fix: measure / apply until a re-measure moves no value by more
 # than QB5_TRAN_TOL ns (the act_o transition depends a little on the act slew through the QB5_FT input), error after
 # QB5_TRAN_ROUNDS rounds; returns the last residual.
-# An ICC2 scenario without hold analysis (QC_ROLE setup: set_scenario_status -hold false) computes no min transitions
-# (R72 [M]: actual_*_transition_min empty on act_o in func_ss / ss_rcw / wcl / wcl_rcw, ATTR-3; the hold scenarios
-# give min = max); there the min input transition is never used, so it takes the max value.  PrimeTime: always strict.
 set ::QB5_TRAN_TOL 0.001
 set ::QB5_TRAN_ROUNDS 4
 proc qb5_act_tran {} {
     set t {}
-    set nomin [expr {[info exists ::synopsys_program_name] && [string match icc2* $::synopsys_program_name] && [get_attribute [current_scenario] hold] eq "false"}]
     foreach_in_collection p [get_ports {act_o[*]}] {
         regexp {\[(\d+)\]$} [get_object_name $p] -> b
         set v {}
         foreach a {actual_rise_transition_max actual_fall_transition_max actual_rise_transition_min actual_fall_transition_min} {
-            if {$nomin && [string match *_min $a]} { lappend v [lindex $v end-1]; continue }
             set x [get_attribute $p $a]
             if {![string is double -strict $x] || $x <= 0} { error "qb5_act_tran: no $a on [get_object_name $p] ($x)" }
             lappend v $x
