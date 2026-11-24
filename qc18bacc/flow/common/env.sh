@@ -13,23 +13,26 @@ qb_kit() {
     QC_KIT=$(tcsh -f -c "source $FLOW/site/site.csh >& /dev/null; printenv QC_KIT"); export QC_KIT QC_PY=$PY
 }
 # qb_pt <log> <command ...>: qc_tool of a PrimeTime run in the current dir; one PT_ERRORS line; non-zero unless the tool
-# exited 0 and neither the log nor ./parasitics_command.log (read_parasitics, e.g. SPFP-103) has an '^Error' line.
+# exited 0 and neither the log nor its parasitics log (read_parasitics side process, e.g. SPFP-103) has an '^Error' line.
+# The parasitics log is <log>_parasitics.log (QB_PT_PARA_LOG, set by signoff/pt/common.tcl qb_pt_spef as PT's
+# parasitics_log_file; R75): one file per run, so PT runs sharing a dir (top corners in parallel) never overwrite each
+# other's (R74 lost wcl_rcw's through the shared ./parasitics_command.log).
 # SI gate (R64, signoff/pt/common.tcl qb_pt_spef): also non-zero on any XTALK-011 (SI on, no SI data) or a non-zero
-# "Reduced coupling capacitances" count in the logs this run wrote: <log>, ./parasitics_command.log, and the DMSA scenario
-# logs (out.log, parasitics_command.log under the run dir); PT prints the reduced line only when it grounds coupling, the
-# kept count is "Annotated coupling capacitances" (logged).  ./parasitics_command.log is kept as <log>_parasitics.log.
+# "Reduced coupling capacitances" count in the logs this run wrote: <log>, its parasitics log, and the DMSA scenario
+# logs (out.log and parasitics logs in subdirs); PT prints the reduced line only when it grounds coupling, the
+# kept count is "Annotated coupling capacitances" (logged).
 # Sign-off gate (R67, signoff/pt/common.tcl qb_pt_si_checks; R68 col_blk.tcl: setup / hold / DRV): non-zero on any non-zero count of a QB_PT_SIGNOFF line of
 # <log> (noise, min pulse width, min period violators).
 qb_pt() {
-    local log=$1 rc e p=0 x c k v t0 F; rm -f parasitics_command.log; t0=$(date +%s)
-    qc_tool "$@"; rc=$?
-    e=$(grep -c '^Error' "$log"); [ -f parasitics_command.log ] && p=$(grep -c '^Error' parasitics_command.log)
-    F=$(find . -maxdepth 5 -name '*.nlib' -prune -o -type f \( -name parasitics_command.log -o -name out.log \) \
-        -newermt "@$t0" -print)
+    local log=$1 rc e p=0 x c k v t0 F pl b; pl=${1%.log}_parasitics.log; b=$(basename "$pl"); rm -f "$pl" "$b"; t0=$(date +%s)
+    QB_PT_PARA_LOG=$b qc_tool "$@"; rc=$?   # relative: DMSA scenario workers write theirs in their own work dirs
+    if [ -f "$b" ] && ! [ "$b" -ef "$pl" ]; then mv "$b" "$pl"; fi
+    e=$(grep -c '^Error' "$log"); [ -f "$pl" ] && p=$(grep -c '^Error' "$pl")
+    F=$(find . -mindepth 2 -maxdepth 5 -name '*.nlib' -prune -o -type f \( -name "$b" -o -name parasitics_command.log \
+        -o -name out.log \) -newermt "@$t0" -print; [ -f "$pl" ] && echo "$pl")
     x=$(cat "$log" $F /dev/null | grep -c 'XTALK-011')
     c=$(cat $F /dev/null | grep -h 'Reduced coupling capacitances' | awk '{s += $NF; n++} END {printf "%d (%d lines)", s, n}')
     k=$(cat $F /dev/null | grep -h 'Annotated coupling capacitances' | awk '{s += $NF; n++} END {printf "%d (%d reads)", s, n}')
-    [ -f parasitics_command.log ] && cp parasitics_command.log "${log%.log}_parasitics.log"
     v=$(grep -h '^QB_PT_SIGNOFF' "$log" | awk '{for (i = 3; i <= NF; i += 2) if ($i + 0) b++} END {print b + 0}')
     echo "PT_ERRORS $(basename "$log") rc $rc errors ${e:-NA} parasitics_errors $p xtalk011 $x reduced_coupling $c coupling_annotated $k signoff_fails $v"
     [ $rc = 0 ] && [ "$e" = 0 ] && [ "$p" = 0 ] && [ "$x" = 0 ] && [ "${c%% *}" = 0 ] && [ "$v" = 0 ]

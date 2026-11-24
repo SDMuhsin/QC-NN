@@ -12,7 +12,9 @@
 #   capacitance unless it is given -keep_capacitive_coupling (R63 [M]: "Reduced coupling capacitances : 2029860",
 #   XTALK-011 "SI enabled but no SI data"), so every PrimeTime script reads its SPEF through qb_pt_spef.  common/env.sh
 #   qb_pt gates it: a PT run fails on XTALK-011 or a non-zero reduced-coupling count.
-#   qb_pt_spef <spef>         read_parasitics of the ICC2 SPEF with its coupling capacitances kept (SI)
+#   qb_pt_spef <spef>         read_parasitics of the ICC2 SPEF with its coupling capacitances kept (SI); the side
+#                             process's log goes to $QB_PT_PARA_LOG (common/env.sh qb_pt: <log>_parasitics.log, one per
+#                             run, so two PT runs in one dir never share parasitics_command.log; R74 lost a log that way)
 #   qb_pt_spef_file <dir> <top> <corner>  the block SPEF of a corner: <dir>/out/<top>_<corner>_pt.spef.gz (ICC2
 #                             flow/icc2/extract.tcl, R71) or _pt.spef (OpenROAD def2spef flows); error if none or both
 #   qb_pt_lat <dir> <corner>  insertion delay L of this corner: p50 of the rise arrival at every register / macro clock pin
@@ -92,6 +94,7 @@ proc qb_pt_drv {fh} {
     return "max_transition [regexp -all -line {VIOLATED} $t] max_capacitance [regexp -all -line {VIOLATED} $c]"
 }
 proc qb_pt_spef {spef} {
+    if {[info exists ::env(QB_PT_PARA_LOG)]} { set_app_var parasitics_log_file $::env(QB_PT_PARA_LOG) }
     read_parasitics -keep_capacitive_coupling -format spef $spef
 }
 proc qb_pt_spef_file {dir top corner} {

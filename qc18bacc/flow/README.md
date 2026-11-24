@@ -33,7 +33,7 @@ markers, PT setup / hold / DRV per corner, last ERROR line, queue.state of the r
 
 Exit status (R53): `synth/run.sh` + `partition.sh` (flow/tsmc65 `run_dc.sh` / `run_pt.sh`), the PrimeTime and Calibre
 parts of `blocks/*/run.sh` and `signoff/calibre/*.sh` exit non-zero when the tool fails (PrimeTime: exit status or an
-`^Error` line in its log or `parasitics_command.log`, `common/env.sh qb_pt`; background jobs: `qb_wait`), so a queue
+`^Error` line in its log or its `<log>_parasitics.log`, `common/env.sh qb_pt`; background jobs: `qb_wait`), so a queue
 stops at that step.  The OpenROAD steps are unchanged.
 
 ## Column block qb_col_blk (`blocks/col`, ICC2 since R54, results/r54.md)

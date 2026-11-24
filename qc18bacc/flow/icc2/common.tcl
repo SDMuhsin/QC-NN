@@ -36,6 +36,7 @@ set ::QBF [file normalize [file dirname [info script]]/..]
 set ::QC_BUILD $::env(QC_BUILD)
 source $::env(QC_FLOW)/common/lib.tcl
 source $::env(QC_FLOW)/site/pnr.tcl
+source $::QBF/common/clock_cells.tcl
 source $::env(QB_ICC2_CFG)
 set ::R $::env(QB_ICC2_RUN)
 set ::QB_NDM $::QC_BUILD/icc2/ndm/[file rootname [file tail $::QC_PNR_LEF]].ndm
@@ -152,12 +153,11 @@ proc qb_route_setup {} {
     set_app_options -name route.detail.diode_libcell_names -value [lindex $::QC_PNR_DIODE 0]
     foreach o {route.global.timing_driven route.track.timing_driven route.detail.timing_driven} { set_app_options -name $o -value true }
     # crosstalk at route time (R74; Synopsys RM route settings, needs time.si_enable_analysis of qb_timer): crosstalk-
-    # driven global routing and track assignment (default false: Q-2019.12 has no detail-route counterpart), and route_opt
-    # crosstalk reduction (route_opt.flow.xtalk_reduction, default false; undocumented in this release's man pages but a
-    # valid option; route_opt's man page: "crosstalk reduction [is] not performed by default").  R73 [M]: the noise
-    # victims PrimeTime cannot fix (act_o feedthroughs dont_touch, u_acc U123/A2 650 um driver-to-load-cluster nets)
-    # came out of a crosstalk-blind route.
-    foreach o {route.global.crosstalk_driven route.track.crosstalk_driven route_opt.flow.xtalk_reduction} { set_app_options -name $o -value true }
+    # driven global routing and track assignment (default false: Q-2019.12 has no detail-route counterpart).  R73 [M]: the
+    # noise victims PrimeTime cannot fix (act_o feedthroughs dont_touch, u_acc U123/A2 650 um driver-to-load-cluster nets)
+    # came out of a crosstalk-blind route.  (route_opt.flow.xtalk_reduction is deprecated in Q-2019.12, NDMUI-443, and
+    # ran no crosstalk phase in r74 [M]: not set, R75.)
+    foreach o {route.global.crosstalk_driven route.track.crosstalk_driven} { set_app_options -name $o -value true }
     # redundant vias (R71; Synopsys RM route settings): every detail route (route_auto, route_opt's ECO routing, route_eco)
     # ends with redundant via insertion at medium effort (single-cut vias -> 2-cut arrays where DRC-clean; no
     # add_via_mapping, the tool's default mapping).  R68 [M] without it: double-via rate 0.38 % (route.log).
