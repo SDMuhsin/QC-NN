@@ -25,6 +25,7 @@
 #   qb_route_setup      routing options of route.tcl / eco.tcl: kit antenna rules, antenna-aware detail routing with
 #                       ANTENNA diodes, port nets checked with a minimum outside gate (no ZRT-311), timing-driven
 #                       global / track / detail routing, redundant via insertion after every detail route (R71)
+#   qb_feedthru_ndr     feedthrough port nets P(FEEDTHRU) on a spacing NDR P(FEEDTHRU_NDR) (R74, route.tcl)
 #   qb_fillers          decap (DCAP*, removed where they violate) then metal-free FILL* cells in every empty site
 #   qb_route_checks <step>  check_routes / check_lvs -> rpt/<step>_check_{routes,lvs}.rpt + summary lines
 #   qb_pg_check <step>  PG pin gate (R67; floorplan.tcl, abstract.tcl): the VDD / VSS terminals are exactly the straps of
@@ -150,10 +151,28 @@ proc qb_route_setup {} {
     set_app_options -name route.detail.insert_diodes_during_routing -value true
     set_app_options -name route.detail.diode_libcell_names -value [lindex $::QC_PNR_DIODE 0]
     foreach o {route.global.timing_driven route.track.timing_driven route.detail.timing_driven} { set_app_options -name $o -value true }
+    # crosstalk at route time (R74; Synopsys RM route settings, needs time.si_enable_analysis of qb_timer): crosstalk-
+    # driven global routing and track assignment (default false: Q-2019.12 has no detail-route counterpart), and route_opt
+    # crosstalk reduction (route_opt.flow.xtalk_reduction, default false; undocumented in this release's man pages but a
+    # valid option; route_opt's man page: "crosstalk reduction [is] not performed by default").  R73 [M]: the noise
+    # victims PrimeTime cannot fix (act_o feedthroughs dont_touch, u_acc U123/A2 650 um driver-to-load-cluster nets)
+    # came out of a crosstalk-blind route.
+    foreach o {route.global.crosstalk_driven route.track.crosstalk_driven route_opt.flow.xtalk_reduction} { set_app_options -name $o -value true }
     # redundant vias (R71; Synopsys RM route settings): every detail route (route_auto, route_opt's ECO routing, route_eco)
     # ends with redundant via insertion at medium effort (single-cut vias -> 2-cut arrays where DRC-clean; no
     # add_via_mapping, the tool's default mapping).  R68 [M] without it: double-via rate 0.38 % (route.log).
     set_app_options -name route.common.post_detail_route_redundant_via_insertion -value medium
+}
+# feedthrough port nets (P(FEEDTHRU), dont_touch since init) routed with spacing multiplier P(FEEDTHRU_NDR) (R74; route.tcl
+# before route_auto).  dont_touch keeps the cell and net out of optimisation (no buffering / sizing), not out of routing,
+# so the router can still space them; PrimeTime cannot fix their noise (reason V), so it must not be routed in.
+proc qb_feedthru_ndr {} {
+    global P
+    if {![info exists P(FEEDTHRU_NDR)]} return
+    set n [get_nets -of_objects [get_ports $P(FEEDTHRU)]]
+    create_routing_rule qb_feedthru -default_reference_rule -multiplier_spacing $P(FEEDTHRU_NDR)
+    set_routing_rule $n -rule qb_feedthru
+    qb_line "route feedthrough NDR qb_feedthru (spacing x $P(FEEDTHRU_NDR)) on [sizeof_collection $n] nets ($P(FEEDTHRU))"
 }
 # decaps (they carry M1) first and removed where they violate, then the metal-free FILL* close every remaining gap
 # (R54 ran both in one create_stdcell_fillers: the removed DCAPs left empty gaps, Calibre NW.S.1 / OD2.S.5 27 004)

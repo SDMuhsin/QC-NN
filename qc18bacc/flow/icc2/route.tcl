@@ -1,4 +1,5 @@
-# Routing: kit antenna rules (Milkyway clf antennaRule_n65_<n>lm.tcl, read in ICC2 syntax), diodes ANTENNA, route_auto,
+# Routing (crosstalk-driven global / track routing + route_opt crosstalk reduction, feedthrough NDR: qb_route_setup,
+# qb_feedthru_ndr, R74): kit antenna rules (Milkyway clf antennaRule_n65_<n>lm.tcl, read in ICC2 syntax), diodes ANTENNA, route_auto,
 # route_opt (MCMM setup / hold / DRV) twice, standard-cell decap + filler cells (site/pnr.tcl), check_routes / check_lvs.
 # Block label cts -> route.  route_opt fixes hold (R55: 122 ropt_h_inst buffers, 142 -> 0 func_ff hold violators before its
 # ECO routing) against the parasitics before it ECO-routes its own changes; that ECO routing leaves ps-level hold misses
@@ -16,6 +17,7 @@
 source [file dirname [info script]]/common.tcl
 qb_open cts route
 qb_route_setup
+qb_feedthru_ndr
 route_auto
 qb_io_load
 set_app_options -name route_opt.flow.enable_ccd_clock_drc_fixing -value always_on
