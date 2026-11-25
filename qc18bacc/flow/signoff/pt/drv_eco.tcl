@@ -14,6 +14,7 @@
 #     2. fix_eco_timing -type setup (size_cell, insert_buffer of qb_eco_buffers: every BUFFD* not dont_use; R67, R69)
 #     3. fix_eco_timing -type hold (size_cell, insert_buffer of common/lib_cells.tcl qb_hold_cells: the list ICC2 hold
 #        fixing uses, R84); PT keeps setup / DRV of every scenario clean
+#     4. fix_eco_drc noise again (R85): the hold pass does not keep noise
 #   No fixing margins.  Writes <QC_PNR_OUT>/out/eco/pt_eco.tcl (icc2tcl, sourced by flow/icc2/eco.tcl), eco_summary.txt
 #   (setup / hold violators, max_tran / max_cap pins (of them in the clock network) per corner before / after DRV /
 #   after hold; ECO size), the unfixable reasons of every pass (<type>_unfixable*, drc_<type>[_clock]_unfixable*).
@@ -59,8 +60,8 @@ proc qb_eco_clock_buffers {} {
 # so PT sees the clock cells' placement and never sizes a fixed clock cell into its neighbour; sizing restricted to
 # the clock-tree lib cells (PT otherwise uses every alternative: r75 eco 1 [M] sized cts_inv_34929379 to INVD8;
 # fix_eco_drc man: eco_alternative_cell_attribute_restrictions), set in the scenarios for this pass only.
-proc qb_eco_drc {pfx bufs {cbufs {}}} {
-    foreach ty {max_transition max_capacitance noise} {
+proc qb_eco_drc {pfx bufs {cbufs {}} {types {max_transition max_capacitance noise}}} {
+    foreach ty $types {
         fix_eco_drc -type $ty -methods {size_cell insert_buffer} -buffer_list $bufs \
             -cell_type {combinational sequential} -physical_mode occupied_site -verbose \
             -unfixable_reasons_prefix ${pfx}drc_$ty -unfixable_reasons_format text
@@ -166,6 +167,13 @@ puts $sf "hold cells $hbufs"
 fix_eco_timing -type hold -methods {size_cell insert_buffer} -buffer_list $hbufs -physical_mode $pmode \
     -verbose -unfixable_reasons_prefix $o/hold_unfixable -unfixable_reasons_format text
 qb_eco_state $sf hold
+# noise after hold (R85, PI decision 4): fix_eco_timing -type hold keeps setup and max_transition / max_capacitance but not
+# crosstalk noise.  [M] r84 eco_summary: ml_rcb noise 0 after the DRV and setup passes, 1 after the hold pass, which is
+# the one post-ECO noise violator (b2[21], ml_rcb).  So the noise pass also runs last, on the hold-fixed design (DRV
+# fixing keeps timing); the hold-only cells are dont_use again first, as outside the hold pass everywhere.
+remote_execute { foreach p [qb_hold_only] { set c [get_lib_cells -quiet */$p]; if {[sizeof_collection $c]} { set_dont_use $c true } } }
+qb_eco_drc $o/post_hold_ $bufs {} noise
+qb_eco_state $sf noise
 current_scenario [lindex $corners 0]
 remote_execute "write_changes -format icc2tcl -output $o/pt_eco.tcl"
 current_scenario -all

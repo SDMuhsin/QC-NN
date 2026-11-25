@@ -17,8 +17,8 @@
 #                             run, so two PT runs in one dir never share parasitics_command.log; R74 lost a log that way)
 #   qb_pt_spef_file <dir> <top> <corner>  the block SPEF of a corner: <dir>/out/<top>_<corner>_pt.spef.gz (ICC2
 #                             flow/icc2/extract.tcl, R71) or _pt.spef (OpenROAD def2spef flows); error if none or both
-#   qb_pt_lat <dir> <corner>  insertion delay L of this corner: p50 of the late rise arrival at every register / macro clock
-#                             pin (signoff/pt/io_lat.tcl qb_clk_arrival late); "<p50> <min> <max>" written to
+#   qb_pt_lat <dir> <corner>  insertion delay L of this corner: p50 of the late rise arrival at the IO-path register clock
+#                             pins (signoff/pt/io_lat.tcl qb_clk_arrival late; ICC2's io pair regs, R85); "<p50> <min> <max>" written to
 #                             <dir>/out/clk_lat_<corner>.txt, which the chip top reads (blocks/top/run.sh views)
 #   qb_pt_ann                 SPEF annotation line "total N rc_network N coupled_network N not_annotated N" (totals row
 #                             of report_annotated_parasitics; with coupling kept it has the Coupled network column, R64)
@@ -65,7 +65,7 @@ source [file normalize [file dirname [info script]]/io_lat.tcl]
 proc qb_pt_lat {dir corner} {
     lassign [qb_clk_arrival late] L n mn mx p10 p90
     file mkdir $dir/out; set f [open $dir/out/clk_lat_$corner.txt w]; puts $f "$L $mn $mx"; close $f
-    puts [format "QB_PT_LAT %s L %s (p50 of %d clock pins; p10 %.3f p90 %.3f max %.3f)" $corner $L $n $p10 $p90 $mx]
+    puts [format "QB_PT_LAT %s L %s (p50 of %d IO-path register clock pins; p10 %.3f p90 %.3f max %.3f)" $corner $L $n $p10 $p90 $mx]
     return $L
 }
 proc qb_pt_ann {} {

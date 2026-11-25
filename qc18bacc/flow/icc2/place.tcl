@@ -16,6 +16,10 @@ set_app_options -name place_opt.flow.merge_clock_gates -value false
 set_app_options -name place.coarse.continue_on_missing_scandef -value true
 create_routing_rule qb_clk -multiplier_spacing 2
 set_clock_routing_rules -rules qb_clk -min_routing_layer M3 -max_routing_layer M6
+# density cap of the measured hold-demand regions (R85, PI decision 1; common.tcl qb_density_cap, blocks with
+# P(DENSITY_CAP)): a coarse placement gives the instances' cell bounding boxes and the block utilisation, the partial
+# blockages go there, and place_opt places from scratch under them
+if {[info exists P(DENSITY_CAP)]} { create_placement; qb_density_cap }
 place_opt
 redirect -variable lg { check_legality }
 qb_line "place check_legality: [regsub -all {\s+} [join [lrange [regexp -all -inline -line {^.*(?:[Vv]iolat|succeeded|failed).*$} $lg] 0 2] { | }] { }]"

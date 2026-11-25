@@ -44,7 +44,11 @@ file mkdir $dir/rpt
 set fh [open $dir/pt_blk_$corner.txt w]
 set nets [qb_pt_ann]
 puts $fh "design $top corner $corner period $per lib $::QC_LIB($corner) spef_nets $nets"
-puts $fh [format "insertion_delay_L_ns %.3f early %.3f (p50 late / early clock-pin arrival) lib_tcq_ns %.4f min_input_delay_ns %.4f act_min_input_delay_ns %.4f (+ QC_ACT_HOLD_HUB)" $L $Le $Tq [qb5_hold_min $Le $Tq] [qb5_act_in_min $Le $Tq]]
+puts $fh [format "insertion_delay_L_ns %.3f early %.3f (p50 late / early arrival at %d IO-path register clock pins, R85)" $L $Le [sizeof_collection $::QB_IO_REG_CP]]
+# R85 before / after record of PI decision 2: the same p50 over all register clock pins (the pre-R85 PT definition), report only
+set ar [lmap w {max_rise_arrival min_rise_arrival} { set v [lsort -real [lmap a [get_attribute -quiet [all_registers -clock_pins] $w] { if {![string is double -strict $a]} continue; set a }]]; format %.3f [lindex $v [expr {[llength $v] / 2}]] }]
+puts $fh "insertion_delay_all_registers_ns late [lindex $ar 0] early [lindex $ar 1] ([sizeof_collection [all_registers -clock_pins]] clock pins; pre-R85 definition, not applied)"
+puts $fh [format "lib_tcq_ns %.4f min_input_delay_ns %.4f act_min_input_delay_ns %.4f (+ QC_ACT_HOLD_HUB)" $Tq [qb5_hold_min $Le $Tq] [qb5_act_in_min $Le $Tq]]
 puts $fh [qb_dont_use_gate post_$corner 0]
 puts $fh [format "act_input_transition own act_o transition per bit, fixed-point residual %.5f ns" $::QB5_TRAN_RES]
 set regs [all_registers -data_pins]; set regc [all_registers -clock_pins]

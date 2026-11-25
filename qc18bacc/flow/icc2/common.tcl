@@ -129,7 +129,12 @@ proc qb_io_load {} {
 # constraints measured on this latency (column: act_o -min = capture latency - (early latency + Tq)).
 proc qb_io_lat {step} {
     global P
-    compute_clock_latency
+    # (R85, PI decision 2) the register set and value per corner logged: "io pair regs" is the one IO latency definition,
+    # PrimeTime measures the same set (signoff/pt/io_lat.tcl qb_io_reg_clock_pins)
+    redirect -variable ccl { compute_clock_latency -verbose }
+    foreach {- e l c u n} [regexp -all -inline -line {^\S+\s+Yes\s+([0-9.]+)\s+[0-9.]+\s+([0-9.]+)\s+[0-9.]+\s+(\S+)\s+\S+\s+\S+\s+(.*?)[ \t]+(\d+)[ \t]*$} $ccl] {
+        qb_line "io_lat $step ccl $c early $e late $l using '$u' regs $n"
+    }
     set s0 [current_scenario]
     if {[info exists P(IO_MIN)]} {
         lassign $P(IO_MIN) measure apply
@@ -230,6 +235,41 @@ proc qb_route_checks {step} {
     foreach r {check_routes check_lvs} {
         set t [exec cat $::R/rpt/${step}_$r.rpt]
         foreach l [split $t "\n"] { if {[regexp -nocase {total number|total.*(error|violation)|open|short} $l]} { qb_line "$step $r [string trim $l]" } }
+    }
+}
+# Local density cap over measured hold demand (R85, PI decision 1; place.tcl, enabled per block by P(DENSITY_CAP) = the
+# hierarchical instances whose region gets it, column: u_core/u_pbw u_core/u_pbf).
+# Why [M] (R80-R84): the pin-adjacent register banks qbc_pbank_w / qbc_pbank_f have direct port -> AO22 -> flop paths that
+# each need one hold cell; their local utilisation was 0.75-0.83 at +-10 um vs 0.64 for the block, and the PrimeTime hold
+# ECO could not place its last ~37 fixes there (r84 out/eco/hold_unfixable.txt: 37 endpoints, all u_pbw, reason D).
+# What: one partial placement blockage per instance over the bounding box of its leaf cells as placed by a coarse
+# create_placement of this step (derived, not hard-coded), blocked percentage = 100 * (1 - block utilisation) with the
+# utilisation measured by report_utilization on the same placement, so the region's density is capped at the block's own
+# average (no new constant); place_opt then re-places under the cap and later hold cells find free sites there.  A
+# targeted measure for an explained demand, not a global density change (the rest of the core is untouched).
+proc qb_density_cap {} {
+    global P
+    if {![info exists P(DENSITY_CAP)]} return
+    redirect -variable ru { report_utilization }
+    if {![regexp {Utilization Ratio:\s*([0-9.]+)} $ru -> u]} { error "qb_density_cap: no utilization ratio" }
+    set pct [expr {int(round(100.0 * (1.0 - $u)))}]
+    lassign [get_attribute [get_core_area] bbox] c0 c1
+    set ca [expr {([lindex $c1 0] - [lindex $c0 0]) * ([lindex $c1 1] - [lindex $c0 1])}]
+    foreach h $P(DENSITY_CAP) {
+        set cs [get_flat_cells -quiet -filter "full_name=~$h/*"]
+        if {![sizeof_collection $cs]} { error "qb_density_cap: no leaf cell under $h" }
+        set xl {}; set yl {}; set a 0.0
+        foreach_in_collection c $cs {
+            lassign [get_attribute $c boundary_bbox] p0 p1
+            lappend xl [lindex $p0 0] [lindex $p1 0]; lappend yl [lindex $p0 1] [lindex $p1 1]
+            set a [expr {$a + [get_attribute $c area]}]
+        }
+        set bb [list [list [tcl::mathfunc::min {*}$xl] [tcl::mathfunc::min {*}$yl]] [list [tcl::mathfunc::max {*}$xl] [tcl::mathfunc::max {*}$yl]]]
+        set ba [expr {([lindex $bb 1 0] - [lindex $bb 0 0]) * ([lindex $bb 1 1] - [lindex $bb 0 1])}]
+        set n qb_dcap_[regsub -all {\W} $h _]
+        create_placement_blockage -name $n -type partial -blocked_percentage $pct -boundary $bb
+        qb_line [format "density_cap %s cells %d bbox %s area %.0f um2 (%.2f %% of core) region_util %.3f block_util %s blocked_percentage %d" \
+            $h [sizeof_collection $cs] $bb $ba [expr {100.0 * $ba / $ca}] [expr {$a / $ba}] $u $pct]
     }
 }
 proc qb_pg_check {step} {
