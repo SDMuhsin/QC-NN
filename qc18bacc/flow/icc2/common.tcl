@@ -237,40 +237,52 @@ proc qb_route_checks {step} {
         foreach l [split $t "\n"] { if {[regexp -nocase {total number|total.*(error|violation)|open|short} $l]} { qb_line "$step $r [string trim $l]" } }
     }
 }
-# Local density cap over measured hold demand (R85, PI decision 1; place.tcl, enabled per block by P(DENSITY_CAP) = the
-# hierarchical instances whose region gets it, column: u_core/u_pbw u_core/u_pbf).
-# Why [M] (R80-R84): the pin-adjacent register banks qbc_pbank_w / qbc_pbank_f have direct port -> AO22 -> flop paths that
-# each need one hold cell; their local utilisation was 0.75-0.83 at +-10 um vs 0.64 for the block, and the PrimeTime hold
-# ECO could not place its last ~37 fixes there (r84 out/eco/hold_unfixable.txt: 37 endpoints, all u_pbw, reason D).
-# What: one partial placement blockage per instance over the bounding box of its leaf cells as placed by a coarse
-# create_placement of this step (derived, not hard-coded), blocked percentage = 100 * (1 - block utilisation) with the
-# utilisation measured by report_utilization on the same placement, so the region's density is capped at the block's own
-# average (no new constant); place_opt then re-places under the cap and later hold cells find free sites there.  A
-# targeted measure for an explained demand, not a global density change (the rest of the core is untouched).
-proc qb_density_cap {} {
+# Netlist-targeted hold-cell reservation (R87, PI decision; place.tcl before place_opt, enabled per block by
+# P(HOLD_RESERVE) = the input-port globs, column: pw / pf / w_ld).
+# Why [M] (R80-R86): the direct port -> AO22 -> flop paths of the pin-adjacent register banks each need about one hold
+# cell; r84 left 37 PT-unfixable (reason D) hold endpoints pw / w_ld -> u_pbw in a 100 %-full window (R86, exact bbox
+# overlap: flops 45 %, AO22 26 %, ICC2 hold cells 27 %; block 0.62).  The R85 bbox-region density cap was not targeted
+# (45 % of the core, setup -0.21) and is removed.
+# What: every leaf cell driven directly by one of those ports whose fanout reaches a register within 2 cell levels
+# (the cell is a register, or it drives a register input) gets a SOFT outer keepout margin, on its right side only, of
+# the width of the narrowest cell of the shared hold-cell list (common/lib_cells.tcl qb_hold_cells; width from the
+# library, nothing hard-coded).  Soft: only the coarse placer keeps out, optimisation and legalisation (the later hold
+# cells) may use the sites, so the reservation holds exactly one hold cell next to each cell that needs one.
+proc qb_hold_reserve {} {
     global P
-    if {![info exists P(DENSITY_CAP)]} return
-    redirect -variable ru { report_utilization }
-    if {![regexp {Utilization Ratio:\s*([0-9.]+)} $ru -> u]} { error "qb_density_cap: no utilization ratio" }
-    set pct [expr {int(round(100.0 * (1.0 - $u)))}]
+    if {![info exists P(HOLD_RESERVE)]} return
+    lassign [qb_hold_cell_min] wd ht hc
+    lassign [qb_hold_reserve_cells $P(HOLD_RESERVE)] cs np nreg ncmb
+    create_keepout_margin -type soft -outer [list 0 0 $wd 0] $cs
+    foreach_in_collection c $cs { incr rc([get_attribute $c ref_name]) }
+    set rl {}; foreach k [lsort [array names rc]] { lappend rl $k:$rc($k) }
     lassign [get_attribute [get_core_area] bbox] c0 c1
     set ca [expr {([lindex $c1 0] - [lindex $c0 0]) * ([lindex $c1 1] - [lindex $c0 1])}]
-    foreach h $P(DENSITY_CAP) {
-        set cs [get_flat_cells -quiet -filter "full_name=~$h/*"]
-        if {![sizeof_collection $cs]} { error "qb_density_cap: no leaf cell under $h" }
-        set xl {}; set yl {}; set a 0.0
-        foreach_in_collection c $cs {
-            lassign [get_attribute $c boundary_bbox] p0 p1
-            lappend xl [lindex $p0 0] [lindex $p1 0]; lappend yl [lindex $p0 1] [lindex $p1 1]
-            set a [expr {$a + [get_attribute $c area]}]
-        }
-        set bb [list [list [tcl::mathfunc::min {*}$xl] [tcl::mathfunc::min {*}$yl]] [list [tcl::mathfunc::max {*}$xl] [tcl::mathfunc::max {*}$yl]]]
-        set ba [expr {([lindex $bb 1 0] - [lindex $bb 0 0]) * ([lindex $bb 1 1] - [lindex $bb 0 1])}]
-        set n qb_dcap_[regsub -all {\W} $h _]
-        create_placement_blockage -name $n -type partial -blocked_percentage $pct -boundary $bb
-        qb_line [format "density_cap %s cells %d bbox %s area %.0f um2 (%.2f %% of core) region_util %.3f block_util %s blocked_percentage %d" \
-            $h [sizeof_collection $cs] $bb $ba [expr {100.0 * $ba / $ca}] [expr {$a / $ba}] $u $pct]
+    set a [expr {[sizeof_collection $cs] * $wd * $ht}]
+    qb_line [format "hold_reserve ports %d cells %d (register %d, combinational -> register %d) refs %s keepout soft right %.3f um (%s) area %.1f um2 (%.3f %% of core)" \
+        $np [sizeof_collection $cs] $nreg $ncmb $rl $wd $hc $a [expr {100.0 * $a / $ca}]]
+}
+# narrowest cell of the shared hold-cell list: {width height name} from the library
+proc qb_hold_cell_min {} {
+    set wl {}
+    foreach c [qb_hold_cells] { foreach_in_collection l [get_lib_cells */$c] { lappend wl [list [get_attribute $l width] [get_attribute $l height] $c] } }
+    return [lindex [lsort -real -index 0 $wl] 0]
+}
+# leaf cells driven directly by the input ports <globs> that are registers or drive a register input:
+# {cells n_ports n_register n_combinational}
+proc qb_hold_reserve_cells {globs} {
+    set ports [get_ports $globs -filter "direction==in"]
+    if {![sizeof_collection $ports]} { error "qb_hold_reserve: no input port matches $globs" }
+    set sel {}; set nreg 0; set ncmb 0
+    foreach_in_collection c [get_cells -quiet -of_objects [get_pins -quiet -leaf -of_objects [get_nets -of_objects $ports] -filter "direction==in"]] {
+        if {[get_attribute $c is_sequential] eq "true"} { incr nreg; lappend sel $c; continue }
+        set o [get_nets -quiet -of_objects [get_pins -quiet -of_objects $c -filter "direction==out"]]
+        if {![sizeof_collection $o]} continue
+        set r [get_cells -quiet -of_objects [get_pins -quiet -leaf -of_objects $o -filter "direction==in"] -filter "is_sequential==true"]
+        if {[sizeof_collection $r]} { incr ncmb; lappend sel $c }
     }
+    if {![llength $sel]} { error "qb_hold_reserve: no cell selected on $globs" }
+    return [list [get_cells $sel] [sizeof_collection $ports] $nreg $ncmb]
 }
 proc qb_pg_check {step} {
     lassign [qb_pg_strap $::QB_PG_PIN] dir w pitch off
