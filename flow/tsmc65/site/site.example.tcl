@@ -40,3 +40,4 @@ set ::QC_DRV_CLK  {<CLOCK_DRIVER_CELL> <PIN>}   ;# driving cell of clock inputs
 set ::QC_LOAD_PIN <LOAD_CELL>/<PIN>             ;# outputs see 4 x this pin's capacitance
 set ::QC_DONT_USE {}                            ;# lib-cell globs no tool may use: DC and P&R / ECO (optional;
                                                 ;# include the kit release note's dont_use table, e.g. EM high-drive cells)
+set ::QC_HOLD_ONLY {}                           ;# globs of QC_DONT_USE that hold fixing alone may use (e.g. delay cells)

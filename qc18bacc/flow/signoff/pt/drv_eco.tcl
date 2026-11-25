@@ -12,7 +12,8 @@
 #        physically aware only (R81, qb_eco_drc); max_transition / max_capacitance also in the clock network (R75,
 #        qb_eco_clock_buffers), physically aware with the clock-network physical data (R81)
 #     2. fix_eco_timing -type setup (size_cell, insert_buffer of qb_eco_buffers: every BUFFD* not dont_use; R67, R69)
-#     3. fix_eco_timing -type hold (size_cell, insert_buffer BUFFD1 / 2); PT keeps setup / DRV of every scenario clean
+#     3. fix_eco_timing -type hold (size_cell, insert_buffer of common/lib_cells.tcl qb_hold_cells: the list ICC2 hold
+#        fixing uses, R84); PT keeps setup / DRV of every scenario clean
 #   No fixing margins.  Writes <QC_PNR_OUT>/out/eco/pt_eco.tcl (icc2tcl, sourced by flow/icc2/eco.tcl), eco_summary.txt
 #   (setup / hold violators, max_tran / max_cap pins (of them in the clock network) per corner before / after DRV /
 #   after hold; ECO size), the unfixable reasons of every pass (<type>_unfixable*, drc_<type>[_clock]_unfixable*).
@@ -154,7 +155,15 @@ qb_eco_state $sf drc
 fix_eco_timing -type setup -methods {size_cell insert_buffer} -buffer_list $bufs -physical_mode $pmode \
     -verbose -unfixable_reasons_prefix $o/setup_unfixable -unfixable_reasons_format text
 qb_eco_state $sf setup
-fix_eco_timing -type hold -methods {size_cell insert_buffer} -buffer_list {BUFFD1 BUFFD2} -physical_mode $pmode \
+# hold (R84): the ONE hold-cell list of ICC2 and this ECO (common/lib_cells.tcl qb_hold_cells: BUFFD<n> + the delay cells
+# DEL<n>); the hold-only cells (site.tcl QC_HOLD_ONLY) are dont_use in every scenario until here, so DRV / setup never use them
+current_scenario [lindex $corners 0]
+redirect -variable r { remote_execute -verbose { puts "QB_ECO_HBUFS [qb_hold_cells]" } }
+current_scenario -all
+if {![regexp {QB_ECO_HBUFS (BUFF[^\n]*)} $r -> hbufs]} { error "QB_PT_ECO: no hold cell list from [lindex $corners 0]" }
+remote_execute { foreach p [qb_hold_only] { set c [get_lib_cells -quiet */$p]; if {[sizeof_collection $c]} { set_dont_use $c false } } }
+puts $sf "hold cells $hbufs"
+fix_eco_timing -type hold -methods {size_cell insert_buffer} -buffer_list $hbufs -physical_mode $pmode \
     -verbose -unfixable_reasons_prefix $o/hold_unfixable -unfixable_reasons_format text
 qb_eco_state $sf hold
 current_scenario [lindex $corners 0]

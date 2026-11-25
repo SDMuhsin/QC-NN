@@ -13,6 +13,13 @@ s#^//PO.DN.1 is checked by#\#ENDIF\n\#IFDEF QB_BLK_DN\n&#
 # the block has no M8 / M9 metal (column: routing to M7), so on a block they flag the empty window, not the design.  These two
 # rules ONLY are unselected on a block (M8.DN.1.1 / M9.DN.1.1 and every other rule stay); the chip top MUST check them
 # (blocks/top/run.sh).  The exclusion holds only while the block has no M8 / M9 at all: rule QB_BLK.M8M9.0 flags every
-# M8 / M9 shape of every datatype this deck maps (drawn, dummy, not-use) and cal.sh fails the drc run on any QB_* result.
+# M8 / M9 shape of every datatype this deck maps (drawn, dummy, not-use).  R84: the rule is appended at the END of the deck
+# (outside every #IFDEF; its LAYER inputs are defined at depth 0), so no deck switch can drop it; cal.sh fails the drc run on
+# any QB_* rule with results AND on any QB_* rule of the deck without a RULECHECK line in the summary report.
 s#^DRC MAXIMUM RESULTS ALL#&\nDRC UNSELECT CHECK M8.DN.1\nDRC UNSELECT CHECK M9.DN.1#
-s#^M8\.DN\.1 {#QB_M8ANY = ((M8_OLD OR M8_NEW) OR (DUM8_OLD OR DUM8_NEW)) OR (NOUSEM8_OLD OR NOTUSEM8)\nQB_M9ANY = ((M9_OLD OR M9_NEW) OR (DUM9_OLD OR DUM9_NEW)) OR (NOUSEM9_OLD OR NOTUSEM9)\nQB_BLK.M8M9.0 { @ QB block gate: no M8 / M9 shape (M8.DN.1 / M9.DN.1 unselected on a block, checked at the chip top)\n  QB_M8ANY OR QB_M9ANY\n}\n&#
+$a\
+QB_M8ANY = ((M8_OLD OR M8_NEW) OR (DUM8_OLD OR DUM8_NEW)) OR (NOUSEM8_OLD OR NOTUSEM8)\
+QB_M9ANY = ((M9_OLD OR M9_NEW) OR (DUM9_OLD OR DUM9_NEW)) OR (NOUSEM9_OLD OR NOTUSEM9)\
+QB_BLK.M8M9.0 { @ QB block gate: no M8 / M9 shape (M8.DN.1 / M9.DN.1 unselected on a block, checked at the chip top)\
+  QB_M8ANY OR QB_M9ANY\
+}

@@ -85,7 +85,12 @@ foreach c $::QC_SIGNOFF_CORNERS {
 qb_timer
 set du {}; foreach p $::QC_DONT_USE { lappend du */$p }
 set_lib_cell_purpose -exclude all [get_lib_cells $du]
-set_dont_use [get_lib_cells $du]
+set_dont_use [get_lib_cells [lmap p $::QC_DONT_USE { if {[lsearch -exact [qb_hold_only] $p] >= 0} continue; string cat */ $p }]]
+# hold fixing (R84): lib-cell purpose hold = exactly the shared hold-cell list (common/lib_cells.tcl qb_hold_cells, the same
+# list as the PrimeTime hold ECO); the hold-only delay cells (site.tcl QC_HOLD_ONLY) have no other purpose
+set_lib_cell_purpose -exclude hold [get_lib_cells */*]
+set_lib_cell_purpose -include hold [get_lib_cells [lmap c [qb_hold_cells] { string cat */ $c }]]
+qb_line "init hold_cells [qb_hold_cells]"
 redirect -tee $::R/rpt/init_scen.rpt { report_scenarios; report_pvt }
 qb_line "init corners [get_object_name [get_corners *]] modes [get_object_name [get_modes *]]"
 redirect $::R/rpt/init_ptech.rpt { report_parasitic_parameters }
