@@ -11,7 +11,11 @@ outputs - L, L = QB_IO_LAT, as impl/r5a/budget.tcl):
   from act supply                                 input 0.40 P
   top (sequencer, glue, chip IO)                  input 0.40 P, output 0.40 P
   host write registers                            input 0.30 P
-  min: inputs 0.05 P, outputs 0"""
+  min: inputs 0.05 P, outputs 0
+act hold budget (R81, PI decision): the hub's act output to column 0 (the head of the point-to-point act chain) has
+output -min = -QC_ACT_HOLD_HUB, the one value common/env.sh exports (os.environ["QC_ACT_HOLD_HUB"], ns).  The column
+budget charges the same value once on its act input -min (blocks/col/io_budget.tcl qb5_act_in_min: qb5_hold_min +
+QC_ACT_HOLD_HUB): every column sees the hub's minimum arrival plus upstream feedthroughs, so the hub alone guarantees it."""
 import sys
 from collections import defaultdict
 

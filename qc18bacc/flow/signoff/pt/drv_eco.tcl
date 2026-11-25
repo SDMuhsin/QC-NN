@@ -7,15 +7,19 @@
 #   OpenROAD (repair/hold_eco.tcl QB35_ECO_TCL).
 # * one sign-off round at every corner of QB_ECO_CORNERS together (pt_shell -multi_scenario, DMSA; column run.sh eco,
 #   ICC2, R56 results/r56.md): one scenario process per corner, physically aware (occupied_site) on the ICC2 design
-#   library QB_ECO_NLIB / block QB_ECO_BLOCK when set;
+#   library QB_ECO_NLIB / block QB_ECO_BLOCK (required in both modes, R81);
 #     1. fix_eco_drc max_transition, then max_capacitance, then crosstalk noise (R67; update_noise in the setup), each
-#        physically aware, then without physical constraints for what remains (R69, qb_eco_drc); max_transition /
-#        max_capacitance also in the clock network (R75, qb_eco_clock_buffers)
+#        physically aware only (R81, qb_eco_drc); max_transition / max_capacitance also in the clock network (R75,
+#        qb_eco_clock_buffers), physically aware with the clock-network physical data (R81)
 #     2. fix_eco_timing -type setup (size_cell, insert_buffer of qb_eco_buffers: every BUFFD* not dont_use; R67, R69)
 #     3. fix_eco_timing -type hold (size_cell, insert_buffer BUFFD1 / 2); PT keeps setup / DRV of every scenario clean
 #   No fixing margins.  Writes <QC_PNR_OUT>/out/eco/pt_eco.tcl (icc2tcl, sourced by flow/icc2/eco.tcl), eco_summary.txt
-#   (setup / hold violators, max_tran / max_cap pins per corner before / after DRV / after hold; ECO size), the
-#   unfixable-hold reasons hold_unfixable*.
+#   (setup / hold violators, max_tran / max_cap pins (of them in the clock network) per corner before / after DRV /
+#   after hold; ECO size), the unfixable reasons of every pass (<type>_unfixable*, drc_<type>[_clock]_unfixable*).
+# No physical_mode none anywhere (R81, PI decision): R80 [M] the r79 clock-network pass without physical constraints
+# upsized a FIXED CTS inverter in place (cts_inv_36669764 CKND8 -> CKND12), which then overlapped g_r_12 U23 (the LVS
+# short).  ICC2 eco.tcl cannot legalise around an in-place-sized fixed cell, so a change PT cannot make physically is
+# left unfixed and REPORTED (unfixable reasons + qb_eco_state), never forced.
 # Env: QC_PNR_OUT, QB_PT_SCRIPT and the variables that script reads (QC_TOP, QC_SDC, QC_PERIOD, ...), QB_ECO_CORES.
 proc qb_eco_setup {corner} {
     set ::env(QC_CORNER) $corner
@@ -45,46 +49,63 @@ proc qb_eco_clock_buffers {} {
     set b {}; foreach g $::QC_PNR_CTS_BUF { lappend b {*}[lmap c [get_object_name [get_lib_cells -quiet -filter dont_use==false */$g]] { file tail $c }] }
     return [lsort -unique $b]
 }
-# DRV / noise fixing: physically aware first (pmode), then, for what that leaves, without physical constraints: the new
-# cells have no PT location and ICC2 places + legalises them (flow/icc2/eco.tcl place_eco_cells).  R69 [M]: a port-
-# driven victim net (column s_rd[523], 800 um, 0.13 pF coupling) is unfixable in occupied_site (reasons I P, any buffer
-# list) and fixed by one BUFFD8 without physical constraints.
-# Clock-network DRV (cbufs given, DMSA master): without physical constraints (physically aware clock fixing needs
-# set_eco_options -physical_enable_clock_data), the new buffers placed by ICC2 place_eco_cells like the data leftovers;
-# sizing restricted to the clock-tree lib cells (PT otherwise uses every alternative: r75 eco 1 [M] sized cts_inv_34929379
-# to INVD8; fix_eco_drc man: eco_alternative_cell_attribute_restrictions), set in the scenarios for this pass only.
-proc qb_eco_drc {pmode bufs {cbufs {}}} {
+# DRV / noise fixing, physically aware only (occupied_site; R81, PI decision, header): what PT cannot fix in place or on
+# free sites stays a reported violator (unfixable reasons <pfx>drc_<type>[_clock]*, qb_eco_state counts), not a change
+# without a location.  (R69 [M] had one port-driven noise victim, column s_rd[523], unfixable in occupied_site and fixed
+# only without physical constraints: such a case is now reported for the PI.)
+# Clock-network DRV (cbufs given, DMSA master): physically aware too, with set_eco_options -physical_enable_clock_data
+# in every scenario (qb_eco_phys; PT man fix_eco_drc "Clock Network Fixing": physically aware clock fixing needs it),
+# so PT sees the clock cells' placement and never sizes a fixed clock cell into its neighbour; sizing restricted to
+# the clock-tree lib cells (PT otherwise uses every alternative: r75 eco 1 [M] sized cts_inv_34929379 to INVD8;
+# fix_eco_drc man: eco_alternative_cell_attribute_restrictions), set in the scenarios for this pass only.
+proc qb_eco_drc {pfx bufs {cbufs {}}} {
     foreach ty {max_transition max_capacitance noise} {
-        foreach pm [expr {$pmode eq "none" ? "none" : [list $pmode none]}] {
-            fix_eco_drc -type $ty -methods {size_cell insert_buffer} -buffer_list $bufs \
-                -cell_type {combinational sequential} -physical_mode $pm -verbose
-        }
+        fix_eco_drc -type $ty -methods {size_cell insert_buffer} -buffer_list $bufs \
+            -cell_type {combinational sequential} -physical_mode occupied_site -verbose \
+            -unfixable_reasons_prefix ${pfx}drc_$ty -unfixable_reasons_format text
         if {[llength $cbufs] && $ty ne "noise"} {
             remote_execute { set eco_alternative_cell_attribute_restrictions qb_clock_cell }
             fix_eco_drc -type $ty -methods {size_cell insert_buffer} -buffer_list $cbufs -cell_type clock_network \
-                -physical_mode none -verbose
+                -physical_mode occupied_site -verbose -unfixable_reasons_prefix ${pfx}drc_${ty}_clock -unfixable_reasons_format text
             remote_execute { set eco_alternative_cell_attribute_restrictions "" }
         }
     }
 }
+# physical data of the ECO (both modes, R81): the ICC2 design library QB_ECO_NLIB / block QB_ECO_BLOCK, required (no
+# logic-only fallback), clock-network physical data on (-physical_enable_clock_data, PT Q-2019.12-SP2 set_eco_options
+# man: "Without this option, ECO operations ignore physical data for the clock network").
+# The kit's DCAP* / FILL* are not PT standard fillers: without -filler_cell_names every row site is occupied
+# (R56: 0 fillers identified, fix_eco_timing -type hold then made 0 changes)
+proc qb_eco_phys {corner} {
+    foreach v {QB_ECO_NLIB QB_ECO_BLOCK} { if {![info exists ::env($v)]} { error "qb_eco_phys: $v not set (the ECO is physically aware only, R81)" } }
+    set_eco_options -physical_icc2_lib $::env(QB_ECO_NLIB) -physical_icc2_blocks $::env(QB_ECO_BLOCK) -physical_enable_clock_data \
+        -filler_cell_names [concat $::QC_PNR_DCAP $::QC_PNR_FILL] -log_file $::env(QC_PNR_OUT)/out/eco/phys_$corner.log
+}
+# violator pins of a report_constraint -max_transition / -max_capacitance report that are in the clock network (PT pin
+# attribute is_clock_network): the post-route clock DRV of R81 decision 3, counted before any ECO (qb_eco_state)
+proc qb_eco_clk_viol {rpt} {
+    set n 0
+    foreach {- p} [regexp -all -inline -line {^\s*(\S+)\s+[-0-9.]+\s+[-0-9.]+\s+[-0-9.]+\s+\(VIOLATED} $rpt] {
+        set q [get_pins -quiet $p]
+        if {[sizeof_collection $q] && [get_attribute -quiet $q is_clock_network] eq "true"} { incr n }
+    }
+    return $n
+}
 if {[info exists ::qb_eco_corner]} {
     # DMSA scenario process: design setup of this corner, then back to the master
     qb_eco_setup $::qb_eco_corner
-    if {[info exists ::env(QB_ECO_NLIB)]} {
-        # the kit's DCAP* / FILL* are not PT standard fillers: without -filler_cell_names every row site is occupied
-        # (R56: 0 fillers identified, fix_eco_timing -type hold then made 0 changes)
-        set_eco_options -physical_icc2_lib $::env(QB_ECO_NLIB) -physical_icc2_blocks $::env(QB_ECO_BLOCK) \
-            -filler_cell_names [concat $::QC_PNR_DCAP $::QC_PNR_FILL] -log_file $::env(QC_PNR_OUT)/out/eco/phys_$::qb_eco_corner.log
-    }
+    qb_eco_phys $::qb_eco_corner
     return
 }
 if {![info exists ::env(QB_ECO_CORNERS)]} {
     set corner $::env(QC_CORNER); set dir $::env(QC_PNR_OUT)
     qb_eco_setup $corner
+    file mkdir $dir/out/eco
+    qb_eco_phys $corner
     if {[info exists ::env(QB_PT_PRE_ECO)] && [file exists $::env(QB_PT_PRE_ECO)]} { source $::env(QB_PT_PRE_ECO); puts "QB_DRV_ECO applied $::env(QB_PT_PRE_ECO)" }
     update_timing
     qb_pt_drv stdout
-    qb_eco_drc none [qb_eco_buffers]
+    qb_eco_drc $dir/out/eco/${corner}_ [qb_eco_buffers]
     qb_pt_drv stdout
     write_changes -format icctcl -output $dir/out/drv_eco_$corner.tcl
     puts "QB_DRV_ECO done $corner"
@@ -93,7 +114,7 @@ if {![info exists ::env(QB_ECO_CORNERS)]} {
 set eco_report_unfixed_reason_max_endpoints 1000
 set dir $::env(QC_PNR_OUT); set o $dir/out/eco; file mkdir $o
 set corners $::env(QB_ECO_CORNERS)
-set pmode [expr {[info exists ::env(QB_ECO_NLIB)] ? "occupied_site" : "none"}]
+set pmode occupied_site
 set_host_options -num_processes [llength $corners] -max_cores [expr {[info exists ::env(QB_ECO_CORES)] ? $::env(QB_ECO_CORES) : 4}]
 set multi_scenario_working_directory $o/work
 set multi_scenario_merged_error_log $o/merged_errors.log
@@ -112,7 +133,7 @@ proc qb_eco_state {sf tag} {
         redirect -variable t { report_constraint -max_transition -all_violators -nosplit }
         redirect -variable k { report_constraint -max_capacitance -all_violators -nosplit }
         redirect -variable n { report_noise -all_violators -nosplit }
-        puts "QB_ECO_STATE $::qb_eco_corner setup [regexp -all -line {VIOLATED} $s] hold [regexp -all -line {VIOLATED} $h] max_tran [regexp -all -line {VIOLATED} $t] max_cap [regexp -all -line {VIOLATED} $k] noise [regexp -all -line {^\s*\S+ \(\S+\)\s+[-0-9.]+\s+[-0-9.]+\s+[-0-9.]+\s*$} $n] cells [sizeof_collection [get_cells -hier -filter is_hierarchical==false]]"
+        puts "QB_ECO_STATE $::qb_eco_corner setup [regexp -all -line {VIOLATED} $s] hold [regexp -all -line {VIOLATED} $h] max_tran [regexp -all -line {VIOLATED} $t] max_cap [regexp -all -line {VIOLATED} $k] clock_max_tran [qb_eco_clk_viol $t] clock_max_cap [qb_eco_clk_viol $k] noise [regexp -all -line {^\s*\S+ \(\S+\)\s+[-0-9.]+\s+[-0-9.]+\s+[-0-9.]+\s*$} $n] cells [sizeof_collection [get_cells -hier -filter is_hierarchical==false]]"
     } }
     foreach l [split $r "\n"] {
         if {[regexp {QB_ECO_STATE (\w+ setup \d+ .*)$} $l -> x]} { puts $sf "$tag $x"; puts "QB_ECO $tag $x" }
@@ -126,8 +147,8 @@ redirect -variable r { remote_execute -verbose { puts "QB_ECO_BUFS [qb_eco_buffe
 current_scenario -all
 if {![regexp {QB_ECO_BUFS (BUFF[^\n]*)} $r -> bufs]} { error "QB_PT_ECO: no ECO buffer list from [lindex $corners 0]" }
 if {![regexp {QB_ECO_CBUFS (CK[^\n]*)} $r -> cbufs]} { error "QB_PT_ECO: no clock ECO buffer list from [lindex $corners 0]" }
-puts $sf "physical_mode $pmode then none; buffers $bufs; clock network buffers $cbufs"
-qb_eco_drc $pmode $bufs $cbufs
+puts $sf "physical_mode $pmode (every pass, clock network with physical clock data); buffers $bufs; clock network buffers $cbufs"
+qb_eco_drc $o/ $bufs $cbufs
 qb_eco_state $sf drc
 # setup (R67): residual setup violators of the sign-off timing (the column's act feedthroughs are dont_touch, R68)
 fix_eco_timing -type setup -methods {size_cell insert_buffer} -buffer_list $bufs -physical_mode $pmode \

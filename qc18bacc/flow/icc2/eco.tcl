@@ -27,7 +27,20 @@ qb_line "eco [file tail $chg]: cells $n0 -> [sizeof_collection [get_flat_cells]]
 if {[sizeof_collection $up]} { place_eco_cells -cells $up -remove_filler_references $fill }
 place_eco_cells -eco_changed_cells -legalize_only -remove_filler_references $fill
 redirect -variable lg { check_legality }
-qb_line "eco check_legality: [regsub -all {\s+} [join [lrange [regexp -all -inline -line {^.*(?:[Vv]iolat|succeeded|failed).*$} $lg] 0 2] { | }] { }]"
+# (R80 [M]: the first three "violat" lines never include "Two objects overlap" nor the TOTAL line, so the r79 overlap of
+# an ECO-upsized application_fixed clock inverter with a placed neighbour logged as 0 / 0 / 0; report the total and overlaps)
+set lgt [expr {[regexp {TOTAL\s+(\d+)\s+Violations} $lg -> v] ? $v : "NA"}]
+set lgo [expr {[regexp -line {^\s*(\d+)\s+\d+\s+\d+\s+Two cells overlap\.} $lg -> v] ? $v : "NA"}]
+qb_line "eco check_legality: total $lgt violations, cell overlaps $lgo"
+# Hard gate (R81, PI decision): any legality violation or cell overlap after place_eco_cells fails the eco step here,
+# before route_eco.  R80 [M]: an in-place-upsized fixed cell overlapping a neighbour is not something route_eco or the
+# later steps can repair (r79: 2 shorts stuck through DR, LVS INCORRECT, base-layer DRC); the PT ECO is physically
+# aware only (signoff/pt/drv_eco.tcl), so a violation here is a bug to diagnose, not to route over.  An unparsed report
+# (NA) fails too.
+if {$lgt ne "0" || $lgo ne "0"} {
+    redirect $::R/rpt/eco_legality.rpt { puts $lg }
+    error "eco: check_legality after place_eco_cells: total $lgt violations, cell overlaps $lgo (rpt/eco_legality.rpt)"
+}
 set_app_options -name route.detail.eco_route_use_soft_spacing_for_timing_optimization -value false
 route_eco -utilize_dangling_wires true -reroute modified_nets_first_then_others
 qb_fillers

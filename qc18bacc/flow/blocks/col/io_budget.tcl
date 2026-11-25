@@ -8,9 +8,13 @@
 # it, as OCV does for an internal path (late launch / early capture for setup, early launch / late capture for hold):
 #   input  -max  budget + Ll     (upstream register launches late)       input  -min  Le + Tq (below)
 #   output -max  budget - Le     (downstream register captures early)    output -min  0 - Ll (captures late)
-#   act_o  -min  -(Le + Tq - U_hold) (R78/R79, PI decisions): act_o[b] drives the next, identical column's act[b], whose hold checks
-#                assume act changes no earlier than Le + Tq (its input -min); act_o's hold contract is that same
-#                quantity, from the one proc qb5_hold_min (no capture flop with zero hold at the port exists), minus the
+#   act    -min  Le + Tq + H (R81, PI decision): H = QC_ACT_HOLD_HUB (common/env.sh), the act hold budget allocated once,
+#                to the act source (the hub's act output -min = -H): act is a point-to-point chain of identical columns,
+#                each adding its feedthrough, so the earliest act arrival at any column is the hub's guaranteed minimum
+#                (qb5_act_in_min; pf / pw / the other inputs keep Le + Tq)
+#   act_o  -min  -(Le + Tq + H - U_hold) (R78/R79/R81, PI decisions): act_o[b] drives the next, identical column's act[b], whose hold checks
+#                assume act changes no earlier than Le + Tq + H (its input -min); act_o's hold contract is that same
+#                quantity, from the one proc qb5_act_in_min (no capture flop with zero hold at the port exists), minus the
 #                hold uncertainty U_hold (R79, PI decision: charged once, at the next column's act capture flop; see
 #                qb5_act_o_min).  Hold slack act -> act_o = feedthrough min delay by construction.  The value is relative to the
 #                port's capture clock: PrimeTime's port clock has no latency (capture 0), ICC2's compute_clock_latency
@@ -86,7 +90,17 @@ proc qb5_unc_hold {} { expr {[info exists ::env(QC_UNC_HOLD)] ? $::env(QC_UNC_HO
 # flop (its input -min = qb5_hold_min).  The timer adds U_hold to every hold check at the act_o port, so the contract
 # hands it back: act_o -min = -(qb5_hold_min - U_hold) (+ Lc in ICC2, header), i.e. hold slack act -> act_o = the
 # feedthrough min delay, without a second U_hold.  No new constant, no margin; one place for ICC2 and PrimeTime.
-proc qb5_act_o_min {Le Tq {Lc 0.0}} { expr {$Lc - ([qb5_hold_min $Le $Tq] - [qb5_unc_hold])} }
+# act input -min (R81, PI decision; header, common/env.sh QC_ACT_HOLD_HUB): the generic hold bound + the hub's act hold
+# budget.  The budget is a property of the act SOURCE (the hub), not of each column: every column sees the hub's minimum
+# arrival plus its upstream feedthroughs, which only add delay.  Read strictly from the environment (no default here), so
+# the column and the hub cannot hold two different values.
+proc qb5_act_hold_hub {} {
+    if {![info exists ::env(QC_ACT_HOLD_HUB)]} { error "qb5_act_hold_hub: QC_ACT_HOLD_HUB not set (common/env.sh)" }
+    return $::env(QC_ACT_HOLD_HUB)
+}
+proc qb5_act_in_min {Le Tq} { expr {[qb5_hold_min $Le $Tq] + [qb5_act_hold_hub]} }
+# (R81: from qb5_act_in_min, the next column's act input -min, so hold slack act -> act_o stays the feedthrough min delay)
+proc qb5_act_o_min {Le Tq {Lc 0.0}} { expr {$Lc - ([qb5_act_in_min $Le $Tq] - [qb5_unc_hold])} }
 proc qb5_act_o_min_line {Le Tq {Lc 0.0}} {
     format "set_output_delay -min %.4f -clock qb_clk \[get_ports {act_o\[*\]}\]" [qb5_act_o_min $Le $Tq $Lc]
 }
@@ -98,7 +112,9 @@ proc qb5_io_lines {per Ll Le Tq} {
         set su [expr {[string match act_o* $pats] ? $U : 0.0}]
         if {$d eq "in"} {
             lappend out [format "set_input_delay -max %.4f -clock qb_clk \[get_ports {%s}\]" [expr {$mx * $per + $Ll}] $pats]
-            lappend out [format "set_input_delay -min %.4f -clock qb_clk \[get_ports {%s}\]" $inmin $pats]
+            # (R81: act gets the hub's act hold budget on top, qb5_act_in_min; every other input the generic bound)
+            set mn [expr {$pats eq {act[*]} ? [qb5_act_in_min $Le $Tq] : $inmin}]
+            lappend out [format "set_input_delay -min %.4f -clock qb_clk \[get_ports {%s}\]" $mn $pats]
         } else {
             lappend out [format "set_output_delay -max %.4f -clock qb_clk \[get_ports {%s}\]" [expr {$mx * $per - $Le - $su}] $pats]
             lappend out [expr {[string match act_o* $pats] ? [qb5_act_o_min_line $Le $Tq] :
