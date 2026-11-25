@@ -9,7 +9,8 @@
 #        TN65CLDR001C2_V2.2B/Dummy_OD_PO_Calibre_65nm.22b, cell <topcell>_DODPO) merged the same way (R77)
 # env: QB36_DRC_SED / QB36_LVS_SED / QB55_FILL_SED / QB77_ODPO_SED = extra sed arguments for the deck copy (e.g. "-f drc_blk.sed"), QB36_LVS_EXTRA,
 #      QB36_HCELL (hcell file)
-# Summary: grep of the TOTAL counts and the rule checks with results (CAL36 lines).  Exit status: Calibre's.
+# Summary: grep of the TOTAL counts and the rule checks with results (CAL36 lines).  Exit status: Calibre's; drc / ant: 1 when
+# a QB_* rule check (a gate a deck sed adds, R82 drc_blk.sed) has results.
 set -u
 C=/CMC/tools/siemens/calibre/aok_cal_2026.1_26.19/aok_cal_2026.1_26.19
 export CALIBRE_HOME=$C MGC_HOME=$C MGLS_LICENSE_FILE=${MGLS_LICENSE_FILE:-6056@engrcmc2.usask.ca}
@@ -23,7 +24,9 @@ drc|ant) d=$4; t=${5:-8}; mkdir -p "$d"; cd "$d" || exit 1
      /usr/bin/time -v "$C/bin/calibre" -drc -hier -turbo "$t" deck.$mode > cal_$mode.log 2> cal_$mode.time; rc=$?
      rep=$(sed -n 's/^DRC SUMMARY REPORT "\(.*\)".*/\1/p' deck.$mode | head -1)
      echo "CAL36 $mode $top rc $rc $(grep 'TOTAL DRC Results Generated' "$rep") wall $(grep Elapsed cal_$mode.time | awk '{print $NF}') rss_kb $(grep Maximum cal_$mode.time | awk '{print $NF}')"
-     grep "RULECHECK .* TOTAL Result Count = [1-9]" "$rep" | awk '{print "CAL36_RULE", $2, $(NF-1)}' | head -60 ;;
+     grep "RULECHECK .* TOTAL Result Count = [1-9]" "$rep" | awk '{print "CAL36_RULE", $2, $(NF-1)}' | head -60
+     # our own deck gates (QB_* rule checks added by a deck sed, e.g. drc_blk.sed QB_BLK.M8M9.0): any result fails the run
+     if grep -q "RULECHECK QB_.* TOTAL Result Count = [1-9]" "$rep"; then echo "CAL36_FAIL QB_ gate rule with results"; exit 1; fi ;;
 fill|odpo) d=$4; t=${5:-8}; mkdir -p "$d"; cd "$d" || exit 1
      if [ $mode = fill ]; then deck=$K/CLN65GP/TN65CLDR001C3_V2.2C/Dummy_Metal_Calibre_65nm.22c; db=DM; sx=${QB55_FILL_SED:-}
      else deck=$K/CLN65GP/autofill_OD_PO/Dummy_OD_PO_Calibre_65nm.22b; db=DODPO; sx=${QB77_ODPO_SED:-}; fi

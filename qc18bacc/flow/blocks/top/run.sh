@@ -15,6 +15,9 @@
 #                                              $B/pnr/<tag>/pt_<period>_<c>/
 #   qc18bacc/flow/blocks/top/run.sh lvs <tag> [rundir $B/drc/<tag>/lvs]  Calibre LVS with the hard blocks and SRAMs as
 #                                              LVS BOX black boxes (pin-only stubs from their LEFs)
+#   Chip DRC (no step yet; R82, PI decision): the full kit deck WITHOUT signoff/calibre/drc_blk.sed.  The top MUST check
+#   M8.DN.1 / M9.DN.1 (Metal8 / Metal9 density): every block DRC unselects exactly these two chip-level rules (drc_blk.sed,
+#   valid only because its gate QB_BLK.M8M9.0 holds each block free of M8 / M9), so the chip run is their only check.
 set -u
 here=$(cd "$(dirname "$0")" && pwd); . "$here/../../common/env.sh"; . "$here/top.env"
 step=${1:?step}; tag=${2:-}; d=$B/pnr/$tag; cfg=$here/top.cfg
