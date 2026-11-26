@@ -9,15 +9,24 @@
 # compute_clock_latency definition ("Computed using: io pair regs", r84diag d7.txt [M] 9289 regs).  Before R85 PrimeTime
 # took the p50 over all register clock pins, ICC2 over the IO-path registers: r84 [M] 7.3 ps apart at wcl (the whole ICC2 /
 # PT wcl hold difference of r84 item 3).
-#   qb_io_reg_clock_pins   clock pins of the IO-path registers: non-clock-gating registers captured from a non-clock
-#                          input port (all_fanout endpoints) or launching to an output port (all_fanin startpoints)
+#   qb_io_reg_clock_pins   clock pins of the IO-path registers: non-clock-gating registers with a TIMED path from a
+#                          non-clock input port or to an output port (timing paths, not structural fanout: R92 [M] the
+#                          all_fanout / all_fanin set also held the 80 registers reached from rst_n only, a false path,
+#                          9,369 against ICC2's 9,289 io pair regs; the same commands in ICC2 without rst_n give 9,289)
 #   qb_clk_arrival late|early  "<p50> <n> <min> <max> <p10> <p90>" of max_rise_arrival / min_rise_arrival over
 #                          qb_io_reg_clock_pins of the current PrimeTime corner; error if no pin has a value
 proc qb_io_reg_clock_pins {} {
     set in [remove_from_collection [all_inputs] [get_attribute [get_clocks] sources]]
+    # capture side: the worst timed path of every endpoint reached from an input port (one path per endpoint pin; a full
+    # result would mean a truncated set)
+    set lim [expr {4 * [sizeof_collection [all_registers]]}]
+    set pin [get_timing_paths -from $in -max_paths $lim -nworst 1 -slack_lesser_than 1.0e6]
+    if {[sizeof_collection $pin] >= $lim} { error "qb_io_reg_clock_pins: input paths truncated at $lim" }
+    # launch side: every startpoint with a timed path to an output port
+    set pout [get_timing_paths -to [all_outputs] -start_end_pair -slack_lesser_than 1.0e6]
     # (endpoints / startpoints are pins and ports: the ports are dropped)
-    set ep [filter_collection [all_fanout -from $in -endpoints_only -flat] "object_class==pin"]
-    set sp [filter_collection [all_fanin -to [all_outputs] -startpoints_only -flat] "object_class==pin"]
+    set ep [filter_collection [get_attribute -quiet $pin endpoint] "object_class==pin"]
+    set sp [filter_collection [get_attribute -quiet $pout startpoint] "object_class==pin"]
     set c [get_cells -quiet -of_objects [add_to_collection $ep $sp]]
     set c [filter_collection $c "is_sequential==true && is_integrated_clock_gating_cell!=true"]
     return [remove_from_collection -intersect [all_registers -clock_pins] [get_pins -of_objects $c]]
@@ -29,5 +38,6 @@ proc qb_clk_arrival {which} {
     foreach a [get_attribute -quiet $::QB_IO_REG_CP $attr] { if {[string is double -strict $a]} { lappend v $a } }
     set v [lsort -real $v]; set n [llength $v]
     if {!$n} { error "qb_clk_arrival: no $attr on the IO-path register clock pins" }
-    return [list [format %.3f [lindex $v [expr {$n / 2}]]] $n [lindex $v 0] [lindex $v end] [lindex $v [expr {$n / 10}]] [lindex $v [expr {9 * $n / 10}]]]
+    # (the p50 unrounded, R92: it is the I/O latency of the IO budget, ICC2 holds its own at full precision)
+    return [list [lindex $v [expr {$n / 2}]] $n [lindex $v 0] [lindex $v end] [lindex $v [expr {$n / 10}]] [lindex $v [expr {9 * $n / 10}]]]
 }

@@ -3,7 +3,6 @@
 #   QB_ICC2_RUN (run dir: <run>/<top>.nlib design library, rpt/, out/), QC_BUILD, QB_ICC2_CORES (default 16).
 # Kit facts come from the flow/tsmc65 site files (site.tcl: libraries, tf, TLU+; site/pnr.tcl: LEF, GDS, cells, layers).
 #   ::QB_DBU            database units / um = the tech file's lengthPrecision (NDM, design library, GDS; R77)
-#   ::QB_NDM            standard-cell NDM (flow/icc2/libs.tcl), shared by every block under $QC_BUILD/icc2/ndm
 #   qb_open <from> <to> open the design library, copy block label <from> to <to> (from = to: reopen it), make it current,
 #                       qb_timer
 #   qb_timer            timer options of every design step: CCS receiver capacitance in delay / slew / max_cap
@@ -50,6 +49,8 @@
 #                       every LEF grid layer, every signal pin on a track of its layer; error otherwise, one summary line
 #   qb_legality <step>  placement legality gate (R92; place.tcl, cts.tcl): check_legality TOTAL, cell overlaps and
 #                       verdict parsed from its report; error on any violation or an unparsed report
+#   qb_ndm              the standard-cell NDM of the kit state it is built from (R92; libs.tcl, init.tcl): its name
+#                       carries a key of the LEF, the tech file, the corner .db set and libs.tcl
 set ::QBF [file normalize [file dirname [info script]]/..]
 set ::QC_BUILD $::env(QC_BUILD)
 source $::env(QC_FLOW)/common/lib.tcl
@@ -64,7 +65,6 @@ set ::R $::env(QB_ICC2_RUN)
 # followed it, and write_gds -units 1000 warned of lost precision (LIB-058).  The NDM name carries it (the 10000 NDM of
 # earlier runs stays readable for their libraries).
 set _h [open $::QC_TF]; regexp {lengthPrecision\s*=\s*(\d+)} [read $_h] -> ::QB_DBU; close $_h
-set ::QB_NDM $::QC_BUILD/icc2/ndm/[file rootname [file tail $::QC_PNR_LEF]]_dbu$::QB_DBU.ndm
 set ::QB_LIB $::R/$P(TOP).nlib
 file mkdir $::R/rpt $::R/out
 if {[info commands set_host_options] ne ""} { set_host_options -max_cores [qc_env QB_ICC2_CORES 16] }
@@ -175,7 +175,8 @@ proc qb_qor {step} {
     redirect $::R/rpt/${step}_qor.rpt { report_qor -summary -nosplit }
     redirect -variable c { report_constraints -all_violators -max_transition -max_capacitance -scenarios [all_scenarios] -nosplit }
     redirect $::R/rpt/${step}_drv.rpt { puts $c }
-    if {[catch { redirect -variable ru { report_utilization }; regexp {Utilization Ratio:\s*([0-9.]+)} $ru -> u }] || ![info exists u]} { set u NA }
+    set u NA
+    if {[sizeof_collection [get_site_rows -quiet]]} { redirect -variable ru { report_utilization }; regexp {Utilization Ratio:\s*([0-9.]+)} $ru -> u }
     qb_line "$step [clock format [clock seconds] -format %T -gmt 1] cells [sizeof_collection [get_flat_cells]] util $u drv_violations [expr {[regexp {Total number of violation\(s\):\s*(\d+)} $c -> n] ? $n : "NA"}]"
     foreach l [split $q "\n"] { if {[regexp {\((Setup|Hold)\)|^\s*Context} $l]} { qb_line "  $l" } }
 }
@@ -648,4 +649,13 @@ proc qb_legality {step} {
     set r "$step check_legality: total $tot violations, cell overlaps $ovl, unplaced cells $unp, verdict $ver"
     qb_line $r
     if {$tot ne "0" || $ovl ne "0" || $unp || $ver ne "succeeded"} { error "$r (rpt/${step}_legality.rpt)" }
+}
+# Standard-cell NDM (R92; libs.tcl builds it, init.tcl references it), shared by every block under $QC_BUILD/icc2/ndm.
+# Its name carries a key of what it is built from - the md5 of the cell LEF, the tech file, the .db of every sign-off
+# corner (the corner table's library set) and libs.tcl - so a changed input is another NDM: never a silent reuse (the
+# name was LEF + DBU only) and never an overwrite under a design library that references the old one.
+proc qb_ndm {} {
+    set src [list $::QC_PNR_LEF $::QC_TF {*}[lsort -unique [lmap c $::QC_SIGNOFF_CORNERS { qc_db $c }]] $::QBF/icc2/libs.tcl]
+    set key [string range [exec md5sum << [exec md5sum {*}$src]] 0 7]
+    return $::QC_BUILD/icc2/ndm/[file rootname [file tail $::QC_PNR_LEF]]_dbu${::QB_DBU}_$key.ndm
 }

@@ -42,5 +42,6 @@ foreach c $::QC_SIGNOFF_CORNERS {
     if {![incr users($f) -1]} { file delete $f }
     qb_line "extract spef $c [file tail $f] [file size ${o}_${c}_pt.spef.gz] (gz)"
 }
-qb_qor extract
+# No QoR line here (R92): the label's I/O latency, act_o -min and act loads are those of its last route / eco pass, not of
+# the filled layout (r91b [M] 821 "extract" hold violators against PrimeTime's 69 on the same data); PrimeTime times it.
 puts "QB_ICC2_DONE extract"

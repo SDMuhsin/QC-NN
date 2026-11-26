@@ -94,13 +94,17 @@ qb_corners() {
 qb_wait() { local j r=0; for j in $(jobs -p); do wait "$j" || r=1; done; return $r; }
 # qb_icc2 <rundir> <step> [icc2_shell|icc2_lm_shell]: ICC2 step flow/icc2/<step>.tcl (Q-2019.12-SP2) in <rundir>, log
 # <rundir>/<step>.log (+ .time); env QB_ICC2_CFG = block config.  One ICC2_STEP line; non-zero unless the tool exited 0,
-# the log has the step's QB_ICC2_DONE marker and no '^Error' line.
+# the log has the step's QB_ICC2_DONE marker and no '^Error' line, and the tool's own Error-message count is 0.
+# That count (R92): the errors of a command run under redirect go to the variable / report file, not the log ([M]
+# size_cell on a missing cell under redirect: 0 '^Error' log lines, get_message_info -error_count 2), so the step runs
+# through <rundir>/<step>.run.tcl = the step script, then one QB_ICC2_MSG line with get_message_info -error_count.
 ICC2_BIN=${QB_ICC2_BIN:-/CMC/tools/synopsys/icc2_vQ-2019.12-SP2/icc2/Q-2019.12-SP2/bin}
 qb_icc2() {
-    local d=$1 s=$2 sh=${3:-icc2_shell} log rc e
+    local d=$1 s=$2 sh=${3:-icc2_shell} log rc e m
     . "$ROOT/flow/tsmc65/common/tool.sh"; mkdir -p "$d"; cd "$d" || return 1; log=$d/$s.log
-    QB_ICC2_RUN=$d qc_tool "$log" "setenv LD_PRELOAD /lib64/libz.so.1; $ICC2_BIN/$sh -batch -f $QBF/icc2/$s.tcl"; rc=$?
-    e=$(grep -c '^Error' "$log")
-    echo "ICC2_STEP $s rc $rc errors $e done $(grep -c "^QB_ICC2_DONE $s" "$log") $(qc_time "$log")"
-    [ $rc = 0 ] && [ "$e" = 0 ] && grep -q "^QB_ICC2_DONE $s" "$log"
+    printf 'source %s\nputs "QB_ICC2_MSG %s errors [get_message_info -error_count]"\n' "$QBF/icc2/$s.tcl" "$s" > "$d/$s.run.tcl"
+    QB_ICC2_RUN=$d qc_tool "$log" "setenv LD_PRELOAD /lib64/libz.so.1; $ICC2_BIN/$sh -batch -f $d/$s.run.tcl"; rc=$?
+    e=$(grep -c '^Error' "$log"); m=$(sed -n "s/^QB_ICC2_MSG $s errors //p" "$log" | tail -n 1)
+    echo "ICC2_STEP $s rc $rc errors $e tool_errors ${m:-NA} done $(grep -c "^QB_ICC2_DONE $s" "$log") $(qc_time "$log")"
+    [ $rc = 0 ] && [ "$e" = 0 ] && [ "$m" = 0 ] && grep -q "^QB_ICC2_DONE $s" "$log"
 }

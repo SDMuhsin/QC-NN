@@ -53,8 +53,22 @@ proc qb_guard {} {
     }
     return [list $gh $uh $gt $mt]
 }
+# Read-back of the hold uncertainty <uh> qb_guard left (R92: measured, not echoed): the value every clock holds in every
+# scenario, error unless it is <uh>.  (The design max transition reads back only once the timer runs, [M] empty on the
+# init label: cts.tcl qb_cts_limits logs both per scenario.)
+proc qb_guard_readback {uh} {
+    set s0 [current_scenario]; set bad {}
+    foreach_in_collection s [all_scenarios] {
+        current_scenario $s
+        set u [lsort -unique [get_attribute [all_clocks] hold_uncertainty]]
+        if {[llength $u] != 1 || abs($u - $uh) > 1e-9} { lappend bad "[get_object_name $s] '$u'" }
+    }
+    current_scenario $s0
+    if {[llength $bad]} { error "qb_guard: hold uncertainty $uh ns not held by [lrange $bad 0 2]" }
+    return $u
+}
 
-create_lib $::QB_LIB -technology $::QC_TF -ref_libs [list $::QB_NDM] -scale_factor $::QB_DBU
+create_lib $::QB_LIB -technology $::QC_TF -ref_libs [list [qb_ndm]] -scale_factor $::QB_DBU
 # one parasitic tech per TLU+ file (named after it), shared by the corners that use it
 foreach c $::QC_SIGNOFF_CORNERS { set ptech($c) [file rootname $::QC_TLU_FILE($c)] }
 foreach t [lsort -unique [lmap c $::QC_SIGNOFF_CORNERS { set ptech($c) }]] {
@@ -107,7 +121,8 @@ foreach c $::QC_SIGNOFF_CORNERS {
     set_scenario_status func_$c -active true -setup $su -hold true -max_transition true -max_capacitance true \
         -min_capacitance false -leakage_power false -dynamic_power false
 }
-qb_line "init guard-bands QC_PNR_GUARD_HOLD [lindex $gb 0] ns: hold uncertainty [lindex $gb 1] ns (SDC $::QB_SDC_HOLD_UNC), QC_PNR_GUARD_TRAN [lindex $gb 2]: design max_transition [lindex $gb 3] ns (SDC $::QB_SDC_MAX_TRAN), in [llength $::QC_SIGNOFF_CORNERS] scenarios"
+lassign $gb gh uh gt mt
+qb_line "init guard-bands QC_PNR_GUARD_HOLD $gh ns: hold uncertainty $uh ns (SDC $::QB_SDC_HOLD_UNC; read back [expr {$uh eq "none" ? "none" : [qb_guard_readback $uh]}] in [llength $::QC_SIGNOFF_CORNERS] scenarios), QC_PNR_GUARD_TRAN $gt: design max_transition $mt ns (SDC $::QB_SDC_MAX_TRAN; read back at cts)"
 qb_timer
 set du {}; foreach p $::QC_DONT_USE { lappend du */$p }
 set_lib_cell_purpose -exclude all [get_lib_cells $du]

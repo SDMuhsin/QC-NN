@@ -59,4 +59,25 @@ set sc {}; foreach l [split [exec cat $::R/rpt/cts_clock_drc.rpt] "\n"] {
     if {[regexp {^qb_clk\s+\S+\s+\d+\s+(\d+)\s+\S+\s+\S+\s+(\d+)\s+\S+\s+\S+\s+(\d+)\s+\S+\s+\S+\s+(\d+)} $l -> t c f n]} { qb_line "cts clock_drc $sc tran $t cap $c fanout $f length $n" }
 }
 qb_qor cts
+# Limits and clock transitions as the tool holds them (R92: read back, not echoed), per scenario: clock hold uncertainty,
+# design max transition, the constraining max transition of the clock-network pins (the clock-path limit unless a library
+# pin limit is lower: [M] 0.2825 ns at ff) and their worst transition.  Error if a clock pin's limit is above QC_CLK_TRAN_MAX.
+proc qb_cts_limits {ctran csign} {
+    set ctp [get_clock_tree_pins -clocks [get_clocks qb_clk]]
+    set s0 [current_scenario]; set bad {}
+    foreach_in_collection s [all_scenarios] {
+        current_scenario $s; set n [get_object_name $s]
+        set cm [lsort -real -unique [get_attribute -quiet $ctp constraining_max_transition]]
+        set tr {}
+        foreach a {actual_rise_transition_max actual_fall_transition_max} {
+            foreach v [get_attribute -quiet $ctp $a] { if {[string is double -strict $v]} { lappend tr $v } }
+        }
+        set w [expr {[llength $tr] ? [tcl::mathfunc::max {*}$tr] : "NA"}]
+        qb_line "cts limits $n: hold_uncertainty [get_attribute [get_clocks qb_clk] hold_uncertainty] design_max_transition [get_attribute [current_design] max_transition] clock_pins [sizeof_collection $ctp] constraining_max_transition [lindex $cm 0] .. [lindex $cm end] worst_clock_transition $w (build target $ctran, sign-off limit $csign)"
+        if {![llength $cm] || [lindex $cm end] > $csign + 1e-9} { lappend bad $n }
+    }
+    current_scenario $s0
+    if {[llength $bad]} { error "cts: clock-path max_transition $csign ns not in force on every clock pin in $bad" }
+}
+qb_cts_limits $ctran $csign
 qb_done cts

@@ -4,7 +4,9 @@ block keeps the pin positions every neighbour was built against (the r5b_blk col
 to; R35 / R48 placed the same pins with OpenROAD place_pin, R72 writes them as the DEF that flow/icc2/floorplan.tcl reads).
 usage: abstract_pins.py <block.lef> <out.def>
 First RECT of each signal PIN (LEF coordinates = die coordinates, origin 0 0); POWER / GROUND pins are left out (the
-ICC2 floorplan makes its own PG pins).  DEF units = the LEF DATABASE MICRONS."""
+ICC2 floorplan makes its own PG pins).  DEF units = the LEF DATABASE MICRONS.  The LEF has no producer in this flow (it
+is an input, blocks/col/col.env COL_REFLEF), so its md5 and pin counts go to the log of every run (R92)."""
+import hashlib
 import sys
 src, dst = sys.argv[1], sys.argv[2]
 pins, cur, layer, use, dirn = {}, None, None, {}, {}
@@ -37,3 +39,5 @@ with open(dst, 'w') as o:
     o.write('END PINS\nEND DESIGN\n')
 sys.stderr.write('abstract_pins: %s %d signal pins, die %g x %g, layers %s -> %s\n'
                  % (macro, len(sig), size[0], size[1], sorted({g[0] for _, g in sig}), dst))
+sys.stderr.write('abstract_pins: source %s md5 %s, %d pins (%d signal, %d power / ground), %d database units / um\n'
+                 % (src, hashlib.md5(open(src, 'rb').read()).hexdigest(), len(pins), len(sig), len(pins) - len(sig), dbu))
