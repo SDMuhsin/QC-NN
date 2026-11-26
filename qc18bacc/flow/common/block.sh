@@ -122,8 +122,8 @@ blk_eco() {
     done
 }
 # On the filled GDS of the fill step (metal: the one the SPEFs saw; + OD / PO): LVS source, Calibre LVS, DRC (block deck),
-# antenna -> <run>/calibre.  All three run; the step fails on any cal.sh exit status (LVS not CORRECT, any DRC / antenna
-# result: signoff/calibre/cal.sh).
+# antenna -> <run>/calibre.  All three run; the step fails on any cal.sh exit status (LVS not CORRECT, an LVS ERC result
+# or a NOT EXECUTED ERC check signoff/calibre/erc_allow.txt does not allow, any DRC / antenna result: signoff/calibre/cal.sh).
 blk_calibre() {
     local o=$d/calibre C=$QBF/signoff/calibre g r=0; g=$o/odpo/${BLK_TOP}_fill.gds
     [ "$g" -nt "$d/out/$BLK_TOP.gds" ] || { echo "BLK_FAIL $g missing or older than out/$BLK_TOP.gds (run.sh fill)"; return 1; }

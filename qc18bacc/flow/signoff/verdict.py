@@ -37,12 +37,13 @@ def fresh(name, corner, chain):   # every file exists and none is older than the
     old = ['%s older than %s' % (b, a) for a, b, x, y in zip(chain, chain[1:], t, t[1:]) if y < x]
     gate('fresh_' + name, corner, not old, ', '.join(old) or ' -> '.join(chain))
 
-# PrimeTime sign-off per corner: one QB_PT_SIGNOFF count per check (signoff/pt/common.tcl, col_blk.tcl), each 0
+# PrimeTime sign-off per corner: one QB_PT_SIGNOFF count per check (signoff/pt/common.tcl, col_blk.tcl), each 0, and
+# the clock latency file of the chip top = the session's own QB_PT_LAT line (gate clk_lat)
 # (noise is judged on the block's noise state: noise_undriven_ports / noise_undriven_pins = port-driven nets / driver pins
 # without a holding model in it, act_noise = the act load pins on the QB5_FT driver, their summary line as evidence)
-PT = ('setup hold max_transition max_capacitance clock_max_transition min_pulse_width min_period unannotated_pin_to_pin '
-      'unconstrained_endpoints unclocked_register_pins loops unexpected_disabled_arcs floating_nets noise noise_undriven_ports '
-      'noise_undriven_pins act_noise').split()
+PT = ('setup hold recovery removal max_transition max_capacitance clock_max_transition min_pulse_width min_period '
+      'unannotated_pin_to_pin unconstrained_endpoints unclocked_register_pins loops unexpected_disabled_arcs floating_nets '
+      'noise noise_undriven_ports noise_undriven_pins act_noise').split()
 for c in corners:
     log, txt, spef, lib = 'pt_blk_%s.log' % c, 'pt_blk_%s.txt' % c, 'out/%s_%s_pt.spef.gz' % (top, c), 'out/etm/%s_%s.lib' % (top, c)
     gate('pt_log', c, *pt_log(log))
@@ -54,6 +55,14 @@ for c in corners:
     for k in PT:
         gate(k, c, v[k] == ['0'] if k in v else None,
              'violators %s%s' % (' '.join(v[k]), '; ' + last(text(txt), k + ' ') if last(text(txt), k + ' ') else '') if k in v else 'no QB_PT_SIGNOFF %s count in %s' % (k, log))
+    # the chip top's clock latency (signoff/pt/common.tcl qb_pt_lat): out/clk_lat_<c>.txt holds the "p50 min max" this
+    # sign-off session logged as written (a later setup-only or foreign session must not have replaced them)
+    lf = 'out/clk_lat_%s.txt' % c; got = text(lf).split()
+    m = [x for x in (re.match(r'QB_PT_LAT %s L (\S+) min (\S+) max (\S+) .* written to %s$' % (re.escape(c), re.escape(lf)), l)
+                     for l in text(log).splitlines()) if x]
+    gate('clk_lat', c, got == list(m[-1].groups()) if m and have(lf) else None,
+         '%s "%s", %s logged "%s"' % (lf, ' '.join(got) if have(lf) else 'missing', log, ' '.join(m[-1].groups()) if m else
+                                      'no QB_PT_LAT %s ... written to %s line' % (c, lf)))
     m = re.search(r'spef_nets total (\d+) rc_network (\d+) coupled_network (\d+) not_annotated (\d+) \(driverless (\d+) loadless (\d+) pin_to_pin (-?\d+)\)', text(txt))
     n = [int(x) for x in m.groups()] if m else []
     gate('annotation', c, n[0] == n[1] + n[2] + n[3] and n[2] > 0 and n[3] == n[4] + n[5] and n[6] == 0 if m else None,
@@ -99,19 +108,21 @@ al = text('abstract.log'); ne = len(re.findall(r'^Error', al, re.M))
 gate('abstract_log', '-', 'QB_ICC2_DONE abstract' in al and not ne if al else None, 'QB_ICC2_DONE abstract %d, Error lines %d' % ('QB_ICC2_DONE abstract' in al, ne) if al else 'no abstract.log')
 fresh('abstract', '-', ['out/%s.def.gz' % top, 'out/%s.lef' % top])
 
-# Calibre on the filled GDS: cal.sh check (LVS CORRECT; DRC / antenna 0 results, every QB_ gate rule of the deck copy
-# run); the block deck's own gate rules (drc_blk.sed) must be in the deck copy
+# Calibre on the filled GDS: cal.sh check (LVS CORRECT; the LVS run's ERC; DRC / antenna 0 results, every QB_ gate rule
+# of the deck copy run); the block deck's own gate rules (drc_blk.sed) must be in the deck copy
 cal = '%s/signoff/calibre' % flow
 def named(deck, key):   # a file the deck copy names (summary report, LVS source): as written if absolute, else in the deck's dir
     m = re.search(r'^%s "(.*?)"' % key, text(deck), re.M)
     return os.path.join(os.path.dirname(deck), m.group(1)) if m else '%s: no %s' % (deck, key)
 g = ['out/%s.gds' % top, 'calibre/fill/%s_fill.gds' % top, 'calibre/odpo/%s_fill.gds' % top]
-for name, mode, d in (('lvs', 'lvs', 'lvs'), ('drc', 'drc', 'drcb'), ('antenna', 'ant', 'ant')):
-    deck = 'calibre/%s/deck.%s' % (d, mode)
+# (lvs_erc: the ERC of the LVS run, cal.sh check erc on its summary and signoff/calibre/erc_allow.txt)
+for name, mode, d, dm in (('lvs', 'lvs', 'lvs', 'lvs'), ('lvs_erc', 'erc', 'lvs', 'lvs'), ('drc', 'drc', 'drcb', 'drc'), ('antenna', 'ant', 'ant', 'ant')):
+    deck = 'calibre/%s/deck.%s' % (d, dm)
     rc, out = sh('bash %s/cal.sh check %s %s %s/calibre/%s' % (cal, mode, top, run, d))
     res = last(out, 'CAL36_RESULT '); fails = [x for x in out.splitlines() if x.startswith('CAL36_FAIL')]
     gate(name, '-', rc == 0 and ' PASS ' in res if have(deck) else None, ' | '.join([res] + fails))
-    fresh('gds_fill_' + name, '-', g + [deck, 'calibre/lvs/lvs.rep' if mode == 'lvs' else named(deck, 'DRC SUMMARY REPORT')])
+    fresh('gds_fill_' + name, '-', g + [deck, 'calibre/lvs/lvs.rep' if mode == 'lvs' else
+                                        named(deck, 'ERC SUMMARY REPORT' if mode == 'erc' else 'DRC SUMMARY REPORT')])
 qb = lambda t: set(re.findall(r'^(QB_[A-Za-z0-9_.]*) *\{', t, re.M))
 want = qb(open('%s/drc_blk.sed' % cal).read()); got = qb(text('calibre/drcb/deck.drc'))
 gate('drc_qb_rules', '-', bool(want) and want <= got if have('calibre/drcb/deck.drc') else None, 'block deck gate rules %s, in the deck copy %s' % (sorted(want), sorted(got)))

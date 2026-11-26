@@ -90,9 +90,11 @@ puts $fh "hold_violating_endpoints [regexp -all -line {VIOLATED} $hv]"
 redirect -variable sv { report_constraint -max_delay -all_violators -nosplit }
 puts $fh "setup_violating_endpoints [regexp -all -line {VIOLATED} $sv]"
 set drv [qb_pt_drv $fh]
+set as [qb_pt_async $fh]
 # R68: setup / hold / DRV violators gate the run too (common/env.sh qb_pt fails on any non-zero QB_PT_SIGNOFF count;
-# before, only noise / pulse / period did, so a DRV violator was reported but passed the post step)
-puts "QB_PT_SIGNOFF setup [regexp -all -line {VIOLATED} $sv] hold [regexp -all -line {VIOLATED} $hv] $drv"
+# before, only noise / pulse / period did, so a DRV violator was reported but passed the post step); recovery /
+# removal too (signoff/pt/common.tcl qb_pt_async; the clock-gating checks are in setup / hold)
+puts "QB_PT_SIGNOFF setup [regexp -all -line {VIOLATED} $sv] hold [regexp -all -line {VIOLATED} $hv] $drv $as"
 qb_pt_coverage $fh
 # path evidence (worst N per class whatever the slack, signoff/pt/common.tcl qb_pt_paths)
 set r $dir/rpt/pt_blk_$corner

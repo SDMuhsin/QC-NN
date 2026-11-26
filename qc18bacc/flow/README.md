@@ -16,7 +16,7 @@ Stage-organized implementation flow of the qc18bacc chip (column block, act bloc
 | `route/` | global / detailed route hooks and drivers (`dr.sh`), re-route |
 | `repair/` | post-CTS repair (`post_cts.tcl`), post-route hold ECO (`hold_eco.sh` / `.tcl`), antenna repair |
 | `icc2/` | IC Compiler II steps (R54): `common.tcl` (kit + block config, `qb_open` / `qb_done` / `qb_qor`), `libs.tcl` (std-cell NDM, icc2_lm_shell), `init.tcl` (design library, TLU+, netlist, MCMM, SDC), `floorplan.tcl`, `place.tcl`, `cts.tcl`, `route.tcl` (`qb_route_setup` / `qb_fillers` / `qb_route_checks` in common.tcl), `eco.tcl` (R56: sources the PrimeTime change list, legalise, route_eco, refill), `outputs.tcl` (label `QB_ICC2_LABEL`), `extract.tcl` (R68: Calibre fill read back as DEF FILLS, fill-aware SPEF per sign-off corner), `abstract.tcl` (abstract LEF + port antenna data + abutment check for the top); block facts in `blocks/<b>/icc2.cfg` |
-| `signoff/` | `spef.sh`, `antenna.tcl` (LEF-rule antenna check); `pt/` PrimeTime; `etm/` abstracts, ETMs, antenna data in LEFs; `calibre/` GDS, LVS source, Calibre DRC / LVS / antenna |
+| `signoff/` | `spef.sh`, `antenna.tcl` (LEF-rule antenna check); `pt/` PrimeTime; `etm/` abstracts, ETMs, antenna data in LEFs; `calibre/` GDS, LVS source, Calibre DRC / LVS (+ its ERC; `erc_allow.txt`: the ERC checks that may be NOT EXECUTED) / antenna; `verdict.sh` the machine verdict of a block run |
 | `blocks/<b>/` | per design: `<b>.env` (parameters), `<b>.cfg` (the one OpenROAD design config), `run.sh` (steps), design data |
 
 Every block / top is run from the repository root of a host-local copy of the repository on the build server

@@ -1,0 +1,12 @@
+# ERC checks of the kit LVS deck (CRN65GP calibre.lvs, signoff/calibre/cal.sh lvs) that may be NOT EXECUTED (cal.sh
+# cal_result erc).  One line per check:  <check> <marker layers> -- <reason from the deck>
+# The check passes NOT EXECUTED only if every marker layer listed has no original geometry in the run's ERC summary
+# (ORIGINAL LAYER STATISTICS): the device it checks does not exist in the layout.  Any other NOT EXECUTED check fails.
+# The deck selects ERC checks by ERC SELECT CHECK groups only (WELL_TO_PG, GATE_TO_PG, DS_TO_PG, FLOATING_WELL); the
+# inductor recognition checks below are in none of them [M] r91b calibre_erc.sum: these 6 NOT EXECUTED, 6 executed at 0.
+STD_IND_CHECK IND_STD IND_STD_MUA -- std. inductor: VIA8 must join its M9 / M8 (std_ind1 = M9 AND IND_STD); no ERC SELECT CHECK group, no IND_STD inductor
+STD_IND_CHECK.1 IND_STD IND_STD_MUA -- std. inductor: VIA7 under std_mu_z forbidden (std_ind = M9 / M8 AND IND_STD); no ERC SELECT CHECK group, no IND_STD inductor
+CT_IND_CHECK IND_CT IND_CT_MUA -- centre-tap inductor: VIA8 must join its M9 / M8 (ct_ind1 = M9 AND IND_CT); no ERC SELECT CHECK group, no IND_CT inductor
+CT_IND_CHECK.1 IND_CT IND_CT_MUA -- centre-tap inductor: VIA6 under sym_ct_mu_z forbidden (ct_ind = M9 / M8 AND IND_CT); no ERC SELECT CHECK group, no IND_CT inductor
+SYM_IND_CHECK IND_SYM IND_SYM_MUA -- sym. inductor: VIA8 must join its M9 / M8 (sym_ind1 = M9 AND IND_SYM); no ERC SELECT CHECK group, no IND_SYM inductor
+SYM_IND_CHECK.1 IND_SYM IND_SYM_MUA -- sym. inductor: VIA7 under sym_mu_z forbidden (sym_ind = M9 / M8 AND IND_SYM); no ERC SELECT CHECK group, no IND_SYM inductor

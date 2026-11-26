@@ -19,7 +19,10 @@
 #                             flow/icc2/extract.tcl, R71) or _pt.spef (OpenROAD def2spef flows); error if none or both
 #   qb_pt_lat <dir> <corner>  insertion delay L of this corner: p50 of the late rise arrival at the IO-path register clock
 #                             pins (signoff/pt/io_lat.tcl qb_clk_arrival late; ICC2's io pair regs, R85); "<p50> <min> <max>" written to
-#                             <dir>/out/clk_lat_<corner>.txt, which the chip top reads (blocks/top/run.sh views)
+#                             <dir>/out/clk_lat_<corner>.txt, which the chip top reads (blocks/top/run.sh views), by a
+#                             sign-off session only: a setup-only session (::QB_PT_SETUP_ONLY: the DMSA ECO scenarios,
+#                             diagnostics) leaves the file alone.  The QB_PT_LAT log line carries the three values as written
+#                             and says whether they were; signoff/verdict.py gate clk_lat: the file = the post step's line
 #   qb_pt_ann                 SPEF annotation line "total N rc_network N coupled_network N not_annotated N" (totals row
 #                             of report_annotated_parasitics; with coupling kept it has the Coupled network column, R64)
 #                             + the not-annotated split (driverless / loadless / pin_to_pin rows).  Annotation gate (R71):
@@ -40,6 +43,13 @@
 #                             (get_clock_network_objects + the clock sources; the latter against QC_CLK_TRAN_MAX, with
 #                             the worst clock-network transition) and max-capacitance violators; returns "max_transition
 #                             N max_capacitance N clock_max_transition N" (a QB_PT_SIGNOFF gate line, col_blk.tcl)
+#   qb_pt_async <fh>          recovery / removal violators (checks of asynchronous set / clear pins; report_constraint
+#                             -recovery / -removal -all_violators): constraint types of their own, outside the -max_delay /
+#                             -min_delay reports the setup / hold counts read.  The clock-gating checks are inside those
+#                             ([M] r91b ss / ff, every check made to fail: the 227 clock_gating_setup / _hold endpoints
+#                             of the ICG E pins, group **clock_gating_default**, are 227 of the 31527 -max_delay / -min_delay
+#                             violators).  r91b has no async set / clear pin (all_registers -async_pins 0), so these counts
+#                             guard a future one.  "async ..." line to fh; returns "recovery N removal N" (QB_PT_SIGNOFF)
 #   qb_pt_check_count <check> violations of one check_timing check: 0 on "check_timing succeeded", else the sum of its
 #                             "There are N" counts, -1 if it reports neither (a gate never passes on an unread report)
 #   qb_pt_coverage <fh>       coverage gates (R92): what the checks above do NOT time must be explained by the design.
@@ -100,8 +110,11 @@ qb_derate
 source [file normalize [file dirname [info script]]/io_lat.tcl]
 proc qb_pt_lat {dir corner} {
     lassign [qb_clk_arrival late] L n mn mx p10 p90
-    file mkdir $dir/out; set f [open $dir/out/clk_lat_$corner.txt w]; puts $f "$L $mn $mx"; close $f
-    puts [format "QB_PT_LAT %s L %s (p50 of %d IO-path register clock pins; p10 %.3f p90 %.3f max %.3f)" $corner $L $n $p10 $p90 $mx]
+    # a setup-only session (ECO scenario, diagnostic) must not replace the value a sign-off session recorded for the chip top
+    set w [expr {![info exists ::QB_PT_SETUP_ONLY]}]
+    if {$w} { file mkdir $dir/out; set f [open $dir/out/clk_lat_$corner.txt w]; puts $f "$L $mn $mx"; close $f }
+    puts [format "QB_PT_LAT %s L %s min %s max %s (p50 / min / max of %d IO-path register clock pins; p10 %.3f p90 %.3f) %s" \
+        $corner $L $mn $mx $n $p10 $p90 [expr {$w ? "written to out/clk_lat_$corner.txt" : "not written (setup-only session)"}]]
     return $L
 }
 proc qb_pt_ann {} {
@@ -140,6 +153,13 @@ proc qb_pt_drv {fh} {
     puts $fh [format "drv max_transition_violators %d max_capacitance_violators %d (design max_transition %s) clock_max_transition_violators %d (clock network %d pins, worst %.4f ns, limit QC_CLK_TRAN_MAX %s)" \
         $nd $mc [get_attribute [current_design] max_transition] $nc [sizeof_collection $cp] $w $::env(QC_CLK_TRAN_MAX)]
     return "max_transition $nd max_capacitance $mc clock_max_transition $nc"
+}
+proc qb_pt_async {fh} {
+    redirect -variable r { report_constraint -recovery -all_violators -nosplit }
+    redirect -variable m { report_constraint -removal -all_violators -nosplit }
+    set l "recovery [regexp -all -line {VIOLATED} $r] removal [regexp -all -line {VIOLATED} $m]"
+    puts $fh "async $l (register async set / clear pins [sizeof_collection [all_registers -async_pins]])"
+    return $l
 }
 proc qb_pt_check_count {check} {
     redirect -variable t { check_timing -override_defaults $check }
