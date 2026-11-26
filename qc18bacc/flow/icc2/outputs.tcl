@@ -15,7 +15,12 @@ set o $::R/out/$P(TOP)
 write_verilog -hierarchy all -exclude {leaf_module_declarations pg_objects end_cap_cells well_tap_cells filler_cells \
     pad_spacer_cells physical_only_cells cover_cells} $o.v
 write_verilog -hierarchy all -exclude {leaf_module_declarations filler_cells} $o\_pg.v
+# The DEF is written on one thread (R94 [M]: this ICC2 segfaulted in write_def, signal 11 in a worker thread at the same
+# frame in 2 of 2 sessions on r94's route label at 16 cores while the main thread joined it; 1 of 1 clean at 1 core, 48 s.
+# A tool defect in its multi-threaded DEF writer: keep it out of that path, then restore the session's cores.)
+set_host_options -max_cores 1
 write_def -compress gzip $o.def.gz
+set_host_options -max_cores [qc_env QB_ICC2_CORES 16]
 set f [open $::R/out/gds_text.map w]
 # tsmcn65 tf: metal Mi is layer 30 + i, its pin text layer 130 + i (TEXT1..9, the LVS deck's TEXT LAYER 131..139)
 foreach l [get_object_name [get_layers M?]] { set n [expr {30 + [string range $l 1 end]}]; puts $f "text $n:*:*:* [expr {100 + $n}]:0" }
