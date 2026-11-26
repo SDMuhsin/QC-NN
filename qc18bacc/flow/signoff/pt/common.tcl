@@ -32,8 +32,26 @@
 #                             QB_PT_ANY_SLACK (R71: PrimeTime lists only violators when -max_paths / -nworst > 1 and no
 #                             slack bound is given, so the R68 reports of clean runs were empty; with the bound the
 #                             worst N paths are always on disk as sign-off evidence)
-#   qb_pt_drv <fh>            sign-off DRV line: max-transition and max-capacitance violators (design + library limits);
-#                             returns "max_transition N max_capacitance N" (a QB_PT_SIGNOFF gate line, col_blk.tcl)
+#   qb_pt_clk_tran            the ONE clock-network transition limit (R92, PI decision; common/env.sh QC_CLK_TRAN_MAX,
+#                             0.25 ns): set_max_transition -clock_path on every clock, applied when sourced, so the
+#                             sign-off scripts and the DMSA ECO setup (drv_eco.tcl sources the block script) check and
+#                             fix the clock network against it (before: the 0.5 ns design limit only; CTS builds to 0.15)
+#   qb_pt_drv <fh>            sign-off DRV line: max-transition violators split into data pins and clock-network pins
+#                             (get_clock_network_objects + the clock sources; the latter against QC_CLK_TRAN_MAX, with
+#                             the worst clock-network transition) and max-capacitance violators; returns "max_transition
+#                             N max_capacitance N clock_max_transition N" (a QB_PT_SIGNOFF gate line, col_blk.tcl)
+#   qb_pt_check_count <check> violations of one check_timing check: 0 on "check_timing succeeded", else the sum of its
+#                             "There are N" counts, -1 if it reports neither (a gate never passes on an unread report)
+#   qb_pt_coverage <fh>       coverage gates (R92): what the checks above do NOT time must be explained by the design.
+#                             "coverage ..." lines to fh and QB_PT_SIGNOFF counts (common/env.sh qb_pt fails on non-zero):
+#                             unconstrained_endpoints (check_timing), unclocked_register_pins (register clock pins no
+#                             clock reaches), loops (check_timing + loop-breaking disabled arcs), unexpected_disabled_arcs
+#                             (every disabled arc of report_disable_timing must be flag p / C on a cell with an input
+#                             pin on a tie-cell net, and every constant pin a tie output or such an input: r91b [M] 146
+#                             TIEL + 1 TIEH -> 227 clock-gate TE pins + 1 EDFQD2 E = the 228 "invalid end points" of
+#                             UITE-416; 910 arcs = 4 per gate + 2), floating_nets (a load and no driver; with
+#                             qb_pt_ann's pin-to-pin gate every net with a load is driven and annotated: r91b [M] the
+#                             829 driverless nets have no load, bus bits the flattened netlist leaves dangling)
 #   qb_pt_si_checks <fh> <rpt> sign-off checks beyond delta delay (R67): crosstalk noise / glitch (update_noise on the
 #                             coupled SPEF against the CCS-noise immunity of the libraries; report_noise -all_violators,
 #                             every listed pin counts, above_low and below_high) and the clock pulse checks
@@ -83,11 +101,71 @@ set ::QB_PT_ANY_SLACK 1e9
 proc qb_pt_paths {rpt args} {
     redirect $rpt { foreach a $args { report_timing -slack_lesser_than $::QB_PT_ANY_SLACK -nosplit {*}$a } }
 }
+proc qb_pt_clk_tran {} {
+    set_max_transition $::env(QC_CLK_TRAN_MAX) -clock_path [all_clocks]
+    puts "QB_PT_CLK_TRAN clock-network max_transition $::env(QC_CLK_TRAN_MAX) ns on [sizeof_collection [all_clocks]] clocks (QC_CLK_TRAN_MAX)"
+}
+qb_pt_clk_tran
 proc qb_pt_drv {fh} {
     redirect -variable t { report_constraint -max_transition -all_violators -nosplit }
     redirect -variable c { report_constraint -max_capacitance -all_violators -nosplit }
-    puts $fh "drv max_transition_violators [regexp -all -line {VIOLATED} $t] max_capacitance_violators [regexp -all -line {VIOLATED} $c] (design max_transition [get_attribute [current_design] max_transition])"
-    return "max_transition [regexp -all -line {VIOLATED} $t] max_capacitance [regexp -all -line {VIOLATED} $c]"
+    set cp [get_clock_network_objects -type pin -include_clock_gating_network]
+    foreach p [concat [get_object_name $cp] [get_object_name [get_attribute [all_clocks] sources]]] { set ck($p) 1 }
+    set nd 0; set nc 0
+    # ([ \t], not \s: \s also matches the newline, and the header's dash line then swallowed the first violator line)
+    foreach {- p} [regexp -all -line -inline {^[ \t]*(\S+)[ \t].*VIOLATED} $t] { if {[info exists ck($p)]} { incr nc } else { incr nd } }
+    set w 0.0
+    foreach a {actual_rise_transition_max actual_fall_transition_max} {
+        foreach x [get_attribute -quiet $cp $a] { if {[string is double -strict $x] && $x > $w} { set w $x } }
+    }
+    set mc [regexp -all -line {VIOLATED} $c]
+    puts $fh [format "drv max_transition_violators %d max_capacitance_violators %d (design max_transition %s) clock_max_transition_violators %d (clock network %d pins, worst %.4f ns, limit QC_CLK_TRAN_MAX %s)" \
+        $nd $mc [get_attribute [current_design] max_transition] $nc [sizeof_collection $cp] $w $::env(QC_CLK_TRAN_MAX)]
+    return "max_transition $nd max_capacitance $mc clock_max_transition $nc"
+}
+proc qb_pt_check_count {check} {
+    redirect -variable t { check_timing -override_defaults $check }
+    if {[regexp {check_timing succeeded} $t]} { return 0 }
+    set n 0; foreach {- v} [regexp -all -inline {There (?:are|is) (\d+)} $t] { incr n $v }
+    return [expr {$n ? $n : -1}]
+}
+proc qb_pt_coverage {fh} {
+    set leaf [get_pins -quiet -hierarchical * -filter "is_hierarchical==false"]
+    # constants: tie cells (constant output, no input pin) and the input pins on their nets; anything else is a stray
+    set cv [filter_collection $leaf "defined(case_value)"]
+    set src {}
+    foreach_in_collection p [filter_collection $cv "direction==out"] {
+        if {![sizeof_collection [get_pins -quiet -of_objects [get_cells -of_objects $p] -filter "direction==in"]]} { append_to_collection src $p }
+    }
+    set tied [get_pins -quiet -leaf -of_objects [get_nets -quiet -segments -of_objects $src] -filter "direction==in"]
+    set stray [remove_from_collection $cv [add_to_collection $src $tied]]
+    foreach c [get_object_name [get_cells -quiet -of_objects $tied]] { set tc($c) 1 }
+    # disabled arcs: expected = flag p / C (propagated constant, conditional arc) on a cell with a tie-driven input
+    redirect -variable dis { report_disable_timing -nosplit }
+    array set nf {p 0 C 0}; set bad 0; set loopf 0; set body 0
+    foreach l [split $dis "\n"] {
+        if {[string match "---*" $l]} { set body 1; continue }
+        if {!$body || [string trim $l] eq "" || [string trim $l] eq "1"} continue
+        if {![regexp {^(\S+)\s+\S+\s+\S+\s+\S+\s+([cCdflLmpuU])(?:\s|$)} $l -> cell f]} { incr bad; continue }
+        if {$f eq "l" || $f eq "L"} { incr loopf; continue }
+        if {($f eq "p" || $f eq "C") && [info exists tc($cell)]} { incr nf($f) } else { incr bad }
+    }
+    # nets with a load (leaf input pin, output port) and no driver (leaf output pin, input port): floating inputs
+    foreach {v pd qd} {D "direction==out || direction==inout" "direction==in || direction==inout" L "direction==in" "direction==out"} {
+        set $v [add_to_collection -unique [get_nets -quiet -top_net_of_hierarchical_group -segments -of_objects [filter_collection $leaf $pd]] \
+            [get_nets -quiet -top_net_of_hierarchical_group -segments -of_objects [get_ports -quiet * -filter $qd]]]
+    }
+    set fl [remove_from_collection $L $D]
+    set regc [all_registers -clock_pins]
+    set r(unconstrained_endpoints) [qb_pt_check_count unconstrained_endpoints]
+    set r(unclocked_register_pins) [sizeof_collection [filter_collection $regc "undefined(clocks)"]]
+    set r(loops) [expr {[set n [qb_pt_check_count loops]] < 0 ? -1 : $n + $loopf}]
+    set r(unexpected_disabled_arcs) [expr {$bad + [sizeof_collection $stray]}]
+    set r(floating_nets) [sizeof_collection $fl]
+    puts $fh "coverage register_clock_pins [sizeof_collection $regc] constants: tie_cells [sizeof_collection $src] tied_input_pins [sizeof_collection $tied] on [array size tc] cells, stray_constant_pins [sizeof_collection $stray]; disabled_arcs p $nf(p) C $nf(C) on those cells, other $bad loop_breaking $loopf; nets with_driver [sizeof_collection $D] with_load [sizeof_collection $L] floating [sizeof_collection $fl] [lrange [get_object_name $fl] 0 2]"
+    set l {}; foreach k {unconstrained_endpoints unclocked_register_pins loops unexpected_disabled_arcs floating_nets} { lappend l $k $r($k) }
+    puts $fh "coverage_gate $l"
+    puts "QB_PT_SIGNOFF $l"
 }
 proc qb_pt_spef {spef} {
     if {[info exists ::env(QB_PT_PARA_LOG)]} { set_app_var parasitics_log_file $::env(QB_PT_PARA_LOG) }

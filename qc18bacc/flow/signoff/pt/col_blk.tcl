@@ -51,7 +51,10 @@ puts $fh "insertion_delay_all_registers_ns late [lindex $ar 0] early [lindex $ar
 puts $fh [format "lib_tcq_ns %.4f min_input_delay_ns %.4f act_min_input_delay_ns %.4f (+ QC_ACT_HOLD_HUB)" $Tq [qb5_hold_min $Le $Tq] [qb5_act_in_min $Le $Tq]]
 puts $fh [qb_dont_use_gate post_$corner 0]
 puts $fh [format "act_input_transition own act_o transition per bit, fixed-point residual %.5f ns" $::QB5_TRAN_RES]
-set regs [all_registers -data_pins]; set regc [all_registers -clock_pins]
+# register data pins that are endpoints: the tie-constant ones (clock-gate TE, a flop E; qb_pt_coverage counts them) have
+# no enabled check arc and were the 228 "invalid end points" PrimeTime warned of at every -to $regs query (R92 [M]; the
+# warning id is kept out of this echoed text so that a grep of the log for it finds real ones only)
+set regs [filter_collection [all_registers -data_pins] "undefined(case_value)"]
 set io [add_to_collection [all_inputs] [all_outputs]]
 proc fl {fh k p per {fmax 0}} {
     if {![sizeof_collection $p]} { puts $fh "$k none"; return }
@@ -87,6 +90,7 @@ set drv [qb_pt_drv $fh]
 # R68: setup / hold / DRV violators gate the run too (common/env.sh qb_pt fails on any non-zero QB_PT_SIGNOFF count;
 # before, only noise / pulse / period did, so a DRV violator was reported but passed the post step)
 puts "QB_PT_SIGNOFF setup [regexp -all -line {VIOLATED} $sv] hold [regexp -all -line {VIOLATED} $hv] $drv"
+qb_pt_coverage $fh
 qb_pt_si_checks $fh $dir/rpt/pt_blk_$corner
 # path evidence (worst N per class whatever the slack, signoff/pt/common.tcl qb_pt_paths)
 set r $dir/rpt/pt_blk_$corner

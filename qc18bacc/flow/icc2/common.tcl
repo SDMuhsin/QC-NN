@@ -472,7 +472,7 @@ proc qb_eco_names {chg} {
             size     { lassign $f c r; lappend want cell $c ref [list $c $r] }
             loc      { lappend want cell [lindex $f 0] }
             ins      { lassign $f ty o r nn c; lappend want $ty $o net $nn cell $c ref [list $c $r] }
-            abor     { lassign $f p c r; lappend want pin $p abor $c ref [list $c $r] }
+            abor     { lappend want pin [lindex $f 0]; foreach {c r} [lrange $f 1 end] { lappend want abor $c ref [list $c $r] } }
             unparsed { incr nu; lappend bad "unparsed: $l"; continue }
         }
         foreach {k o} $want {
