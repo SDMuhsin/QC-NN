@@ -10,9 +10,10 @@
 #                            this queue, whose exit status the queue cannot see; steps of one queue need no gate)
 #   Fields are split on blanks (no globbing): write a blank in PAT as '.'.  VAR=val: env of that step only (QB50_MPA=1).
 # Out: <logdir>/queue.state (one line per step: n blk step run status start end rc; status pending|wait|run|ok|fail),
-#      <logdir>/q<n>_<blk>_<step>.out (step stdout + stderr), <logdir>/queue.log; $B/pnr/<run>/queue.dir -> <logdir>
-#      (read by common/status.sh).  rc = run.sh exit code: non-zero whenever a tool of the step failed (R53), so the
-#      queue stops there.
+#      <logdir>/q<n>_<blk>_<step>.out (step stdout + stderr), <logdir>/queue.log; <run dir>/queue.dir -> <logdir>
+#      (read by common/status.sh; run dir = what "run.sh rundir <run>" prints for a block on the shared driver
+#      common/block.sh, else $B/pnr/<run>).  rc = run.sh exit code: non-zero whenever a tool of the step failed (R53),
+#      so the queue stops there.
 set -uf
 . "$(dirname "$0")/env.sh"
 lg=${1:?logdir}; spec=${2:?spec}
@@ -22,9 +23,11 @@ if [ "${QB_QUEUE_FG:-}" != 1 ]; then
     echo "QUEUE pid/pgid $! log $lg"; exit 0
 fi
 st=$lg/queue.state; mapfile -t L < <(grep -v '^\s*\(#\|$\)' "$spec")
+# run dir of <blk> <run> (R92: the column's is $B/icc2/col/<run>, where queue.dir never arrived)
+rundir() { local s=$QBF/blocks/$1/run.sh; { grep -q 'common/block\.sh' "$s" 2> /dev/null && "$s" rundir "$2"; } || echo "$B/pnr/$2"; }
 : > "$st"; n=0
 for l in "${L[@]}"; do n=$((n + 1)); set -- $l; shift; while [[ $1 == *=* ]]; do shift; done
-    echo "$n $1 $2 $3 pending - - -" >> "$st"; mkdir -p "$B/pnr/$3"; echo "$lg" > "$B/pnr/$3/queue.dir"
+    echo "$n $1 $2 $3 pending - - -" >> "$st"; rd=$(rundir "$1" "$3"); mkdir -p "$rd"; echo "$lg" > "$rd/queue.dir"
 done
 put() { sed -i "${1}s/.*/$1 $2 $3 $4 $5 $6 $7 $8/" "$st"; }   # n blk step run status start end rc
 now() { date +%s; }

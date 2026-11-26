@@ -34,21 +34,12 @@ qb_line $nl
 if {$nb} { error "$lab: $nb objects of [file tail $chg] missing or mismatched in the block (rpt/eco_names.rpt)" }
 if {[sizeof_collection $up]} { place_eco_cells -cells $up -remove_filler_references $fill }
 place_eco_cells -eco_changed_cells -legalize_only -remove_filler_references $fill
-redirect -variable lg { check_legality }
-# (R80 [M]: the first three "violat" lines never include "Two objects overlap" nor the TOTAL line, so the r79 overlap of
-# an ECO-upsized application_fixed clock inverter with a placed neighbour logged as 0 / 0 / 0; report the total and overlaps)
-set lgt [expr {[regexp {TOTAL\s+(\d+)\s+Violations} $lg -> v] ? $v : "NA"}]
-set lgo [expr {[regexp -line {^\s*(\d+)\s+\d+\s+\d+\s+Two cells overlap\.} $lg -> v] ? $v : "NA"}]
-qb_line "$lab check_legality: total $lgt violations, cell overlaps $lgo"
-# Hard gate (R81, PI decision): any legality violation or cell overlap after place_eco_cells fails the eco step here,
-# before route_eco.  R80 [M]: an in-place-upsized fixed cell overlapping a neighbour is not something route_eco or the
-# later steps can repair (r79: 2 shorts stuck through DR, LVS INCORRECT, base-layer DRC); the PT ECO is physically
-# aware only (signoff/pt/drv_eco.tcl), so a violation here is a bug to diagnose, not to route over.  An unparsed report
-# (NA) fails too.
-if {$lgt ne "0" || $lgo ne "0"} {
-    redirect $::R/rpt/${lab}_legality.rpt { puts $lg }
-    error "$lab: check_legality after place_eco_cells: total $lgt violations, cell overlaps $lgo (rpt/${lab}_legality.rpt)"
-}
+# Hard gate (R81, PI decision; the shared proc common.tcl qb_legality since R92): any legality violation, cell overlap,
+# unplaced cell or unparsed report after place_eco_cells fails the eco step here, before route_eco.  R80 [M]: an in-place-
+# upsized fixed cell overlapping a neighbour is not something route_eco or the later steps can repair (r79: 2 shorts stuck
+# through DR, LVS INCORRECT, base-layer DRC); the PT ECO is physically aware only (signoff/pt/drv_eco.tcl), so a violation
+# here is a bug to diagnose, not to route over.
+qb_legality $lab
 set_app_options -name route.detail.eco_route_use_soft_spacing_for_timing_optimization -value false
 route_eco -utilize_dangling_wires true -reroute modified_nets_first_then_others
 qb_fillers

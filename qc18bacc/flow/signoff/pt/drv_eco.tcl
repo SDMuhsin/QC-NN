@@ -5,20 +5,34 @@
 #   max_capacitance / noise, size_cell + insert_buffer of qb_eco_buffers); a QB_PT_PRE_ECO file (the changes of an earlier corner)
 #   is applied first, so the last corner's <QC_PNR_OUT>/out/drv_eco_<corner>.tcl (icctcl) is the cumulative ECO for
 #   OpenROAD (repair/hold_eco.tcl QB35_ECO_TCL).
-# * one sign-off round at every corner of QB_ECO_CORNERS together (pt_shell -multi_scenario, DMSA; column run.sh eco,
-#   ICC2, R56 results/r56.md): one scenario process per corner, physically aware (occupied_site) on the ICC2 design
-#   library QB_ECO_NLIB / block QB_ECO_BLOCK (required in both modes, R81);
+# * one round of the sign-off ECO loop (common/block.sh eco, R92) at every corner of QB_ECO_CORNERS together (pt_shell
+#   -multi_scenario, DMSA; ICC2, R56 results/r56.md): one scenario process per corner, physically aware (occupied_site)
+#   on the ICC2 design library QB_ECO_NLIB / block QB_ECO_BLOCK (required in both modes, R81);
+#     0. pre-fix state of every corner at the sign-off criterion -> eco_summary.txt "before" lines and "prefix_total n"
+#        (setup + hold + max_transition + max_capacitance + noise violators over all corners, zero margin; the clock-
+#        network DRV counts are part of max_transition / max_capacitance).  n = 0: the block has converged, no change
+#        list.  QB_ECO_CHECK=1 (the loop's check after its last round): state only, no change list either.
 #     1. fix_eco_drc max_transition, then max_capacitance, then crosstalk noise (R67; update_noise in the setup), each
 #        physically aware only (R81, qb_eco_drc); max_transition / max_capacitance also in the clock network (R75,
 #        qb_eco_clock_buffers), physically aware with the clock-network physical data (R81)
 #     2. fix_eco_timing -type setup (size_cell, insert_buffer of qb_eco_buffers: every BUFFD* not dont_use; R67, R69)
 #     3. fix_eco_timing -type hold (size_cell, insert_buffer of common/lib_cells.tcl qb_hold_cells: the list ICC2 hold
-#        fixing uses, R84); PT keeps setup / DRV of every scenario clean
+#        fixing uses, R84); PT keeps setup / DRV of every scenario clean.  Guard-band QC_ECO_HOLD_MARGIN (ns, default
+#        0.005; R92, PI decision): -hold_margin m -slack_lesser_than m.  PT Q-2019.12-SP2 man: -hold_margin "affects the
+#        target amount of timing slack to achieve during hold fixing" (positive = overfixing), but "for paths not
+#        already selected for hold fixing (by default, paths with zero or better slack), there is no attempt to change
+#        the path to meet the margin"; -slack_lesser_than selects "the paths with a slack worse than the specified
+#        slack limit" (default 0).  Both together: every endpoint below m is fixed to m.  Why [M] r91b: 264 hold
+#        endpoints within 5 ps of zero at wcl, and the ECO route moved 2 untouched ones to -0.04 / -0.09 ps.
 #     4. fix_eco_drc noise again (R85): the hold pass does not keep noise
-#   No fixing margins.  Writes <QC_PNR_OUT>/out/eco/pt_eco.tcl (icc2tcl, applied by flow/icc2/eco.tcl), pt_eco_cells.txt
+#   No DRV fixing margin (man fix_eco_drc: -slack_lesser_than takes a positive limit only for -type delta_delay; its
+#   -setup_margin / -hold_margin are timing-preservation margins); no constraint is tightened in this session: every
+#   state line and the loop's convergence are at the sign-off criterion.
+#   Writes <QC_PNR_OUT>/out/eco/pt_eco.tcl (icc2tcl, applied by flow/icc2/eco.tcl), pt_eco_cells.txt
 #   (its new cells, R90: qb_eco_cells_write), eco_summary.txt
-#   (setup / hold violators, max_tran / max_cap pins (of them in the clock network) per corner before / after DRV /
-#   after hold; ECO size), the unfixable reasons of every pass (<type>_unfixable*, drc_<type>[_clock]_unfixable*).
+#   (setup / hold violators, max_tran / max_cap pins (of them in the clock network), hold endpoints inside the guard-band
+#   [0, margin) per corner before / after DRV / setup / hold / noise; ECO size), the unfixable reasons of every pass
+#   (<type>_unfixable*, drc_<type>[_clock]_unfixable*).
 # No physical_mode none anywhere (R81, PI decision): R80 [M] the r79 clock-network pass without physical constraints
 # upsized a FIXED CTS inverter in place (cts_inv_36669764 CKND8 -> CKND12), which then overlapped g_r_12 U23 (the LVS
 # short).  ICC2 eco.tcl cannot legalise around an in-place-sized fixed cell, so a change PT cannot make physically is
@@ -152,14 +166,35 @@ proc qb_eco_state {sf tag} {
         redirect -variable t { report_constraint -max_transition -all_violators -nosplit }
         redirect -variable k { report_constraint -max_capacitance -all_violators -nosplit }
         redirect -variable n { report_noise -all_violators -nosplit }
-        puts "QB_ECO_STATE $::qb_eco_corner setup [regexp -all -line {VIOLATED} $s] hold [regexp -all -line {VIOLATED} $h] max_tran [regexp -all -line {VIOLATED} $t] max_cap [regexp -all -line {VIOLATED} $k] clock_max_tran [qb_eco_clk_viol $t] clock_max_cap [qb_eco_clk_viol $k] noise [regexp -all -line {^\s*\S+ \(\S+\)\s+[-0-9.]+\s+[-0-9.]+\s+[-0-9.]+\s*$} $n] cells [sizeof_collection [get_cells -hier -filter is_hierarchical==false]]"
+        # hold_band: endpoints with 0 <= hold slack < QC_ECO_HOLD_MARGIN (the guard-band population; not violators)
+        set m [expr {[info exists ::env(QC_ECO_HOLD_MARGIN)] ? $::env(QC_ECO_HOLD_MARGIN) : 0.005}]; set hb 0
+        if {$m > 0} { foreach_in_collection p [get_timing_paths -delay_type min -max_paths 100000 -slack_lesser_than $m] { if {[get_attribute $p slack] >= 0} { incr hb } } }
+        puts "QB_ECO_STATE $::qb_eco_corner setup [regexp -all -line {VIOLATED} $s] hold [regexp -all -line {VIOLATED} $h] max_tran [regexp -all -line {VIOLATED} $t] max_cap [regexp -all -line {VIOLATED} $k] clock_max_tran [qb_eco_clk_viol $t] clock_max_cap [qb_eco_clk_viol $k] noise [regexp -all -line {^\s*\S+ \(\S+\)\s+[-0-9.]+\s+[-0-9.]+\s+[-0-9.]+\s*$} $n] cells [sizeof_collection [get_cells -hier -filter is_hierarchical==false]] hold_band $hb"
     } }
+    # returns {corners reported, violators at the sign-off criterion: setup + hold + max_tran + max_cap + noise}
+    set nc 0; set tot 0
     foreach l [split $r "\n"] {
-        if {[regexp {QB_ECO_STATE (\w+ setup \d+ .*)$} $l -> x]} { puts $sf "$tag $x"; puts "QB_ECO $tag $x" }
+        if {[regexp {QB_ECO_STATE (\w+ setup \d+ .*)$} $l -> x]} {
+            puts $sf "$tag $x"; puts "QB_ECO $tag $x"
+            array set v [lrange $x 1 end]; incr nc; incr tot [expr {$v(setup) + $v(hold) + $v(max_tran) + $v(max_cap) + $v(noise)}]
+        }
     }
     flush $sf
+    return [list $nc $tot]
 }
-qb_eco_state $sf before
+lassign [qb_eco_state $sf before] nc tot
+if {$nc != [llength $corners]} { error "QB_PT_ECO: pre-fix state of $nc of [llength $corners] corners" }
+puts $sf "prefix_total $tot (setup + hold + max_tran + max_cap + noise violators of $nc corners before any fix, zero margin)"
+flush $sf
+set chk [expr {[info exists ::env(QB_ECO_CHECK)] && $::env(QB_ECO_CHECK)}]
+if {$tot == 0 || $chk} {
+    puts $sf "eco none: [expr {$tot == 0 ? "converged (pre-fix state clean in every corner)" : "check only (QB_ECO_CHECK)"}]"
+    close $sf
+    puts [exec cat $o/eco_summary.txt]
+    stop_hosts
+    puts "QB_PT_ECO done"
+    exit
+}
 # buffer list of the scenario processes (the master has no libraries; every scenario has the same dont_use list)
 current_scenario [lindex $corners 0]
 redirect -variable r { remote_execute -verbose { puts "QB_ECO_BUFS [qb_eco_buffers]"; puts "QB_ECO_CBUFS [qb_eco_clock_buffers]" } }
@@ -180,8 +215,12 @@ redirect -variable r { remote_execute -verbose { puts "QB_ECO_HBUFS [qb_hold_cel
 current_scenario -all
 if {![regexp {QB_ECO_HBUFS (BUFF[^\n]*)} $r -> hbufs]} { error "QB_PT_ECO: no hold cell list from [lindex $corners 0]" }
 remote_execute { foreach p [qb_hold_only] { set c [get_lib_cells -quiet */$p]; if {[sizeof_collection $c]} { set_dont_use $c false } } }
-puts $sf "hold cells $hbufs"
-fix_eco_timing -type hold -methods {size_cell insert_buffer} -buffer_list $hbufs -physical_mode $pmode \
+# guard-band (header, 3.): the options only for a positive margin, so 0 is the former command (man: explicit zero
+# margins "may not match" the default)
+set hm [expr {[info exists ::env(QC_ECO_HOLD_MARGIN)] ? $::env(QC_ECO_HOLD_MARGIN) : 0.005}]
+set hopt [expr {$hm > 0 ? [list -hold_margin $hm -slack_lesser_than $hm] : {}}]
+puts $sf "hold cells $hbufs; hold margin $hm ns ($hopt)"
+fix_eco_timing -type hold -methods {size_cell insert_buffer} -buffer_list $hbufs -physical_mode $pmode {*}$hopt \
     -verbose -unfixable_reasons_prefix $o/hold_unfixable -unfixable_reasons_format text
 qb_eco_state $sf hold
 # noise after hold (R85, PI decision 4): fix_eco_timing -type hold keeps setup and max_transition / max_capacitance but not
