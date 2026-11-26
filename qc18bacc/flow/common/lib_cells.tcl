@@ -3,7 +3,9 @@
 #   qb_dont_use_match <cell> [hold]  1 if the lib-cell name matches a QC_DONT_USE glob (hold 1: the QC_HOLD_ONLY globs excepted)
 #   qb_hold_only              the QC_HOLD_ONLY globs (site.tcl, R84: DEL*): globs of QC_DONT_USE that hold fixing alone may
 #                             use; error unless each is a QC_DONT_USE glob (so DC and every other use keep them dont_use)
-#   qb_hold_cells             the ONE hold-fixing cell list (R84): the library's data buffers BUFFD<n> and delay cells DEL<n>,
+#   qb_data_buffers           the library's data buffers BUFFD<n> minus QC_DONT_USE (R88: hold cells, input-port isolation
+#                             buffers of flow/icc2/common.tcl qb_isolate_ports)
+#   qb_hold_cells             the ONE hold-fixing cell list (R84): the data buffers qb_data_buffers and delay cells DEL<n>,
 #                             minus QC_DONT_USE (QC_HOLD_ONLY excepted).  ICC2 hold fixing (icc2/init.tcl: lib-cell purpose
 #                             hold = exactly these; the hold-only cells have no other purpose) and the PrimeTime hold ECO
 #                             (signoff/pt/drv_eco.tcl -buffer_list, hold-only cells dont_use outside the hold pass) use it.
@@ -33,12 +35,19 @@ proc qb_hold_only {} {
     foreach g $::QC_HOLD_ONLY { if {[lsearch -exact $::QC_DONT_USE $g] < 0} { error "qb_hold_only: QC_HOLD_ONLY glob $g is not a QC_DONT_USE glob" } }
     return $::QC_HOLD_ONLY
 }
-proc qb_hold_cells {} {
+proc qb_data_buffers {} {
     set c {}
-    foreach n [lsort -unique [lmap x [get_object_name [get_lib_cells -quiet {*/BUFFD* */DEL*}]] { file tail $x }]] {
-        if {[regexp {^(BUFFD|DEL)\d+$} $n] && ![qb_dont_use_match $n 1]} { lappend c $n }
+    foreach n [lsort -unique [lmap x [get_object_name [get_lib_cells -quiet */BUFFD*]] { file tail $x }]] {
+        if {[regexp {^BUFFD\d+$} $n] && ![qb_dont_use_match $n]} { lappend c $n }
     }
-    if {![llength $c]} { error "qb_hold_cells: no hold cell in the loaded libraries" }
+    if {![llength $c]} { error "qb_data_buffers: no data buffer in the loaded libraries" }
+    return [lsort -dictionary $c]
+}
+proc qb_hold_cells {} {
+    set c [qb_data_buffers]
+    foreach n [lsort -unique [lmap x [get_object_name [get_lib_cells -quiet */DEL*]] { file tail $x }]] {
+        if {[regexp {^DEL\d+$} $n] && ![qb_dont_use_match $n 1]} { lappend c $n }
+    }
     return [lsort -dictionary $c]
 }
 proc qb_clock_cells {} {

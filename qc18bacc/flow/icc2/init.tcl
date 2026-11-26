@@ -40,6 +40,7 @@ foreach t [lsort -unique [lmap c $::QC_SIGNOFF_CORNERS { set ptech($c) }]] {
 set sdc [qb_sdc]
 read_verilog -top $P(TOP) $P(NETLIST)
 link_block
+qb_flatten
 qb_timer
 # feedthrough buffers (P(FEEDTHRU): output ports each driven by one netlist buffer from an input port, e.g. the column's
 # act -> act_o, which the abutted chip relies on to re-buffer act).  R68 (PI decision): every one sized to the one lib cell

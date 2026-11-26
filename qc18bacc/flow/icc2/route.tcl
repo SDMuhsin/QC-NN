@@ -29,5 +29,6 @@ route_opt
 qb_io_load
 qb_fillers
 qb_route_checks route
+qb_isolate_report route
 qb_qor route
 qb_done route

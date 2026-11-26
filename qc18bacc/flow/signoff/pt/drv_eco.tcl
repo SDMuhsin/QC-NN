@@ -15,7 +15,8 @@
 #     3. fix_eco_timing -type hold (size_cell, insert_buffer of common/lib_cells.tcl qb_hold_cells: the list ICC2 hold
 #        fixing uses, R84); PT keeps setup / DRV of every scenario clean
 #     4. fix_eco_drc noise again (R85): the hold pass does not keep noise
-#   No fixing margins.  Writes <QC_PNR_OUT>/out/eco/pt_eco.tcl (icc2tcl, sourced by flow/icc2/eco.tcl), eco_summary.txt
+#   No fixing margins.  Writes <QC_PNR_OUT>/out/eco/pt_eco.tcl (icc2tcl, applied by flow/icc2/eco.tcl), pt_eco_cells.txt
+#   (its new cells, R90: qb_eco_cells_write), eco_summary.txt
 #   (setup / hold violators, max_tran / max_cap pins (of them in the clock network) per corner before / after DRV /
 #   after hold; ECO size), the unfixable reasons of every pass (<type>_unfixable*, drc_<type>[_clock]_unfixable*).
 # No physical_mode none anywhere (R81, PI decision): R80 [M] the r79 clock-network pass without physical constraints
@@ -28,7 +29,8 @@ proc qb_eco_setup {corner} {
     set ::QB_PT_SETUP_ONLY 1
     uplevel #0 { source $::env(QB_PT_SCRIPT) }
     # site/pnr.tcl: decap / filler cells of set_eco_options; the dont_use list is site.tcl's (sourced by the PT script)
-    uplevel #0 { source $::env(QC_FLOW)/site/pnr.tcl; source $::env(QC_FLOW)/../../qc18bacc/flow/common/lib_cells.tcl }
+    uplevel #0 { source $::env(QC_FLOW)/site/pnr.tcl; source $::env(QC_FLOW)/../../qc18bacc/flow/common/lib_cells.tcl
+        source $::env(QC_FLOW)/../../qc18bacc/flow/common/eco_changes.tcl }
     # clock-tree lib cells (common/lib_cells.tcl qb_clock_cells): the only sizing candidates of the clock-network pass (qb_eco_drc)
     define_user_attribute -type boolean -class lib_cell qb_clock_cell
     set_user_attribute -quiet [get_lib_cells [lmap g [qb_clock_cells] { string cat */ $g }]] qb_clock_cell true
@@ -93,6 +95,20 @@ proc qb_eco_clk_viol {rpt} {
     }
     return $n
 }
+# new-cell record (R90; common/eco_changes.tcl): each cell the change list <chg> creates, as this session has it after the
+# ECO: {full_name ref_name loads}.  ICC2 checks the cells it builds against it (flow/icc2/common.tcl qb_eco_names): R90 [M]
+# a buffer of the right name and lib cell may still drive other loads than PT timed.
+proc qb_eco_cells_write {chg} {
+    current_instance
+    set f [open [qb_eco_cells_file $chg] w]
+    if {[file exists $chg]} {
+        foreach x [qb_eco_new_cells $chg] {
+            lassign $x full ref
+            foreach_in_collection c [get_cells -quiet $full] { puts $f [list [get_object_name $c] [get_attribute $c ref_name] [qb_eco_loads $c]] }
+        }
+    }
+    close $f
+}
 if {[info exists ::qb_eco_corner]} {
     # DMSA scenario process: design setup of this corner, then back to the master
     qb_eco_setup $::qb_eco_corner
@@ -115,6 +131,7 @@ if {![info exists ::env(QB_ECO_CORNERS)]} {
 }
 set eco_report_unfixed_reason_max_endpoints 1000
 set dir $::env(QC_PNR_OUT); set o $dir/out/eco; file mkdir $o
+file delete -force $o/pt_eco.tcl $o/pt_eco_cells.txt   ;# (R90: never a change list or record of an earlier round)
 set corners $::env(QB_ECO_CORNERS)
 set pmode occupied_site
 set_host_options -num_processes [llength $corners] -max_cores [expr {[info exists ::env(QB_ECO_CORES)] ? $::env(QB_ECO_CORES) : 4}]
@@ -176,6 +193,7 @@ qb_eco_drc $o/post_hold_ $bufs {} noise
 qb_eco_state $sf noise
 current_scenario [lindex $corners 0]
 remote_execute "write_changes -format icc2tcl -output $o/pt_eco.tcl"
+remote_execute "qb_eco_cells_write $o/pt_eco.tcl"
 current_scenario -all
 # write_changes writes no file when the round made no change (R64 [M]: round 2 at its fixed point); the change list is
 # then empty, so flow/icc2/eco.tcl applies nothing

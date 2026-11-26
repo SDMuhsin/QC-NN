@@ -1,5 +1,5 @@
 # Sign-off ECO of the routed block (R56, results/r56.md): the PrimeTime change list of signoff/pt/drv_eco.tcl
-# (<run>/out/eco/pt_eco.tcl, icc2tcl: size_cell / insert_buffer) on the block label PT analysed, QB_ECO_FROM (route, or eco
+# (<run>/out/eco/pt_eco.tcl, icc2tcl: size_cell / insert_buffer / add_buffer_on_route, sourced) on the block label PT analysed, QB_ECO_FROM (route, or eco
 # in a later round: <run>/out/label.txt) -> eco.  New cells without a PT
 # location are placed (place_eco_cells), then every changed cell is legalised on free sites (filler / decap cells under
 # it removed), ECO-routed (route_eco, routing options of route.tcl), the emptied sites refilled (decap then FILL, as
@@ -24,6 +24,11 @@ set fill {}; foreach c [concat $::QC_PNR_DCAP $::QC_PNR_FILL] { lappend fill */$
 set fill [get_lib_cells $fill]
 set up [get_flat_cells -quiet -filter "physical_status==unplaced"]
 qb_line "eco [file tail $chg]: cells $n0 -> [sizeof_collection [get_flat_cells]], unplaced [sizeof_collection $up]"
+# change-list gate (R89 / R91): every object the change list names exists and every new cell = PT's record (qb_eco_names);
+# before placement / routing
+lassign [qb_eco_names $chg] nl nb
+qb_line $nl
+if {$nb} { error "eco: $nb objects of [file tail $chg] missing or mismatched in the block (rpt/eco_names.rpt)" }
 if {[sizeof_collection $up]} { place_eco_cells -cells $up -remove_filler_references $fill }
 place_eco_cells -eco_changed_cells -legalize_only -remove_filler_references $fill
 redirect -variable lg { check_legality }
@@ -45,5 +50,6 @@ set_app_options -name route.detail.eco_route_use_soft_spacing_for_timing_optimiz
 route_eco -utilize_dangling_wires true -reroute modified_nets_first_then_others
 qb_fillers
 qb_route_checks eco
+qb_isolate_report eco
 qb_qor eco
 qb_done eco

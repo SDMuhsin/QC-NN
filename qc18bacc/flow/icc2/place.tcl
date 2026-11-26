@@ -19,7 +19,14 @@ set_clock_routing_rules -rules qb_clk -min_routing_layer M3 -max_routing_layer M
 # netlist-targeted hold-cell reservation (R87; common.tcl qb_hold_reserve, blocks with P(HOLD_RESERVE)): soft keepouts
 # on the DC netlist before place_opt's coarse placement
 qb_hold_reserve
-place_opt
+# input-port isolation (R88; common.tcl qb_isolate_ports, blocks with P(ISOLATE)): ICC2 set_isolate_ports, the buffers
+# inserted by place_opt's initial_drc stage, then pulled to their port terminals (qb_isolate_magnet) before optimisation
+if {[qb_isolate_ports]} {
+    place_opt -to initial_drc
+    qb_isolate_magnet
+    place_opt -from initial_opto
+} else { place_opt }
+qb_isolate_report place
 redirect -variable lg { check_legality }
 qb_line "place check_legality: [regsub -all {\s+} [join [lrange [regexp -all -inline -line {^.*(?:[Vv]iolat|succeeded|failed).*$} $lg] 0 2] { | }] { }]"
 redirect $::R/rpt/place_congestion.rpt { report_congestion -rerun_global_router }
