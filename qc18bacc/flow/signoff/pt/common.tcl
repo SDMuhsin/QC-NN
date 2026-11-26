@@ -52,12 +52,29 @@
 #                             UITE-416; 910 arcs = 4 per gate + 2), floating_nets (a load and no driver; with
 #                             qb_pt_ann's pin-to-pin gate every net with a load is driven and annotated: r91b [M] the
 #                             829 driverless nets have no load, bus bits the flattened netlist leaves dangling)
-#   qb_pt_si_checks <fh> <rpt> sign-off checks beyond delta delay (R67): crosstalk noise / glitch (update_noise on the
-#                             coupled SPEF against the CCS-noise immunity of the libraries; report_noise -all_violators,
-#                             every listed pin counts, above_low and below_high) and the clock pulse checks
-#                             (report_constraint -min_pulse_width / -min_period -all_violators) -> <rpt>_noise.rpt,
-#                             <rpt>_pulse.rpt, a "signoff ..." line to fh and QB_PT_SIGNOFF on stdout, which common/env.sh
-#                             qb_pt gates (a non-zero count fails the PT run)
+#   qb_pt_si_checks <fh> <rpt> [<noise state>]  sign-off checks beyond delta delay (R67): the clock pulse checks
+#                             (report_constraint -min_pulse_width / -min_period -all_violators), then crosstalk noise /
+#                             glitch (update_noise on the coupled SPEF against the CCS-noise immunity of the libraries;
+#                             report_noise -all_violators, every listed pin counts, above_low and below_high) ->
+#                             <rpt>_pulse.rpt, <rpt>_noise.rpt, a "signoff ..." line to fh and QB_PT_SIGNOFF on stdout,
+#                             which common/env.sh qb_pt gates (a non-zero count fails the PT run).
+#                             <noise state> (R92): the block's command that puts the session into its noise-only
+#                             analysis state (the column: blocks/col/io_budget.tcl qb5_act_noise_driver), run after
+#                             the pulse checks and before update_noise; its record is the "noise_state ..." line, and
+#                             noise_undriven_ports (check_timing no_driving_cell in that state: port-driven nets
+#                             PrimeTime would hold with no driver model) joins the QB_PT_SIGNOFF counts.  The caller
+#                             must have written every timing result before: the session is in the noise state afterwards
+#   qb_pt_noise_pins <pins>   after update_noise: {violators text} of the given load pins from their si_noise_* pin
+#                             attributes (above_low and below_high: pins PrimeTime analysed in detail, worst total bump,
+#                             negative slacks; a net under its noise filter has no values and is not counted)
+#   qb_pt_const_hold <corner> holding model of the constant drivers (R92): the kit's tie cells have no noise model
+#                             (check_noise "none": r91b 147 driver pins, holding 227 clock-gate TE pins and one flop E),
+#                             so a "noise 0" said nothing about those pins.  The kit does give the tie's resistance to
+#                             its rail (liberty intrinsic_parasitic / intrinsic_resistance, signoff/pt/lib_hold_res.py
+#                             on the corner's library: tc TIEL 1.285, TIEH 2.423 kohm); it becomes the lib pin's
+#                             steady-state resistance (set_steady_state_resistance, above and below its rail) for every
+#                             such cell the design uses.  Returns {record load_pins}; qb_pt_si_checks writes the
+#                             "noise_hold ..." line and gates noise_undriven_pins = check_noise's "none" count after it
 #   qb_etm_context            ETM extraction context (R45 bug 2): no driving cell on any input, clk included
 #                             (constraints.sdc / the hub SDC put a BUFFD4 on the data inputs and a CKBD8 on clk,
 #                             extract_model then varied the driving cell's *input* slew: MEXT-81, and the R63 clock
@@ -75,6 +92,7 @@
 #                             ports (r68 ss: slews 0.0001 .. 0.0004 ns)
 #   OCV derate late 1.05 / early 0.95 on cell + net delays (common/derate.tcl, the same as the ICC2 timer), applied when
 #   sourced (after the caller's constraints)
+set ::QB_PT_DIR [file normalize [file dirname [info script]]]
 set_app_var timing_crpr_threshold_ps 1
 set_app_var si_enable_analysis true
 source [file normalize [file dirname [info script]]/../../common/derate.tcl]
@@ -193,15 +211,53 @@ proc qb_etm_context {} {
     set_app_var extract_model_capacitance_limit [tcl::mathfunc::max {*}$mc]
     puts "QB_ETM outputs: capacitance limit = max library max_capacitance of [llength $mc] driver lib pins ([sizeof_collection $drv] pins) = [tcl::mathfunc::max {*}$mc] pF"
 }
-proc qb_pt_si_checks {fh rpt} {
-    update_noise
-    redirect -variable n { report_noise -all_violators -nosplit }
-    redirect ${rpt}_noise.rpt { puts $n }
-    set nv [regexp -all -line {^\s*\S+ \(\S+\)\s+[-0-9.]+\s+[-0-9.]+\s+[-0-9.]+\s*$} $n]
+proc qb_pt_si_checks {fh rpt {noise_state {}}} {
+    # the clock pulse checks are timing results: before the noise state, which changes the port drivers
     redirect -variable w { report_constraint -min_pulse_width -all_violators -nosplit }
     redirect -variable p { report_constraint -min_period -all_violators -nosplit }
     redirect ${rpt}_pulse.rpt { puts $w; puts $p }
-    set l "noise $nv min_pulse_width [regexp -all -line {VIOLATED} $w] min_period [regexp -all -line {VIOLATED} $p]"
+    set l "min_pulse_width [regexp -all -line {VIOLATED} $w] min_period [regexp -all -line {VIOLATED} $p]"
+    if {[llength $noise_state]} {
+        puts $fh "noise_state [uplevel #0 $noise_state]"
+        append l " noise_undriven_ports [qb_pt_check_count no_driving_cell]"
+    }
+    lassign [qb_pt_const_hold $::env(QC_CORNER)] hold cpins
+    update_noise
+    redirect -variable n { report_noise -all_violators -nosplit }
+    redirect ${rpt}_noise.rpt { puts $n }
+    # driver pins PrimeTime holds with no model at all (check_noise "none", both regions): 0 or the noise count is not evidence
+    redirect -variable cn { check_noise -include {noise_driver} }
+    set none [expr {[regexp -line {^\s*none\s+(\d+)\s+(\d+)\s*$} $cn -> a b] ? $a + $b : -1}]
+    puts $fh "noise_hold constant drivers $hold; on their [sizeof_collection $cpins] load pins: [lindex [qb_pt_noise_pins $cpins] 1]"
+    set l "noise [regexp -all -line {^\s*\S+ \(\S+\)\s+[-0-9.]+\s+[-0-9.]+\s+[-0-9.]+\s*$} $n] $l noise_undriven_pins $none"
     puts $fh "signoff $l"
     puts "QB_PT_SIGNOFF $l"
+}
+proc qb_pt_const_hold {corner} {
+    set rec {}; set pins {}
+    foreach l [split [exec $::env(QC_PY) -I $::QB_PT_DIR/lib_hold_res.py $::QC_LIBDIR/$::QC_LIB($corner).lib] "\n"] {
+        lassign $l cell pin lv r
+        set drv [get_pins -quiet -of_objects [get_cells -quiet -hierarchical -filter "ref_name==$cell"] -filter "lib_pin_name==$pin"]
+        if {![sizeof_collection $drv]} continue
+        # (both rails: the opposite state never occurs on a constant net, the value there only completes check_noise's count)
+        foreach rail {low high} { foreach region {above below} { set_steady_state_resistance -$region -$rail $r [get_lib_pins */$cell/$pin] } }
+        append_to_collection pins [get_pins -quiet -leaf -of_objects [get_nets -quiet -segments -of_objects $drv] -filter "direction==in"]
+        lappend rec "$cell/$pin [sizeof_collection $drv] x $lv $r"
+    }
+    return [list "[join $rec {, }] (steady-state resistance = library intrinsic_resistance, library unit)" $pins]
+}
+proc qb_pt_noise_pins {pins} {
+    set viol 0; set txt {}
+    foreach r {above_low below_high} {
+        set w 0.0; set wp -; set n 0
+        foreach_in_collection p $pins {
+            set h [lindex [get_attribute -quiet $p si_noise_total_bump_$r] 0]   ;# {height width}
+            if {![string is double -strict $h]} continue
+            incr n; if {$h > $w} { set w $h; set wp [get_object_name $p] }
+            set s [lindex [get_attribute -quiet $p si_noise_slack_$r] 0]
+            if {[string is double -strict $s] && $s < 0} { incr viol }
+        }
+        lappend txt [format "%s %d analysed, worst bump %.3f V at %s" $r $n $w $wp]
+    }
+    return [list $viol "[sizeof_collection $pins] load pins: [join $txt {; }]; violators $viol"]
 }

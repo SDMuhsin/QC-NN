@@ -38,8 +38,11 @@ def fresh(name, corner, chain):   # every file exists and none is older than the
     gate('fresh_' + name, corner, not old, ', '.join(old) or ' -> '.join(chain))
 
 # PrimeTime sign-off per corner: one QB_PT_SIGNOFF count per check (signoff/pt/common.tcl, col_blk.tcl), each 0
-PT = ('setup hold max_transition max_capacitance clock_max_transition noise min_pulse_width min_period unannotated_pin_to_pin '
-      'unconstrained_endpoints unclocked_register_pins loops unexpected_disabled_arcs floating_nets').split()
+# (noise is judged on the block's noise state: noise_undriven_ports / noise_undriven_pins = port-driven nets / driver pins
+# without a holding model in it, act_noise = the act load pins on the QB5_FT driver, their summary line as evidence)
+PT = ('setup hold max_transition max_capacitance clock_max_transition min_pulse_width min_period unannotated_pin_to_pin '
+      'unconstrained_endpoints unclocked_register_pins loops unexpected_disabled_arcs floating_nets noise noise_undriven_ports '
+      'noise_undriven_pins act_noise').split()
 for c in corners:
     log, txt, spef, lib = 'pt_blk_%s.log' % c, 'pt_blk_%s.txt' % c, 'out/%s_%s_pt.spef.gz' % (top, c), 'out/etm/%s_%s.lib' % (top, c)
     gate('pt_log', c, *pt_log(log))
@@ -49,7 +52,8 @@ for c in corners:
             t = l.split()[1:]
             for k, x in zip(t[0::2], t[1::2]): v.setdefault(k, []).append(x)
     for k in PT:
-        gate(k, c, v[k] == ['0'] if k in v else None, 'violators ' + ' '.join(v[k]) if k in v else 'no QB_PT_SIGNOFF %s count in %s' % (k, log))
+        gate(k, c, v[k] == ['0'] if k in v else None,
+             'violators %s%s' % (' '.join(v[k]), '; ' + last(text(txt), k + ' ') if last(text(txt), k + ' ') else '') if k in v else 'no QB_PT_SIGNOFF %s count in %s' % (k, log))
     m = re.search(r'spef_nets total (\d+) rc_network (\d+) coupled_network (\d+) not_annotated (\d+) \(driverless (\d+) loadless (\d+) pin_to_pin (-?\d+)\)', text(txt))
     n = [int(x) for x in m.groups()] if m else []
     gate('annotation', c, n[0] == n[1] + n[2] + n[3] and n[2] > 0 and n[3] == n[4] + n[5] and n[6] == 0 if m else None,
@@ -75,6 +79,19 @@ label = text('out/label.txt').strip(); en = [l for l in s.splitlines() if l.star
 for i, l in enumerate(en):
     gate('eco_names_round%d' % (i + 1), '-', zeros(l, ('missing', 'load_mismatch', 'record_mismatch', 'unparsed')), l)
 if not en: gate('eco_names', '-', True if label == 'route' else None, 'no "eco names" line in summary.txt, label of out/ = %s' % (label or 'missing'))
+# place-and-route gates (icc2/common.tcl qb_track_check, qb_legality, qb_route_close; the last ECO round's route gate under
+# the label of out/): a database made before a gate existed has no line, which is MISSING
+def pnr(name, what, rx, ok):   # the last line in the gate's own format; an older record of the same step is not the gate
+    m = list(re.finditer(rx, s, re.M))
+    gate(name, '-', bool(ok(m[-1])) if m else None, m[-1].group(0) if m else 'no "%s" gate line in summary.txt' % what)
+pnr('pnr_tracks', 'floorplan tracks ok|FAIL', r'^floorplan tracks (\S+) row_origin .*$', lambda m: m.group(1) == 'ok')
+for st in ('place', 'cts'):
+    pnr('pnr_legality_' + st, st + ' check_legality: total / cell overlaps / unplaced cells / verdict',
+        r'^%s check_legality: total (\S+) violations, cell overlaps (\S+), unplaced cells (\S+), verdict (\S+)$' % st,
+        lambda m: m.groups() == ('0', '0', '0', 'succeeded'))
+for name, lab in [('pnr_route_gate', 'route')] + ([('pnr_eco_gate', label or 'eco')] if label != 'route' else []):
+    pnr(name, lab + ' gate: ... closure pass(es): PASS|FAIL', r'^%s gate: check_routes .*; check_lvs .* closure pass\(es\): (PASS|FAIL.*)$' % re.escape(lab),
+        lambda m: m.group(1) == 'PASS')
 for k in ('lef', 'obs', 'abutment', 'pg_pins'):
     l = last(s, 'abstract %s ' % k); n = re.findall(r'\b(?:bad|missing) (-?\d+)', l)
     gate('abstract_' + k, '-', set(n) == {'0'} if l else None, l or 'no "abstract %s" line in summary.txt' % k)

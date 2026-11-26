@@ -38,6 +38,9 @@ qb5_act_o_load [qb5_act_o_caps {apply {p {get_attribute [get_nets -of_objects $p
 update_timing
 # act[b] input transition = own act_o[b] transition, iterated to a fixed point (io_budget.tcl qb5_act_tran_fix, R71)
 set ::QB5_TRAN_RES [qb5_act_tran_fix]
+# the block's noise-only analysis state (R92, PI decision): "<command>" enters it, "<command> off" returns to the timing
+# state set up above; the sign-off enters it last (below), the ECO around its noise passes (signoff/pt/drv_eco.tcl)
+set ::QB_PT_NOISE_STATE qb5_act_noise_driver
 # design setup ends here for the PrimeTime ECO (signoff/pt/drv_eco.tcl)
 if {[info exists ::QB_PT_SETUP_ONLY]} { return }
 file mkdir $dir/rpt
@@ -91,7 +94,6 @@ set drv [qb_pt_drv $fh]
 # before, only noise / pulse / period did, so a DRV violator was reported but passed the post step)
 puts "QB_PT_SIGNOFF setup [regexp -all -line {VIOLATED} $sv] hold [regexp -all -line {VIOLATED} $hv] $drv"
 qb_pt_coverage $fh
-qb_pt_si_checks $fh $dir/rpt/pt_blk_$corner
 # path evidence (worst N per class whatever the slack, signoff/pt/common.tcl qb_pt_paths)
 set r $dir/rpt/pt_blk_$corner
 set pd {-input_pins -nets -capacitance -transition_time}
@@ -102,6 +104,12 @@ qb_pt_paths ${r}_ft.rpt [list -max_paths 3 -from [get_ports {act[*]}] -to [get_p
 qb_pt_paths ${r}_min.rpt [list -delay_type min -max_paths 3 -path_type full_clock_expanded -input_pins]
 redirect $dir/rpt/pt_blk_${corner}_clk.rpt { report_clock_timing -type summary -clock qb_clk -nosplit; report_clock_timing -type skew -nworst 3 -nosplit }
 redirect $dir/rpt/pt_blk_${corner}_drv.rpt { report_constraint -max_transition -max_capacitance -all_violators -nosplit }
+# LAST (R92): the clock pulse checks, then noise on the block's noise state (act driven by QB5_FT; the session stays in
+# it, so no timing result may follow), and the act load pins as their own line and gate
+qb_pt_si_checks $fh $r $::QB_PT_NOISE_STATE
+lassign [qb_pt_noise_pins [get_pins -leaf -of_objects [get_nets -of_objects [get_ports {act[*]}]] -filter "direction==in"]] an at
+puts $fh "act_noise $at"
+puts "QB_PT_SIGNOFF act_noise $an"
 puts $fh "pt_wall_s [expr {[clock seconds] - $t0}]"
 close $fh
 exit

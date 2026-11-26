@@ -228,3 +228,59 @@ proc qb5_act_tran_fix {} {
     }
     error "qb5_act_tran_fix: act_o transitions still move by [format %.5f $d] ns after $::QB5_TRAN_ROUNDS rounds"
 }
+# act noise state (R92, PI decision; PrimeTime only): a second, explicit analysis state for the SI noise analysis.  The
+# timing state above (R71: measured input transitions, no driving cell) leaves PrimeTime without a holding driver on the
+# 4608 act nets (R92 [M]: "Steady state resistance source: estimation failure default", bumps 2 - 7x too small), and a
+# driving cell in the timing state would add its load-dependent delay at the port, which the upstream column's act ->
+# act_o path already contains (R71; R92 [M] 16 - 99 ps).  In the noise state act[b] is driven by the previous column's
+# feedthrough buffer QB5_FT (PrimeTime then holds the net with the cell's CCS-noise I-V curve), driven with this block's
+# own QB5_FT input slew of the bit, and its port load is the previous column's act_o wire = this block's extracted
+# act_o[b] wire capacitance of the corner.
+#   qb5_act_noise_driver        timing state -> noise state; saves the timing state of every act port (its four input
+#                               transitions; error if the port is not in that state or already has a port load).  Call
+#                               it after the last timing result: nothing timed in the noise state is sign-off timing.
+#   qb5_act_noise_driver off    back to the saved timing state (the ECO: noise pass, then timing passes again)
+# Returns a one-line record of what it did.
+proc qb5_act_noise_driver {{mode on}} {
+    set A [get_ports {act[*]}]
+    set ks {input_transition_rise_max input_transition_fall_max input_transition_rise_min input_transition_fall_min}
+    if {$mode eq "off"} {
+        if {![info exists ::QB5_ACT_TIMING_STATE]} { error "qb5_act_noise_driver off: not in the noise state" }
+        remove_driving_cell $A
+        remove_capacitance $A
+        foreach {b t} $::QB5_ACT_TIMING_STATE {
+            foreach {e m} {rise max fall max rise min fall min} y $t { set_input_transition -$e -$m $y [get_ports "act\[$b\]"] }
+        }
+        unset ::QB5_ACT_TIMING_STATE
+        return "act timing state restored on [sizeof_collection $A] ports (input transitions, no driving cell, no port load)"
+    }
+    if {[info exists ::QB5_ACT_TIMING_STATE]} { error "qb5_act_noise_driver: already in the noise state" }
+    set st {}; set plan {}; set cws {}
+    foreach_in_collection p $A {
+        regexp {\[(\d+)\]$} [get_object_name $p] -> b
+        set t {}
+        foreach k $ks {
+            set x [get_attribute -quiet $p $k]
+            if {![string is double -strict $x] || $x <= 0} { error "qb5_act_noise_driver: no $k on act\[$b\] (not in the timing state)" }
+            lappend t $x
+        }
+        foreach k {pin_capacitance_max wire_capacitance_max} {
+            set x [get_attribute -quiet $p $k]
+            if {[string is double -strict $x] && $x != 0} { error "qb5_act_noise_driver: act\[$b\] already has a port load ($k $x)" }
+        }
+        set on [get_nets -of_objects [get_ports "act_o\[$b\]"]]
+        set fi [get_pins -of_objects [get_cells -of_objects [get_pins -leaf -of_objects $on -filter "direction==out"]] -filter "direction==in"]
+        set cw [get_attribute $on wire_capacitance_max]
+        if {[sizeof_collection $fi] != 1 || ![string is double -strict $cw] || $cw <= 0} { error "qb5_act_noise_driver: act_o\[$b\]: [sizeof_collection $fi] feedthrough input pins, wire capacitance '$cw'" }
+        lappend st $b $t; lappend cws $cw
+        lappend plan $p [get_attribute $fi actual_rise_transition_max] [get_attribute $fi actual_fall_transition_max] $cw
+    }
+    foreach {p r f cw} $plan {
+        set_driving_cell -lib_cell [lindex $::QB5_FT 0] -pin [lindex $::QB5_FT 1] -input_transition_rise $r -input_transition_fall $f -no_design_rule $p
+        set_load $cw $p
+    }
+    set ::QB5_ACT_TIMING_STATE $st
+    set cws [lsort -real $cws]; set n [llength $cws]
+    return [format "%d act ports driven by %s/%s with the own feedthrough input slew, port load = own act_o wire capacitance min %.4f p50 %.4f max %.4f pF" \
+        $n [lindex $::QB5_FT 0] [lindex $::QB5_FT 1] [lindex $cws 0] [lindex $cws [expr {$n / 2}]] [lindex $cws end]]
+}
