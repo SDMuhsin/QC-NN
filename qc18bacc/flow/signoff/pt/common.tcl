@@ -1,4 +1,4 @@
-# PrimeTime helpers shared by the sign-off / ETM scripts (signoff/pt/col_blk.tcl, act_blk.tcl, hub.tcl, top_chip.tcl,
+# PrimeTime helpers shared by the sign-off / ETM scripts (signoff/pt/blk.tcl + its blocks col_blk.tcl / rgr_blk.tcl, act_blk.tcl, hub.tcl, top_chip.tcl,
 # signoff/etm/etm.tcl).  Sourcing it also sets the sign-off timer options (the callers read the SPEF and update_timing
 # after it):
 #   timing_crpr_threshold_ps 1 (PT default 5): exact clock reconvergence pessimism removal.  The CCS receiver model gives
@@ -42,7 +42,7 @@
 #   qb_pt_drv <fh>            sign-off DRV line: max-transition violators split into data pins and clock-network pins
 #                             (get_clock_network_objects + the clock sources; the latter against QC_CLK_TRAN_MAX, with
 #                             the worst clock-network transition) and max-capacitance violators; returns "max_transition
-#                             N max_capacitance N clock_max_transition N" (a QB_PT_SIGNOFF gate line, col_blk.tcl)
+#                             N max_capacitance N clock_max_transition N" (a QB_PT_SIGNOFF gate line, blk.tcl)
 #   qb_pt_async <fh>          recovery / removal violators (checks of asynchronous set / clear pins; report_constraint
 #                             -recovery / -removal -all_violators): constraint types of their own, outside the -max_delay /
 #                             -min_delay reports the setup / hold counts read.  The clock-gating checks are inside those

@@ -6,6 +6,7 @@
 #   BLK_PT PrimeTime sign-off script of one corner QC_CORNER (writes <run>/pt_blk_<corner>.txt; must return after its
 #   design setup when ::QB_PT_SETUP_ONLY exists)   blk_pre_pnr optional function run before pnr's ICC2 steps (pin DEF)
 #   BLK_FILL_SED BLK_ODPO_SED BLK_LVS_SED BLK_DRC_SED Calibre deck seds as sed arguments ("-f <file>" ...)
+#   BLK_GATES optional: the block's opt-in verdict gates, comma-separated (signoff/verdict.sh -g; the column's act gates)
 # Steps:  pnr      ICC2 libs init floorplan place cts route outputs, then portcheck + fill; QC_PNR_FROM / QC_PNR_TO select
 #                  a range, an unknown step name fails
 #         eco      sign-off ECO loop, at most QC_ECO_ROUNDS (4) rounds: PrimeTime DMSA -> ICC2 eco -> outputs -> portcheck
@@ -163,5 +164,5 @@ blk_views() {
 blk_signoff() {
     local v=$QBF/signoff/verdict.sh
     [ -f "$v" ] || { echo "BLK_FAIL signoff: $v missing"; return 1; }
-    bash "$v" "$d" || return 1
+    bash "$v" ${BLK_GATES:+-g "$BLK_GATES"} "$d" || return 1
 }

@@ -6,9 +6,15 @@ naming the gates that did not pass, and the last line 'SIGNOFF <top> PASS|FAIL';
 passes: a missing file or count, or a file older than what it was made from, can never sign off.
 The criteria of the tools' own gates are not repeated here: PrimeTime log evidence = common/env.sh qb_pt -check,
 Calibre results = signoff/calibre/cal.sh check, ETM scan = signoff/etm/etmcheck.py.
-usage: verdict.py <run dir> <top> <flow dir> <corner> ..."""
+Opt-in gates (OPT_IN: the column's act feedthrough gates) are checked when the block declares them (-g, its run.sh
+BLK_GATES) and also whenever the run has their evidence, so a block that has them cannot pass without them.
+usage: verdict.py <run dir> <top> <flow dir> [-g <gate,...>] <corner> ..."""
 import os, re, subprocess, sys
 run, top, flow = sys.argv[1:4]; corners = sys.argv[4:]
+OPT_IN = ('act_noise', 'abstract_abutment')
+optin = set(corners[1].split(',')) - {''} if corners[:1] == ['-g'] else set()
+corners = corners[2:] if corners[:1] == ['-g'] else corners
+if optin - set(OPT_IN): sys.exit('verdict.py: unknown opt-in gate(s) %s (known: %s)' % (sorted(optin - set(OPT_IN)), ' '.join(OPT_IN)))
 gates = []
 def gate(name, corner, ok, evidence):   # ok: True / False / None (no evidence)
     st = 'MISSING' if ok is None else 'PASS' if ok else 'FAIL'
@@ -37,13 +43,14 @@ def fresh(name, corner, chain):   # every file exists and none is older than the
     old = ['%s older than %s' % (b, a) for a, b, x, y in zip(chain, chain[1:], t, t[1:]) if y < x]
     gate('fresh_' + name, corner, not old, ', '.join(old) or ' -> '.join(chain))
 
-# PrimeTime sign-off per corner: one QB_PT_SIGNOFF count per check (signoff/pt/common.tcl, col_blk.tcl), each 0, and
+# PrimeTime sign-off per corner: one QB_PT_SIGNOFF count per check (signoff/pt/common.tcl, blk.tcl), each 0, and
 # the clock latency file of the chip top = the session's own QB_PT_LAT line (gate clk_lat)
 # (noise is judged on the block's noise state: noise_undriven_ports / noise_undriven_pins = port-driven nets / driver pins
-# without a holding model in it, act_noise = the act load pins on the QB5_FT driver, their summary line as evidence)
+# without a holding model in it; opt-in act_noise = the column's act load pins on the QB5_FT driver, signoff/pt/col_blk.tcl;
+# their summary line as evidence)
 PT = ('setup hold recovery removal max_transition max_capacitance clock_max_transition min_pulse_width min_period '
       'unannotated_pin_to_pin unconstrained_endpoints unclocked_register_pins loops unexpected_disabled_arcs floating_nets '
-      'noise noise_undriven_ports noise_undriven_pins act_noise').split()
+      'noise noise_undriven_ports noise_undriven_pins').split()
 for c in corners:
     log, txt, spef, lib = 'pt_blk_%s.log' % c, 'pt_blk_%s.txt' % c, 'out/%s_%s_pt.spef.gz' % (top, c), 'out/etm/%s_%s.lib' % (top, c)
     gate('pt_log', c, *pt_log(log))
@@ -52,7 +59,7 @@ for c in corners:
         if l.startswith('QB_PT_SIGNOFF '):
             t = l.split()[1:]
             for k, x in zip(t[0::2], t[1::2]): v.setdefault(k, []).append(x)
-    for k in PT:
+    for k in PT + [k for k in ('act_noise',) if k in optin or k in v]:
         gate(k, c, v[k] == ['0'] if k in v else None,
              'violators %s%s' % (' '.join(v[k]), '; ' + last(text(txt), k + ' ') if last(text(txt), k + ' ') else '') if k in v else 'no QB_PT_SIGNOFF %s count in %s' % (k, log))
     # the chip top's clock latency (signoff/pt/common.tcl qb_pt_lat): out/clk_lat_<c>.txt holds the "p50 min max" this
@@ -102,7 +109,9 @@ for name, lab in [('pnr_route_gate', 'route')] + ([('pnr_eco_gate', label or 'ec
     pnr(name, lab + ' gate: ... closure pass(es): PASS|FAIL', r'^%s gate: check_routes .*; check_lvs .* closure pass\(es\): (PASS|FAIL.*)$' % re.escape(lab),
         lambda m: m.group(1) == 'PASS')
 for k in ('lef', 'obs', 'abutment', 'pg_pins'):
-    l = last(s, 'abstract %s ' % k); n = re.findall(r'\b(?:bad|missing) (-?\d+)', l)
+    l = last(s, 'abstract %s ' % k)
+    if k == 'abutment' and not l and 'abstract_abutment' not in optin: continue   # opt-in (icc2/abstract.tcl P(ABUT_PAIR))
+    n = re.findall(r'\b(?:bad|missing) (-?\d+)', l)
     gate('abstract_' + k, '-', set(n) == {'0'} if l else None, l or 'no "abstract %s" line in summary.txt' % k)
 al = text('abstract.log'); ne = len(re.findall(r'^Error', al, re.M))
 gate('abstract_log', '-', 'QB_ICC2_DONE abstract' in al and not ne if al else None, 'QB_ICC2_DONE abstract %d, Error lines %d' % ('QB_ICC2_DONE abstract' in al, ne) if al else 'no abstract.log')
@@ -136,6 +145,6 @@ def names(st):   # gate names of one status, corners grouped: noise@ml,ml_rcb
     return ' '.join(n if c == ['-'] else '%s@%s' % (n, ','.join(c)) for n, c in d.items()) or 'none'
 n = {st: sum(s == st for _, _, s in gates) for st in ('PASS', 'FAIL', 'MISSING')}
 ok = bool(corners) and n['PASS'] == len(gates)
-print('VERDICT %s gates %d pass %d fail %d missing %d; FAIL: %s; MISSING: %s' % (top, len(gates), n['PASS'], n['FAIL'], n['MISSING'], names('FAIL'), names('MISSING')))
+print('VERDICT %s gates %d pass %d fail %d missing %d; FAIL: %s; MISSING: %s; opt-in declared: %s' % (top, len(gates), n['PASS'], n['FAIL'], n['MISSING'], names('FAIL'), names('MISSING'), ' '.join(sorted(optin)) or 'none'))
 print('SIGNOFF %s %s' % (top, 'PASS' if ok else 'FAIL'))
 sys.exit(0 if ok else 1)

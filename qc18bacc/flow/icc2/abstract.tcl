@@ -12,7 +12,8 @@
 #   gates (error on failure, one summary line each):
 #     antenna   every signal PIN of the LEF has ANTENNAPARTIALMETALAREA and ANTENNAPARTIALCUTAREA
 #     blockage  OBS on every metal layer up to P(LAYERS)'s top layer, none above (R71)
-#     abutment  every act[b] / act_o[b] pair on the same layer and y, act on the west and act_o on the east die edge
+#     abutment  opt-in P(ABUT_PAIR) {<in> <out>} (the column: {act act_o}): every <in>[b] / <out>[b] pair on the same
+#               layer and y, <in> on the west and <out> on the east die edge; no line without it (signoff/verdict.py)
 #     pg_pins   qb_pg_check: VDD / VSS pins = the chip PG grid's pin-layer straps (floorplan/pg_grid.tcl)
 # The frame and its antenna data are made on a copy, block label "abstract" (R77): the label QB_ICC2_LABEL is the signed-off
 # design (post / calibre read its outputs) and is never saved after its own step (R75 saved the frame into label eco).
@@ -74,14 +75,17 @@ proc qb_term {name} {
     set t [get_terminals -of_objects [get_ports $name]]
     list [get_attribute $t bbox] [get_attribute $t layer.name]
 }
-set ok 0; set bad {}
-foreach_in_collection p [get_ports {act[*]}] {
-    regexp {\[(\d+)\]} [get_object_name $p] -> b
-    lassign [qb_term "act\[$b\]"] a la; lassign [qb_term "act_o\[$b\]"] y ly
-    if {$la ne "" && $la eq $ly && [lindex $a 0 1] == [lindex $y 0 1] && [lindex $a 1 1] == [lindex $y 1 1]
-        && [lindex $a 0 0] == $x0 && [lindex $y 1 0] == $x1} { incr ok } else { lappend bad $b }
+if {[info exists P(ABUT_PAIR)]} {
+    lassign $P(ABUT_PAIR) pi po
+    set ok 0; set bad {}
+    foreach_in_collection p [get_ports "$pi\[*\]"] {
+        regexp {\[(\d+)\]} [get_object_name $p] -> b
+        lassign [qb_term "$pi\[$b\]"] a la; lassign [qb_term "$po\[$b\]"] y ly
+        if {$la ne "" && $la eq $ly && [lindex $a 0 1] == [lindex $y 0 1] && [lindex $a 1 1] == [lindex $y 1 1]
+            && [lindex $a 0 0] == $x0 && [lindex $y 1 0] == $x1} { incr ok } else { lappend bad $b }
+    }
+    qb_line "abstract abutment $pi pairs ok $ok bad [llength $bad] [lrange $bad 0 4] die $die"
+    if {[llength $bad]} { error "QB abstract abutment: [llength $bad] $pi / $po pairs off ([lrange $bad 0 4])" }
 }
-qb_line "abstract abutment act pairs ok $ok bad [llength $bad] [lrange $bad 0 4] die $die"
-if {[llength $bad]} { error "QB abstract abutment: [llength $bad] act / act_o pairs off ([lrange $bad 0 4])" }
 qb_pg_check abstract
 puts "QB_ICC2_DONE abstract"

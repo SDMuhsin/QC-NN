@@ -69,6 +69,7 @@ Every flow change passes the regression block before it may run on the column.  
 qc18bacc/flow/common/deploy.sh <commit> <host>:<dir>    # git archive of qc18bacc/flow at <commit> + the host's flow/ (site layer) -> <dir>
 qc18bacc/flow/synth/run.sh rgr                          # once per build root: DC of one PPU lane -> $B/syn/rgr_lane_tt_p2.0_topo
 <dir>/qc18bacc/flow/blocks/rgr/run.sh pnr <tag>         # the column's pnr (libs .. outputs, portcheck, fill) -> $B/icc2/rgr/<tag>
+<dir>/qc18bacc/flow/blocks/rgr/run.sh <eco|calibre|post|views|signoff> <tag>   # the rest of the chain, in this order
 ```
 deploy.sh archives a commit (or tree) id, never the working tree; it writes VERSION (commit, tree, site source) and
 MANIFEST.md5 (every other file), verifies the MANIFEST on the host, makes the snapshot read-only and refuses an existing
@@ -77,8 +78,13 @@ MANIFEST.md5 (every other file), verifies the MANIFEST on the host, makes the sn
 its own class table `::QB5_BUDGET`), pins: `floorplan/edge_pins.py` (pin-only abstract LEF: inputs west, outputs east on
 M3 tracks) -> `floorplan/abstract_pins.py` (floorplan DEF).  Block-config hooks of the shared ICC2 steps: `P(IO_SAMPLE)`
 (init's logged IO delays) and `P(IO_PAIR)` (qb_io_lat's port-to-port clock delays; the column: act[0] -> act_o[0]).
-Not yet regression-ready (step 2): eco, calibre, post, views, signoff (a PrimeTime script for this block, and the
-column-only act / act_o parts of signoff/pt/col_blk.tcl, icc2/abstract.tcl and signoff/verdict.py made opt-in).
+Every step of the driver runs on it (step 2): `eco`, `calibre`, `post`, `views`, `signoff` as the column's.  PrimeTime:
+`signoff/pt/blk.tcl` is the one block sign-off (setup, report, gates, noise); a block's BLK_PT sets its IO budget and
+hooks (`qb_blk_hook`: design setup, path classes, extra lines / reports / noise gates) and sources it:
+`signoff/pt/col_blk.tcl` (the act feedthrough: QB5_FT dont_touch, act_o load, act input transition, act noise state,
+act_noise gate), `signoff/pt/rgr_blk.tcl` (input -> reg, reg -> output; noise on the SDC's input driving cells).
+Column-only gates are opt-in: icc2/abstract.tcl abutment with `P(ABUT_PAIR)` (blocks/col/icc2.cfg), signoff/verdict.sh
+`-g` from the block's `BLK_GATES` (the column: act_noise, abstract_abutment; checked also whenever a run has their evidence).
 
 ## Act block qb_act2_blk (`blocks/act`, production lineage r35_act -> r38_act_rr2)
 

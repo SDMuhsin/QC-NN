@@ -8,6 +8,7 @@ here=$(cd "$(dirname "$0")" && pwd); . "$here/../../common/env.sh"; . "$here/col
 C=$QBF/signoff/calibre
 BLK=col BLK_TOP=$COL_TOP BLK_SYN=$COL_SYN BLK_PERIOD=$COL_PERIOD BLK_CFG=$here/icc2.cfg BLK_PT=$QBF/signoff/pt/col_blk.tcl
 BLK_FILL_SED="-f $C/fill_blk.sed" BLK_ODPO_SED="-f $C/odpo_blk.sed" BLK_LVS_SED="-f $C/lvs_case.sed" BLK_DRC_SED="-f $C/drc_blk.sed"
+BLK_GATES=act_noise,abstract_abutment   # the act feedthrough's verdict gates (signoff/pt/col_blk.tcl, icc2.cfg P(ABUT_PAIR))
 export COL_TOP COL_PIN_DEF   # read by icc2.cfg
 blk_pre_pnr() { mkdir -p "$(dirname "$COL_PIN_DEF")" && "$PY" -I "$QBF/floorplan/abstract_pins.py" "$COL_REFLEF" "$COL_PIN_DEF"; }
 blk_main "$@"

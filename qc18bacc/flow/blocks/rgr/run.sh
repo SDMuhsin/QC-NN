@@ -5,12 +5,12 @@
 #   qc18bacc/flow/blocks/rgr/run.sh <pnr|eco|fill|calibre|post|views|signoff> <tag>     run dir $B/icc2/rgr/<tag>
 # Input: synth/run.sh rgr ($B/syn/$RGR_SYN).  pnr first writes the pin-only abstract RGR_PIN_LEF (floorplan/edge_pins.py)
 # and its floorplan pin DEF RGR_PIN_DEF (floorplan/abstract_pins.py, as the column's).
-# Regression-ready: pnr (+ fill).  eco / post need the block's PrimeTime script BLK_PT, not set yet (README: step 2), so
-# they stop at once (set -u).
+# Every step is regression-ready (README: pnr eco calibre post views signoff); PrimeTime: signoff/pt/rgr_blk.tcl (the
+# generic block sign-off signoff/pt/blk.tcl with this block's IO budget and path classes); no opt-in verdict gates.
 set -u
 here=$(cd "$(dirname "$0")" && pwd); . "$here/../../common/env.sh"; . "$here/rgr.env"; . "$QBF/common/block.sh"
 C=$QBF/signoff/calibre
-BLK=rgr BLK_TOP=$RGR_TOP BLK_SYN=$RGR_SYN BLK_PERIOD=$RGR_PERIOD BLK_CFG=$here/icc2.cfg
+BLK=rgr BLK_TOP=$RGR_TOP BLK_SYN=$RGR_SYN BLK_PERIOD=$RGR_PERIOD BLK_CFG=$here/icc2.cfg BLK_PT=$QBF/signoff/pt/rgr_blk.tcl
 BLK_FILL_SED="-f $C/fill_blk.sed" BLK_ODPO_SED="-f $C/odpo_blk.sed" BLK_LVS_SED="-f $C/lvs_case.sed" BLK_DRC_SED="-f $C/drc_blk.sed"
 export RGR_TOP RGR_DIE RGR_PIN_DEF   # read by icc2.cfg
 blk_pre_pnr() {
