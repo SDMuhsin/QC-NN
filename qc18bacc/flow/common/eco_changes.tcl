@@ -7,6 +7,8 @@
 #                               | abor {pin cell ref [cell ref ...]} (add_buffer_on_route: one cell / ref pair per buffer
 #                               of -user_specified_buffers; PT gives the buffer's leaf name, made full under <sc>; the
 #                               block is flat since R91, flow/icc2 qb_flatten) | unparsed {}
+#   qb_eco_abor <line>          add_buffer_on_route line -> {pin buffers}: driver pin as written, PT's -user_specified_buffers
+#                               text {name lib_cell x y layer ...}; {} if the line is not a well-formed one
 #   qb_eco_new_cells <chg>      the cells the list creates: {full ref}
 #   qb_eco_loads <cell>         sorted full names of the loads the cell's outputs drive: leaf input pins and output
 #                               ports (R92: without the ports a buffer driving an output port had the record {} in both
@@ -29,14 +31,19 @@ proc qb_eco_parse {l sc} {
     if {[regexp {^insert_buffer \[get_(pins|ports) \{([^\}]*)\}\] (\S+) -new_net_names \{([^\}]*)\} -new_cell_names \{([^\}]*)\}} $l -> ty p r nn c]} {
         return [list ins [list [string range $ty 0 end-1] [qb_eco_full $sc $p] [file tail $r] [qb_eco_full $sc $nn] [qb_eco_full $sc $c]]]
     }
-    if {[regexp {^add_buffer_on_route \[get_net -of \{([^\}]*)\}\] -user_specified_buffers \{([^\}]*)\}} $l -> p b]} {
-        # every buffer of the list: {name lib_cell x y layer} each (R92: only the first was parsed)
-        if {[catch {llength $b} nb] || !$nb || $nb % 5} { return [list unparsed {}] }
+    if {[llength [set a [qb_eco_abor $l]]]} {
+        lassign $a p b
         set f [list [qb_eco_full $sc $p]]
         foreach {c r x y ly} $b { lappend f [qb_eco_full $sc $c] [file tail $r] }
         return [list abor $f]
     }
     return [list unparsed {}]
+}
+proc qb_eco_abor {l} {
+    if {![regexp {^add_buffer_on_route \[get_net -of \{([^\}]*)\}\] -user_specified_buffers \{([^\}]*)\}} $l -> p b]} { return {} }
+    # every buffer of the list: {name lib_cell x y layer} each (R92: only the first was parsed)
+    if {[catch {llength $b} nb] || !$nb || $nb % 5} { return {} }
+    return [list $p $b]
 }
 proc qb_eco_new_cells {chg} {
     set sc ""; set r {}

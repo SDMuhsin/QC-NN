@@ -22,7 +22,8 @@ qb_open [qc_env QB_ECO_FROM route] $lab
 qb_route_setup
 set chg $::R/out/eco/pt_eco.tcl
 set n0 [sizeof_collection [get_flat_cells]]
-source $chg
+# sourced as resolved (R95, common.tcl qb_eco_route_layers): PT's layer-0 add_buffer_on_route buffers on their routes
+source [qb_eco_route_layers $chg $::R/out/eco/$lab/pt_eco_resolved.tcl]
 set fill {}; foreach c [concat $::QC_PNR_DCAP $::QC_PNR_FILL] { lappend fill */$c }
 set fill [get_lib_cells $fill]
 set up [get_flat_cells -quiet -filter "physical_status==unplaced"]

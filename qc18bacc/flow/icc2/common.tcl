@@ -40,6 +40,8 @@
 #   qb_eco_names <chg>  PT change-list gate (R89 / R91, eco.tcl): every cell / net / pin / port the change list names
 #                       exists, lib cells applied, every new cell = PT's new-cell record (lib cell, load pins); counts +
 #                       rpt/eco_names.rpt
+#   qb_eco_route_layers <chg> <out>  the change list as eco.tcl sources it (R95): every add_buffer_on_route buffer PT
+#                       left on layer 0 put on the nearest routed wire of its net (point + layer); returns <out>
 #   qb_pg_check <step>  PG pin gate (R67; floorplan.tcl, abstract.tcl): the VDD / VSS terminals are exactly the straps of
 #                       the chip PG grid's pin layer (floorplan/pg_grid.tcl ::QB_PG_PIN): that layer only, strap width,
 #                       each across the whole die, low edges = qb_pg_expect of the core (VSS at core + offset, VDD at
@@ -506,6 +508,82 @@ proc qb_eco_names {chg} {
     foreach {k w} {net nets pin pins port ports abor abor_buffers ref lib_cells} { append t " $w $n($k) missing $m($k)" }
     append t " new_cells $nn missing $nm load_mismatch $nld record_mismatch $nr unparsed $nu"
     return [list $t [expr {$m(cell) + $m(net) + $m(pin) + $m(port) + $m(abor) + $m(ref) + $nm + $nld + $nr + $nu}]]
+}
+# add_buffer_on_route layers (R95, eco.tcl).  PT writes each buffer {name lib_cell x y layer} with (x, y) the perpendicular
+# projection of the new cell's centre onto the nearest wire of the net and layer that wire's, but r94 [M]: 3 of 99 have
+# layer 0 and (x, y) the cell centre, off the route (change-list lines 36, 52, 76).  ICC2 then detects the nearest wire
+# itself; at line 36 an M6 and an M5 wire are equally near (1.450 um edge distance): UIED-333 "Can not find unique
+# layer", UIED-309 / UIED-180, Tcl error, eco step stopped; line 36 with M6 or M5 inserts cleanly.  Replay [M] (copy of
+# r94): lines 36 / 52 / 76 -> M5 (tie with M6) / M3 / M2 (ICC2's own picks for 52 / 76), 919 lines sourced, 0 errors,
+# qb_eco_names 0 missing / mismatched.  qb_eco_route_layers <chg> <out>: <out> =
+# <chg> with every layer-0 buffer set by PT's rule, (x, y) projected onto the nearest centre line of the net's routed
+# wires (path shapes) on the open block and that wire's layer; exact ties (database units) to the lower LEF routing
+# layer, then the lower x, y.  Every other line byte-identical, <chg> untouched; one summary line per resolved buffer + a
+# total.  Error if such a net has no routed wire, an add_buffer_on_route line does not parse, or a buffer of <out> names
+# no LEF routing layer.  Returns <out>.
+proc qb_eco_route_layers {chg out} {
+    current_instance
+    set ly [dict keys [qb_lef_grid]]
+    set fh [open $chg]; set t [read $fh]; close $fh
+    set sc ""; set r {}; set i 0; set nb 0; set nr 0; set nt 0
+    foreach l [split $t "\n"] {
+        incr i
+        lassign [qb_eco_parse [string trim $l] $sc] k f
+        if {$k eq "scope"} { set sc [lindex $f 0] }
+        if {$k ne "abor"} {
+            if {[string match add_buffer_on_route* [string trim $l]]} { error "qb_eco_route_layers: [file tail $chg] line $i does not parse: $l" }
+            lappend r $l; continue
+        }
+        lassign [qb_eco_abor [string trim $l]] p b
+        set v {}; set m 0
+        foreach {c lc x y lay} $b {
+            incr nb
+            if {$lay eq "0"} {
+                lassign [qb_eco_route_point [lindex $f 0] $x $y $ly] lay qx qy d tie
+                qb_line "eco layer [file tail $chg] line $i $c: ($x $y) 0 -> $lay ($qx $qy) distance $d tie $tie"
+                set x $qx; set y $qy; incr nr; incr m; if {$tie eq "yes"} { incr nt }
+            }
+            if {$lay ni $ly} { error "qb_eco_route_layers: [file tail $chg] line $i buffer $c names no routing layer: '$lay'" }
+            lappend v $c $lc $x $y $lay
+        }
+        if {$m} { set l [string map [list "\{$b\}" "\{ $v\}"] $l] }
+        lappend r $l
+    }
+    file mkdir [file dirname $out]
+    set fh [open $out w]; puts -nonewline $fh [join $r "\n"]; close $fh
+    qb_line "eco layers [file tail $chg]: add_buffer_on_route buffers $nb, layer 0 resolved $nr (ties $nt) -> $out"
+    return $out
+}
+# nearest point of the routed wires (path centre lines) of the net of <pin> to (x, y) um, in database units:
+# {layer x y distance tie}; candidates ordered by distance, LEF layer order <ly>, x, y
+proc qb_eco_route_point {pin x y ly} {
+    set u $::QB_DBU; set px [expr {round($x * $u)}]; set py [expr {round($y * $u)}]
+    set n [get_nets -quiet -of_objects [get_pins -quiet $pin]]
+    set c {}
+    if {[sizeof_collection $n]} {
+        foreach_in_collection s [get_shapes -quiet -of_objects $n -filter "shape_type==path"] {
+            set lay [get_attribute $s layer_name]
+            if {[set li [lsearch -exact $ly $lay]] < 0} continue
+            set pts [lmap q [get_attribute $s points] { lmap v $q { expr {round($v * $u)} } }]
+            foreach a [lrange $pts 0 end-1] b [lrange $pts 1 end] {
+                lassign $a ax ay; lassign $b bx by
+                if {$ax != $bx && $ay != $by} { error "qb_eco_route_point: $pin: non-Manhattan wire segment on $lay" }
+                set qx [expr {min(max($px, min($ax, $bx)), max($ax, $bx))}]
+                set qy [expr {min(max($py, min($ay, $by)), max($ay, $by))}]
+                lappend c [list [expr {($qx - $px) ** 2 + ($qy - $py) ** 2}] $li $qx $qy $lay]
+            }
+        }
+    }
+    if {![llength $c]} { error "qb_eco_route_point: the net of $pin has no routed wire (layer-0 add_buffer_on_route at $x $y)" }
+    foreach k {3 2 1 0} { set c [lsort -integer -index $k $c] }
+    lassign [lindex $c 0] d2 li qx qy lay
+    set tie no
+    foreach e [lrange $c 1 end] {
+        if {[lindex $e 0] != $d2} break
+        if {[lrange $e 1 3] ne [list $li $qx $qy]} { set tie yes; break }
+    }
+    return [list $lay [format %.3f [expr {$qx / double($u)}]] [format %.3f [expr {$qy / double($u)}]] \
+        [format %.3f [expr {sqrt($d2) / $u}]] $tie]
 }
 # leaf cells driven directly by the input ports <globs> that are registers or drive a register input:
 # {cells n_ports n_register n_combinational}
