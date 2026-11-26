@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Netlists and other inputs of the P&R flows (DC topographical tt, flow/tsmc65 run_dc.sh / run_pt.sh).  On the build host:
 #   qc18bacc/flow/synth/run.sh col               column block DC -> syn/qb_col_blk_r5d_s20_tt_p1.65_topo (+ PT tt ss; results/r5d.md)
-#   qc18bacc/flow/synth/run.sh act [tag]         act block DC (S1T) -> syn/<tag [r35_act]> + PT tt ss with act_pt_classes.tcl (results/r20.md)
+#   qc18bacc/flow/synth/run.sh rgr               regression block DC (one PPU lane qb_lane_n, synth/rgr.f) -> syn/rgr_lane_tt_p2.0_topo (+ PT tt ss)
+#   qc18bacc/flow/synth/run.sh act [tag]       act block DC (S1T) -> syn/<tag [r35_act]> + PT tt ss with act_pt_classes.tcl (results/r20.md)
 #   qc18bacc/flow/synth/run.sh chip <tag>        chip DC (QB_TOP_PTR=1 RTL, 8 column ETMs from $B/r5b_blk, ARM macros) -> syn/<tag>
 #                                                (r26_ptr for the hub partition, r35_ptr for the top; results/r26.md, r35.md)
 #   qc18bacc/flow/synth/run.sh part <syn tag> <dir>   hub partition (synth/partition.sh) -> $B/<dir> (r26_w for the hub, r35_w for the top)
@@ -18,6 +19,7 @@ step=${1:?step}
 case $step in
 col) QC_TOPO=1 QC_HOOK=$here/col_dc_hook.tcl QC_COMPILE="$COMPILE" QB_FL=$here/col_blk.f \
        "$here/dc.sh" all qb_col_blk 1.65 qb_col_blk_r5d_s20_tt_p1.65_topo || exit 1 ;;
+rgr) QC_TOPO=1 QC_COMPILE="$COMPILE" QB_FL=$here/rgr.f "$here/dc.sh" all qb_lane_n 2.0 rgr_lane_tt_p2.0_topo || exit 1 ;;
 act) s=${2:-r35_act}
      QC_TOPO=1 QC_HOOK=$here/act_dc_hook.tcl QC_COMPILE="$COMPILE" QB_FL=$here/act_blk.f "$here/dc.sh" syn qb_act2_blk 1.65 $s &&
      QC_SDC=$QBF/common/constraints.sdc QC_PT_HOOK=$here/act_pt_classes.tcl QC_CLK=clk QC_CORES=8 "$ROOT/flow/tsmc65/sta/run_pt.sh" $s tt ss || exit 1

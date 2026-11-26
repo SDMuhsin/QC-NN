@@ -163,11 +163,16 @@ proc qb_io_lat {step} {
             qb_line "io_min $step $n [$apply $m($n) [qb_lib_tcq [regsub {^func_} $n {}]]]"
         }
     }
-    foreach sc [list [lindex [get_object_name [get_scenarios -filter setup==true]] 0] [lindex [get_object_name [get_scenarios -filter hold==true]] 0]] dt {max min} {
-        current_scenario $sc
-        redirect -variable r { report_timing -nosplit -significant_digits 4 -delay_type $dt -scenarios $sc -from [get_ports {act[0]}] -to [get_ports {act_o[0]}] }
-        set v [lmap {- x} [regexp -all -inline -line {^\s*clock network delay \((?:ideal|propagated)\)\s+(-?[0-9.]+)} $r] { set x }]
-        qb_line "io_lat $step $sc $dt act\[0\] -> act_o\[0\] clock network delay launch / capture $v"
+    # launch / capture clock network delay of one port-to-port path P(IO_PAIR) = {from to} of the block config (column:
+    # act[0] -> act_o[0]), logged; blocks without one skip it
+    if {[info exists P(IO_PAIR)]} {
+        lassign $P(IO_PAIR) pf pt
+        foreach sc [list [lindex [get_object_name [get_scenarios -filter setup==true]] 0] [lindex [get_object_name [get_scenarios -filter hold==true]] 0]] dt {max min} {
+            current_scenario $sc
+            redirect -variable r { report_timing -nosplit -significant_digits 4 -delay_type $dt -scenarios $sc -from [get_ports $pf] -to [get_ports $pt] }
+            set v [lmap {- x} [regexp -all -inline -line {^\s*clock network delay \((?:ideal|propagated)\)\s+(-?[0-9.]+)} $r] { set x }]
+            qb_line "io_lat $step $sc $dt $pf -> $pt clock network delay launch / capture $v"
+        }
     }
     current_scenario $s0
 }

@@ -136,9 +136,9 @@ redirect -tee $::R/rpt/init_scen.rpt { report_scenarios; report_pvt }
 qb_line "init corners [get_object_name [get_corners *]] modes [get_object_name [get_modes *]]"
 redirect $::R/rpt/init_ptech.rpt { report_parasitic_parameters }
 redirect $::R/rpt/init_check_timing.rpt { check_timing }
-# IO delays as loaded (func_ss): external delay of one port per budget class
+# IO delays as loaded (func_ss): external delay of one port per budget class, the ports P(IO_SAMPLE) of the block config
 current_scenario func_ss
-foreach p {act[0] cd[0] pf[0] act_o[0] f_y[0]} {
+foreach p [expr {[info exists P(IO_SAMPLE)] ? $P(IO_SAMPLE) : {}}] {
     set dir [get_attribute [get_ports $p] direction]
     redirect -variable r { report_timing -nosplit -significant_digits 4 [expr {$dir eq "in" ? "-from" : "-to"}] [get_ports $p] }
     set k [expr {$dir eq "in" ? "input" : "output"}]

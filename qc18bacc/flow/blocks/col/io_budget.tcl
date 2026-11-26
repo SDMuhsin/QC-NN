@@ -67,6 +67,8 @@
 #                          bare BUFFD4 at act[8].
 set ::QB5_FT {BUFFD4 Z}
 proc qb5_budget {} {
+    # opt-in: a block that reuses these procs sets its own class table ::QB5_BUDGET before sourcing (blocks/rgr/io_budget.tcl)
+    if {[info exists ::QB5_BUDGET]} { return $::QB5_BUDGET }
     set si [expr {[info exists ::env(QB5_SOUTH_IN)] ? $::env(QB5_SOUTH_IN) : 0.20}]
     return [subst -nocommands {
         in  {act[*]}                                   0.55
@@ -121,7 +123,10 @@ proc qb5_io_lines {per Ll Le Tq} {
                 [format "set_output_delay -min %.4f -clock qb_clk \[get_ports {%s}\]" [expr {-$Ll}] $pats]}]
         }
     }
-    lappend out "set_driving_cell -lib_cell [lindex $::QB5_FT 0] -pin [lindex $::QB5_FT 1] \[get_ports {act\[*\]}\]"
+    # (the act driving cell only where the budget has the act class: every column; not a ::QB5_BUDGET block without act)
+    if {[lsearch -exact [qb5_budget] {act[*]}] >= 0} {
+        lappend out "set_driving_cell -lib_cell [lindex $::QB5_FT 0] -pin [lindex $::QB5_FT 1] \[get_ports {act\[*\]}\]"
+    }
     return [join $out "\n"]
 }
 proc qb5_io_apply {per Ll Le Tq} { foreach l [split [qb5_io_lines $per $Ll $Le $Tq] "\n"] { uplevel #0 $l } }

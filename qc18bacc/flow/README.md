@@ -8,7 +8,7 @@ Stage-organized implementation flow of the qc18bacc chip (column block, act bloc
 
 | dir | contents |
 |---|---|
-| `common/` | `env.sh` (bash: `QBF`, `ROOT`, `B`, `TOOLS`, `PY`, `OR`, `qb_kit`), `qb.tcl` (Tcl: `::QBF`, `qb_env`), `or.sh` (run an OpenROAD script in a run dir), `block_sdc.tcl` (netlist + P&R SDC of a hard block from its DC run), `constraints.sdc` (DC / PT SDC), `queue.sh` (detached step queue per host), `status.sh` (run status digest) |
+| `common/` | `env.sh` (bash: `QBF`, `ROOT`, `B`, `TOOLS`, `PY`, `OR`, `qb_kit`), `qb.tcl` (Tcl: `::QBF`, `qb_env`), `or.sh` (run an OpenROAD script in a run dir), `block_sdc.tcl` (netlist + P&R SDC of a hard block from its DC run), `constraints.sdc` (DC / PT SDC), `queue.sh` (detached step queue per host), `status.sh` (run status digest), `block.sh` (shared ICC2 hard-block driver), `deploy.sh` (immutable flow snapshot of one commit on a build host) |
 | `synth/` | DC / partition / top-netlist steps that produced the P&R input netlists |
 | `floorplan/` | pins, PDN, macro placement, floorplan generators |
 | `place/` | placement hooks (seeds, tiling, buffer removal, incremental gpl) |
@@ -61,6 +61,24 @@ Inputs: netlist + SDC `$B/syn/qb_col_blk_r5d_s20_tt_p1.65_topo` (P&R SDC: common
 at 5.0 ns), pin positions of the reference abstract `$B/r5b_blk/qb_col_blk_ring.lef` (the ones r48 placed), written as the
 floorplan DEF `COL_PIN_DEF` by floorplan/abstract_pins.py in the pnr step (R72). Parameters: `col.env`, `icc2.cfg`.  The OpenROAD
 config `col.cfg` / `route_pre.tcl` (OpenROAD, R48) were deleted in R54 (git history).
+
+## Regression block qb_lane_n (`blocks/rgr`) and flow snapshots (`common/deploy.sh`)
+
+Every flow change passes the regression block before it may run on the column.  It runs from a snapshot of a commit:
+```
+qc18bacc/flow/common/deploy.sh <commit> <host>:<dir>    # git archive of qc18bacc/flow at <commit> + the host's flow/ (site layer) -> <dir>
+qc18bacc/flow/synth/run.sh rgr                          # once per build root: DC of one PPU lane -> $B/syn/rgr_lane_tt_p2.0_topo
+<dir>/qc18bacc/flow/blocks/rgr/run.sh pnr <tag>         # the column's pnr (libs .. outputs, portcheck, fill) -> $B/icc2/rgr/<tag>
+```
+deploy.sh archives a commit (or tree) id, never the working tree; it writes VERSION (commit, tree, site source) and
+MANIFEST.md5 (every other file), verifies the MANIFEST on the host, makes the snapshot read-only and refuses an existing
+<dir>.  The block uses the shared driver like the column: `rgr.env` (netlist tag, period 2.5 ns, die 130 x 130 um, pins),
+`icc2.cfg` (the column's opt-ins HOLD_RESERVE / ISOLATE on this design), `io_budget.tcl` (the column's budget procs with
+its own class table `::QB5_BUDGET`), pins: `floorplan/edge_pins.py` (pin-only abstract LEF: inputs west, outputs east on
+M3 tracks) -> `floorplan/abstract_pins.py` (floorplan DEF).  Block-config hooks of the shared ICC2 steps: `P(IO_SAMPLE)`
+(init's logged IO delays) and `P(IO_PAIR)` (qb_io_lat's port-to-port clock delays; the column: act[0] -> act_o[0]).
+Not yet regression-ready (step 2): eco, calibre, post, views, signoff (a PrimeTime script for this block, and the
+column-only act / act_o parts of signoff/pt/col_blk.tcl, icc2/abstract.tcl and signoff/verdict.py made opt-in).
 
 ## Act block qb_act2_blk (`blocks/act`, production lineage r35_act -> r38_act_rr2)
 
