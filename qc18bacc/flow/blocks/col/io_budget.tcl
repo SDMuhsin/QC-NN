@@ -129,9 +129,11 @@ proc qb5_io_apply {per Ll Le Tq} { foreach l [split [qb5_io_lines $per $Ll $Le $
 # measures Le / Lc = the current scenario's launch / capture clock network delay of the min path act[0] -> act_o[0]
 # (early / late-derated I/O latency; -scenarios: without it ICC2 reports the worst path over all scenarios, R78 [M]: Le
 # 0.340 in every scenario); qb5_act_o_min_icc2 <Le Lc> <Tq> sets act_o -min.  Every scenario is measured before the
-# first set (a set_output_delay invalidates the timing: R78 [M] measure / set alternating took ~3 min per scenario)
+# first set (a set_output_delay invalidates the timing: R78 [M] measure / set alternating took ~3 min per scenario).
+# -significant_digits 6 (R92): at the report's default 2 the 0.1-ps act_o -min line was built from latencies rounded to
+# 10 ps (r91b [M]: ICC2's act_o hold contract -9.0 .. +4.8 ps off PrimeTime's on 4,608 ports)
 proc qb5_act_o_lat_icc2 {} {
-    redirect -variable r { report_timing -nosplit -delay_type min -scenarios [current_scenario] -from [get_ports {act[0]}] -to [get_ports {act_o[0]}] }
+    redirect -variable r { report_timing -nosplit -significant_digits 6 -delay_type min -scenarios [current_scenario] -from [get_ports {act[0]}] -to [get_ports {act_o[0]}] }
     set v [lmap {- x} [regexp -all -inline -line {^\s*clock network delay \((?:ideal|propagated)\)\s+(-?[0-9.]+)} $r] { set x }]
     if {[llength $v] != 2} { error "qb5_act_o_lat_icc2: [llength $v] clock network delays on act\[0\] -> act_o\[0\] in [get_object_name [current_scenario]]" }
     return $v
@@ -139,7 +141,7 @@ proc qb5_act_o_lat_icc2 {} {
 proc qb5_act_o_min_icc2 {lat Tq} {
     lassign $lat Le Lc
     uplevel #0 [qb5_act_o_min_line $Le $Tq $Lc]
-    return [format "Le %.3f Lc %.3f Tq %.4f U_hold %.3f act_o -min %.4f" $Le $Lc $Tq [qb5_unc_hold] [qb5_act_o_min $Le $Tq $Lc]]
+    return [format "Le %.4f Lc %.4f Tq %.4f U_hold %.3f act_o -min %.4f" $Le $Lc $Tq [qb5_unc_hold] [qb5_act_o_min $Le $Tq $Lc]]
 }
 # act_o[b] load = capacitance of the act[b] net.  qb5_act_o_caps <capof>: {b cap ...} of every act[b], capof = command
 # prefix called with the act port, returning that net's capacitance in the tool's current timing state; qb5_act_o_load

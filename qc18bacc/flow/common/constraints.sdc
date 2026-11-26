@@ -24,4 +24,6 @@ set_driving_cell -lib_cell [lindex $::QC_DRV_IN 0] -library $lib -pin [lindex $:
 set_load [expr {4.0 * [load_of $lib/$::QC_LOAD_PIN]}] [all_outputs]
 
 set_max_transition [expr {min(0.5, 0.1 * $period)}] [current_design]
+# max fanout: a synthesis guideline (DC), not a sign-off criterion (R92, PI decision) - ICC2 ignores it (init.log
+# CSTR-011), PrimeTime does not report it, and nothing in P&R or sign-off enforces it
 set_max_fanout 16 [current_design]

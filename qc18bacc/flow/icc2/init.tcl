@@ -25,10 +25,33 @@ proc qb_sdc {} {
     # U_hold (blocks/col/io_budget.tcl qb5_unc_hold, R79), so the two must agree
     set uh [expr {[regexp -line {^set_clock_uncertainty -hold ([0-9.]+)} $t -> uh] ? $uh : "none"}]
     if {[llength [info procs qb5_unc_hold]] && $uh != [qb5_unc_hold]} { error "qb_sdc: SDC hold uncertainty $uh != io budget U_hold [qb5_unc_hold]" }
+    # the sign-off values the P&R guard-bands start from (qb_guard)
+    set ::QB_SDC_HOLD_UNC $uh
+    set ::QB_SDC_MAX_TRAN [expr {[regexp -line {^set_max_transition ([0-9.]+)} $t -> mt] ? $mt : "none"}]
     set out $::R/$P(TOP)_icc2.sdc
     set f [open $out w]; puts -nonewline $f $t; close $f
     qb_line "init sdc $out period $per hold_uncertainty $uh dc_io_delay_lines_replaced $nio"
     return $out
+}
+# P&R guard-bands (R92, PI decision; opt-in, default 0 = none; sign-off itself never changes): implementation closes to
+# exactly zero margin, and r91b's ECO re-route pushed untouched near-zero paths across zero ([M] 264 hold endpoints
+# within 5 ps at wcl).  QC_PNR_GUARD_HOLD: ns added to the SDC hold uncertainty; QC_PNR_GUARD_TRAN: fraction f, design
+# max transition = (1 - f) x the SDC's.  qb_guard applies them in the current scenario (after its SDC) and returns
+# {guard_hold hold_uncertainty guard_tran max_transition} as now in force.
+proc qb_guard {} {
+    set gh [qc_env QC_PNR_GUARD_HOLD 0]; set gt [qc_env QC_PNR_GUARD_TRAN 0]
+    if {$gh < 0 || $gt < 0 || $gt >= 1} { error "qb_guard: QC_PNR_GUARD_HOLD $gh / QC_PNR_GUARD_TRAN $gt out of range" }
+    set uh $::QB_SDC_HOLD_UNC; set mt $::QB_SDC_MAX_TRAN
+    if {$gh > 0} {
+        set uh [expr {($uh eq "none" ? 0.0 : $uh) + $gh}]
+        set_clock_uncertainty -hold $uh [all_clocks]
+    }
+    if {$gt > 0} {
+        if {$mt eq "none"} { error "qb_guard: QC_PNR_GUARD_TRAN $gt, but the SDC has no design set_max_transition" }
+        set mt [expr {(1.0 - $gt) * $mt}]
+        set_max_transition $mt [current_design]
+    }
+    return [list $gh $uh $gt $mt]
 }
 
 create_lib $::QB_LIB -technology $::QC_TF -ref_libs [list $::QB_NDM] -scale_factor $::QB_DBU
@@ -77,12 +100,14 @@ foreach c $::QC_SIGNOFF_CORNERS {
     source $sdc
     # IO budget of this corner (ideal clock: no arrival shift; min input delay = the corner's library clock -> Q)
     if {[info exists P(IO_BUDGET)]} { source $P(IO_BUDGET); qb5_io_apply $::QB_PNR_PER 0.0 0.0 [qb_lib_tcq $c] }
+    set gb [qb_guard]
     # hold in every scenario (R78): PrimeTime checks hold at all sign-off corners (r77 [M] pre-ECO 14 hold violators at
     # ss / ss_rcw / wcl / wcl_rcw, where ICC2 had hold off, 2 left after the ECO: pw -> u_pbw); setup by QC_ROLE
     set su [expr {$::QC_ROLE($c) eq "setup"}]
     set_scenario_status func_$c -active true -setup $su -hold true -max_transition true -max_capacitance true \
         -min_capacitance false -leakage_power false -dynamic_power false
 }
+qb_line "init guard-bands QC_PNR_GUARD_HOLD [lindex $gb 0] ns: hold uncertainty [lindex $gb 1] ns (SDC $::QB_SDC_HOLD_UNC), QC_PNR_GUARD_TRAN [lindex $gb 2]: design max_transition [lindex $gb 3] ns (SDC $::QB_SDC_MAX_TRAN), in [llength $::QC_SIGNOFF_CORNERS] scenarios"
 qb_timer
 set du {}; foreach p $::QC_DONT_USE { lappend du */$p }
 set_lib_cell_purpose -exclude all [get_lib_cells $du]
@@ -100,7 +125,7 @@ redirect $::R/rpt/init_check_timing.rpt { check_timing }
 current_scenario func_ss
 foreach p {act[0] cd[0] pf[0] act_o[0] f_y[0]} {
     set dir [get_attribute [get_ports $p] direction]
-    redirect -variable r { report_timing -nosplit [expr {$dir eq "in" ? "-from" : "-to"}] [get_ports $p] }
+    redirect -variable r { report_timing -nosplit -significant_digits 4 [expr {$dir eq "in" ? "-from" : "-to"}] [get_ports $p] }
     set k [expr {$dir eq "in" ? "input" : "output"}]
     regexp -line "$k external delay\\s+(-?\[0-9.\]+)" $r -> v
     qb_line "init io_delay $p $k [expr {[info exists v] ? $v : "NA"}]"; unset -nocomplain v

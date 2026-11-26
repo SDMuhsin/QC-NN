@@ -1,7 +1,7 @@
 # Clock tree + post-CTS optimisation: clock_opt (CTS with the clock-tree cells of common/lib_cells.tcl qb_clock_cells: the
 # site/pnr.tcl clock buffers, CKND<n> inverters and CKLNQD<n> gates, none dont_use; setup / hold / DRV in the MCMM
 # scenarios), no useful skew; then the I/O latency (common.tcl qb_io_lat: compute_clock_latency, the median sink latency,
-# derated late / early per check as PrimeTime's IO shift).  Block label place -> cts.
+# derated late / early per check as PrimeTime's IO shift); legality gate (common.tcl qb_legality).  Block label place -> cts.
 # Routing options (qb_route_setup) before clock_opt (R77): clock_opt detail-routes the clock nets, and without the kit
 # antenna rules, diodes, port gate size and redundant vias it did so with antenna checking off on the clk port net
 # (r75 cts.log [M]: 2 x ZRT-311 on clk) and single vias.
@@ -34,10 +34,20 @@ set f [open $::R/$P(TOP)_icc2.sdc]; set t [read $f]; close $f
 set ctran [lmap {- v} [regexp -all -inline -line {^set_clock_transition\s+(?:-\S+\s+)*?-max\s+(?:-\S+\s+)*([0-9.]+)\s} $t] { set v }]
 if {![llength $ctran]} { error "cts: no set_clock_transition -max in $P(TOP)_icc2.sdc" }
 set ctran [tcl::mathfunc::max {*}$ctran]
-foreach_in_collection s [all_scenarios] { set_max_transition $ctran -clock_path [get_clocks qb_clk] -scenarios [get_object_name $s] }
-qb_line "cts clock_path max_transition $ctran ns (SDC set_clock_transition) in [sizeof_collection [all_scenarios]] scenarios"
+# Two clock-path limits (R92, PI decision): the value above is the CTS BUILD TARGET only; the sign-off limit of clock-network
+# pins is the one variable QC_CLK_TRAN_MAX (env, default 0.25 ns; PrimeTime checks it), set after clock_opt in every
+# scenario, so ICC2's DRV counts and post-route fixing from here on use the limit that is signed off
+set csign [qc_env QC_CLK_TRAN_MAX 0.25]
+if {$csign < $ctran} { error "cts: sign-off clock transition limit QC_CLK_TRAN_MAX $csign < CTS build target $ctran ns" }
+proc qb_clk_tran {v} {
+    foreach_in_collection s [all_scenarios] { set_max_transition $v -clock_path [get_clocks qb_clk] -scenarios [get_object_name $s] }
+}
+qb_clk_tran $ctran
 qb_io_load
 clock_opt
+qb_clk_tran $csign
+qb_line "cts clock_path max_transition: build target $ctran ns (SDC set_clock_transition, during clock_opt), sign-off limit $csign ns (QC_CLK_TRAN_MAX, from here on) in [sizeof_collection [all_scenarios]] scenarios"
+qb_legality cts
 qb_io_lat cts
 redirect $::R/rpt/cts_clock_qor.rpt { report_clock_qor -type summary }
 foreach l [split [exec cat $::R/rpt/cts_clock_qor.rpt] "\n"] { if {[regexp {qb_clk} $l]} { qb_line "cts [regsub -all {\s+} [string trim $l] { }]" } }

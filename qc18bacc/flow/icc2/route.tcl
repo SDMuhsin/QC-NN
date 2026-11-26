@@ -1,11 +1,14 @@
 # Routing (crosstalk-driven global / track routing, feedthrough NDR: qb_route_setup,
 # qb_feedthru_ndr, R74): kit antenna rules (Milkyway clf antennaRule_n65_<n>lm.tcl, read in ICC2 syntax), diodes ANTENNA, route_auto,
-# route_opt (MCMM setup / hold / DRV) twice, standard-cell decap + filler cells (site/pnr.tcl), check_routes / check_lvs.
+# route_opt (MCMM setup / hold / DRV) twice, standard-cell decap + filler cells (site/pnr.tcl), route closure + hard gate
+# (common.tcl qb_route_close, R92: route_detail on the DRCs the capped detail routes of route_auto / route_opt leave, then
+# check_routes / check_lvs -check_child_cells all 0 or the step fails).
 # Block label cts -> route.  route_opt fixes hold (R55: 122 ropt_h_inst buffers, 142 -> 0 func_ff hold violators before its
 # ECO routing) against the parasitics before it ECO-routes its own changes; that ECO routing leaves ps-level hold misses
 # (R55: 70, WHV 2.4 ps).  The second, incremental route_opt (Synopsys RM) re-optimises on the routed parasitics.
-# qb_io_load after route_auto and after each route_opt (R84): the layout-dependent IO loads (column act_o = own act[b] net)
-# from the routed nets; route_opt sizes / buffers / re-routes the act nets, so the load of the pass before is stale.
+# qb_io_load after route_auto, after the first route_opt and after the route closure that follows the last one (R84, R92):
+# the layout-dependent IO loads (column act_o = own act[b] net) from the routed nets; route_opt sizes / buffers /
+# re-routes the act nets and a closure pass re-routes too, so the load of the pass before is stale.
 # route_opt also fixes clock-net max_transition / max_capacitance on the routed parasitics (post-route clock DRC fixing,
 # route_opt.flow.enable_ccd_clock_drc_fixing always_on; CCD / useful skew stays off): signal routing changes the clock
 # nets' coupling after CTS, and clock_opt final_opto and PrimeTime never change clock nets.  It sizes clock buffers /
@@ -26,9 +29,9 @@ route_opt
 qb_io_load
 qb_io_lat route2
 route_opt
-qb_io_load
 qb_fillers
-qb_route_checks route
+qb_route_close route
+qb_io_load
 qb_isolate_report route
 qb_qor route
 qb_done route

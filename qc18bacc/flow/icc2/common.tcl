@@ -30,7 +30,9 @@
 #                       global / track / detail routing, redundant via insertion after every detail route (R71)
 #   qb_feedthru_ndr     feedthrough port nets P(FEEDTHRU) on a spacing NDR P(FEEDTHRU_NDR) (R74, route.tcl)
 #   qb_fillers          decap (DCAP*, removed where they violate) then metal-free FILL* cells in every empty site
-#   qb_route_checks <step>  check_routes / check_lvs -> rpt/<step>_check_{routes,lvs}.rpt + summary lines
+#   qb_route_close <step>  route closure (check_routes, route_detail on the stored DRCs, at most QB_CLOSE_PASSES passes)
+#                       + hard gate (check_routes / check_lvs -check_child_cells true all 0) -> rpt/<step>_check_{routes,
+#                       lvs}.rpt, one summary line per pass and one for the gate (R92; route.tcl, eco.tcl)
 #   qb_hold_reserve     netlist-targeted hold-cell reservation (R87, P(HOLD_RESERVE); place.tcl)
 #   qb_isolate_ports    input-port isolation buffers by ICC2 set_isolate_ports (R88, P(ISOLATE); place.tcl before place_opt)
 #   qb_isolate_magnet   isolation buffers pulled to their port terminals (magnet_placement, legalize_only; place.tcl)
@@ -43,6 +45,11 @@
 #                       the chip PG grid's pin layer (floorplan/pg_grid.tcl ::QB_PG_PIN): that layer only, strap width,
 #                       each across the whole die, low edges = qb_pg_expect of the core (VSS at core + offset, VDD at
 #                       + pitch / 2, pitch); error otherwise, one summary line
+#   qb_lef_grid         kit routing grid {layer {direction pitch offset}} of the LEF (site/pnr.tcl QC_PNR_LEF; R92)
+#   qb_track_check <step> <signal ports>  track gate (R92; floorplan.tcl): track phase against the rows = LEF OFFSET on
+#                       every LEF grid layer, every signal pin on a track of its layer; error otherwise, one summary line
+#   qb_legality <step>  placement legality gate (R92; place.tcl, cts.tcl): check_legality TOTAL, cell overlaps and
+#                       verdict parsed from its report; error on any violation or an unparsed report
 set ::QBF [file normalize [file dirname [info script]]/..]
 set ::QC_BUILD $::env(QC_BUILD)
 source $::env(QC_FLOW)/common/lib.tcl
@@ -156,7 +163,7 @@ proc qb_io_lat {step} {
     }
     foreach sc [list [lindex [get_object_name [get_scenarios -filter setup==true]] 0] [lindex [get_object_name [get_scenarios -filter hold==true]] 0]] dt {max min} {
         current_scenario $sc
-        redirect -variable r { report_timing -nosplit -delay_type $dt -scenarios $sc -from [get_ports {act[0]}] -to [get_ports {act_o[0]}] }
+        redirect -variable r { report_timing -nosplit -significant_digits 4 -delay_type $dt -scenarios $sc -from [get_ports {act[0]}] -to [get_ports {act_o[0]}] }
         set v [lmap {- x} [regexp -all -inline -line {^\s*clock network delay \((?:ideal|propagated)\)\s+(-?[0-9.]+)} $r] { set x }]
         qb_line "io_lat $step $sc $dt act\[0\] -> act_o\[0\] clock network delay launch / capture $v"
     }
@@ -238,12 +245,65 @@ proc qb_fillers {} {
         if {$chk} { remove_stdcell_fillers_with_violation }
     }
 }
-proc qb_route_checks {step} {
-    redirect $::R/rpt/${step}_check_routes.rpt { check_routes }
-    redirect $::R/rpt/${step}_check_lvs.rpt { check_lvs -max_errors 0 }
-    foreach r {check_routes check_lvs} {
-        set t [exec cat $::R/rpt/${step}_$r.rpt]
-        foreach l [split $t "\n"] { if {[regexp -nocase {total number|total.*(error|violation)|open|short} $l]} { qb_line "$step $r [string trim $l]" } }
+# Route closure + hard gate (R92, PI decision): route.tcl after the last route_opt, eco.tcl after route_eco, each after
+# qb_fillers, i.e. on the layout that is written out.
+# Why [M] (r91b, r92x): route_auto's first detail route ended with 0 violations; redundant-via insertion left 1024 and
+# the detail route after it stopped at its iteration cap with 3 (Short / Same net spacing / Less than minimum edge
+# length on M1, one net); both route_opt passes and route_eco stopped the same way ("reached max number of iterations",
+# route_eco "not converging" after iteration 10).  A new route_detail on the stored DRCs cleared them in its first
+# iteration, with the fillers in place as here (r92x x1: 3 -> 0 DRCs, 0 open nets, 305 s).
+#   closure  check_routes; while DRCs / antenna violations remain and fewer than QB_CLOSE_PASSES passes ran:
+#            route_detail -incremental true -initial_drc_from_input true, check_routes.  One summary line per pass.
+#   gate     check_routes: 0 DRCs, 0 open nets, 0 antenna violations; check_lvs -check_child_cells true: 0 shorts,
+#            0 open nets, 0 floating routes.  Without -check_child_cells check_lvs does not compare the routes with the
+#            shapes inside cells (man: default false): r91b label route [M] 0 shorts without it, 2 with it (net n1803 x
+#            cell U2741 on M1, the short Calibre LVS found).  A count missing from a report (NA) fails the gate.
+#            On failure the block is saved as label <step>_fail (the evidence; no step reads it) and the step errors.
+set ::QB_CLOSE_PASSES 3
+# qb_rpt_counts <text> {key regexp ...}: the last match of each one-capture regexp in a report text, NA if none
+proc qb_rpt_counts {t pats} {
+    set r {}
+    foreach {k re} $pats { set m [regexp -all -inline -- $re $t]; lappend r $k [expr {[llength $m] ? [lindex $m end] : "NA"}] }
+    return $r
+}
+# qb_check_routes <step>: check_routes (it stores the DRCs route_detail -initial_drc_from_input reads) ->
+# rpt/<step>_check_routes.rpt; returns {drc n open n antenna n types {<DRC type> <count> ...}}
+proc qb_check_routes {step} {
+    redirect -variable t { check_routes }
+    set h [open $::R/rpt/${step}_check_routes.rpt w]; puts $h $t; close $h
+    set c [qb_rpt_counts $t {drc {Total number of DRCs = (\d+)} open {Total number of open nets = (\d+)}
+        antenna {Total number of antenna violations = (\d+)}}]
+    set ty {}
+    if {[regexp {DRC-SUMMARY:\n[^\n]*TOTAL VIOLATIONS[^\n]*\n((?:\t[^\n]+ : +\d+\n)*)} $t -> b]} {
+        foreach l [split [string trim $b "\n"] "\n"] { if {[regexp {^\t(.+?) : +(\d+)$} $l -> n v]} { lappend ty "$n $v" } }
+    }
+    return [dict set c types [join $ty {, }]]
+}
+proc qb_route_close {step} {
+    global P
+    set cnt {{c} { set t [dict get $c types]; return "[dict remove $c types][expr {$t eq "" ? "" : " ($t)"}]" }}
+    set num {{c} { dict remove $c types }}
+    # DRCs + antenna violations left for the detail router; 0 when a count is unreadable (the gate then fails on the NA)
+    set todo {{c} { expr {[string is integer -strict [dict get $c drc]] && [string is integer -strict [dict get $c antenna]]
+        ? [dict get $c drc] + [dict get $c antenna] : 0} }}
+    set c [qb_check_routes $step]
+    qb_line "$step close pass 0: check_routes [apply $cnt $c]"
+    for {set k 0} {$k < $::QB_CLOSE_PASSES && [apply $todo $c] > 0} {} {
+        incr k; set t0 [clock seconds]
+        route_detail -incremental true -initial_drc_from_input true
+        set c [qb_check_routes $step]
+        qb_line "$step close pass $k: route_detail -incremental true -initial_drc_from_input true -> check_routes [apply $cnt $c], [expr {[clock seconds] - $t0}] s"
+    }
+    redirect -variable t { check_lvs -check_child_cells true -max_errors 0 }
+    set h [open $::R/rpt/${step}_check_lvs.rpt w]; puts $h $t; close $h
+    set l [qb_rpt_counts $t {short {Total number of short violations is (\d+)} open {Total number of open nets is (\d+)}
+        floating {Total number of floating route violations is (\d+)}}]
+    set bad {}
+    foreach {n d} [list check_routes [apply $num $c] check_lvs $l] { dict for {key v} $d { if {$v ne "0"} { lappend bad "$n $key $v" } } }
+    qb_line "$step gate: check_routes [apply $num $c]; check_lvs -check_child_cells true $l; $k closure pass(es): [expr {[llength $bad] ? "FAIL ([join $bad {, }])" : "PASS"}]"
+    if {[llength $bad]} {
+        save_block -as $P(TOP)/${step}_fail; save_lib
+        error "$step: route gate failed ([join $bad {, }]); block saved as label ${step}_fail (rpt/${step}_check_routes.rpt, rpt/${step}_check_lvs.rpt)"
     }
 }
 # Netlist-targeted hold-cell reservation (R87, PI decision; place.tcl before place_opt, enabled per block by
@@ -485,4 +545,101 @@ proc qb_pg_check {step} {
     }
     qb_line "$step pg_pins [expr {[llength $bad] ? "FAIL" : "ok"}] layer $::QB_PG_PIN w $w pitch $pitch VSS $n(VSS) from [format %.3f [expr {[lindex $c0 1] + $off}]] VDD $n(VDD) from [format %.3f [expr {[lindex $c0 1] + $off + $pitch / 2.0}]] bad [llength $bad] [lrange $bad 0 3]"
     if {[llength $bad]} { error "QB PG pins off the chip grid: [lrange $bad 0 3]" }
+}
+# Kit routing grid (R92): {layer {direction pitch offset} ...} of the LEF routing layers that state PITCH and OFFSET
+# (the tech section of site/pnr.tcl QC_PNR_LEF, before its first MACRO; of a two-value "x y" form the value across the
+# wires).  LEF: the tracks of a layer run at row origin + OFFSET + k PITCH, and the cell pins are drawn for that.
+proc qb_lef_grid {} {
+    set f [open $::QC_PNR_LEF]; set g {}; set ly {}
+    while {[gets $f l] >= 0} {
+        if {[regexp {^\s*MACRO\s} $l]} break
+        if {$ly eq ""} {
+            if {[regexp {^\s*LAYER\s+(\S+)\s*$} $l -> ly]} { array unset a }
+            continue
+        }
+        if {[regexp {^\s*(TYPE|DIRECTION|PITCH|OFFSET)\s+([^;]*?)\s*;} $l -> k v]} { set a($k) $v; continue }
+        if {![regexp {^\s*END\s+(\S+)} $l -> e] || $e ne $ly} continue
+        if {[info exists a(TYPE)] && $a(TYPE) eq "ROUTING" && [info exists a(DIRECTION)] && [info exists a(PITCH)] && [info exists a(OFFSET)]} {
+            set i [expr {$a(DIRECTION) eq "VERTICAL" ? 0 : 1}]
+            lappend g $ly [list [string tolower $a(DIRECTION)] [lindex $a(PITCH) [expr {min($i, [llength $a(PITCH)] - 1)}]] \
+                [lindex $a(OFFSET) [expr {min($i, [llength $a(OFFSET)] - 1)}]]]
+        }
+        set ly {}
+    }
+    close $f
+    return $g
+}
+# Track gate (R92; floorplan.tcl), in integer database units; <sig> = the block's signal ports.  Error unless
+#   (a) every track pattern in the routing direction of a LEF grid layer has the LEF pitch and
+#       (track start - row origin) mod pitch = LEF OFFSET (row origin = lower-left corner of the site rows),
+#   (b) every layer of the block's routing range P(LAYERS) has such tracks, every row is on one site grid in x,
+#   (c) the centre line of every signal terminal lies on a track of its layer.
+# r91b [M]: tracks at row origin + 0 ran along the cell boundaries (an on-track M2 line crossed 41.6 % of 555,824 cell
+# input pins) and beside all 3,138 M2 / M4 / M6 block pins; the router reached both with off-track jogs.
+proc qb_track_check {step sig} {
+    global P
+    array set lef [qb_lef_grid]
+    set u $::QB_DBU; set bad {}
+    set rows [get_site_rows]; set xs {}; set ys {}
+    foreach_in_collection r $rows {
+        lassign [lindex [get_attribute $r bbox] 0] x y
+        lappend xs [expr {round($x * $u)}]; lappend ys [expr {round($y * $u)}]
+    }
+    set o(vertical) [tcl::mathfunc::min {*}$xs]; set o(horizontal) [tcl::mathfunc::min {*}$ys]
+    set sw [expr {round([get_attribute [index_collection $rows 0] site_width] * $u)}]
+    foreach x [lsort -unique $xs] { if {($x - $o(vertical)) % $sw} { lappend bad "row x [expr {$x / double($u)}] off the site grid" } }
+    set ph {}
+    foreach_in_collection t [get_tracks] {
+        set ly [get_attribute $t layer_name]; set d [get_attribute $t direction]
+        if {![info exists lef($ly)]} { set nolef($ly) 1; continue }
+        lassign $lef($ly) ld lp lo
+        if {$d ne $ld} continue
+        set s [expr {round([get_attribute $t start] * $u)}]; set sp [expr {round([get_attribute $t space] * $u)}]
+        set p [expr {round($lp * $u)}]
+        set have [expr {($s - $o($d)) % $sp}]; set want [expr {round($lo * $u) % $p}]
+        lappend trk($ly) [list $s $sp [get_attribute $t number_of_tracks]]
+        lappend ph "$ly [string index $d 0] [format %.3f [expr {$have / double($u)}]]/[format %.3f [expr {$want / double($u)}]]"
+        if {$sp != $p || $have != $want} { lappend bad "$ly $d tracks: pitch [expr {$sp / double($u)}] phase [expr {$have / double($u)}] vs LEF PITCH $lp OFFSET $lo" }
+    }
+    set all [get_object_name [get_layers -filter "layer_type==interconnect"]]
+    set i0 [lsearch -exact $all [lindex $P(LAYERS) 0]]; set i1 [lsearch -exact $all [lindex $P(LAYERS) 1]]
+    if {$i0 < 0 || $i1 < $i0} { error "qb_track_check: routing range $P(LAYERS) not in the tech layers $all" }
+    foreach ly [lrange $all $i0 $i1] { if {![info exists trk($ly)]} { lappend bad "$ly: no track on a LEF grid" } }
+    set noff 0; set eg {}
+    foreach_in_collection t [get_terminals -quiet -of_objects $sig] {
+        set ly [get_attribute $t layer.name]
+        if {![info exists np($ly)]} { set np($ly) 0 }
+        set on 0
+        if {[info exists trk($ly)]} {
+            set i [expr {[lindex $lef($ly) 0] eq "vertical" ? 0 : 1}]
+            lassign [get_attribute $t bbox] p0 p1
+            set c2 [expr {round(([lindex $p0 $i] + [lindex $p1 $i]) * $u)}]   ;# twice the centre: no half units
+            foreach k $trk($ly) {
+                lassign $k s sp n
+                set dd [expr {$c2 - 2 * $s}]
+                if {$dd >= 0 && $dd % (2 * $sp) == 0 && $dd / (2 * $sp) < $n} { set on 1; break }
+            }
+        }
+        if {$on} { incr np($ly) } else { incr noff; if {$noff <= 2} { lappend eg "[get_object_name $t] $ly [get_attribute $t bbox]" } }
+    }
+    if {$noff} { lappend bad "$noff signal pins off track, e.g. [join $eg {, }]" }
+    set pins {}; foreach ly [lsort [array names np]] { lappend pins "$ly $np($ly)" }
+    qb_line "$step tracks [expr {[llength $bad] ? "FAIL" : "ok"}] row_origin [expr {$o(vertical) / double($u)}] [expr {$o(horizontal) / double($u)}] phase/LEF_OFFSET [join $ph {, }]; no LEF grid: [lsort [array names nolef]]; signal pins on track [join $pins {, }], off track $noff; bad [llength $bad] [lrange $bad 0 3]"
+    if {[llength $bad]} { error "QB tracks off the kit grid: [lrange $bad 0 3]" }
+}
+# Placement legality gate (R92; place.tcl after place_opt, cts.tcl after clock_opt): check_legality's own TOTAL, its
+# "Two cells overlap." row (movable + application-fixed + user-fixed) and its verdict line.  Before R92 place.tcl logged
+# three category rows, never these, and failed on nothing ("0 0 0" in every run).  Unplaced cells are counted here:
+# check_legality only warns of them (R92 [M]: "succeeded" on the unplaced floorplan label, LGL-003).  Error on any
+# violation, an unplaced cell, a verdict other than succeeded, or an unparsed report (NA); rpt/<step>_legality.rpt.
+proc qb_legality {step} {
+    redirect -variable lg { check_legality }
+    redirect $::R/rpt/${step}_legality.rpt { puts $lg }
+    set tot [expr {[regexp {TOTAL\s+(\d+)\s+Violations} $lg -> v] ? $v : "NA"}]
+    set ovl [expr {[regexp -line {^\s*(\d+)\s+(\d+)\s+(\d+)\s+Two cells overlap\.} $lg -> a b c] ? $a + $b + $c : "NA"}]
+    set ver [expr {[regexp -line {^\s*check_legality for block design \S+ (\w+)} $lg -> v] ? $v : "NA"}]
+    set unp [sizeof_collection [get_flat_cells -quiet -filter "physical_status==unplaced"]]
+    set r "$step check_legality: total $tot violations, cell overlaps $ovl, unplaced cells $unp, verdict $ver"
+    qb_line $r
+    if {$tot ne "0" || $ovl ne "0" || $unp || $ver ne "succeeded"} { error "$r (rpt/${step}_legality.rpt)" }
 }

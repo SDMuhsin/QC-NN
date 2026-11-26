@@ -1,6 +1,6 @@
 # Placement + pre-CTS optimisation: MCMM place_opt (setup scenarios of site.tcl QC_ROLE, max transition / capacitance in every scenario), tie cells
 # of site/pnr.tcl allowed, no scan DEF (the DC netlist has no stitched chains), clock nets on M3-M6 with double spacing
-# (latency estimates here, the tree in cts.tcl).  Block label floorplan -> place.
+# (latency estimates here, the tree in cts.tcl); legality gate (common.tcl qb_legality).  Block label floorplan -> place.
 source [file dirname [info script]]/common.tcl
 qb_open floorplan place
 set_lib_cell_purpose -include optimization [get_lib_cells [list */[lindex $::QC_PNR_TIEHI 0] */[lindex $::QC_PNR_TIELO 0]]]
@@ -27,8 +27,7 @@ if {[qb_isolate_ports]} {
     place_opt -from initial_opto
 } else { place_opt }
 qb_isolate_report place
-redirect -variable lg { check_legality }
-qb_line "place check_legality: [regsub -all {\s+} [join [lrange [regexp -all -inline -line {^.*(?:[Vv]iolat|succeeded|failed).*$} $lg] 0 2] { | }] { }]"
+qb_legality place
 redirect $::R/rpt/place_congestion.rpt { report_congestion -rerun_global_router }
 qb_line "place [regsub -all {\s+} [lindex [regexp -inline -line {^Both Dirs.*$} [exec cat $::R/rpt/place_congestion.rpt]] 0] { }]"
 qb_qor place

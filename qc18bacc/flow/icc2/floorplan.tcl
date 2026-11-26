@@ -1,4 +1,5 @@
-# Floorplan: die P(DIE) with core margin P(CORE_OFFSET) (rows + tracks from the tech file), signal pins at the positions
+# Floorplan: die P(DIE) with core margin P(CORE_OFFSET) = {left bottom right top} (rows from the tech file's site, tracks
+# at the kit LEF phase against the rows, gated by qb_track_check), signal pins at the positions
 # of the floorplan DEF P(PIN_DEF) (fixed), PDN: M1 followpin rails + the chip PG grid ::QB_PG_GRID (floorplan/pg_grid.tcl:
 # {layer dir width pitch offset}, VSS / VDD pairs, offset = core edge -> low edge of the VSS strap), the straps extended
 # to the west / east die edges; the straps of the pin layer ::QB_PG_PIN are the VDD / VSS pins, each across the whole
@@ -7,6 +8,10 @@
 # Block label init -> floorplan.
 source [file dirname [info script]]/common.tcl
 qb_open init floorplan
+# Kit track phase (R92): ICC2 starts a layer's tracks at core origin + the layer's track_offset, and the design library's
+# tech (tf) has none, so they ran along the cell boundaries (common.tcl qb_track_check).  track_offset = the LEF OFFSET
+# of every LEF grid layer; the rows and the block pins stay ([M] the M2 / M4 / M6 pins are at x = 0.1 + 0.2 k).
+foreach {ly g} [qb_lef_grid] { set_attribute [get_layers $ly] track_offset [lindex $g 2] }
 initialize_floorplan -control_type die -boundary $P(DIE) -core_offset $P(CORE_OFFSET)
 set_ignored_layers -min_routing_layer [lindex $P(LAYERS) 0] -max_routing_layer [lindex $P(LAYERS) 1]
 
@@ -25,6 +30,7 @@ if {[sizeof_collection $pgt]} { remove_terminals $pgt }
 set sig [remove_from_collection [get_ports] [get_ports {VDD VSS}]]
 set_attribute $sig physical_status fixed
 set nt [sizeof_collection [get_terminals -quiet -of_objects $sig]]
+qb_track_check floorplan $sig
 
 # PDN
 set layers {}
