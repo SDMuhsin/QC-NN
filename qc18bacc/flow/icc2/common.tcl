@@ -569,16 +569,19 @@ proc qb_lef_grid {} {
     close $f
     return $g
 }
-# Track gate (R92; floorplan.tcl), in integer database units; <sig> = the block's signal ports.  Error unless
+# Track gate (R92; floorplan.tcl), in integer database units of the die frame; <sig> = the block's signal ports.  Error unless
 #   (a) every track pattern in the routing direction of a LEF grid layer has the LEF pitch and
-#       (track start - row origin) mod pitch = LEF OFFSET (row origin = lower-left corner of the site rows),
-#   (b) every layer of the block's routing range P(LAYERS) has such tracks, every row is on one site grid in x,
+#       track start mod pitch = LEF OFFSET (a row-origin-relative phase is wrong where the pitch does not divide the core
+#       offset: M8 / M9 at 5.0, where the hub has block pins),
+#   (b) every layer of the block's routing range P(LAYERS) has such tracks; every row origin is on the site grid in x
+#       (x mod site width = 0) and on the pitch of the lowest horizontal LEF grid layer in y, so (a) is the kit phase
+#       against the cells too,
 #   (c) the centre line of every signal terminal lies on a track of its layer.
 # r91b [M]: tracks at row origin + 0 ran along the cell boundaries (an on-track M2 line crossed 41.6 % of 555,824 cell
 # input pins) and beside all 3,138 M2 / M4 / M6 block pins; the router reached both with off-track jogs.
 proc qb_track_check {step sig} {
     global P
-    array set lef [qb_lef_grid]
+    set grid [qb_lef_grid]; array set lef $grid
     set u $::QB_DBU; set bad {}
     set rows [get_site_rows]; set xs {}; set ys {}
     foreach_in_collection r $rows {
@@ -587,7 +590,10 @@ proc qb_track_check {step sig} {
     }
     set o(vertical) [tcl::mathfunc::min {*}$xs]; set o(horizontal) [tcl::mathfunc::min {*}$ys]
     set sw [expr {round([get_attribute [index_collection $rows 0] site_width] * $u)}]
-    foreach x [lsort -unique $xs] { if {($x - $o(vertical)) % $sw} { lappend bad "row x [expr {$x / double($u)}] off the site grid" } }
+    foreach {hl g} $grid { if {[lindex $g 0] eq "horizontal"} break }
+    set hp [expr {round([lindex $g 1] * $u)}]
+    foreach x [lsort -unique $xs] { if {$x % $sw} { lappend bad "row x [expr {$x / double($u)}] off the site grid" } }
+    foreach y [lsort -unique $ys] { if {$y % $hp} { lappend bad "row y [expr {$y / double($u)}] off the $hl pitch" } }
     set ph {}
     foreach_in_collection t [get_tracks] {
         set ly [get_attribute $t layer_name]; set d [get_attribute $t direction]
@@ -596,7 +602,7 @@ proc qb_track_check {step sig} {
         if {$d ne $ld} continue
         set s [expr {round([get_attribute $t start] * $u)}]; set sp [expr {round([get_attribute $t space] * $u)}]
         set p [expr {round($lp * $u)}]
-        set have [expr {($s - $o($d)) % $sp}]; set want [expr {round($lo * $u) % $p}]
+        set have [expr {$s % $sp}]; set want [expr {round($lo * $u) % $p}]
         lappend trk($ly) [list $s $sp [get_attribute $t number_of_tracks]]
         lappend ph "$ly [string index $d 0] [format %.3f [expr {$have / double($u)}]]/[format %.3f [expr {$want / double($u)}]]"
         if {$sp != $p || $have != $want} { lappend bad "$ly $d tracks: pitch [expr {$sp / double($u)}] phase [expr {$have / double($u)}] vs LEF PITCH $lp OFFSET $lo" }

@@ -9,9 +9,17 @@
 source [file dirname [info script]]/common.tcl
 qb_open init floorplan
 # Kit track phase (R92): ICC2 starts a layer's tracks at core origin + the layer's track_offset, and the design library's
-# tech (tf) has none, so they ran along the cell boundaries (common.tcl qb_track_check).  track_offset = the LEF OFFSET
-# of every LEF grid layer; the rows and the block pins stay ([M] the M2 / M4 / M6 pins are at x = 0.1 + 0.2 k).
-foreach {ly g} [qb_lef_grid] { set_attribute [get_layers $ly] track_offset [lindex $g 2] }
+# tech (tf) has none, so they ran along the cell boundaries (common.tcl qb_track_check).  A LEF OFFSET counts from the
+# design origin: track_offset = (LEF OFFSET - core origin across the wires) mod PITCH puts every LEF grid layer's tracks at
+# OFFSET + k PITCH in the die frame, also where the pitch does not divide the core offset (M8 / M9: 5.0 mod 0.8 = 0.2);
+# the rows and the block pins stay ([M] the M2 / M4 / M6 pins are at x = 0.1 + 0.2 k).  (-core_offset: 1, {x y} or
+# {left bottom right top} values.)
+set _c0 [list [expr {[lindex $P(DIE) 0 0] + [lindex $P(CORE_OFFSET) 0]}] [expr {[lindex $P(DIE) 0 1] + [lindex $P(CORE_OFFSET) [expr {[llength $P(CORE_OFFSET)] > 1}]]}]]
+foreach {ly g} [qb_lef_grid] {
+    lassign $g d p o
+    set _c [lindex $_c0 [expr {$d ne "vertical"}]]
+    set_attribute [get_layers $ly] track_offset [expr {(round(($o - $_c) * $::QB_DBU) % round($p * $::QB_DBU)) / double($::QB_DBU)}]
+}
 initialize_floorplan -control_type die -boundary $P(DIE) -core_offset $P(CORE_OFFSET)
 set_ignored_layers -min_routing_layer [lindex $P(LAYERS) 0] -max_routing_layer [lindex $P(LAYERS) 1]
 
