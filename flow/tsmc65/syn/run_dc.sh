@@ -42,16 +42,10 @@ cd "$out" || exit 1
 qc_tool dc.log dc_shell $mode -f "$FLOW/syn/dc.tcl"
 rc=$?
 qc_time dc.log >> summary.txt 2>/dev/null
-# Exit status: DC rc 0, a netlist written and no '^Error' line in dc.log but the allowed ones (dc_shell -f goes on after a
-# failing command and exits 0, so before qc18bacc R101 an error of a QC_HOOK / QC_POST_HOOK still ended in SYNTH_DONE).
-# Allowed, each a whole line:
-#   PROC-3   DC's helper process cannot connect back on some hosts; harmless (DC goes on in one process).
-#   UID-109  for the dont_use globs <lib>/LVL* and <lib>/ISO* (site.tcl QC_DONT_USE): multi-voltage cells, which only the
-#            kit's multi-voltage libraries have; the base libraries DC links have none ([M] tcbn65gplus{wc,wcl,tc,bc,lt,ml}
-#            _ccs.lib: 816 cells each, 0 LVL* / ISO*), and set_dont_use applies to the other globs' cells.
-allow='^Error: (Could not connect to child process\. \(PROC-3\)|Can'"'"'t find lib_cells matching '"'"'[^/'"'"']+/(LVL|ISO)\*'"'"'\. \(UID-109\))$'
-errs=$(grep -c '^Error' dc.log); bad=$(grep '^Error' dc.log | grep -cvE "$allow")
+# Exit status: DC rc 0, a netlist written and no '^Error' line in dc.log but the allowed ones (common/tool.sh qc_errors;
+# before qc18bacc R101 an error of a QC_HOOK / QC_POST_HOOK still ended in SYNTH_DONE).
+errs=$(grep -c '^Error' dc.log); bad=$(qc_errors dc.log | grep -c .)
 echo "DC_DONE $tag rc $rc errors $bad (allowed $((errs - bad))) summary $([ -f "$top.v" ] && echo ok || echo FAIL)"
-grep '^Error' dc.log | grep -vE "$allow" | head -n 5
+qc_errors dc.log | head -n 5
 [ -f summary.txt ] && sed 's/^/  /' summary.txt
 [ "$rc" = 0 ] && [ -f "$top.v" ] && [ "$bad" = 0 ]

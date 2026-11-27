@@ -14,7 +14,8 @@ BLK=rgr BLK_TOP=$RGR_TOP BLK_SYN=$RGR_SYN BLK_PERIOD=$RGR_PERIOD BLK_CFG=$here/i
 BLK_FILL_SED="-f $C/fill_blk.sed" BLK_ODPO_SED="-f $C/odpo_blk.sed" BLK_LVS_SED="-f $C/lvs_case.sed" BLK_DRC_SED="-f $C/drc_blk.sed"
 export RGR_TOP RGR_DIE QC_PNR_GUARD_HOLD QC_PNR_GUARD_TRAN   # read by icc2.cfg, init.tcl qb_guard
 blk_pre_pnr() {
-    "$PY" -I "$QBF/floorplan/edge_pins.py" "$B/syn/$RGR_SYN/$RGR_TOP.v" "$RGR_TOP" $RGR_DIE $RGR_PINS "$d/pins.lef" &&
+    local n; n=$(blk_input netlist) || return 1
+    "$PY" -I "$QBF/floorplan/edge_pins.py" "$n" "$RGR_TOP" $RGR_DIE $RGR_PINS "$d/pins.lef" &&
     "$PY" -I "$QBF/floorplan/abstract_pins.py" "$d/pins.lef" "$1"
 }
 blk_main "$@"

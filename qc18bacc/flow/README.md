@@ -81,7 +81,8 @@ qc18bacc/flow/common/regress.sh ref <host> <run> [<commit>]    # (re)writes bloc
 `run` names the run rg<7 hex digits of the commit><first free letter> and launches pnr eco calibre post views signoff from
 the snapshot (queue log dir <run dir>q); the block's configuration alone decides the run, no VAR=val on the queue line.
 `check` first ties the run to the flow under test (R99): the tree in the snapshot's VERSION must have the
-qc18bacc/flow and flow/tsmc65 of `<commit>` (or tree; default HEAD) apart from reference.txt; then it reads the run's queue.state (exactly that chain, every step ok, rc 0) and its signoff step's verdict
+qc18bacc/flow and flow/tsmc65 of `<commit>` (or tree; default HEAD) apart from reference.txt; then it reads the run's queue.state (exactly that chain, every step ok, rc 0) and its signoff step's verdict, which the snapshot's signoff
+step re-run on the run dir must reproduce line for line (R102, check verdict_rerun)
 (SIGNOFF PASS, no FAIL / MISSING gate, VERDICT line = the reference's) and compares its gate set (gate name x corner) with
 `blocks/rgr/reference.txt`, printing the difference: a checker that adds, drops or renames a gate fails the regression
 until the reference is rewritten with `ref` and the change is reviewed in the commit.  By hand, the chain is:
@@ -97,7 +98,8 @@ host's whole flow/ including tracked lib.tcl / tool.sh).  It writes VERSION (com
 = one `site_md5 <md5> <path>` line per site file, deploy time) and MANIFEST.md5 (every other file), verifies both on the
 host, makes the snapshot read-only and refuses an existing <dir>.  `check` also compares the site manifest and the run's
 inputs from outside the snapshot (summary.txt `init inputs`: md5 of netlist, DC SDC, run.env, then the block's own
-`BLK_INPUTS`, e.g. the column's reference abstract (R101); written by common/block.sh blk_inputs before each init step)
+`BLK_INPUTS`, e.g. the column's reference abstract (R101); written by common/block.sh blk_inputs before each init step; every later reader, the portcheck and the floorplan pin
+DEF, gets the file through blk_input, which fails unless its md5 is still the recorded one, R102)
 with the reference (R100): a new site file or a re-synthesised netlist needs a reviewed `ref`.  The block uses the shared driver like the column: `rgr.env` (netlist tag, period 2.5 ns, die 130 x 130 um, pins,
 the column's P&R guard-bands QC_PNR_GUARD_HOLD 0.010 ns / QC_PNR_GUARD_TRAN 0.05, as `col.env`; environment overrides them),
 `icc2.cfg` (the column's opt-ins HOLD_RESERVE / ISOLATE / VIRTUAL_FILL / PREROUTE_CAP_SCALE / PREROUTE_SETUP_MARGIN on this design), `io_budget.tcl` (the column's budget procs with

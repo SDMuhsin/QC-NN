@@ -38,6 +38,13 @@ if {[sizeof_collection $pgt]} { remove_terminals $pgt }
 set sig [remove_from_collection [get_ports] [get_ports {VDD VSS}]]
 set_attribute $sig physical_status fixed
 set nt [sizeof_collection [get_terminals -quiet -of_objects $sig]]
+# every signal port has a pin from the DEF (R102; before, the counts were only logged, so a port the pin DEF missed went
+# on with no terminal)
+set nopin {}
+foreach_in_collection q $sig { if {![sizeof_collection [get_terminals -quiet -of_objects $q]]} { append_to_collection nopin $q } }
+if {[sizeof_collection $nopin]} {
+    error "floorplan: [sizeof_collection $nopin] of [sizeof_collection $sig] signal ports have no terminal from $P(PIN_DEF): [lrange [get_object_name $nopin] 0 19]"
+}
 qb_track_check floorplan $sig
 
 # PDN

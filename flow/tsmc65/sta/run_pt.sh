@@ -12,7 +12,12 @@ dir=$1; shift
 [ -d "$dir" ] || dir=$BUILD/syn/$dir
 dir=$(cd "$dir" && pwd) || exit 1
 [ -f "$dir/run.env" ] || { echo "no run.env in $dir"; exit 1; }
+io=${QC_IO_PCT:-}
 set -a; . "$dir/run.env"; set +a
+# DC's QC_IO_PCT (run.env always has one, default 20) is the IO delay of the generated constraints only: with a design SDC
+# it is not passed on, so the SDC's own value is in force (qc18bacc common/constraints.sdc: limits.txt; R102, as the
+# block PrimeTime since R100) unless the caller's environment sets one
+[ -z "${QC_SDC:-}" ] || QC_IO_PCT=$io
 corners=${*:-$(sed -n 's/^set ::QC_CORNERS *{\(.*\)}.*/\1/p' "$FLOW/site/site.tcl")}
 cd "$dir" || exit 1
 fail=0
@@ -20,8 +25,12 @@ for c in $corners; do
     QC_OUT=$dir QC_CORNER=$c qc_tool "pt_$c.log" pt_shell -f "$FLOW/sta/pt.tcl"
     rc=$?
     qc_time "pt_$c.log" >> "pt_$c.txt" 2>/dev/null
-    echo "PT_DONE $(basename "$dir") $c rc $rc errors $(grep -c '^Error' "pt_$c.log")"
+    # status: rc 0 and no '^Error' line but the allowed ones (common/tool.sh qc_errors; R102: before, only rc, and pt_shell -f
+    # exits 0 after a failing command)
+    errs=$(grep -c '^Error' "pt_$c.log"); bad=$(qc_errors "pt_$c.log" | grep -c .)
+    echo "PT_DONE $(basename "$dir") $c rc $rc errors $bad (allowed $((errs - bad)))"
+    qc_errors "pt_$c.log" | head -n 5
     [ -f "pt_$c.txt" ] && sed 's/^/  /' "pt_$c.txt"
-    [ $rc = 0 ] || fail=1
+    [ $rc = 0 ] && [ "$bad" = 0 ] || fail=1
 done
 exit $fail

@@ -23,7 +23,9 @@
 #                                               pass every check but the reference comparison: a changed gate set is a
 #                                               deliberate, reviewed reference update (git diff), never a silent one; so
 #                                               is a new site manifest or new DC inputs (a re-synthesised netlist)
-# The run's own files are read (queue.state, summary.txt, the signoff step's output); the snapshot is found by its run name.
+# The run's own files are read (queue.state, summary.txt, the signoff step's output) and the verdict is re-run from the
+# snapshot on the run dir (blocks/rgr/run.sh signoff), which must equal the signoff step's output (check verdict_rerun);
+# the snapshot is found by its run name.
 set -uo pipefail
 die() { echo "REGRESS_FAIL $*" >&2; exit 1; }
 here=$(cd "$(dirname "$0")" && pwd); ref=$(cd "$here/.." && pwd)/blocks/rgr/reference.txt
@@ -62,7 +64,9 @@ EOF
     echo "REGRESS run $tag host $host snapshot $snap; check: regress.sh check $host $tag"
 }
 
-# the run's facts: snapshot VERSION, queue.state, the signoff step's GATE / VERDICT / SIGNOFF lines
+# the run's facts: snapshot VERSION, queue.state, the signoff step's GATE / VERDICT / SIGNOFF lines as the queue saved them
+# and (prefix R) as the snapshot's signoff step gives them now on the run dir (R102: before, only the saved output was
+# read, so a run dir changed after its signoff step, or a saved output that is not the verdict of the run dir, passed)
 facts() {
     local host=$1 tag=$2 user
     name_ok "$host"; name_ok "$tag"
@@ -80,6 +84,7 @@ sed 's/^/Q /' "$q/queue.state" || exit 1
 # (an unfinished chain has no signoff output yet: the checks report it)
 n=$(awk '$3 == "signoff" { print $1 }' "$q/queue.state")
 [ -z "$n" ] || grep -h '^GATE \|^VERDICT \|^SIGNOFF ' "$q/q${n}_rgr_signoff.out" 2> /dev/null
+"$snap/qc18bacc/flow/blocks/rgr/run.sh" signoff "$tag" 2>&1 | grep '^GATE \|^VERDICT \|^SIGNOFF ' | sed 's/^/R /'
 exit 0
 EOF
 }
@@ -116,9 +121,18 @@ provenance() {
 }
 # check <host> <run> <rev> [1] (1 = ref: everything but the comparison with the reference)
 check() {
-    local f bad=0 st v s g
+    local f bad=0 st v s g r o
     f=$(facts "$1" "$2") || { echo "$f"; die "no facts of run $2 on $1"; }
     [[ $f != *REGRESS_FAIL* ]] || { echo "$f"; die "no facts of run $2 on $1"; }
+    # the verdict re-run on the run dir must be the signoff step's saved one; the checks below read the re-run
+    o=$(grep '^GATE \|^VERDICT \|^SIGNOFF ' <<< "$f"); r=$(sed -n 's/^R //p' <<< "$f")
+    if [ -n "$r" ] && [ "$r" = "$o" ]; then
+        echo "CHECK verdict_rerun PASS $(grep -c '^GATE ' <<< "$r") GATE lines of the verdict re-run on the run dir = the signoff step's"
+    else
+        echo "CHECK verdict_rerun FAIL the verdict re-run on the run dir (>) is not the signoff step's (<):"
+        diff <(echo "$o") <(echo "$r") | grep '^[<>]' | cut -c1-200 | head -n 20; bad=1
+    fi
+    f=$(grep -v '^GATE \|^VERDICT \|^SIGNOFF \|^R ' <<< "$f"; echo "$r")
     echo "REGRESS $2 on $1: $(sed -n 's/^V //p' <<< "$f")"
     version "$(sed -n 's/^V //p' <<< "$f")" "$3" || bad=1
     st=$(awk '$1 == "Q" { printf "%s:%s:%s ", $4, $6, $9 }' <<< "$f")

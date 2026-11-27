@@ -10,6 +10,9 @@
 #             clk->Q + pin wire; U (setup uncertainty) is counted on the column side, so the output delay is
 #             (1 - QB7_AOUT) P - U
 #   ctl out   busy / done / l_pos / map and S read port / descriptors / err: block may use 0.40 P (output 0.60 P)
+# setup uncertainty U: common/limits.txt through qb_limit (R102; before, QC_UNC_SETUP was read from the environment with
+# its own default 0.25, outside the committed limits)
+source [file join [file dirname [file normalize [info script]]] .. .. common limits.tcl]
 proc qb7_env {n d} { expr {[info exists ::env($n)] && $::env($n) ne "" ? $::env($n) : $d} }
 proc qb7_budget {} {
     return [list \
@@ -21,7 +24,7 @@ proc qb7_budget {} {
 # SDC lines at period per, shifted by the insertion delay L (0 for ideal clocks)
 proc qb7_io_lines {per {L 0.0}} {
     set out {}
-    set U [qb7_env QC_UNC_SETUP 0.25]
+    set U [qb_limit QC_UNC_SETUP]
     foreach {d pats mx mn subu} [qb7_budget] {
         set s [expr {$d eq "in" ? $L : -$L}]
         set su [expr {$subu ? $U : 0.0}]

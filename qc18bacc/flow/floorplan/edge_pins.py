@@ -19,8 +19,12 @@ if not m:
 ports = {'INPUT': [], 'OUTPUT': []}
 for d, msb, lsb, names in re.findall(r'\b(input|output)\s+(?:\[(\d+):(\d+)\]\s*)?([^;]+);', m.group(1)):
     for n in (x.strip() for x in names.split(',')):
-        bits = [n] if msb == '' else ['%s[%d]' % (n, i) for i in range(int(lsb), int(msb) + 1)]
-        ports[d.upper()].extend(bits)
+        # both bus directions: [7:0] and [0:7] (R102: range(lsb, msb + 1) was empty for an ascending bus, no pins)
+        if msb == '':
+            ports[d.upper()].append(n)
+        else:
+            lo, hi = sorted((int(msb), int(lsb)))
+            ports[d.upper()].extend('%s[%d]' % (n, i) for i in range(lo, hi + 1))
 if not ports['INPUT'] or not ports['OUTPUT']:
     sys.exit('edge_pins: %s has %d inputs, %d outputs' % (top, len(ports['INPUT']), len(ports['OUTPUT'])))
 ntrk = int((dh - off) / pitch) + 1

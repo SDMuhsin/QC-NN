@@ -58,7 +58,8 @@ blk_pt_env() {
     cd "$d"
 }
 blk_portcheck() {   # gate on the outputs netlist: port bits as the DC netlist, no port-to-port assign (signoff/portcheck.py)
-    "$PY" -I "$QBF/signoff/portcheck.py" "$B/syn/$BLK_SYN/$BLK_TOP.v" "$d/out/$BLK_TOP.v" "$BLK_TOP"
+    local n; n=$(blk_input netlist) || return 1
+    "$PY" -I "$QBF/signoff/portcheck.py" "$n" "$d/out/$BLK_TOP.v" "$BLK_TOP"
 }
 blk_pnr() {
     local all="libs init floorplan place cts route outputs" from=${QC_PNR_FROM:-libs} to=${QC_PNR_TO:-outputs} s on=0
@@ -94,14 +95,29 @@ blk_unlabel() {
 # each init step: the DC inputs ($B/syn/$BLK_SYN: the netlist and DC SDC common/block_sdc.tcl reads, DC's run.env), then
 # the block's own BLK_INPUTS (R101: the column's pin-reference abstract COL_REFLEF was recorded nowhere); common/regress.sh
 # check compares the last line with the regression reference
+blk_input_list() { local s=$B/syn/$BLK_SYN; echo "netlist=$s/$BLK_TOP.v sdc=$s/$BLK_TOP.sdc run_env=$s/run.env ${BLK_INPUTS:-}"; }
 blk_inputs() {
-    local s=$B/syn/$BLK_SYN k f l="init inputs syn $BLK_SYN"
-    for k in "netlist=$s/$BLK_TOP.v" "sdc=$s/$BLK_TOP.sdc" "run_env=$s/run.env" ${BLK_INPUTS:-}; do
+    local k f l="init inputs syn $BLK_SYN"
+    for k in $(blk_input_list); do
         f=${k#*=}; [[ $k == [a-z]*=?* ]] || { echo "BLK_FAIL pnr init: input '$k' is not <key>=<file>"; return 1; }
         [ -f "$f" ] || { echo "BLK_FAIL pnr init: no input $f"; return 1; }
         l="$l ${k%%=*} $(md5sum < "$f" | cut -c1-32)"
     done
     mkdir -p "$d" && echo "$l" >> "$d/summary.txt" && echo "BLK_INPUTS $l"
+}
+# blk_input <key>: prints the file of input <key> (netlist, sdc, run_env or a BLK_INPUTS key) once its md5 equals the one
+# the run recorded (the last "init inputs" line of summary.txt); fails otherwise.  Every reader of an input after init
+# goes through it (R102; [M] hunt on b521ab0: blk_portcheck in every blk_out and the floorplan pin DEF read the DC
+# netlist again unchecked, so a re-synthesised netlist could be compared / pinned against a layout built from another)
+blk_input() {
+    local k f= r m
+    for k in $(blk_input_list); do [ "${k%%=*}" = "$1" ] && f=${k#*=}; done
+    [ -n "$f" ] || { echo "BLK_FAIL input '$1' is not an input of $BLK (common/block.sh blk_input_list)" >&2; return 1; }
+    r=$(grep '^init inputs ' "$d/summary.txt" 2> /dev/null | tail -n 1 | awk -v k="$1" '{ for (i = 5; i < NF; i += 2) if ($i == k) print $(i + 1) }')
+    [ -n "$r" ] || { echo "BLK_FAIL input $1: no md5 recorded in $d/summary.txt (pnr init records it: blk_inputs)" >&2; return 1; }
+    m=$(md5sum < "$f" | cut -c1-32) && [ "$m" = "$r" ] \
+        || { echo "BLK_FAIL input $1 $f: md5 ${m:-none}, recorded at init $r (changed since the run was built)" >&2; return 1; }
+    echo "$f"
 }
 # The floorplan pin DEF of the run, QB_PIN_DEF = <run>/pins.def (the block config's P(PIN_DEF)): written by the block's
 # blk_pre_pnr right before each floorplan step, as <def>.part renamed into place (R99; before, $B/icc2/<blk>/pins*.def:
