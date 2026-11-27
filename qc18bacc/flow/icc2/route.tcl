@@ -19,6 +19,8 @@
 # CTS estimates (R63 [M] ss 0.815 ns vs routed PT p50 0.724).
 source [file dirname [info script]]/common.tcl
 qb_open cts route
+# pre-route correlation off (R98; common.tcl qb_preroute): routed parasitics and the SDC setup uncertainty from here on
+qb_preroute off
 qb_route_setup
 qb_feedthru_ndr
 route_auto

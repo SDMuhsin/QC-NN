@@ -44,6 +44,8 @@ proc qb_clk_tran {v} {
 }
 qb_clk_tran $ctran
 qb_io_load
+# pre-route correlation (R98; common.tcl qb_preroute): clock_opt's final_opto closes against routed-like timing
+qb_preroute on
 clock_opt
 qb_clk_tran $csign
 qb_line "cts clock_path max_transition: build target $ctran ns (SDC set_clock_transition, during clock_opt), sign-off limit $csign ns (QC_CLK_TRAN_MAX, from here on) in [sizeof_collection [all_scenarios]] scenarios"

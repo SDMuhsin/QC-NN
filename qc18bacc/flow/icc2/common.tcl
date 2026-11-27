@@ -14,6 +14,8 @@
 #                       the OCV derate of common/derate.tcl (late 1.05 / early 0.95) on every scenario
 #                       and, with P(VIRTUAL_FILL) 1, qb_virtual_fill
 #   qb_virtual_fill     emulated floating dummy metal in ICC2 extraction (R96, opt-in P(VIRTUAL_FILL); below)
+#   qb_preroute on|off  pre-route correlation (R98, opt-in P(PREROUTE_CAP_SCALE) / P(PREROUTE_SETUP_MARGIN); below):
+#                       virtual-route late cap scale + extra setup uncertainty for place_opt / clock_opt, off from route
 #   qb_done <step> [as] dont_use gate (common/lib_cells.tcl qb_dont_use_gate, R77: no QC_DONT_USE lib cell usable, no
 #                       instance of one), save (as 1: save the current block as label <step>, the init step), log the
 #                       step end in <run>/summary.txt, QB_ICC2_DONE marker for the wrapper
@@ -126,6 +128,62 @@ proc qb_virtual_fill {} {
     set h [open $fn w]; foreach l $::QB_VFILL_LAYERS { puts $h "$l $::QB_VFILL_RULE" }; close $h
     set_extraction_options -virtual_metalfill_extraction floating -virtual_metalfill_parameter_file $fn
     puts "QB_ICC2 virtual_fill floating $::QB_VFILL_LAYERS width / fill-to-route $::QB_VFILL_RULE um"
+}
+# Pre-route correlation (R98, opt-in P(PREROUTE_CAP_SCALE) and / or P(PREROUTE_SETUP_MARGIN); place.tcl, cts.tcl on,
+# route.tcl off).  Why [M] (rgr qb_lane_n 2.5 ns vf2b / ref27, column 6.5 ns; wcl setup): place_opt and clock_opt close
+# wcl to exactly 0 against the virtual-route estimate, then route_auto loses per path -160 to -216 ps on rgr (routed net
+# capacitance 6-13 % above the estimate on the long D1 chains, -108 to -150 ps of cell delay; SI delta -41 to -49 ps,
+# none pre-route; virtual fill on real routes about -12 ps; wire RC detours, cell changes, skew about 0) and
+# -100 to -120 ps on the column, which only its 140-150 ps of CTS-time slack absorbs.  route_opt then stopped at
+# -17 ps (rgr vf2b) and the sign-off ECO could not fix the rest.
+#   capacitance: the estimate is corrected, not margined: ICC2's virtual-route late capacitance scale
+#   (set_extraction_options -late_vr_horizontal_cap_scale / -late_vr_vertical_cap_scale, man Q-2019.12-SP2: "virtual
+#   route (vr) ... capacitance scaling factor", per corner) on every corner.  It acts on virtual routes only: [M] vf2b
+#   route label wcl -18.8 ps at 1.0 and 1.3 alike; it is saved with the block, so route.tcl resets it to 1.0.  Value [M]
+#   vf2b cts label vs its route_auto label without SI, 40 worst routed endpoints (routed minus estimate): 1.0 mean -79.6 /
+#   median -64.1 ps, 1.1 -38.1 / -30.0, 1.15 -16.2 / -17.3, 1.2 +5.7 / -5.6, 1.3 +50.0 / +41.0 -> 1.2 (fill included).
+#   Not taken: RDE (opt.common.enable_rde, a global-route extraction table from place_opt final_opto on) is made for
+#   <= 16 nm ("auto" infers the node) and its correction is not set by us; route-aware estimation (opt.common.
+#   use_route_aware_estimation) models layer resistance spread, which detours / RC show to be ~0 here; a flat
+#   -late_cap_scale would also scale the routed extraction of route_opt / ECO / sign-off SPEF.
+#   SI: no pre-route coupling to correct (ICC2 has no pre-route SI estimate), so a stage-specific margin: setup clock
+#   uncertainty = SDC value + P(PREROUTE_SETUP_MARGIN) in every scenario for place_opt / clock_opt, the SDC value again
+#   from route_auto on (the Synopsys reference-flow practice of extra pre-route uncertainty that is removed for route_opt).
+#   Size: the routed SI delta, [M] -41 to -49 ps per worst rgr path, -30 ps mean of the 40 worst after the 1.2 scale.
+# Hold, the early capacitance, PrimeTime (fill-aware SPEF of real routes) and every routed stage keep their own constraints.
+# qb_preroute on|off: apply / remove, then read back per corner / scenario (error unless in force) and one summary line.
+proc qb_preroute {mode} {
+    global P
+    set cs [expr {[info exists P(PREROUTE_CAP_SCALE)] ? $P(PREROUTE_CAP_SCALE) : ""}]
+    set sm [expr {[info exists P(PREROUTE_SETUP_MARGIN)] ? $P(PREROUTE_SETUP_MARGIN) : ""}]
+    if {$cs eq "" && $sm eq ""} return
+    if {($cs ne "" && $cs < 1.0) || ($sm ne "" && $sm < 0)} { error "qb_preroute: P(PREROUTE_CAP_SCALE) '$cs' < 1 or P(PREROUTE_SETUP_MARGIN) '$sm' < 0" }
+    set on [expr {$mode eq "on"}]
+    set f [open $::R/$P(TOP)_icc2.sdc]; set t [read $f]; close $f
+    if {![regexp -line {^set_clock_uncertainty\s+-setup\s+([0-9.]+)} $t -> us]} { error "qb_preroute: no set_clock_uncertainty -setup in $P(TOP)_icc2.sdc" }
+    set x [expr {$on && $cs ne "" ? $cs : 1.0}]
+    set u [expr {$on && $sm ne "" ? $us + $sm : $us}]
+    set_extraction_options -corners [get_corners *] -late_vr_horizontal_cap_scale $x -late_vr_vertical_cap_scale $x
+    set s0 [current_scenario]; set bad {}; set ur {}
+    foreach_in_collection s [all_scenarios] {
+        current_scenario $s
+        set_clock_uncertainty -setup $u [all_clocks]
+        set v [lsort -unique [get_attribute [all_clocks] setup_uncertainty]]
+        lappend ur $v
+        if {[llength $v] != 1 || abs($v - $u) > 1e-9} { lappend bad "[get_object_name $s] setup_uncertainty '$v'" }
+    }
+    current_scenario $s0
+    set xr {}
+    foreach_in_collection c [get_corners *] {
+        redirect -variable r { report_extraction_options -corners $c }
+        foreach k {late_vr_horizontal_cap_scale late_vr_vertical_cap_scale} {
+            set v [expr {[regexp "$k = (\\S+)" $r -> v] ? $v : "NA"}]
+            lappend xr $v
+            if {![string is double -strict $v] || abs($v - $x) > 1e-9} { lappend bad "[get_object_name $c] $k '$v'" }
+        }
+    }
+    qb_line "preroute $mode: virtual-route late cap scale $x (P(PREROUTE_CAP_SCALE) '$cs'; read back [lsort -unique $xr] in [sizeof_collection [get_corners *]] corners), setup uncertainty $u ns (SDC $us + P(PREROUTE_SETUP_MARGIN) '$sm' [expr {$on ? "on" : "off"}]; read back [lsort -unique $ur] in [sizeof_collection [all_scenarios]] scenarios)"
+    if {[llength $bad]} { error "qb_preroute $mode: not in force: [lrange $bad 0 3]" }
 }
 proc qb_io_load {} {
     global P

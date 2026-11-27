@@ -19,6 +19,8 @@ set_clock_routing_rules -rules qb_clk -min_routing_layer M3 -max_routing_layer M
 # netlist-targeted hold-cell reservation (R87; common.tcl qb_hold_reserve, blocks with P(HOLD_RESERVE)): soft keepouts
 # on the DC netlist before place_opt's coarse placement
 qb_hold_reserve
+# pre-route correlation (R98; common.tcl qb_preroute, blocks with P(PREROUTE_*)): place_opt sees what routing adds
+qb_preroute on
 # input-port isolation (R88; common.tcl qb_isolate_ports, blocks with P(ISOLATE)): ICC2 set_isolate_ports, the buffers
 # inserted by place_opt's initial_drc stage, then pulled to their port terminals (qb_isolate_magnet) before optimisation
 if {[qb_isolate_ports]} {
