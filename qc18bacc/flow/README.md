@@ -65,7 +65,8 @@ clock-tree cells by exact family minus QC_DONT_USE, a dont_use gate in every ICC
 library's fastest clock -> Q (common/lib_tcq.py) as the period-independent min input delay (io_budget.tcl); IO latency
 late / early per check (PT signoff/pt/io_lat.tcl, ICC2 compute_clock_latency).  Database unit = tech file 1000 / um (R77).
 Inputs: netlist + SDC `$B/syn/qb_col_blk_r5d_s20_tt_p1.65_topo` (P&R SDC: common/block_sdc.tcl + blocks/col/io_budget.tcl
-at 5.0 ns), pin positions of the reference abstract `$B/r5b_blk/qb_col_blk_ring.lef` (the ones r48 placed), written as the
+at 5.0 ns), pin positions of the reference abstract `$B/r5b_blk/qb_col_blk_ring.lef` (the ones r48 placed; its md5 in the run's
+`init inputs` line, R101), written as the
 floorplan DEF `<run>/pins.def` by floorplan/abstract_pins.py in the pnr step (R72). Parameters: `col.env`, `icc2.cfg`.
 
 ## Regression block qb_lane_n (`blocks/rgr`) and flow snapshots (`common/deploy.sh`)
@@ -95,8 +96,9 @@ deploy.sh archives a commit (or tree) id, never the working tree: every tracked 
 host's whole flow/ including tracked lib.tcl / tool.sh).  It writes VERSION (commit, tree, site source, the site manifest
 = one `site_md5 <md5> <path>` line per site file, deploy time) and MANIFEST.md5 (every other file), verifies both on the
 host, makes the snapshot read-only and refuses an existing <dir>.  `check` also compares the site manifest and the run's
-DC inputs (summary.txt `init inputs`: md5 of netlist, DC SDC, run.env, written by common/block.sh blk_inputs before
-each init step) with the reference (R100): a new site file or a re-synthesised netlist needs a reviewed `ref`.  The block uses the shared driver like the column: `rgr.env` (netlist tag, period 2.5 ns, die 130 x 130 um, pins,
+inputs from outside the snapshot (summary.txt `init inputs`: md5 of netlist, DC SDC, run.env, then the block's own
+`BLK_INPUTS`, e.g. the column's reference abstract (R101); written by common/block.sh blk_inputs before each init step)
+with the reference (R100): a new site file or a re-synthesised netlist needs a reviewed `ref`.  The block uses the shared driver like the column: `rgr.env` (netlist tag, period 2.5 ns, die 130 x 130 um, pins,
 the column's P&R guard-bands QC_PNR_GUARD_HOLD 0.010 ns / QC_PNR_GUARD_TRAN 0.05, as `col.env`; environment overrides them),
 `icc2.cfg` (the column's opt-ins HOLD_RESERVE / ISOLATE / VIRTUAL_FILL / PREROUTE_CAP_SCALE / PREROUTE_SETUP_MARGIN on this design), `io_budget.tcl` (the column's budget procs with
 its own class table `::QB5_BUDGET`), pins: `floorplan/edge_pins.py` (pin-only abstract LEF: inputs west, outputs east on

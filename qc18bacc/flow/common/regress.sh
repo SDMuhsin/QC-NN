@@ -11,9 +11,9 @@
 #                                               exit 0 only if the run is of the flow under test (its snapshot's
 #                                               VERSION tree has the archived paths [deploy.sh --paths] of <commit |
 #                                               tree-ish>, default HEAD, apart from blocks/rgr/reference.txt), its site
-#                                               manifest (VERSION site_md5 lines) and its DC inputs (the run's summary.txt
-#                                               "init inputs" line: md5 of netlist, DC SDC, run.env; common/block.sh
-#                                               blk_inputs) are the reference's, the queue ran exactly the chain and
+#                                               manifest (VERSION site_md5 lines) and its inputs (the run's summary.txt
+#                                               "init inputs" line: md5 of netlist, DC SDC, run.env, the block's
+#                                               BLK_INPUTS; common/block.sh blk_inputs) are the reference's, the queue ran exactly the chain and
 #                                               every step is ok, the signoff step's verdict (signoff/verdict.sh) is
 #                                               SIGNOFF PASS with no FAIL and no MISSING gate and its VERDICT line equals
 #                                               the reference's, and the gate set (gate name x corner) equals the

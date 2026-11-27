@@ -44,8 +44,10 @@
 #   qb_eco_names <chg>  PT change-list gate (R89 / R91, eco.tcl): every cell / net / pin / port the change list names
 #                       exists, lib cells applied, every new cell = PT's new-cell record (lib cell, load pins); counts +
 #                       rpt/eco_names.rpt
-#   qb_eco_route_layers <chg> <out>  the change list as eco.tcl sources it (R95): every add_buffer_on_route buffer PT
-#                       left on layer 0 put on the nearest routed wire of its net (point + layer); returns <out>
+#   qb_eco_route_resolve <chg> <out>  the change list as eco.tcl sources it: every add_buffer_on_route buffer PT left
+#                       on layer 0 put on the nearest routed wire of its net (R95), and every point where ICC2 would give
+#                       the buffer other loads than PT's record moved onto the route edge that isolates PT's loads (R101,
+#                       qb_eco_route_tree / _cut / _edge: geometric route tree of the input label); returns <out>
 #   qb_pg_check <step>  PG pin gate (R67; floorplan.tcl, abstract.tcl): the VDD / VSS terminals are exactly the straps of
 #                       the chip PG grid's pin layer (floorplan/pg_grid.tcl ::QB_PG_PIN): that layer only, strap width,
 #                       each across the whole die, low edges = qb_pg_expect of the core (VSS at core + offset, VDD at
@@ -613,41 +615,78 @@ proc qb_eco_names {chg} {
     append t " new_cells $nn missing $nm load_mismatch $nld record_mismatch $nr unparsed $nu"
     return [list $t [expr {$m(cell) + $m(net) + $m(pin) + $m(port) + $m(abor) + $m(ref) + $nm + $nld + $nr + $nu}]]
 }
-# add_buffer_on_route layers (R95, eco.tcl).  PT writes each buffer {name lib_cell x y layer} with (x, y) the perpendicular
-# projection of the new cell's centre onto the nearest wire of the net and layer that wire's, but r94 [M]: 3 of 99 have
-# layer 0 and (x, y) the cell centre, off the route (change-list lines 36, 52, 76).  ICC2 then detects the nearest wire
-# itself; at line 36 an M6 and an M5 wire are equally near (1.450 um edge distance): UIED-333 "Can not find unique
-# layer", UIED-309 / UIED-180, Tcl error, eco step stopped; line 36 with M6 or M5 inserts cleanly.  Replay [M] (copy of
-# r94): lines 36 / 52 / 76 -> M5 (tie with M6) / M3 / M2 (ICC2's own picks for 52 / 76), 919 lines sourced, 0 errors,
-# qb_eco_names 0 missing / mismatched.  qb_eco_route_layers <chg> <out>: <out> =
-# <chg> with every layer-0 buffer set by PT's rule, (x, y) projected onto the nearest centre line of the net's routed
-# wires (path shapes) on the open block and that wire's layer; exact ties (database units) to the lower LEF routing
-# layer, then the lower x, y.  Every other line byte-identical, <chg> untouched; one summary line per resolved buffer + a
-# total.  Error if such a net has no routed wire, an add_buffer_on_route line does not parse, or a buffer of <out> names
-# no LEF routing layer.  Returns <out>.
-proc qb_eco_route_layers {chg out} {
+# add_buffer_on_route points (eco.tcl): the change list as eco.tcl sources it.  PT writes each buffer {name lib_cell x y
+# layer}; ICC2 takes only that point and gives the buffer the loads of the route subtree downstream of it.  Two ways the
+# point alone does not reproduce what PT timed:
+# * layer 0 (R95).  PT's (x, y) is the perpendicular projection of the new cell's centre onto the nearest wire of the net
+#   and the layer that wire's, but r94 [M]: 3 of 99 have layer 0 and (x, y) the cell centre, off the route (change-list
+#   lines 36, 52, 76).  ICC2 then detects the nearest wire itself; at line 36 an M6 and an M5 wire are equally near (1.450
+#   um edge distance): UIED-333 "Can not find unique layer", UIED-309 / UIED-180, Tcl error, eco step stopped.  Replay [M]
+#   (copy of r94): lines 36 / 52 / 76 -> M5 (tie with M6) / M3 / M2 (ICC2's own picks for 52 / 76), 0 errors.  Rule: (x, y)
+#   projected onto the nearest centre line of the net's routed wires (path shapes) and that wire's layer; exact ties
+#   (database units) to the lower LEF routing layer, then the lower x, y.
+# * the load split (R101).  r98 round 1 [M] (51 lines): on 28 the point lies on a branch just below a route junction J
+#   that has other load branches; on 26 of them PT's recorded load set is the subtree at the point, on 2 (BUF24, BUF49)
+#   the whole subtree below J, so ICC2 gave those buffers fewer loads than PT timed and the change-list gate (qb_eco_names
+#   load_mismatch 2) stopped the ECO.  Replays on a copy [M]: the point on the route edge just upstream of J reproduces
+#   PT's set exactly (BUF49 (287.6, 210.4) M3: 6 / 6; BUF24 (287.7, 990.0) M2: 14 / 14); a point exactly on J does not
+#   (the same subset, or UIED-159 "dangling route").  A geometric route-tree model (shape overlap, cut at the point)
+#   reproduced ICC2's load set on all 51 lines: qb_eco_route_tree / qb_eco_route_cut below.  Rule: where the model's load
+#   set at PT's point differs from PT's new-cell record (qb_eco_cells_file), the point moves to the middle of the route
+#   edge whose downstream subtree is exactly PT's set (nearest to PT's point; ties to the lower LEF layer, x, y); if no edge
+#   isolates that set, error: the list cannot be applied as PT timed it (the gate stays).  A line of several buffers is
+#   left to the qb_eco_names gate (PT's set of the upper buffer holds the lower buffer's input, which is no route pin).
+# qb_eco_route_resolve <chg> <out>: <out> = <chg> with those points; every other line byte-identical, <chg> untouched; one
+# summary line per resolved layer-0 buffer and per moved buffer + a total.  Error if a net has no routed wire, an
+# add_buffer_on_route line does not parse, a buffer has no single PT record or names no LEF routing layer.  Returns <out>.
+proc qb_eco_route_resolve {chg out} {
     current_instance
     set ly [dict keys [qb_lef_grid]]
+    set rec [dict create]
+    if {[file exists [qb_eco_cells_file $chg]]} {
+        set fh [open [qb_eco_cells_file $chg]]
+        foreach l [split [read $fh] "\n"] { if {$l ne ""} { dict lappend rec [lindex $l 0] [lsort -unique [lindex $l 2]] } }
+        close $fh
+    }
     set fh [open $chg]; set t [read $fh]; close $fh
-    set sc ""; set r {}; set i 0; set nb 0; set nr 0; set nt 0
+    set sc ""; set r {}; set i 0; set nb 0; set nr 0; set nt 0; set nc 0; set nm 0; set trees [dict create]
     foreach l [split $t "\n"] {
         incr i
         lassign [qb_eco_parse [string trim $l] $sc] k f
         if {$k eq "scope"} { set sc [lindex $f 0] }
         if {$k ne "abor"} {
-            if {[string match add_buffer_on_route* [string trim $l]]} { error "qb_eco_route_layers: [file tail $chg] line $i does not parse: $l" }
+            if {[string match add_buffer_on_route* [string trim $l]]} { error "qb_eco_route_resolve: [file tail $chg] line $i does not parse: $l" }
             lappend r $l; continue
         }
         lassign [qb_eco_abor [string trim $l]] p b
-        set v {}; set m 0
+        set pin [lindex $f 0]
+        if {![dict exists $trees $pin]} { dict set trees $pin [qb_eco_route_tree $pin $ly] }
+        set tr [dict get $trees $pin]
+        set v {}; set m 0; set one [expr {[llength $b] == 5}]
         foreach {c lc x y lay} $b {
             incr nb
             if {$lay eq "0"} {
-                lassign [qb_eco_route_point [lindex $f 0] $x $y $ly] lay qx qy d tie
+                lassign [qb_eco_route_point $tr $x $y $ly] lay qx qy d tie s
                 qb_line "eco layer [file tail $chg] line $i $c: ($x $y) 0 -> $lay ($qx $qy) distance $d tie $tie"
                 set x $qx; set y $qy; incr nr; incr m; if {$tie eq "yes"} { incr nt }
             }
-            if {$lay ni $ly} { error "qb_eco_route_layers: [file tail $chg] line $i buffer $c names no routing layer: '$lay'" }
+            if {$lay ni $ly} { error "qb_eco_route_resolve: [file tail $chg] line $i buffer $c names no routing layer: '$lay'" }
+            if {$one} {
+                set fc [qb_eco_full $sc $c]
+                if {![dict exists $rec $fc] || [llength [dict get $rec $fc]] != 1} { error "qb_eco_route_resolve: [file tail $chg] line $i buffer $fc: no single PT record in [file tail [qb_eco_cells_file $chg]]" }
+                set want [lindex [dict get $rec $fc] 0]
+                lassign [qb_eco_route_point $tr $x $y $ly $lay] lay qx qy d tie s
+                set got [qb_eco_route_cut $tr $s [qb_eco_route_pos $tr $s $qx $qy]]
+                incr nc
+                if {$got ne $want} {
+                    set e [qb_eco_route_edge $tr $want $x $y $ly]
+                    if {![llength $e]} {
+                        error "qb_eco_route_resolve: [file tail $chg] line $i buffer $fc: ICC2 gives it [llength $got] loads at ($x $y $lay), PT timed [llength $want], and no route edge of net [dict get $tr net] has exactly PT's loads downstream: the change list cannot be applied as PT timed it"
+                    }
+                    qb_line "eco route [file tail $chg] line $i $c: ($x $y $lay) loads [llength $got] of PT's [llength $want] -> ([lrange $e 1 2] [lindex $e 0]) loads = PT's, moved [lindex $e 3] um"
+                    lassign $e lay x y; incr nm; incr m
+                }
+            }
             lappend v $c $lc $x $y $lay
         }
         if {$m} { set l [string map [list "\{$b\}" "\{ $v\}"] $l] }
@@ -655,39 +694,174 @@ proc qb_eco_route_layers {chg out} {
     }
     file mkdir [file dirname $out]
     set fh [open $out w]; puts -nonewline $fh [join $r "\n"]; close $fh
-    qb_line "eco layers [file tail $chg]: add_buffer_on_route buffers $nb, layer 0 resolved $nr (ties $nt) -> $out"
+    qb_line "eco route [file tail $chg]: add_buffer_on_route buffers $nb, layer 0 resolved $nr (ties $nt), load set checked $nc, moved $nm -> $out"
     return $out
 }
-# nearest point of the routed wires (path centre lines) of the net of <pin> to (x, y) um, in database units:
-# {layer x y distance tie}; candidates ordered by distance, LEF layer order <ly>, x, y
-proc qb_eco_route_point {pin x y ly} {
-    set u $::QB_DBU; set px [expr {round($x * $u)}]; set py [expr {round($y * $u)}]
-    set n [get_nets -quiet -of_objects [get_pins -quiet $pin]]
-    set c {}
-    if {[sizeof_collection $n]} {
-        foreach_in_collection s [get_shapes -quiet -of_objects $n -filter "shape_type==path"] {
-            set lay [get_attribute $s layer_name]
-            if {[set li [lsearch -exact $ly $lay]] < 0} continue
-            set pts [lmap q [get_attribute $s points] { lmap v $q { expr {round($v * $u)} } }]
-            foreach a [lrange $pts 0 end-1] b [lrange $pts 1 end] {
-                lassign $a ax ay; lassign $b bx by
-                if {$ax != $bx && $ay != $by} { error "qb_eco_route_point: $pin: non-Manhattan wire segment on $lay" }
-                set qx [expr {min(max($px, min($ax, $bx)), max($ax, $bx))}]
-                set qy [expr {min(max($py, min($ay, $by)), max($ay, $by))}]
-                lappend c [list [expr {($qx - $px) ** 2 + ($qy - $py) ** 2}] $li $qx $qy $lay]
+# Route tree of the net of <pin> (driver pin or input port) in database units, for qb_eco_route_*: a dict of
+#   net   net name             it    items {layer x0 y0 x1 y1}: wire segments, via layers, pin / terminal shapes, other shapes
+#   adj   per item the items it touches (same layer, closed rectangles; a via's two layers; the shapes of one pin)
+#   seg   wire segment item -> {axis(h|v) centre c0 c1 layer index}: path segments on a LEF routing layer of <ly>
+#   drv   items of <pin>       load  item -> name of a load (leaf input pin, output port)
+proc qb_eco_route_tree {pin ly} {
+    set u $::QB_DBU
+    set dp [get_pins -quiet $pin]; if {![sizeof_collection $dp]} { set dp [get_ports -quiet $pin] }
+    set n [get_nets -quiet -of_objects $dp]
+    if {![sizeof_collection $n]} { error "qb_eco_route_tree: $pin is on no net" }
+    set it {}; set seg [dict create]; set lk {}; set drv {}; set load [dict create]
+    foreach_in_collection s [get_shapes -quiet -of_objects $n] {
+        set lay [get_attribute $s layer_name]
+        set bb [lmap v [join [get_attribute $s bbox]] { expr {round($v * $u)} }]
+        if {[get_attribute $s shape_type] ne "path"} { lappend it [list $lay {*}$bb]; continue }
+        set pts [lmap q [get_attribute $s points] { lmap v $q { expr {round($v * $u)} } }]
+        set h [expr {[get_attribute $s width] * $u / 2.0}]
+        foreach a [lrange $pts 0 end-1] b [lrange $pts 1 end] {
+            lassign $a ax ay; lassign $b bx by
+            if {$ax != $bx && $ay != $by} { error "qb_eco_route_tree: $pin: non-Manhattan wire segment on $lay" }
+            set x0 [expr {min($ax, $bx)}]; set x1 [expr {max($ax, $bx)}]; set y0 [expr {min($ay, $by)}]; set y1 [expr {max($ay, $by)}]
+            # a two-point path is its bbox (its own end extensions); a longer one per segment, half the width around it
+            set rc [expr {[llength $pts] == 2 ? $bb : [list [expr {$x0 - $h}] [expr {$y0 - $h}] [expr {$x1 + $h}] [expr {$y1 + $h}]]}]
+            if {[set li [lsearch -exact $ly $lay]] >= 0} {
+                dict set seg [llength $it] [expr {$ay == $by ? [list h $ay $x0 $x1 $li] : [list v $ax $y0 $y1 $li]}]
+            }
+            lappend it [list $lay {*}$rc]
+        }
+    }
+    foreach_in_collection v [get_vias -quiet -of_objects $n] {
+        set bb [lmap c [join [get_attribute $v bbox]] { expr {round($c * $u)} }]
+        lappend lk [list [llength $it] [expr {[llength $it] + 1}]]
+        lappend it [list [get_attribute $v lower_layer_name] {*}$bb] [list [get_attribute $v upper_layer_name] {*}$bb]
+    }
+    foreach {cl ld} {pin in port out} {
+        set qs [expr {$cl eq "pin" ? [get_pins -quiet -leaf -of_objects $n] : [get_ports -quiet -of_objects $n]}]
+        foreach_in_collection q $qs {
+            set nm [get_object_name $q]; set k0 [llength $it]
+            foreach_in_collection s [expr {$cl eq "pin" ? [get_shapes -quiet -of_objects $q] : [get_terminals -quiet -of_objects $q]}] {
+                if {[llength $it] > $k0} { lappend lk [list $k0 [llength $it]] }
+                if {$nm eq [get_object_name $dp]} { lappend drv [llength $it] } \
+                elseif {[get_attribute $q direction] eq $ld} { dict set load [llength $it] $nm }
+                lappend it [list [get_attribute $s [expr {$cl eq "pin" ? "layer_name" : "layer.name"}]] {*}[lmap c [join [get_attribute $s bbox]] { expr {round($c * $u)} }]]
             }
         }
     }
-    if {![llength $c]} { error "qb_eco_route_point: the net of $pin has no routed wire (layer-0 add_buffer_on_route at $x $y)" }
+    if {![llength $drv]} { error "qb_eco_route_tree: $pin has no pin shape" }
+    set adj [dict create]
+    for {set k 0} {$k < [llength $it]} {incr k} { dict set adj $k {} }
+    foreach e $lk { lassign $e a b; dict lappend adj $a $b; dict lappend adj $b $a }
+    set bl [dict create]; set k 0
+    foreach e $it { dict lappend bl [lindex $e 0] $k; incr k }
+    dict for {lay ks} $bl {
+        foreach a $ks {
+            foreach b $ks {
+                if {$b <= $a || ![qb_eco_route_touch [lrange [lindex $it $a] 1 4] [lrange [lindex $it $b] 1 4]]} continue
+                dict lappend adj $a $b; dict lappend adj $b $a
+            }
+        }
+    }
+    return [dict create net [get_object_name $n] it $it adj $adj seg $seg drv $drv load $load]
+}
+proc qb_eco_route_touch {a b} {
+    lassign $a ax0 ay0 ax1 ay1; lassign $b bx0 by0 bx1 by1
+    expr {$ax0 <= $bx1 && $bx0 <= $ax1 && $ay0 <= $by1 && $by0 <= $ay1}
+}
+# nearest point of the tree's wire segment centre lines to (x, y) um, on the LEF layers <ly> (or on layer <only>):
+# {layer x y distance tie segment}; candidates ordered by distance, LEF layer order, x, y
+proc qb_eco_route_point {t x y ly {only ""}} {
+    set u $::QB_DBU; set px [expr {round($x * $u)}]; set py [expr {round($y * $u)}]
+    set c {}
+    dict for {k g} [dict get $t seg] {
+        lassign $g ax cc c0 c1 li
+        if {$only ne "" && [lindex $ly $li] ne $only} continue
+        set w [expr {min(max($ax eq "h" ? $px : $py, $c0), $c1)}]
+        lassign [expr {$ax eq "h" ? [list $w $cc] : [list $cc $w]}] qx qy
+        lappend c [list [expr {($qx - $px) ** 2 + ($qy - $py) ** 2}] $li $qx $qy $k]
+    }
+    if {![llength $c]} { error "qb_eco_route_point: net [dict get $t net] has no routed wire[expr {$only eq "" ? "" : " on $only"}] (add_buffer_on_route at $x $y)" }
     foreach k {3 2 1 0} { set c [lsort -integer -index $k $c] }
-    lassign [lindex $c 0] d2 li qx qy lay
+    lassign [lindex $c 0] d2 li qx qy s
     set tie no
     foreach e [lrange $c 1 end] {
         if {[lindex $e 0] != $d2} break
         if {[lrange $e 1 3] ne [list $li $qx $qy]} { set tie yes; break }
     }
-    return [list $lay [format %.3f [expr {$qx / double($u)}]] [format %.3f [expr {$qy / double($u)}]] \
-        [format %.3f [expr {sqrt($d2) / $u}]] $tie]
+    return [list [lindex $ly $li] [format %.3f [expr {$qx / double($u)}]] [format %.3f [expr {$qy / double($u)}]] \
+        [format %.3f [expr {sqrt($d2) / $u}]] $tie $s]
+}
+proc qb_eco_route_pos {t s x y} {   # position (database units) of the point (x, y) um along segment s
+    expr {round(([lindex [dict get $t seg $s] 0] eq "h" ? $x : $y) * $::QB_DBU)}
+}
+# sorted loads downstream of a cut of wire segment <s> at position <p> (database units along it): the segment split into
+# its two parts at p (each touching what it overlaps, not each other); the loads of the part the driver does not reach,
+# none if the driver reaches both (another shape bridges the cut, e.g. a via on it)
+proc qb_eco_route_cut {t s p} {
+    set it [dict get $t it]; set adj [dict get $t adj]
+    lassign [lrange [lindex $it $s] 1 4] x0 y0 x1 y1
+    lassign [expr {[lindex [dict get $t seg $s] 0] eq "h" ? [list [list $x0 $y0 $p $y1] [list $p $y0 $x1 $y1]] \
+        : [list [list $x0 $y0 $x1 $p] [list $x0 $p $x1 $y1]]}] ra rb
+    # parts as nodes A, B: the neighbours of s each part touches
+    set na {}; set nb {}
+    foreach k [dict get $adj $s] {
+        set r [lrange [lindex $it $k] 1 4]
+        if {[qb_eco_route_touch $ra $r]} { lappend na $k }
+        if {[qb_eco_route_touch $rb $r]} { lappend nb $k }
+    }
+    set reach [qb_eco_route_reach $adj $s $na $nb [dict get $t drv]]
+    set ia [dict exists $reach A]; set ib [dict exists $reach B]
+    if {$ia == $ib} { return {} }
+    set reach [qb_eco_route_reach $adj $s $na $nb [expr {$ia ? "B" : "A"}]]
+    set l {}
+    foreach k [dict keys $reach] { if {[dict exists $t load $k]} { lappend l [dict get $t load $k] } }
+    return [lsort -unique $l]
+}
+proc qb_eco_route_reach {adj s na nb from} {   # items reached from <from> with segment s replaced by its parts A, B
+    set seen [dict create]; set q $from
+    foreach k $q { dict set seen $k 1 }
+    while {[llength $q]} {
+        set q [lassign $q k]
+        if {$k eq "A"} { set nx $na } elseif {$k eq "B"} { set nx $nb } else {
+            set nx {}
+            foreach j [dict get $adj $k] {
+                if {$j != $s} { lappend nx $j; continue }
+                if {$k in $na} { lappend nx A }
+                if {$k in $nb} { lappend nx B }
+            }
+        }
+        foreach j $nx { if {![dict exists $seen $j]} { dict set seen $j 1; lappend q $j } }
+    }
+    return $seen
+}
+# the route edge whose downstream loads are exactly <want>: {layer x y distance} of the middle of the gap between two
+# neighbours along a wire segment (strictly inside the segment, touching nothing else) nearest to (x, y) um; ties to the
+# lower LEF layer, x, y; {} if no edge has that load set
+proc qb_eco_route_edge {t want x y ly} {
+    set u $::QB_DBU; set px [expr {round($x * $u)}]; set py [expr {round($y * $u)}]
+    set it [dict get $t it]; set c {}
+    dict for {s g} [dict get $t seg] {
+        lassign $g ax cc c0 c1 li
+        set i [expr {$ax eq "h" ? 1 : 2}]
+        set iv {}
+        set e [lindex $it $s]; set j [expr {$i + 2}]
+        foreach k [dict get $t adj $s] {
+            set r [lindex $it $k]
+            lappend iv [list [expr {max([lindex $r $i], [lindex $e $i])}] [expr {min([lindex $r $j], [lindex $e $j])}]]
+        }
+        set hi {}
+        foreach v [lsort -real -index 0 $iv] {
+            lassign $v a b
+            if {$hi ne "" && $a > $hi} {
+                set p [expr {round(($hi + $a) / 2.0)}]
+                if {$p > $hi && $p < $a && $p >= $c0 && $p <= $c1 && [qb_eco_route_cut $t $s $p] eq $want} {
+                    lassign [expr {$ax eq "h" ? [list $p $cc] : [list $cc $p]}] qx qy
+                    lappend c [list [expr {($qx - $px) ** 2 + ($qy - $py) ** 2}] $li $qx $qy]
+                }
+            }
+            if {$hi eq "" || $b > $hi} { set hi $b }
+        }
+    }
+    if {![llength $c]} { return {} }
+    foreach k {3 2 1 0} { set c [lsort -integer -index $k $c] }
+    lassign [lindex $c 0] d2 li qx qy
+    return [list [lindex $ly $li] [format %.3f [expr {$qx / double($u)}]] [format %.3f [expr {$qy / double($u)}]] \
+        [format %.3f [expr {sqrt($d2) / $u}]]]
 }
 # leaf cells driven directly by the input ports <globs> that are registers or drive a register input:
 # {cells n_ports n_register n_combinational}

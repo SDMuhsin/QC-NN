@@ -8,6 +8,8 @@
 #   pnr's floorplan step: blk_pins)
 #   BLK_FILL_SED BLK_ODPO_SED BLK_LVS_SED BLK_DRC_SED Calibre deck seds as sed arguments ("-f <file>" ...)
 #   BLK_GATES optional: the block's opt-in verdict gates, comma-separated (signoff/verdict.sh -g; the column's act gates)
+#   BLK_INPUTS optional: the block's further inputs from outside the snapshot, "<key>=<file> ..." (blk_inputs records
+#   their md5 after the DC inputs; the column's reference abstract)
 # Steps:  pnr      ICC2 libs init floorplan place cts route outputs, then portcheck + fill; QC_PNR_FROM / QC_PNR_TO select
 #                  a range, an unknown step name fails; a step init .. route drops the label of out/ (blk_unlabel);
 #                  init first records the md5 of its DC inputs in summary.txt (blk_inputs)
@@ -87,15 +89,17 @@ blk_unlabel() {
     echo "BLK_LABEL pnr $1 rewrites the layout: label of out/ $(cat "$d/out/label.txt" 2> /dev/null || echo none), unfinished $(cat "$d/out/label.new" 2> /dev/null || echo none): dropped"
     rm -f "$d/out/label.txt" "$d/out/label.new"
 }
-# The DC inputs of the init step ($B/syn/$BLK_SYN, outside the snapshot; R100 [M] hunt on a06c97: nothing recorded which
-# netlist a run was built from): one summary.txt line "init inputs syn <tag> netlist <md5> sdc <md5> run_env <md5>" (the
-# netlist and DC SDC common/block_sdc.tcl reads, DC's run.env) before each init step; common/regress.sh check compares
-# the last one with the regression reference
+# The inputs of the pnr step from outside the snapshot (R100 [M] hunt on a06c97: nothing recorded which netlist a run was
+# built from): one summary.txt line "init inputs syn <tag> netlist <md5> sdc <md5> run_env <md5> [<key> <md5> ...]" before
+# each init step: the DC inputs ($B/syn/$BLK_SYN: the netlist and DC SDC common/block_sdc.tcl reads, DC's run.env), then
+# the block's own BLK_INPUTS (R101: the column's pin-reference abstract COL_REFLEF was recorded nowhere); common/regress.sh
+# check compares the last line with the regression reference
 blk_inputs() {
     local s=$B/syn/$BLK_SYN k f l="init inputs syn $BLK_SYN"
-    for k in "netlist $BLK_TOP.v" "sdc $BLK_TOP.sdc" "run_env run.env"; do
-        f=$s/${k#* }; [ -f "$f" ] || { echo "BLK_FAIL pnr init: no DC input $f"; return 1; }
-        l="$l ${k%% *} $(md5sum < "$f" | cut -c1-32)"
+    for k in "netlist=$s/$BLK_TOP.v" "sdc=$s/$BLK_TOP.sdc" "run_env=$s/run.env" ${BLK_INPUTS:-}; do
+        f=${k#*=}; [[ $k == [a-z]*=?* ]] || { echo "BLK_FAIL pnr init: input '$k' is not <key>=<file>"; return 1; }
+        [ -f "$f" ] || { echo "BLK_FAIL pnr init: no input $f"; return 1; }
+        l="$l ${k%%=*} $(md5sum < "$f" | cut -c1-32)"
     done
     mkdir -p "$d" && echo "$l" >> "$d/summary.txt" && echo "BLK_INPUTS $l"
 }

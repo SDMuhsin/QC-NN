@@ -10,6 +10,7 @@ C=$QBF/signoff/calibre
 BLK=col BLK_TOP=$COL_TOP BLK_SYN=$COL_SYN BLK_PERIOD=$COL_PERIOD BLK_CFG=$here/icc2.cfg BLK_PT=$QBF/signoff/pt/col_blk.tcl
 BLK_FILL_SED="-f $C/fill_blk.sed" BLK_ODPO_SED="-f $C/odpo_blk.sed" BLK_LVS_SED="-f $C/lvs_case.sed" BLK_DRC_SED="-f $C/drc_blk.sed"
 BLK_GATES=act_noise,abstract_abutment   # the act feedthrough's verdict gates (signoff/pt/col_blk.tcl, icc2.cfg P(ABUT_PAIR))
+BLK_INPUTS="reflef=$COL_REFLEF"         # the pin reference outside the snapshot, recorded by common/block.sh blk_inputs
 export COL_TOP QC_PNR_GUARD_HOLD QC_PNR_GUARD_TRAN   # read by icc2.cfg, init.tcl qb_guard
 blk_pre_pnr() { "$PY" -I "$QBF/floorplan/abstract_pins.py" "$COL_REFLEF" "$1"; }
 blk_main "$@"
