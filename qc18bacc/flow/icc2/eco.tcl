@@ -17,6 +17,14 @@
 #   route unchanged; the same reroutes moved the act_o noise victims of round 1 to other bits.  Off here (route_eco only).
 # * -reroute any_nets (default): on the unchanged eco label route_eco changed 15 nets; modified_nets_first_then_others 0.
 #   modified_nets_only left 81 DRC violations (r73 round-1 change list) [M], so others may still move for real DRCs.
+# route_eco -nets = the nets of the changed cells (R105, common.tcl qb_eco_nets).  size_cell swaps the master in place,
+# connectivity unchanged, so ICC2 marks no net modified ("There are no modified nets in the design") and route_eco
+# rerouted nothing; where the larger master's M1 pins land on the pin-access wiring of its own nets the shorts stay.  [M]
+# rgr rg83c65a6a round 1 (1 of 54 eco rounds over 40 rgr runs): HFSINV_586_179 INVD4 -> INVD6, u_lane/U1130 INVD1 -> CKND2,
+# 3 shorts + 4 DRCs right after size_cell, before legalisation; the gate below failed.  On a copy: route_eco -nets <their
+# nets> rerouted exactly 4 nets (n882, n884, HFSNET_76, p1[9]) to 0 / 0; a closure pass (route_detail -incremental) also
+# cleared it but rerouted ~91 nets PT predicted unchanged (R73).  -nets also bounds route_eco's open-net connection, so it
+# holds the nets of new cells too (the gate fails on any open left).
 source [file dirname [info script]]/common.tcl
 set lab [qc_env QB_ECO_TO eco]
 qb_open [qc_env QB_ECO_FROM route] $lab
@@ -44,7 +52,9 @@ place_eco_cells -eco_changed_cells -legalize_only -remove_filler_references $fil
 # here is a bug to diagnose, not to route over.
 qb_legality $lab
 set_app_options -name route.detail.eco_route_use_soft_spacing_for_timing_optimization -value false
-route_eco -utilize_dangling_wires true -reroute modified_nets_first_then_others
+lassign [qb_eco_nets $chg] nc rn
+qb_line "$lab route_eco nets [sizeof_collection $rn] (pins of $nc changed cells)"
+route_eco -nets $rn -utilize_dangling_wires true -reroute modified_nets_first_then_others
 qb_fillers
 qb_route_close $lab 0
 qb_isolate_report $lab

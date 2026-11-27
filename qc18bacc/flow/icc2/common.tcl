@@ -49,6 +49,8 @@
 #                       on layer 0 put on the nearest routed wire of its net (R95), and every point where ICC2 would give
 #                       the buffer other loads than PT's record moved onto the route edge that isolates PT's loads (R101,
 #                       qb_eco_route_tree / _cut / _edge: geometric route tree of the input label); returns <out>
+#   qb_eco_nets <chg>   ECO route nets (R105, eco.tcl): the non-PG nets on the pins of every cell the change list sizes,
+#                       moves or creates -> {cells nets}
 #   qb_pg_check <step>  PG pin gate (R67; floorplan.tcl, abstract.tcl): the VDD / VSS terminals are exactly the straps of
 #                       the chip PG grid's pin layer (floorplan/pg_grid.tcl ::QB_PG_PIN): that layer only, strap width,
 #                       each across the whole die, low edges = qb_pg_expect of the core (VSS at core + offset, VDD at
@@ -629,6 +631,25 @@ proc qb_eco_names {chg} {
     foreach {k w} {net nets pin pins port ports abor abor_buffers ref lib_cells} { append t " $w $n($k) missing $m($k)" }
     append t " new_cells $nn missing $nm load_mismatch $nld record_mismatch $nr unparsed $nu"
     return [list $t [expr {$m(cell) + $m(net) + $m(pin) + $m(port) + $m(abor) + $m(ref) + $nm + $nld + $nr + $nu}]]
+}
+# ECO route nets (R105, eco.tcl route_eco -nets): the cells the change list touches (size_cell, set_cell_location, new
+# cells of insert_buffer / add_buffer_on_route) and the nets on their pins but PG.  Returns {cells nets}: the number of
+# those cells and the net collection; error if the list touches no cell (route_eco -nets would route nothing).
+proc qb_eco_nets {chg} {
+    current_instance
+    set sc ""; set c {}
+    foreach l [qb_eco_lines $chg] {
+        lassign [qb_eco_parse $l $sc] k f
+        switch $k {
+            scope       { set sc [lindex $f 0] }
+            size - loc  { lappend c [lindex $f 0] }
+        }
+    }
+    foreach x [qb_eco_new_cells $chg] { lappend c [lindex $x 0] }
+    set c [get_cells -quiet [lsort -unique $c]]
+    set n [get_nets -quiet -of_objects [get_pins -quiet -of_objects $c] -filter "net_type!=power && net_type!=ground"]
+    if {![sizeof_collection $n]} { error "qb_eco_nets: [file tail $chg] touches no cell on a signal net" }
+    return [list [sizeof_collection $c] $n]
 }
 # add_buffer_on_route points (eco.tcl): the change list as eco.tcl sources it.  PT writes each buffer {name lib_cell x y
 # layer}; ICC2 takes only that point and gives the buffer the loads of the route subtree downstream of it.  Two ways the
