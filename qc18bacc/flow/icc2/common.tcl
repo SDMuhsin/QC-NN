@@ -29,7 +29,7 @@
 #                       global / track / detail routing, redundant via insertion after every detail route (R71)
 #   qb_feedthru_ndr     feedthrough port nets P(FEEDTHRU) on a spacing NDR P(FEEDTHRU_NDR) (R74, route.tcl)
 #   qb_fillers          decap (DCAP*, removed where they violate) then metal-free FILL* cells in every empty site
-#   qb_route_close <step>  route closure (check_routes, route_detail on the stored DRCs, at most QB_CLOSE_PASSES passes)
+#   qb_route_close <step> [passes]  route closure (check_routes, route_detail on the stored DRCs, at most <passes> passes)
 #                       + hard gate (check_routes / check_lvs -check_child_cells true all 0) -> rpt/<step>_check_{routes,
 #                       lvs}.rpt, one summary line per pass and one for the gate (R92; route.tcl, eco.tcl)
 #   qb_hold_reserve     netlist-targeted hold-cell reservation (R87, P(HOLD_RESERVE); place.tcl)
@@ -260,8 +260,16 @@ proc qb_fillers {} {
 # length on M1, one net); both route_opt passes and route_eco stopped the same way ("reached max number of iterations",
 # route_eco "not converging" after iteration 10).  A new route_detail on the stored DRCs cleared them in its first
 # iteration, with the fillers in place as here (r92x x1: 3 -> 0 DRCs, 0 open nets, 305 s).
-#   closure  check_routes; while DRCs / antenna violations remain and fewer than QB_CLOSE_PASSES passes ran:
+#   closure  check_routes; while DRCs / antenna violations remain and fewer than <passes> passes ran:
 #            route_detail -incremental true -initial_drc_from_input true, check_routes.  One summary line per pass.
+#            <passes> is the caller's: route.tcl QB_CLOSE_PASSES; eco.tcl 0 = gate only (R92 follow-up, PI decision: a
+#            closure pass may run inside an ECO round only if it is local, and it is not.  [M] r91b label eco, scratch
+#            copies, route geometry against the label with re-segmented wires merged: this pass 3 -> 0 DRCs in one
+#            detail-route partition, yet 26 205 new / 49 223 removed geometry items on 25 792 nets (1 468 / 1 471 vias:
+#            the redundant-via insertion after it); with -coordinates <the DRC boxes + 5 um> and that insertion off
+#            3 -> 0 as well, 0 vias, but still 23 035 / 46 889 wire items (new: M2 11 682, M1 10 390) on 24 981
+#            nets anywhere in the block: route_detail's own database update rewrites short wire shapes).  What
+#            route_eco leaves in a round therefore fails the gate.
 #   gate     check_routes: 0 DRCs, 0 open nets, 0 antenna violations; check_lvs -check_child_cells true: 0 shorts,
 #            0 open nets, 0 floating routes.  Without -check_child_cells check_lvs does not compare the routes with the
 #            shapes inside cells (man: default false): r91b label route [M] 0 shorts without it, 2 with it (net n1803 x
@@ -287,8 +295,9 @@ proc qb_check_routes {step} {
     }
     return [dict set c types [join $ty {, }]]
 }
-proc qb_route_close {step} {
+proc qb_route_close {step {passes {}}} {
     global P
+    if {$passes eq ""} { set passes $::QB_CLOSE_PASSES }
     set cnt {{c} { set t [dict get $c types]; return "[dict remove $c types][expr {$t eq "" ? "" : " ($t)"}]" }}
     set num {{c} { dict remove $c types }}
     # DRCs + antenna violations left for the detail router; 0 when a count is unreadable (the gate then fails on the NA)
@@ -296,7 +305,7 @@ proc qb_route_close {step} {
         ? [dict get $c drc] + [dict get $c antenna] : 0} }}
     set c [qb_check_routes $step]
     qb_line "$step close pass 0: check_routes [apply $cnt $c]"
-    for {set k 0} {$k < $::QB_CLOSE_PASSES && [apply $todo $c] > 0} {} {
+    for {set k 0} {$k < $passes && [apply $todo $c] > 0} {} {
         incr k; set t0 [clock seconds]
         route_detail -incremental true -initial_drc_from_input true
         set c [qb_check_routes $step]

@@ -2,7 +2,7 @@
 # (blocks/<b>/run.sh fill: signoff/calibre/cal.sh fill -> DM.gds -> signoff/calibre/fill_def.py -> <run>/out/<top>_fill.def).
 # The kit TLU+ (1p09m cworst / rcworst / typical / cbest / rcbest ITF headers) model metal-density thickness variation
 # (DENSITY_POLYNOMIAL_ORDERS) but carry no FILL_* emulation, so the fill capacitance must come from the fill shapes
-# themselves: the fill is read into the block label the outputs were written from (QB_ICC2_LABEL, out/label.txt) as DEF
+# themselves: the fill is read into the block label the outputs were written from (QB_ICC2_LABEL, common/block.sh blk_out) as DEF
 # FILLS and extracted as floating metal (set_extraction_options -real_metalfill_extraction floating), then one SPEF per
 # sign-off corner (site.tcl QC_SIGNOFF_CORNERS, with coupling: qb_timer SI) -> <run>/out/<top>_<c>_pt.spef.gz (gzip, R71:
 # 9 x ~0.62 GB uncompressed kept the build host's /tmp near 90 %; PrimeTime reads it directly).  The block is

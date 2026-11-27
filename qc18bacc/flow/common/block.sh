@@ -11,14 +11,22 @@
 #                  a range, an unknown step name fails
 #         eco      sign-off ECO loop, at most QC_ECO_ROUNDS (4) rounds: PrimeTime DMSA -> ICC2 eco -> outputs -> portcheck
 #                  -> fill; ends when a round's pre-fix state is clean in every corner at zero margin; fails if it never
-#                  is, or if the pre-fix violation total does not shrink.  Hold is fixed to QC_ECO_HOLD_MARGIN (env.sh)
-#         fill     Calibre dummy metal + OD / PO, fill-aware SPEFs      calibre  LVS, DRC, antenna (fails on cal.sh's status)
+#                  is, or if the pre-fix violation total does not shrink.  Fix guard-bands (env.sh): hold
+#                  QC_ECO_HOLD_MARGIN, max_transition / max_capacitance QC_ECO_DRV_MARGIN, noise QC_ECO_NOISE_MARGIN.
+#                  The loop's history is out/eco/rounds.txt: a later eco step continues it (round number = position of
+#                  the label of out/ in the chain route, eco, eco2, ...) and a recorded stop stays a stop unless
+#                  QC_ECO_OVERRIDE_STOP=1, which is logged there.  Opt-in QC_ECO_PT_ONLY=1: the next round's PrimeTime
+#                  DMSA only (record + history line, nothing applied)
+#         fill     portcheck, Calibre dummy metal + OD / PO, fill-aware SPEFs of the label of out/ (first an unfinished
+#                  one)                                                 calibre  LVS, DRC, antenna (fails on cal.sh's status)
 #         post     PrimeTime sign-off + ETMs in every corner   views  abstract LEF + ETM scan   signoff  signoff/verdict.sh
 #
 # Details.  rundir <tag> (a further step) prints the run dir (common/queue.sh).  The label of out/ is out/label.txt
-# (flow/icc2/outputs.tcl): route, then eco, eco2, ... (one ICC2 label per ECO round, so every round's layout stays in the
-# design library).  ECO round files: out/eco/<label>/ (PrimeTime log, eco_summary.txt, change list + new-cell record,
-# unfixable reasons, ICC2 log), out/eco/rounds.txt (one line per round).
+# (blk_out, written once outputs, portcheck, fill and SPEFs of the label passed): route, then eco, eco2, ... (one ICC2 label per ECO round, so every round's layout stays in the
+# design library).  ECO round files: out/eco/<label>/ = what that round produced and nothing else (PrimeTime log,
+# eco_summary.txt, change list + new-cell record [pt_eco.not_applied.* when the loop stopped before applying it],
+# unfixable reasons, ICC2 log; an earlier attempt of the same round is kept as <label>.try<n>), out/eco/rounds.txt (one
+# line per round and per stop / override: the history).
 # Why a loop (R92, PI decision; r91b [M]): one zero-margin ECO pass predicted 0 violators in 9 corners and its own ECO
 # route left 2 hold endpoints at -0.04 / -0.09 ps and one net 1.7 ps over max_transition, all on nets the ECO had not
 # touched (264 hold endpoints within 5 ps of zero at wcl).  Convergence is judged by PrimeTime at the sign-off criterion
@@ -53,16 +61,49 @@ blk_pnr() {
     if declare -F blk_pre_pnr > /dev/null; then blk_pre_pnr || return 1; fi
     for s in $all; do
         [ "$s" = "$from" ] && on=1; [ $on = 1 ] || continue
-        qb_icc2 "$d" "$s" "$([ "$s" = libs ] && echo icc2_lm_shell)" || return 1
-        if [ "$s" = outputs ]; then blk_portcheck && blk_fill || return 1; fi
+        if [ "$s" = outputs ]; then blk_out route || return 1
+        else qb_icc2 "$d" "$s" "$([ "$s" = libs ] && echo icc2_lm_shell)" || return 1; fi
         [ "$s" = "$to" ] && break
     done
     tail -n 40 "$d/summary.txt"
 }
-# Calibre dummy metal + dummy OD / PO of out/<top>.gds; metal -> DEF FILLS -> fill-aware SPEFs of every sign-off corner
-# (flow/icc2/extract.tcl, the label of out/)
+# The label of out/ (R96: one atomic set per label).  out/label.txt names the ICC2 label whose outputs (flow/icc2/
+# outputs.tcl), portcheck, Calibre fill and fill-aware SPEFs out/ holds; it exists only once all of them passed for that
+# label.  While a label's set is being written there is no out/label.txt and out/label.new says "<label> <stage>", the
+# stage to run next: outputs, or fill (= portcheck, fill, extract).  The fill step and the next eco step finish such a
+# label first (blk_pending); post, calibre and views refuse a run without a label of out/.  (Before, outputs.tcl wrote
+# label.txt ahead of portcheck / fill: after a fill failure the next eco round ran on the new netlist with the SPEFs of
+# the label before.)
+blk_label() {   # prints the label of out/; fails when there is none
+    local l; l=$(cat "$d/out/label.txt" 2> /dev/null)
+    if [ -n "$l" ]; then echo "$l"; return 0; fi
+    echo "BLK_FAIL no label of out/ (out/label.txt); unfinished: $(cat "$d/out/label.new" 2> /dev/null || echo none) (run.sh fill or eco finishes it)" >&2
+    return 1
+}
+blk_out() {   # blk_out <label> [outputs|fill]: out/ for <label> from that stage on, then <label> is the label of out/
+    local l=$1 s=${2:-outputs} n=$d/out/label.new
+    mkdir -p "$d/out" && rm -f "$d/out/label.txt" || return 1
+    if [ "$s" = outputs ]; then { echo "$l outputs" > "$n" && QB_ICC2_LABEL=$l qb_icc2 "$d" outputs; } || return 1; fi
+    { echo "$l fill" > "$n" && blk_portcheck && blk_fill_label "$l"; } || return 1
+    echo "$l" > "$n.tmp" && mv -f "$n.tmp" "$d/out/label.txt" && rm -f "$n" && echo "BLK_LABEL $l is the label of out/"
+}
+blk_pending() {   # finishes the unfinished label of out/ (out/label.new), if there is one
+    local l s
+    [ -f "$d/out/label.new" ] || return 0
+    read -r l s < "$d/out/label.new"
+    case $s in outputs|fill) ;; *) echo "BLK_FAIL out/label.new '$l $s' is not '<label> outputs|fill'"; return 1 ;; esac
+    echo "BLK_LABEL finishing the unfinished label $l of out/ from its $s stage"
+    blk_out "$l" "$s"
+}
+# fill step: the unfinished label of out/ if there is one, else the label of out/ again (portcheck, fill, extract)
 blk_fill() {
-    local o=$d/calibre C=$QBF/signoff/calibre w; mkdir -p "$o"
+    local l
+    if [ -f "$d/out/label.new" ]; then blk_pending; else l=$(blk_label) && blk_out "$l" fill; fi
+}
+# Calibre dummy metal + dummy OD / PO of out/<top>.gds; metal -> DEF FILLS -> fill-aware SPEFs of every sign-off corner
+# (flow/icc2/extract.tcl on label $1, the label out/ was written from)
+blk_fill_label() {
+    local l=$1 o=$d/calibre C=$QBF/signoff/calibre w; mkdir -p "$o"
     QB55_FILL_SED=$BLK_FILL_SED bash "$C/cal.sh" fill "$d/out/$BLK_TOP.gds" "$BLK_TOP" "$o/fill" > "$o/fill.log" 2>&1 \
         || { cat "$o/fill.log"; return 1; }
     grep -v '^CAL55_fill' "$o/fill.log"
@@ -80,46 +121,75 @@ blk_fill() {
         || { cat "$o/odpo.log"; return 1; }
     cat "$o/odpo.log"
     ( . "$C/kl.sh"; kl_run "$C/fill_def.py" -rd gds="$o/fill/DM.gds" -rd design="$BLK_TOP" -rd out="$d/out/${BLK_TOP}_fill.def" ) || return 1
-    QB_ICC2_LABEL=$(cat "$d/out/label.txt") qb_icc2 "$d" extract || return 1
+    QB_ICC2_LABEL=$l qb_icc2 "$d" extract || return 1
     grep '^extract' "$d/summary.txt" | tail -n 4
 }
-# ICC2 label of the ECO round that starts from label $1
+# ICC2 label of the ECO round that starts from label $1 / number of rounds that built label $1
 blk_eco_label() { case $1 in route) echo eco ;; eco) echo eco2 ;; eco[1-9]*) echo "eco$(( ${1#eco} + 1 ))" ;; *) return 1 ;; esac; }
+blk_eco_index() { case $1 in route) echo 0 ;; eco) echo 1 ;; eco[1-9]*) echo "${1#eco}" ;; *) return 1 ;; esac; }
 blk_eco() {
-    local max=${QC_ECO_ROUNDS:-4} e=$d/out/eco k from to a tot prev= r f cs
+    local max=${QC_ECO_ROUNDS:-4} e=$d/out/eco h k from to a tot prev r f cs n
     cs=$(qb_corners) || return 1   # (assigned first: a command substitution in an assignment prefix hides the status)
-    for (( k = 1; k <= max + 1; k++ )); do
-        from=$(cat "$d/out/label.txt" 2> /dev/null || echo route)
+    h=$e/rounds.txt; mkdir -p "$e"
+    # The history decides (R92 review; before, a second eco step forgot the stop and the previous total): a recorded stop
+    # ends every later eco step too, unless it is overridden explicitly, which the history then says.
+    case $(tail -n 1 "$h" 2> /dev/null) in *": FAIL "*)
+        if [ "${QC_ECO_OVERRIDE_STOP:-}" != 1 ]; then
+            echo "BLK_FAIL eco: the loop of this run has stopped ($h):"; tail -n 1 "$h"
+            echo "  QC_ECO_OVERRIDE_STOP=1 continues from label $(cat "$d/out/label.txt" 2> /dev/null) and is logged there"; return 1
+        fi
+        echo "ECO override $(date +%F_%T) of the stop above (QC_ECO_OVERRIDE_STOP=1)" | tee -a "$h" ;;
+    esac
+    # an unfinished label of out/ (a round that failed after its ICC2 eco) is finished before any PrimeTime round
+    blk_pending || { echo "ECO $(date +%F_%T) the unfinished label of out/ ($(cat "$d/out/label.new")) failed again" | tee -a "$h"; return 1; }
+    while :; do
+        from=$(blk_label) || return 1
         to=$(blk_eco_label "$from") || { echo "BLK_FAIL eco: no ECO label after '$from' (out/label.txt)"; return 1; }
-        a=$e/$to; mkdir -p "$a"
+        k=$(( $(blk_eco_index "$from") + 1 ))
+        # pre-fix total of the round that built label $from (none: route, or a stop overridden since)
+        prev=$(awk -v l="$from" '$2 == "override" { p = "" } $9 == "change" && $13 == l { p = $8; sub(":", "", p) } END { print p }' "$h" 2> /dev/null)
+        # the round's record holds only what this round produces: an earlier attempt of the round is kept aside and the
+        # files of the round before leave out/eco (not the history)
+        a=$e/$to
+        if [ -d "$a" ]; then n=1; while [ -e "$a.try$n" ]; do n=$((n + 1)); done; mv "$a" "$a.try$n"; fi
+        mkdir -p "$a"
+        for f in "$e"/*.txt "$e"/*.tcl "$e"/*.log; do [ "$f" = "$h" ] || rm -f "$f"; done
         # PrimeTime DMSA on the outputs of label $from: pre-fix state of every corner at the sign-off criterion, then the
         # change list, unless that state is clean (converged) or this is the check after the last round (QB_ECO_CHECK)
         ( blk_pt_env || exit 1
           QB_ECO_CHECK=$(( k > max )) QB_PT_SCRIPT=$BLK_PT QB_ECO_CORNERS=$cs QB_ECO_NLIB=$d/$BLK_TOP.nlib \
               QB_ECO_BLOCK=$BLK_TOP/$from qb_pt pt_eco.log pt_shell -multi_scenario -f "$QBF/signoff/pt/drv_eco.tcl" ); r=$?
         rm -f "$e"/work/.eco_ndm_*   # (the DMSA workers' NDM copies, ~0.42 GB each: disk, R71; their logs stay)
-        # the round's record: PrimeTime log, state summary, change list + new-cell record, unfixable reasons, physical logs
-        for f in "$d/pt_eco.log" "$e"/*.txt "$e"/*.tcl "$e"/*.log; do [ -f "$f" ] && cp "$f" "$a/"; done
+        for f in "$d/pt_eco.log" "$e"/*.txt "$e"/*.tcl "$e"/*.log; do [ -f "$f" ] && [ "$f" != "$h" ] && cp "$f" "$a/"; done
         [ $r = 0 ] || return 1
         cat "$e/eco_summary.txt"
         tot=$(awk '$1 == "prefix_total" { print $2; exit }' "$e/eco_summary.txt")
         case $tot in ''|*[!0-9]*) echo "BLK_FAIL eco: no prefix_total in out/eco/eco_summary.txt"; return 1 ;; esac
+        # opt-in QC_ECO_PT_ONLY=1: this round's PrimeTime half only (a check of the PT side, e.g. on a copy of a run): the
+        # record and a history line, no verdict on the loop, nothing applied
+        if [ "${QC_ECO_PT_ONLY:-}" = 1 ]; then
+            echo "ECO round $k $(date +%F_%T) label $from prefix_total $tot: PrimeTime only (QC_ECO_PT_ONLY=1), change list not applied" | tee -a "$h"
+            return 0
+        fi
         if [ "$tot" = 0 ]; then
-            echo "ECO round $k $(date +%F_%T) label $from prefix_total 0: converged" | tee -a "$e/rounds.txt"
+            echo "ECO round $k $(date +%F_%T) label $from prefix_total 0: converged" | tee -a "$h"
             grep '^eco' "$d/summary.txt" | tail -n 20; return 0
         fi
         if [ "$k" -gt "$max" ]; then
-            echo "ECO round $k $(date +%F_%T) label $from prefix_total $tot: FAIL not converged after $max rounds" | tee -a "$e/rounds.txt"; return 1
+            echo "ECO round $k $(date +%F_%T) label $from prefix_total $tot: FAIL not converged after $max rounds" | tee -a "$h"; return 1
         fi
         if [ -n "$prev" ] && [ "$tot" -ge "$prev" ]; then
-            echo "ECO round $k $(date +%F_%T) label $from prefix_total $tot: FAIL not smaller than the previous round's $prev" | tee -a "$e/rounds.txt"; return 1
+            echo "ECO round $k $(date +%F_%T) label $from prefix_total $tot: FAIL not smaller than the previous round's $prev" | tee -a "$h"
+            # the change list of this round is not applied: no label $to; marked in the record, gone from out/eco
+            for f in pt_eco.tcl pt_eco_cells.txt; do [ -f "$a/$f" ] && mv "$a/$f" "$a/${f%.*}.not_applied.${f##*.}"; rm -f "$e/$f"; done
+            return 1
         fi
-        prev=$tot
-        echo "ECO round $k $(date +%F_%T) label $from prefix_total $tot: change list -> label $to" | tee -a "$e/rounds.txt"
-        # ICC2: the change list on label $from -> $to (name / load / legality gates, ECO route, route closure + gate)
-        QB_ECO_FROM=$from QB_ECO_TO=$to qb_icc2 "$d" eco; r=$?; cp "$d/eco.log" "$a/"; [ $r = 0 ] || return 1
-        QB_ICC2_LABEL=$to qb_icc2 "$d" outputs || return 1
-        blk_portcheck && blk_fill || return 1
+        echo "ECO round $k $(date +%F_%T) label $from prefix_total $tot: change list -> label $to" | tee -a "$h"
+        # ICC2: the change list on label $from -> $to (name / load / legality gates, ECO route, route gate), then out/ for
+        # label $to (blk_out: outputs, portcheck, fill, extract; only then is $to the label of out/)
+        QB_ECO_FROM=$from QB_ECO_TO=$to qb_icc2 "$d" eco; r=$?; cp "$d/eco.log" "$a/"
+        [ $r = 0 ] && blk_out "$to" \
+            || { echo "ECO round $k $(date +%F_%T) label $from: failed after the change list (label of out/: $(cat "$d/out/label.txt" 2> /dev/null || echo none), unfinished: $(cat "$d/out/label.new" 2> /dev/null || echo none))" | tee -a "$h"; return 1; }
     done
 }
 # On the filled GDS of the fill step (metal: the one the SPEFs saw; + OD / PO): LVS source, Calibre LVS, DRC (block deck),
@@ -127,6 +197,7 @@ blk_eco() {
 # or a NOT EXECUTED ERC check signoff/calibre/erc_allow.txt does not allow, any DRC / antenna result: signoff/calibre/cal.sh).
 blk_calibre() {
     local o=$d/calibre C=$QBF/signoff/calibre g r=0; g=$o/odpo/${BLK_TOP}_fill.gds
+    blk_label > /dev/null || return 1
     [ "$g" -nt "$d/out/$BLK_TOP.gds" ] || { echo "BLK_FAIL $g missing or older than out/$BLK_TOP.gds (run.sh fill)"; return 1; }
     bash "$C/lvs_src.sh" "$d/out/${BLK_TOP}_pg.v" "$o/${BLK}_src.spi" > "$o/src.log" 2>&1; r=$?; tail -n 3 "$o/src.log"; [ $r = 0 ] || return 1
     QB36_LVS_SED=$BLK_LVS_SED bash "$C/cal.sh" lvs "$g" "$BLK_TOP" "$o/${BLK}_src.spi" "$o/lvs" > "$o/lvs.log" 2>&1 || r=1
@@ -137,6 +208,7 @@ blk_calibre() {
 # PrimeTime in every sign-off corner on the ICC2 netlist + SPEF (fails on any setup / hold / DRV / noise / min pulse width
 # / min period violator, common/env.sh qb_pt), then the ETMs of every corner (R71; fails on MEXT-6 / MEXT-81 / MEXT-97)
 blk_post() {
+    blk_label > /dev/null || return 1
     ( blk_pt_env || exit 1
       cs=$(qb_corners) || exit 1; r=0
       for c in $cs; do   # every corner is reported before a failure stops the step (R67)
@@ -153,9 +225,13 @@ blk_post() {
 # Views for the chip top: ICC2 abstract LEF with port antenna data + antenna / abutment / PG pin gates (flow/icc2/
 # abstract.tcl, label QB_ICC2_LABEL [the label of out/]) -> out/<top>.lef; ETM scan (etmcheck 3 ns) of the post step's ETMs
 blk_views() {
-    local c cs
+    local c cs own lab
     cs=$(qb_corners) || return 1
-    QB_ICC2_LABEL=${QB_ICC2_LABEL:-$(cat "$d/out/label.txt" 2> /dev/null || echo route)} QB_PY=$PY qb_icc2 "$d" abstract || return 1
+    own=$(blk_label) || return 1; lab=${QB_ICC2_LABEL:-$own}
+    # (R92 review) an inherited QB_ICC2_LABEL must not pick another layout than the one of out/ silently
+    if [ "$lab" = "$own" ]; then echo "BLK_VIEWS abstract of label $lab = the label of out/"
+    else echo "BLK_VIEWS abstract of label $lab (QB_ICC2_LABEL), NOT the label of out/ ($own)"; fi
+    QB_ICC2_LABEL=$lab QB_PY=$PY qb_icc2 "$d" abstract || return 1
     grep '^abstract' "$d/summary.txt" | tail -n 3
     for c in $cs; do "$PY" -I "$QBF/signoff/etm/etmcheck.py" "$d/out/etm/${BLK_TOP}_$c.lib" 3.0 || return 1; done
 }

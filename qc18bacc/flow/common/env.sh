@@ -25,6 +25,9 @@ export QC_ACT_HOLD_HUB=0.10
 export QC_CLK_TRAN_MAX=${QC_CLK_TRAN_MAX:-0.25}
 # Hold slack margin of the sign-off ECO QC_ECO_HOLD_MARGIN (ns; R92): read by signoff/pt/drv_eco.tcl.
 export QC_ECO_HOLD_MARGIN=${QC_ECO_HOLD_MARGIN:-0.005}
+# DRV / noise fix guard-bands of the sign-off ECO (fraction of the limit; R92, PI decision): drv_eco.tcl qb_eco_guard.
+export QC_ECO_DRV_MARGIN=${QC_ECO_DRV_MARGIN:-0.02}
+export QC_ECO_NOISE_MARGIN=${QC_ECO_NOISE_MARGIN:-0.02}
 qb_kit() {
     . "$ROOT/flow/tsmc65/common/tool.sh"
     QC_KIT=$(tcsh -f -c "source $FLOW/site/site.csh >& /dev/null; printenv QC_KIT"); export QC_KIT

@@ -40,12 +40,15 @@ stops at that step.  The OpenROAD steps are unchanged.
 
 ```
 qc18bacc/flow/blocks/col/run.sh pnr <tag>       # ICC2 libs init floorplan place cts route outputs + fill -> $QC_BUILD/icc2/col/<tag>
-qc18bacc/flow/blocks/col/run.sh fill <tag>      # Calibre dummy metal of the outputs GDS -> DEF FILLS (signoff/calibre/fill_def.py) -> fill-aware ICC2 SPEFs (icc2/extract.tcl), every sign-off corner; kit dummy OD / PO (cal.sh odpo, odpo_blk.sed, R77)
-qc18bacc/flow/blocks/col/run.sh eco <tag>       # one PT DMSA ECO round in every sign-off corner (signoff/pt/drv_eco.tcl: DRV, setup, hold) applied by ICC2 eco.tcl, outputs + fill of label eco
+qc18bacc/flow/blocks/col/run.sh fill <tag>      # (portcheck +) Calibre dummy metal of the outputs GDS -> DEF FILLS (signoff/calibre/fill_def.py) -> fill-aware ICC2 SPEFs (icc2/extract.tcl), every sign-off corner; kit dummy OD / PO (cal.sh odpo, odpo_blk.sed, R77)
+qc18bacc/flow/blocks/col/run.sh eco <tag>       # the sign-off ECO loop (common/block.sh): per round one PT DMSA ECO in every sign-off corner (signoff/pt/drv_eco.tcl: DRV, setup, hold, noise) applied by ICC2 eco.tcl, outputs + fill of its label (eco, eco2, ...)
 qc18bacc/flow/blocks/col/run.sh post <tag>      # PT in every sign-off corner at 6.5 ns on the ICC2 netlist + fill-aware SPEF (gzip), ETMs of every sign-off corner
 qc18bacc/flow/blocks/col/run.sh views <tag>     # ICC2 abstract LEF with port antenna data + antenna / abutment / PG pin gates (out/qb_col_blk.lef), etmcheck (read by blocks/top/run.sh views)
 qc18bacc/flow/blocks/col/run.sh calibre <tag>   # LVS source, Calibre LVS / DRC (block deck + OD.DN.1 / PO.DN.1) / antenna on the metal + OD / PO filled GDS of the fill step -> <run>/calibre
 ```
+The label of out/ (R96, common/block.sh blk_out): `out/label.txt` names the ICC2 label whose outputs, portcheck, fill and
+SPEFs out/ holds, written only once all of them passed; an unfinished label (`out/label.new`) is finished by the next fill
+or eco step, and post / calibre / views / the verdict refuse a run without a complete label.
 Corners (R68): one table, `flow/tsmc65/site/site.tcl` QC_SIGNOFF (kit release note RN_TCBN65GPLUS_140B NOTE I): setup
 {wc wcl} x {Cworst RCworst} (ss ss_rcw wcl wcl_rcw), hold {lt ml} x {Cbest RCbest} (ff ff_rcb ml ml_rcb), tc typical (tt);
 ICC2 MCMM, PT sign-off, the DMSA ECO, the block ETMs and the chip top use all of them (bash: common/env.sh `qb_corners`;

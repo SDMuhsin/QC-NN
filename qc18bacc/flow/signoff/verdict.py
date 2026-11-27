@@ -91,10 +91,15 @@ for c in corners:
 s = text('summary.txt')
 du = [l for l in s.splitlines() if l.startswith('dont_use ')]
 gate('dont_use_icc2', '-', all(zeros(l, ('usable', 'design_cells')) for l in du) if du else None, '%d step lines; %s' % (len(du), du[-1] if du else 'none in summary.txt'))
-label = text('out/label.txt').strip(); en = [l for l in s.splitlines() if l.startswith('eco names ')]
-for i, l in enumerate(en):
-    gate('eco_names_round%d' % (i + 1), '-', zeros(l, ('missing', 'load_mismatch', 'record_mismatch', 'unparsed')), l)
-if not en: gate('eco_names', '-', True if label == 'route' else None, 'no "eco names" line in summary.txt, label of out/ = %s' % (label or 'missing'))
+# the label of out/ (common/block.sh blk_out): out/label.txt, and no unfinished label (out/label.new)
+label = text('out/label.txt').strip(); pend = text('out/label.new').strip()
+gate('out_label', '-', bool(label) and not pend, 'out/label.txt %s, out/label.new %s' % (label or 'missing', pend or 'none'))
+# the name / load gate of the ECO round that built the label of out/ (icc2/eco.tcl "<label> eco names ..."): its latest
+# line only (a failed earlier attempt of that round, or an earlier round, is not the layout of out/)
+en = [l for l in s.splitlines() if label and l.startswith('%s eco names ' % label)]
+if label == 'route': gate('eco_names', '-', True, 'label of out/ = route (no ECO round)')
+else: gate('eco_names', '-', zeros(en[-1], ('missing', 'load_mismatch', 'record_mismatch', 'unparsed')) if en else None,
+           en[-1] if en else 'no "%s eco names" line in summary.txt (label of out/ = %s)' % (label, label or 'missing'))
 # place-and-route gates (icc2/common.tcl qb_track_check, qb_legality, qb_route_close; the last ECO round's route gate under
 # the label of out/): a database made before a gate existed has no line, which is MISSING
 def pnr(name, what, rx, ok):   # the last line in the gate's own format; an older record of the same step is not the gate

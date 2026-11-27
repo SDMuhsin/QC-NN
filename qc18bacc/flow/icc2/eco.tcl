@@ -4,8 +4,9 @@
 # one label per round of the ECO loop, common/block.sh, R92; reports and summary lines carry it).  New cells without a PT
 # location are placed (place_eco_cells), then every changed cell is legalised on free sites (filler / decap cells under
 # it removed), ECO-routed (route_eco, routing options of route.tcl), the emptied sites refilled (decap then FILL, as
-# route.tcl), route closure + hard gate (common.tcl qb_route_close, R92: check_routes / check_lvs -check_child_cells all 0
-# or the step fails).  No optimisation here: the change list is the whole ECO.
+# route.tcl), hard route gate (common.tcl qb_route_close with 0 closure passes, R92: check_routes / check_lvs
+# -check_child_cells all 0 or the step fails; no closure pass inside a round until it is local, PI decision, [M] there).
+# No optimisation here: the change list is the whole ECO.
 # ECO routing touches only what PT changed (R73, results/r73.md): PT's DMSA predicts every net outside its change list
 # unchanged, so route_eco must not rip those up.  Two router settings did, every round, anywhere in the block:
 # * route.detail.eco_route_use_soft_spacing_for_timing_optimization (on with route.detail.timing_driven): route_eco's
@@ -31,7 +32,7 @@ qb_line "$lab [file tail $chg]: cells $n0 -> [sizeof_collection [get_flat_cells]
 # change-list gate (R89 / R91): every object the change list names exists and every new cell = PT's record (qb_eco_names);
 # before placement / routing
 lassign [qb_eco_names $chg] nl nb
-qb_line $nl
+qb_line "$lab $nl"   ;# (the label first: signoff/verdict.py gates the latest line of the label of out/)
 if {$nb} { error "$lab: $nb objects of [file tail $chg] missing or mismatched in the block (rpt/eco_names.rpt)" }
 if {[sizeof_collection $up]} { place_eco_cells -cells $up -remove_filler_references $fill }
 place_eco_cells -eco_changed_cells -legalize_only -remove_filler_references $fill
@@ -44,7 +45,7 @@ qb_legality $lab
 set_app_options -name route.detail.eco_route_use_soft_spacing_for_timing_optimization -value false
 route_eco -utilize_dangling_wires true -reroute modified_nets_first_then_others
 qb_fillers
-qb_route_close $lab
+qb_route_close $lab 0
 qb_isolate_report $lab
 qb_qor $lab
 qb_done $lab

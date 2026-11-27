@@ -50,6 +50,7 @@
 #                             of the ICG E pins, group **clock_gating_default**, are 227 of the 31527 -max_delay / -min_delay
 #                             violators).  r91b has no async set / clear pin (all_registers -async_pins 0), so these counts
 #                             guard a future one.  "async ..." line to fh; returns "recovery N removal N" (QB_PT_SIGNOFF)
+#   qb_pt_async_count         the counts alone: "recovery N removal N" (qb_pt_async; the ECO's state, drv_eco.tcl)
 #   qb_pt_check_count <check> violations of one check_timing check: 0 on "check_timing succeeded", else the sum of its
 #                             "There are N" counts, -1 if it reports neither (a gate never passes on an unread report)
 #   qb_pt_coverage <fh>       coverage gates (R92): what the checks above do NOT time must be explained by the design.
@@ -74,6 +75,8 @@
 #                             noise_undriven_ports (check_timing no_driving_cell in that state: port-driven nets
 #                             PrimeTime would hold with no driver model) joins the QB_PT_SIGNOFF counts.  The caller
 #                             must have written every timing result before: the session is in the noise state afterwards
+#   qb_pt_noise_viol <report> the violators of a report_noise -all_violators -nosplit report (every listed pin line counts;
+#                             qb_pt_si_checks, the ECO's noise counts signoff/pt/drv_eco.tcl)
 #   qb_pt_noise_pins <pins>   after update_noise: {violators text} of the given load pins from their si_noise_* pin
 #                             attributes (above_low and below_high: pins PrimeTime analysed in detail, worst total bump,
 #                             negative slacks; a net under its noise filter has no values and is not counted)
@@ -154,10 +157,13 @@ proc qb_pt_drv {fh} {
         $nd $mc [get_attribute [current_design] max_transition] $nc [sizeof_collection $cp] $w $::env(QC_CLK_TRAN_MAX)]
     return "max_transition $nd max_capacitance $mc clock_max_transition $nc"
 }
-proc qb_pt_async {fh} {
+proc qb_pt_async_count {} {
     redirect -variable r { report_constraint -recovery -all_violators -nosplit }
     redirect -variable m { report_constraint -removal -all_violators -nosplit }
-    set l "recovery [regexp -all -line {VIOLATED} $r] removal [regexp -all -line {VIOLATED} $m]"
+    return "recovery [regexp -all -line {VIOLATED} $r] removal [regexp -all -line {VIOLATED} $m]"
+}
+proc qb_pt_async {fh} {
+    set l [qb_pt_async_count]
     puts $fh "async $l (register async set / clear pins [sizeof_collection [all_registers -async_pins]])"
     return $l
 }
@@ -249,10 +255,11 @@ proc qb_pt_si_checks {fh rpt {noise_state {}}} {
     redirect -variable cn { check_noise -include {noise_driver} }
     set none [expr {[regexp -line {^\s*none\s+(\d+)\s+(\d+)\s*$} $cn -> a b] ? $a + $b : -1}]
     puts $fh "noise_hold constant drivers $hold; on their [sizeof_collection $cpins] load pins: [lindex [qb_pt_noise_pins $cpins] 1]"
-    set l "noise [regexp -all -line {^\s*\S+ \(\S+\)\s+[-0-9.]+\s+[-0-9.]+\s+[-0-9.]+\s*$} $n] $l noise_undriven_pins $none"
+    set l "noise [qb_pt_noise_viol $n] $l noise_undriven_pins $none"
     puts $fh "signoff $l"
     puts "QB_PT_SIGNOFF $l"
 }
+proc qb_pt_noise_viol {rpt} { regexp -all -line {^\s*\S+ \(\S+\)\s+[-0-9.]+\s+[-0-9.]+\s+[-0-9.]+\s*$} $rpt }
 proc qb_pt_const_hold {corner} {
     set rec {}; set pins {}
     foreach l [split [exec $::env(QC_PY) -I $::QB_PT_DIR/lib_hold_res.py $::QC_LIBDIR/$::QC_LIB($corner).lib] "\n"] {
