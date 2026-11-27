@@ -2,7 +2,8 @@
 # common/limits.tcl qb_limit by DC / PrimeTime (common/constraints.sdc), the IO budgets (blocks/col/io_budget.tcl; both
 # ends of the act chain, blocks/act/io_budget.tcl too, through common/act_chain.tcl, R107), the
 # PrimeTime clock-network limit (signoff/pt/common.tcl), ICC2 CTS (icc2/cts.tcl), the P&R SDC (common/block_sdc.tcl:
-# IO delay, max transition) and ICC2's setup uncertainty (icc2/init.tcl qb_sdc, common.tcl qb_preroute).  An environment variable of the same
+# IO delay, max transition), ICC2's setup uncertainty (icc2/init.tcl qb_sdc, common.tcl qb_preroute) and the sign-off ECO's
+# setup fix margin (signoff/pt/drv_eco.tcl, R108).  An environment variable of the same
 # name overrides a value for an experiment; PrimeTime logs the values in force (QB_PT_LIMITS) and signoff/verdict.py gate
 # limits fails every corner whose values differ from this file, so an override can never sign off.
 # <name> <value>   # meaning
@@ -15,3 +16,4 @@ QC_CLK_TRAN_MAX  0.25   # clock-network max transition (ns; R92 PI decision, CTS
 QB5_SOUTH_IN     0.20   # the column's south-input budget (fraction of the period; blocks/col/io_budget.tcl)
 QC_ACT_HOLD_HUB  0.10   # act chain hold budget (ns; R81 PI decision), allocated once, to the act source (common/act_chain.tcl)
 QB_ACT_LAUNCH    0.06   # act chain: the act source's launch + wire to column 0's act pins (fraction of the period; act_chain.tcl)
+QC_ECO_SETUP_MARGIN 0.015 # sign-off ECO setup fix margin (ns; R108): the setup passes fix every endpoint below it to it (signoff/pt/drv_eco.tcl)

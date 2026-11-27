@@ -19,9 +19,11 @@
 #                  init first records the md5 of its DC inputs in summary.txt (blk_inputs)
 #         eco      sign-off ECO loop, at most QC_ECO_ROUNDS (common/env.sh) rounds: PrimeTime DMSA -> ICC2 eco -> outputs -> portcheck
 #                  -> fill; ends when a round's pre-fix state is clean in every corner at zero margin; fails if it never
-#                  is, if the pre-fix violation total does not shrink, or at once if a sign-off check no ECO pass fixes
+#                  is, if a round makes no progress (blk_eco_progress, R108: the pre-fix violation total shrinks, or
+#                  stays and its setup + hold TNS improves), or at once if a sign-off check no ECO pass fixes
 #                  is not clean (drv_eco.tcl prefix_unfixable, R103).  Fix guard-bands (env.sh): hold
-#                  QC_ECO_HOLD_MARGIN, max_transition / max_capacitance QC_ECO_DRV_MARGIN, noise QC_ECO_NOISE_MARGIN.
+#                  QC_ECO_HOLD_MARGIN, max_transition / max_capacitance QC_ECO_DRV_MARGIN, noise QC_ECO_NOISE_MARGIN;
+#                  setup margin QC_ECO_SETUP_MARGIN (common/limits.txt, R108).
 #                  The loop's history is out/eco/rounds.txt: a later eco step continues it (round number = position of
 #                  the label of out/ in the chain route, eco, eco2, ...) and a recorded stop stays a stop unless
 #                  QC_ECO_OVERRIDE_STOP=1, which is logged there.  Opt-in QC_ECO_PT_ONLY=1: the next round's PrimeTime
@@ -42,7 +44,7 @@
 # touched (264 hold endpoints within 5 ps of zero at wcl).  Convergence is judged by PrimeTime at the sign-off criterion
 # (signoff/pt/drv_eco.tcl prefix_total: setup + hold + recovery + removal + max_transition + max_capacitance + noise, zero margin; and
 # prefix_unfixable, R103: the other sign-off gates, which no ECO pass fixes), never at
-# the fix margin; a total that does not shrink is a bug to diagnose, so the step stops there.
+# the fix margin; a round without progress (blk_eco_progress) is a bug to diagnose, so the step stops there.
 blk_main() {
     local step=${1:?step} tag=${2:?tag}; d=$B/icc2/$BLK/$tag
     export QB_SYN=$BLK_SYN QB_PNR_PERIOD=$BLK_PERIOD QB_ICC2_CFG=$BLK_CFG QB_PIN_DEF=$d/pins.def
@@ -238,8 +240,31 @@ blk_fill_label() {
 # ICC2 label of the ECO round that starts from label $1 / number of rounds that built label $1
 blk_eco_label() { case $1 in route) echo eco ;; eco) echo eco2 ;; eco[1-9]*) echo "eco$(( ${1#eco} + 1 ))" ;; *) return 1 ;; esac; }
 blk_eco_index() { case $1 in route) echo 0 ;; eco) echo 1 ;; eco[1-9]*) echo "${1#eco}" ;; *) return 1 ;; esac; }
+# The loop's stop rule (R108).  blk_eco_prev <history> <label>: "<prefix_total> [<prefix_tns>]" of the round that built
+# <label> (its line "ECO round <k> <date> label <from> prefix_total <n>: change list -> label <label> [prefix_tns <t>]"),
+# nothing for route or after an override line (a stop overridden since).  The TNS field is appended to the line, so the
+# fields up to the label keep their places; a history line written before R108 has none.
+blk_eco_prev() {
+    [ -f "$1" ] || return 0
+    awk -v l="$2" '$2 == "override" { p = "" } $9 == "change" && $13 == l { p = $8; sub(":", "", p); if ($14 == "prefix_tns") p = p " " $15 }
+        END { print p }' "$1"
+}
+# blk_eco_progress <total> <tns> [<previous total> [<previous tns>]]: status 0 when this round's pre-fix state is progress
+# over the previous round's: no previous round, a smaller violator total, or an equal total and a setup + hold TNS better
+# by more than QB_ECO_TNS_EPS ns (a round that fixes most of the slack of the same violators, e.g. the ECO route moving a
+# few endpoints from -10 to -0.5 ps, is progress the count alone does not see; R108 [M] rgr rg039bd31a: one round of
+# fixes left the count where it was).  Otherwise status 1 and the reason on stdout.  No TNS of the previous round (a
+# pre-R108 history line): the count alone.
+QB_ECO_TNS_EPS=0.001
+blk_eco_progress() {
+    local n=$1 t=$2 pn=${3:-} pt=${4:-}
+    [ -n "$pn" ] && [ "$n" -ge "$pn" ] || return 0
+    if [ "$n" = "$pn" ] && [ -n "$pt" ] && awk -v t="$t" -v p="$pt" -v e="$QB_ECO_TNS_EPS" 'BEGIN { exit !(t > p + e) }'; then return 0; fi
+    echo "not smaller than the previous round's $pn$([ "$n" = "$pn" ] && echo ", TNS $t ns not better than its ${pt:-(not recorded)} by more than $QB_ECO_TNS_EPS ns")"
+    return 1
+}
 blk_eco() {
-    local max=$QC_ECO_ROUNDS e=$d/out/eco h k from to a tot un prev r f cs n
+    local max=$QC_ECO_ROUNDS e=$d/out/eco h k from to a tot tns un prev why r f cs n
     cs=$(qb_corners) || return 1   # (assigned first: a command substitution in an assignment prefix hides the status)
     h=$e/rounds.txt; mkdir -p "$e"
     # The history decides (R92 review; before, a second eco step forgot the stop and the previous total): a recorded stop
@@ -257,8 +282,7 @@ blk_eco() {
         from=$(blk_label) || return 1
         to=$(blk_eco_label "$from") || { echo "BLK_FAIL eco: no ECO label after '$from' (out/label.txt)"; return 1; }
         k=$(( $(blk_eco_index "$from") + 1 ))
-        # pre-fix total of the round that built label $from (none: route, or a stop overridden since)
-        prev=$(awk -v l="$from" '$2 == "override" { p = "" } $9 == "change" && $13 == l { p = $8; sub(":", "", p) } END { print p }' "$h" 2> /dev/null)
+        prev=$(blk_eco_prev "$h" "$from")
         # the round's record holds only what this round produces: an earlier attempt of the round is kept aside and the
         # files of the round before leave out/eco (not the history)
         a=$e/$to
@@ -278,6 +302,8 @@ blk_eco() {
         case $tot in ''|*[!0-9]*) echo "BLK_FAIL eco: no prefix_total in out/eco/eco_summary.txt"; return 1 ;; esac
         # the sign-off's gates no ECO pass fixes (R103, drv_eco.tcl prefix_unfixable: non-zero ones end the loop; before, a
         # round with prefix_total 0 was "converged" and the post step failed on them)
+        tns=$(awk '$1 == "prefix_tns" { print $2; exit }' "$e/eco_summary.txt")
+        [[ $tns =~ ^-?[0-9]+\.[0-9]+$ ]] || { echo "BLK_FAIL eco: no prefix_tns in out/eco/eco_summary.txt"; return 1; }
         un=$(awk '$1 == "prefix_unfixable" { print $2; exit }' "$e/eco_summary.txt")
         case $un in ''|*[!0-9]*) echo "BLK_FAIL eco: no prefix_unfixable in out/eco/eco_summary.txt"; return 1 ;; esac
         # opt-in QC_ECO_PT_ONLY=1: this round's PrimeTime half only (a check of the PT side, e.g. on a copy of a run): the
@@ -297,13 +323,13 @@ blk_eco() {
         if [ "$k" -gt "$max" ]; then
             echo "ECO round $k $(date +%F_%T) label $from prefix_total $tot: FAIL not converged after $max rounds" | tee -a "$h"; return 1
         fi
-        if [ -n "$prev" ] && [ "$tot" -ge "$prev" ]; then
-            echo "ECO round $k $(date +%F_%T) label $from prefix_total $tot: FAIL not smaller than the previous round's $prev" | tee -a "$h"
+        if ! why=$(blk_eco_progress "$tot" "$tns" $prev); then
+            echo "ECO round $k $(date +%F_%T) label $from prefix_total $tot: FAIL $why" | tee -a "$h"
             # the change list of this round is not applied: no label $to; marked in the record, gone from out/eco
             for f in pt_eco.tcl pt_eco_cells.txt; do [ -f "$a/$f" ] && mv "$a/$f" "$a/${f%.*}.not_applied.${f##*.}"; rm -f "$e/$f"; done
             return 1
         fi
-        echo "ECO round $k $(date +%F_%T) label $from prefix_total $tot: change list -> label $to" | tee -a "$h"
+        echo "ECO round $k $(date +%F_%T) label $from prefix_total $tot: change list -> label $to prefix_tns $tns" | tee -a "$h"
         # ICC2: the change list on label $from -> $to (name / load / legality gates, ECO route, route gate), then out/ for
         # label $to (blk_out: outputs, portcheck, fill, extract; only then is $to the label of out/)
         QB_ECO_FROM=$from QB_ECO_TO=$to qb_icc2 "$d" eco; r=$?; cp "$d/eco.log" "$a/"

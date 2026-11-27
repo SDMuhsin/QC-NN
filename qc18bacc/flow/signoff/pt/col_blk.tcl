@@ -34,7 +34,7 @@ proc qb_blk_hook {stage args} {
             # act[b] input transition = own act_o[b] transition, iterated to a fixed point (io_budget.tcl qb5_act_tran_fix, R71)
             set ::QB5_TRAN_RES [qb5_act_tran_fix]
         }
-        tcq { return [format " act_min_input_delay_ns %.4f (+ QC_ACT_HOLD_HUB)" [qb5_act_in_min $::Le $::Tq]] }
+        tcq { return [format " act_min_input_delay_ns %.4f (Le + QC_ACT_HOLD_HUB)" [qb_act_earliest $::Le]] }
         head { puts [lindex $args 0] [format "act_input_transition own act_o transition per bit, fixed-point residual %.5f ns" $::QB5_TRAN_RES] }
         max {
             set regs [lindex $args 0]
@@ -51,7 +51,7 @@ proc qb_blk_hook {stage args} {
             set fh [lindex $args 0]
             set ft [get_timing_paths -delay_type max -max_paths 1 -from [get_ports {act[*]}] -to [get_ports {act_o[*]}]]
             set ftn [get_timing_paths -delay_type min -max_paths 1 -from [get_ports {act[*]}] -to [get_ports {act_o[*]}]]
-            set ain [expr {0.55 * $::per + $::L}]; set ainm [qb5_act_in_min $::Le $::Tq]
+            set ain [expr {0.55 * $::per + $::L}]; set ainm [qb_act_earliest $::Le]
             if {[sizeof_collection $ft]} { puts $fh [format "feedthrough_delay_ns max %.3f min %.3f (budget %.3f = 0.07 P)" \
                 [expr {[get_attribute $ft arrival] - $ain}] [expr {[get_attribute $ftn arrival] - $ainm}] [expr {0.07 * $::per}]] }
         }

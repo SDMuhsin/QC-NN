@@ -2,8 +2,8 @@
 # col_blk.tcl, rgr_blk.tcl) up to its design setup (netlist, SDC, SPEF, propagated clock, IO budget: the script
 # returns there when ::QB_PT_SETUP_ONLY exists), plus the shared dont_use list (site.tcl QC_DONT_USE, read by DC too).
 # One round of the sign-off ECO loop (common/block.sh eco, R92) at every corner of QB_ECO_CORNERS together (pt_shell
-#   -multi_scenario, DMSA; ICC2, R56 results/r56.md): one scenario process per corner, physically aware (occupied_site)
-#   on the ICC2 design library QB_ECO_NLIB / block QB_ECO_BLOCK (required, R81);
+#   -multi_scenario, DMSA; ICC2, R56 results/r56.md): one scenario process per corner, physically aware (open_site, every
+#   pass: QB_ECO_PMODE below) on the ICC2 design library QB_ECO_NLIB / block QB_ECO_BLOCK (required, R81);
 #     0. pre-fix state of every corner at the sign-off criterion -> eco_summary.txt "before" lines and "prefix_total n"
 #        (setup + hold + recovery + removal + max_transition + max_capacitance + noise violators over all corners, zero
 #        margin: every violator count the sign-off gates, signoff/pt/blk.tcl QB_PT_SIGNOFF; the clock-network DRV counts
@@ -13,11 +13,21 @@
 #        drivers, unanalysed act pins: qb_eco_signoff_count / _noise_count) that are not 0, which no pass below fixes:
 #        m > 0 ends the round with no change list (eco none: FAIL), and the loop stops (R103).  n = 0 and m = 0: the
 #        block has converged (the post step's PrimeTime gates as far as this session sees them), no change list.
-#        QB_ECO_CHECK=1 (the loop's check after its last round): state only, no change list either.
+#        QB_ECO_CHECK=1 (the loop's check after its last round): state only, no change list either.  Also "prefix_tns t"
+#        (R108): the setup + hold total negative slack (ns) of the same violators, summed over the corners, which the
+#        loop's stop rule reads beside the count (common/block.sh blk_eco_progress).
 #     1. fix_eco_drc max_transition, then max_capacitance, then crosstalk noise (R67; update_noise in the setup), each
 #        physically aware only (R81, qb_eco_drc); max_transition / max_capacitance also in the clock network (R75,
 #        qb_eco_clock_buffers), physically aware with the clock-network physical data (R81)
-#     2. fix_eco_timing -type setup (size_cell, insert_buffer of qb_eco_buffers: every BUFFD* not dont_use; R67, R69)
+#     2. fix_eco_timing -type setup (size_cell, insert_buffer of qb_eco_buffers: every BUFFD* not dont_use; R67, R69).
+#        Fix margin QC_ECO_SETUP_MARGIN (ns; a committed limit of common/limits.txt, R108, PI decision): -setup_margin m
+#        -slack_lesser_than m, every endpoint below m fixed to m, as the hold margin below.  Why [M] rgr rg039bd31a /
+#        rg1fe9be2a: at zero margin PT fixed each violator to 0.2-10 ps of predicted slack, the ICC2 implementation of
+#        the change list then cost 3.7-12 ps per endpoint (median -10.6; size_cell moves of 0.6-1.4 um rerouted, 3-5 ps
+#        neighbour coupling), and 13 / 2 endpoints landed below zero.  0.015 covers that measured error (max 12 ps) once
+#        add_buffer_on_route buffers stay on their route point (flow/icc2/common.tcl qb_eco_route_resolve, R108; the
+#        -25 to -30 ps case) and no sized cell is moved by ICC2's legaliser (QB_ECO_PMODE).  Convergence stays at zero
+#        margin (prefix_total).
 #     3. fix_eco_timing -type hold (size_cell, insert_buffer of common/lib_cells.tcl qb_hold_cells: the list ICC2 hold
 #        fixing uses, R84); PT keeps setup / DRV of every scenario clean.  Guard-band QC_ECO_HOLD_MARGIN (ns, default
 #        0.005; R92, PI decision): -hold_margin m -slack_lesser_than m.  PT Q-2019.12-SP2 man: -hold_margin "affects the
@@ -53,7 +63,8 @@
 #   (its new cells, R90: qb_eco_cells_write), eco_summary.txt
 #   (lines "<tag> <corner> <record>", in the log as QB_ECO_STATE lines: timing counts before / drc / setup / hold /
 #   post_noise_setup / post_noise_hold [the end state] = setup / hold / recovery / removal violators, max_tran / max_cap
-#   pins (of them in the clock network), hold endpoints inside the guard-band [0, margin); end_noise; per fix pass the guard
+#   pins (of them in the clock network), hold / setup endpoints inside their fix margin [0, margin) (hold_band /
+#   setup_band), setup / hold total negative slack (setup_tns / hold_tns, ns); end_noise; per fix pass the guard
 #   records <pass>_guard_on / _off = pins over the limit and in the fix band [noise: violators under the guard], and
 #   noise_pre / noise_post = noise violators in the noise state; ECO size), the unfixable reasons of every pass (<type>_unfixable*,
 #   drc_<type>[_clock]_unfixable*).
@@ -93,7 +104,15 @@ proc qb_eco_clock_buffers {} {
     set b {}; foreach g $::QC_PNR_CTS_BUF { lappend b {*}[lmap c [get_object_name [get_lib_cells -quiet -filter dont_use==false */$g]] { file tail $c }] }
     return [lsort -unique $b]
 }
-# DRV / noise fixing, physically aware only (occupied_site; R81, PI decision, header): what PT cannot fix in place or on
+# Physical mode of every fix pass (R108): open_site, PT places a new or sized cell only on free sites (filler / decap,
+# set_eco_options -filler_cell_names).  [M] rgr rg4012628a (tau14) in occupied_site: PT sized cells over their real
+# neighbours (u_lane/U114 INR2XD1 -> INR2XD4 at its own origin, 5.2 um wide where 1.8 um was free: over u_lane/U126 and
+# ctmTdsLR_1_948; ctmTdsLR_1_954 AOI21D4 over ctmTdsLR_2_955 / _2_857), and ICC2's place_eco_cells -legalize_only then
+# moved 34 of 86 changed cells, up to 7.0 um (U114 3.7 um: its fanin net n80 5.12 fF where PT timed 3.06, b_o_reg -34 ps
+# against PT's +15.8; ctmTdsLR_2_955 0.2561 ns max_transition at ss): the loop stopped at round 2.  The same layout
+# (copy at label route) in open_site: 4 cells moved, max 0.7 um, converged at round 2.
+set ::QB_ECO_PMODE open_site
+# DRV / noise fixing, physically aware only (QB_ECO_PMODE; R81, PI decision, header): what PT cannot fix in place or on
 # free sites stays a reported violator (unfixable reasons <pfx>drc_<type>[_clock]*, qb_eco_timing_count), not a change
 # without a location.  (R69 [M] had one port-driven noise victim, column s_rd[523], unfixable in occupied_site and fixed
 # only without physical constraints: such a case is now reported for the PI.)
@@ -111,12 +130,12 @@ proc qb_eco_drc {pfx bufs {cbufs {}} {types {max_transition max_capacitance nois
             qb_eco_all ${tag}noise_guard_on {qb_eco_noise_guard on}
         } else { qb_eco_all ${tag}${ty}_guard_on "qb_eco_guard $ty on" }
         fix_eco_drc -type $ty -methods {size_cell insert_buffer} -buffer_list $bufs \
-            -cell_type {combinational sequential} -physical_mode occupied_site -verbose \
+            -cell_type {combinational sequential} -physical_mode $::QB_ECO_PMODE -verbose \
             -unfixable_reasons_prefix ${pfx}drc_$ty -unfixable_reasons_format text
         if {[llength $cbufs] && $ty ne "noise"} {
             remote_execute { set eco_alternative_cell_attribute_restrictions qb_clock_cell }
             fix_eco_drc -type $ty -methods {size_cell insert_buffer} -buffer_list $cbufs -cell_type clock_network \
-                -physical_mode occupied_site -verbose -unfixable_reasons_prefix ${pfx}drc_${ty}_clock -unfixable_reasons_format text
+                -physical_mode $::QB_ECO_PMODE -verbose -unfixable_reasons_prefix ${pfx}drc_${ty}_clock -unfixable_reasons_format text
             remote_execute { set eco_alternative_cell_attribute_restrictions "" }
         }
         if {$ty eq "noise"} {
@@ -142,23 +161,36 @@ proc qb_eco_all {tag cmd} {
     if {[llength $out] != 2 * [llength $cs]} { puts $r; error "QB_PT_ECO $tag: a record from [expr {[llength $out] / 2}] of [llength $cs] corners" }
     return $out
 }
-# qb_eco_sum <records of qb_eco_all> <keys>: the given counts summed over the corners
+# qb_eco_sum <records of qb_eco_all> <keys>: the given values (counts, or slacks in ns) summed over the corners
 proc qb_eco_sum {recs keys} {
-    set t 0; foreach {c x} $recs { foreach k $keys { incr t [dict get $x $k] } }
+    set t 0; foreach {c x} $recs { foreach k $keys { set t [expr {$t + [dict get $x $k]}] } }
     return $t
 }
 # The procs below run in a scenario process and return a record for qb_eco_all.
 # qb_eco_timing_count: violators at the sign-off criterion (timing state, no guard active; recovery / removal:
-# signoff/pt/common.tcl qb_pt_async_count, as the sign-off); hold_band = endpoints with 0 <= hold slack <
-# QC_ECO_HOLD_MARGIN (the guard-band population; not violators)
+# signoff/pt/common.tcl qb_pt_async_count, as the sign-off); setup_tns / hold_tns = the sum of the slacks of exactly
+# those setup / hold violators (ns, R108); hold_band / setup_band = endpoints with 0 <= slack < the pass's fix margin
+# QC_ECO_HOLD_MARGIN / QC_ECO_SETUP_MARGIN (the margin populations; not violators)
 proc qb_eco_timing_count {} {
-    redirect -variable s { report_constraint -max_delay -all_violators -nosplit }
-    redirect -variable h { report_constraint -min_delay -all_violators -nosplit }
+    redirect -variable s { report_constraint -max_delay -all_violators -nosplit -significant_digits 4 }
+    redirect -variable h { report_constraint -min_delay -all_violators -nosplit -significant_digits 4 }
     redirect -variable t { report_constraint -max_transition -all_violators -nosplit }
     redirect -variable k { report_constraint -max_capacitance -all_violators -nosplit }
-    set m $::env(QC_ECO_HOLD_MARGIN); set hb 0
-    if {$m > 0} { foreach_in_collection p [get_timing_paths -delay_type min -max_paths 100000 -slack_lesser_than $m] { if {[get_attribute $p slack] >= 0} { incr hb } } }
-    return "setup [regexp -all -line {VIOLATED} $s] hold [regexp -all -line {VIOLATED} $h] [qb_pt_async_count] max_tran [regexp -all -line {VIOLATED} $t] max_cap [regexp -all -line {VIOLATED} $k] clock_max_tran [qb_eco_clk_viol $t] clock_max_cap [qb_eco_clk_viol $k] cells [sizeof_collection [get_cells -hier -filter is_hierarchical==false]] hold_band $hb"
+    set r "setup [regexp -all -line {VIOLATED} $s] hold [regexp -all -line {VIOLATED} $h] [qb_pt_async_count] max_tran [regexp -all -line {VIOLATED} $t] max_cap [regexp -all -line {VIOLATED} $k] clock_max_tran [qb_eco_clk_viol $t] clock_max_cap [qb_eco_clk_viol $k] cells [sizeof_collection [get_cells -hier -filter is_hierarchical==false]]"
+    foreach {ty m} [list min $::env(QC_ECO_HOLD_MARGIN) max [qb_limit QC_ECO_SETUP_MARGIN]] {
+        set b 0
+        if {$m > 0} { foreach_in_collection p [get_timing_paths -delay_type $ty -max_paths 100000 -slack_lesser_than $m] { if {[get_attribute $p slack] >= 0} { incr b } } }
+        append r [expr {$ty eq "min" ? " hold_band $b" : " setup_band $b"}]
+    }
+    return "$r setup_tns [qb_eco_tns $s] hold_tns [qb_eco_tns $h]"
+}
+# total negative slack of a report_constraint -all_violators report: the sum of the slack on every VIOLATED line (the lines
+# qb_eco_timing_count counts), %.4f ns; error on a VIOLATED line without a slack before it
+proc qb_eco_tns {rpt} {
+    set n [regexp -all -line {VIOLATED} $rpt]; set v [regexp -all -inline -line {(-[0-9.]+)\s+\(VIOLATED} $rpt]
+    if {[llength $v] != 2 * $n} { error "qb_eco_tns: [expr {[llength $v] / 2}] slacks on $n VIOLATED lines" }
+    set t 0.0; foreach {- x} $v { set t [expr {$t + $x}] }
+    return [format %.4f $t]
 }
 # qb_eco_signoff_count (timing state) / qb_eco_signoff_noise_count (noise state): the sign-off's other gate counts
 # (signoff/pt/blk.tcl QB_PT_SIGNOFF; R103) with the same procs: min pulse width / min period, unannotated pin-to-pin nets,
@@ -283,11 +315,11 @@ if {[info exists ::qb_eco_corner]} {
     return
 }
 if {![info exists ::env(QB_ECO_CORNERS)]} { error "QB_PT_ECO: QB_ECO_CORNERS not set (the sign-off ECO loop, common/block.sh eco)" }
+source [file join [file dirname [file normalize [info script]]] .. .. common limits.tcl]   ;# (qb_limit in the master)
 set eco_report_unfixed_reason_max_endpoints 1000
 set dir $::env(QC_PNR_OUT); set o $dir/out/eco; file mkdir $o
 file delete -force $o/pt_eco.tcl $o/pt_eco_cells.txt   ;# (R90: never a change list or record of an earlier round)
 set corners $::env(QB_ECO_CORNERS)
-set pmode occupied_site
 set_host_options -num_processes [llength $corners] -max_cores $::env(QB_ECO_CORES)
 set multi_scenario_working_directory $o/work
 puts "QB_PT_WORKDIR [file normalize $o/work]"   ;# (common/env.sh qb_pt: the scenario logs of this session)
@@ -310,7 +342,8 @@ proc qb_eco_end {o} {
 }
 # pre-fix state at the sign-off criterion: the timing counts in the timing state (before the first noise state: header),
 # the pins inside the DRV fix band, then noise in the noise state
-set tot [qb_eco_sum [qb_eco_all before qb_eco_timing_count] {setup hold recovery removal max_tran max_cap}]
+set before [qb_eco_all before qb_eco_timing_count]
+set tot [qb_eco_sum $before {setup hold recovery removal max_tran max_cap}]
 set other [qb_eco_all before_signoff qb_eco_signoff_count]
 foreach ty {max_transition max_capacitance} { qb_eco_all before_$ty "qb_eco_guard $ty scan" }
 qb_eco_noise_state on
@@ -326,6 +359,7 @@ foreach {c x} $other {
     dict for {k v} $x { if {$k eq "act_noise"} { incr tot $v } elseif {$v != 0} { lappend unfix "$c:$k=$v" } }
 }
 qb_eco_note "prefix_total $tot (setup + hold + recovery + removal + max_tran + max_cap + noise + act_noise violators of [llength $corners] corners before any fix, zero margin)"
+qb_eco_note "prefix_tns [format %.4f [qb_eco_sum $before {setup_tns hold_tns}]] (setup + hold total negative slack of [llength $corners] corners before any fix, zero margin, ns)"
 qb_eco_note "prefix_unfixable [llength $unfix] (non-zero sign-off counts no ECO pass fixes: [expr {[llength $unfix] ? [lrange $unfix 0 19] : "none"}])"
 if {[llength $unfix]} {
     qb_eco_note "eco none: FAIL [llength $unfix] corner:check counts the sign-off fails and the ECO cannot fix (before_signoff* lines); no change list"
@@ -342,7 +376,7 @@ redirect -variable r { remote_execute -verbose { puts "QB_ECO_BUFS [qb_eco_buffe
 current_scenario -all
 if {![regexp {QB_ECO_BUFS (BUFF[^\n]*)} $r -> bufs]} { error "QB_PT_ECO: no ECO buffer list from [lindex $corners 0]" }
 if {![regexp {QB_ECO_CBUFS (CK[^\n]*)} $r -> cbufs]} { error "QB_PT_ECO: no clock ECO buffer list from [lindex $corners 0]" }
-qb_eco_note "physical_mode $pmode (every pass, clock network with physical clock data); buffers $bufs; clock network buffers $cbufs"
+qb_eco_note "physical_mode $::QB_ECO_PMODE (every pass, clock network with physical clock data); buffers $bufs; clock network buffers $cbufs"
 qb_eco_drc $o/ $bufs $cbufs
 qb_eco_all drc qb_eco_timing_count
 # hold (R84): the ONE hold-cell list of ICC2 and this ECO (common/lib_cells.tcl qb_hold_cells: BUFFD<n> + the delay cells
@@ -357,15 +391,20 @@ if {![regexp {QB_ECO_HBUFS (BUFF[^\n]*)} $r -> hbufs]} { error "QB_PT_ECO: no ho
 set hm $::env(QC_ECO_HOLD_MARGIN)
 set hopt [expr {$hm > 0 ? [list -hold_margin $hm -slack_lesser_than $hm] : {}}]
 qb_eco_note "hold cells $hbufs; hold margin $hm ns ($hopt)"
-# qb_eco_timing_fix <tag prefix>: setup (R67: residual setup violators of the sign-off timing; the column's act
-# feedthroughs are dont_touch, R68), then hold to its guard-band, in the timing state; one state record after each
+# setup fix margin (header, 2.; R108): the same form as the hold margin
+set sm [qb_limit QC_ECO_SETUP_MARGIN]
+set sopt [expr {$sm > 0 ? [list -setup_margin $sm -slack_lesser_than $sm] : {}}]
+qb_eco_note "setup margin $sm ns ($sopt)"
+# qb_eco_timing_fix <tag prefix>: setup to its fix margin (R67: residual setup violators of the sign-off timing; the
+# column's act feedthroughs are dont_touch, R68), then hold to its guard-band, in the timing state; one state record
+# after each
 proc qb_eco_timing_fix {px} {
-    global o bufs hbufs pmode hopt
-    fix_eco_timing -type setup -methods {size_cell insert_buffer} -buffer_list $bufs -physical_mode $pmode \
+    global o bufs hbufs hopt sopt
+    fix_eco_timing -type setup -methods {size_cell insert_buffer} -buffer_list $bufs -physical_mode $::QB_ECO_PMODE {*}$sopt \
         -verbose -unfixable_reasons_prefix $o/${px}setup_unfixable -unfixable_reasons_format text
     qb_eco_all ${px}setup qb_eco_timing_count
     remote_execute { foreach p [qb_hold_only] { set c [get_lib_cells -quiet */$p]; if {[sizeof_collection $c]} { set_dont_use $c false } } }
-    fix_eco_timing -type hold -methods {size_cell insert_buffer} -buffer_list $hbufs -physical_mode $pmode {*}$hopt \
+    fix_eco_timing -type hold -methods {size_cell insert_buffer} -buffer_list $hbufs -physical_mode $::QB_ECO_PMODE {*}$hopt \
         -verbose -unfixable_reasons_prefix $o/${px}hold_unfixable -unfixable_reasons_format text
     remote_execute { foreach p [qb_hold_only] { set c [get_lib_cells -quiet */$p]; if {[sizeof_collection $c]} { set_dont_use $c true } } }
     qb_eco_all ${px}hold qb_eco_timing_count

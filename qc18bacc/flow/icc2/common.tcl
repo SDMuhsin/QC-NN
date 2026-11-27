@@ -48,7 +48,11 @@
 #   qb_eco_route_resolve <chg> <out>  the change list as eco.tcl sources it: every add_buffer_on_route buffer PT left
 #                       on layer 0 put on the nearest routed wire of its net (R95), and every point where ICC2 would give
 #                       the buffer other loads than PT's record moved onto the route edge that isolates PT's loads (R101,
-#                       qb_eco_route_tree / _cut / _edge: geometric route tree of the input label); returns <out>
+#                       qb_eco_route_tree / _cut / _edge: geometric route tree of the input label), and PT's follow-on
+#                       set_cell_location of every add_buffer_on_route buffer dropped (R108: the buffer stays on its
+#                       route point); returns <out>
+#   qb_eco_abor_where / qb_eco_abor_report <step> <where>  each add_buffer_on_route buffer's centre vs its route point
+#                       (eco.tcl: placed, then legalised; R108)
 #   qb_eco_nets <chg>   ECO route nets (R105, eco.tcl): the non-PG nets on the pins of every cell the change list sizes,
 #                       moves or creates -> {cells nets}
 #   qb_pg_check <step>  PG pin gate (R67; floorplan.tcl, abstract.tcl): the VDD / VSS terminals are exactly the straps of
@@ -252,8 +256,8 @@ proc qb_io_load {} {
 # PrimeTime applies explicitly (signoff/pt/col_blk.tcl, blocks/col/io_budget.tcl).  qb_io_lat <step>: compute_clock_latency
 # + one line per IO side of that latency (launch / capture, setup and hold scenario).  Then P(IO_MIN) = {measure apply}
 # (column: blocks/col/io_budget.tcl qb5_act_o_lat_icc2 / qb5_act_o_min_icc2, R78): every hold scenario func_<c> measured,
-# then each applied with Tq = qb_lib_tcq <c>: output -min
-# constraints measured on this latency (column: act_o -min = capture latency - (early latency + Tq)).
+# then each applied: output -min constraints measured on this latency (column: act_o -min = capture latency - (early
+# latency + H - U_hold), the act chain's guarantee common/act_chain.tcl qb_act_out_min, R108).
 proc qb_io_lat {step} {
     global P
     # (R85, PI decision 2) the register set and value per corner logged: "io pair regs" is the one IO latency definition,
@@ -269,7 +273,7 @@ proc qb_io_lat {step} {
         foreach_in_collection sc $hs { current_scenario $sc; set m([get_object_name $sc]) [$measure] }
         foreach_in_collection sc $hs {
             current_scenario $sc; set n [get_object_name $sc]
-            qb_line "io_min $step $n [$apply $m($n) [qb_lib_tcq [regsub {^func_} $n {}]]]"
+            qb_line "io_min $step $n [$apply $m($n)]"
         }
     }
     # launch / capture clock network delay of one port-to-port path P(IO_PAIR) = {from to} of the block config (column:
@@ -681,9 +685,19 @@ proc qb_eco_nets {chg} {
 #   edge whose downstream subtree is exactly PT's set (nearest to PT's point; ties to the lower LEF layer, x, y); if no edge
 #   isolates that set, error: the list cannot be applied as PT timed it (the gate stays).  A line of several buffers is
 #   left to the qb_eco_names gate (PT's set of the upper buffer holds the lower buffer's input, which is no route pin).
-# qb_eco_route_resolve <chg> <out>: <out> = <chg> with those points; every other line byte-identical, <chg> untouched; one
-# summary line per resolved layer-0 buffer and per moved buffer + a total.  Error if a net has no routed wire, an
-# add_buffer_on_route line does not parse, a buffer has no single PT record or names no LEF routing layer.  Returns <out>.
+# * the follow-on move (R108).  PT writes a set_cell_location after most add_buffer_on_route lines, which moves the new
+#   buffer off its route point (rgr rg039bd31a [M]: U_PTECO_SETUP_BUF4 2.6 um).  PT times the buffer as the original
+#   route split at the point; route_eco instead rerouted both new nets to the moved cell at 1.97x PT's estimated
+#   capacitance, -25 to -30 ps on its paths, the worst implementation error of the measured rounds.  Rule: that
+#   set_cell_location is not applied, the buffer stays at its (resolved) route point; place_eco_cells -legalize_only may
+#   still nudge it to a legal site (eco.tcl reports the displacement, qb_eco_abor_report).  Replay [M] (copy of
+#   rg039bd31a, round-1 list): BUF4 legalised 0.4 um from its point, its 13 y2_reg paths -30 -> -25 ps against PT; the
+#   rest is PT's split estimate itself (output net 10.2 fF routed, PT 5.2; both new nets 33.8 um vs the 29.6-um route).
+# qb_eco_route_resolve <chg> <out>: <out> = <chg> with those points and without those set_cell_location lines; every
+# other line byte-identical, <chg> untouched; one summary line per resolved layer-0 buffer, per moved buffer and per
+# dropped move + a total.  ::QB_ECO_ABOR_POINTS = {full buffer name {x y} ...}, the route point of every buffer (um).
+# Error if a net has no routed wire, an add_buffer_on_route line does not parse, a buffer has no single PT record or names
+# no LEF routing layer.  Returns <out>.
 proc qb_eco_route_resolve {chg out} {
     current_instance
     set ly [dict keys [qb_lef_grid]]
@@ -694,11 +708,22 @@ proc qb_eco_route_resolve {chg out} {
         close $fh
     }
     set fh [open $chg]; set t [read $fh]; close $fh
-    set sc ""; set r {}; set i 0; set nb 0; set nr 0; set nt 0; set nc 0; set nm 0; set trees [dict create]
+    # the add_buffer_on_route buffers of the list, wherever their set_cell_location stands
+    set abor {}; set sc ""
+    foreach l [qb_eco_lines $chg] {
+        lassign [qb_eco_parse $l $sc] k f
+        if {$k eq "scope"} { set sc [lindex $f 0] } elseif {$k eq "abor"} { foreach {c -} [lrange $f 1 end] { lappend abor $c } }
+    }
+    set ::QB_ECO_ABOR_POINTS [dict create]
+    set sc ""; set r {}; set i 0; set nb 0; set nr 0; set nt 0; set nc 0; set nm 0; set nk 0; set trees [dict create]
     foreach l [split $t "\n"] {
         incr i
         lassign [qb_eco_parse [string trim $l] $sc] k f
         if {$k eq "scope"} { set sc [lindex $f 0] }
+        if {$k eq "loc" && [lindex $f 0] in $abor} {
+            qb_line "eco route [file tail $chg] line $i [lindex $f 0]: set_cell_location of an add_buffer_on_route buffer not applied (stays on its route point)"
+            incr nk; continue
+        }
         if {$k ne "abor"} {
             if {[string match add_buffer_on_route* [string trim $l]]} { error "qb_eco_route_resolve: [file tail $chg] line $i does not parse: $l" }
             lappend r $l; continue
@@ -733,14 +758,35 @@ proc qb_eco_route_resolve {chg out} {
                 }
             }
             lappend v $c $lc $x $y $lay
+            dict set ::QB_ECO_ABOR_POINTS [qb_eco_full $sc $c] [list $x $y]
         }
         if {$m} { set l [string map [list "\{$b\}" "\{ $v\}"] $l] }
         lappend r $l
     }
     file mkdir [file dirname $out]
     set fh [open $out w]; puts -nonewline $fh [join $r "\n"]; close $fh
-    qb_line "eco route [file tail $chg]: add_buffer_on_route buffers $nb, layer 0 resolved $nr (ties $nt), load set checked $nc, moved $nm -> $out"
+    qb_line "eco route [file tail $chg]: add_buffer_on_route buffers $nb, layer 0 resolved $nr (ties $nt), load set checked $nc, moved $nm, set_cell_location not applied $nk -> $out"
     return $out
+}
+# add_buffer_on_route buffers vs their route points (R108; eco.tcl): qb_eco_abor_where = {cell {cx cy} ...}, the bbox centre
+# (um) of each buffer of ::QB_ECO_ABOR_POINTS now; qb_eco_abor_report <step> <where>: one line per buffer (route point,
+# centre as placed = <where>, centre now, distance of each from the route point) + a max line
+proc qb_eco_abor_where {} {
+    set w {}
+    dict for {c p} $::QB_ECO_ABOR_POINTS {
+        lassign [join [get_attribute [get_cells $c] bbox]] x0 y0 x1 y1
+        lappend w $c [list [expr {($x0 + $x1) / 2.0}] [expr {($y0 + $y1) / 2.0}]]
+    }
+    return $w
+}
+proc qb_eco_abor_report {step w0} {
+    set mx 0.0
+    foreach {c q} [qb_eco_abor_where] {
+        lassign [dict get $::QB_ECO_ABOR_POINTS $c] px py; lassign [dict get $w0 $c] ax ay; lassign $q bx by
+        set da [expr {hypot($ax - $px, $ay - $py)}]; set db [expr {hypot($bx - $px, $by - $py)}]; set mx [expr {max($mx, $db)}]
+        qb_line [format "%s abor %s: route point (%.3f %.3f) centre placed (%.3f %.3f) %.3f um, legalised (%.3f %.3f) %.3f um" $step $c $px $py $ax $ay $da $bx $by $db]
+    }
+    qb_line [format "%s abor buffers %d: max legalised centre distance from the route point %.3f um" $step [dict size $::QB_ECO_ABOR_POINTS] $mx]
 }
 # Route tree of the net of <pin> (driver pin or input port) in database units, for qb_eco_route_*: a dict of
 #   net   net name             it    items {layer x0 y0 x1 y1}: wire segments, via layers, pin / terminal shapes, other shapes

@@ -2,14 +2,14 @@
 # the run (inputs: md5 of netlist, DC SDC, run.env), the committed defaults of the flow knobs every step ran with
 # (knobs), the verdict line and the gate set (gate name: sign-off corners, '-' = block gate) of the run below;
 # written by regress.sh ref, a change is a deliberate reference update
-# run rg1fe9be2b host engr-tau-13.usask.ca snapshot commit none tree 1fe9be26d576d1f899608aff53769eef24d56822
+# run rg4012628a host engr-tau-13.usask.ca snapshot commit none tree 4012628c4d770476b04801d281af29eaef7c7a3e
 site_md5 50b51bb3d985181eb1ca5dd9aaabe024 flow/tsmc65/site/pnr.tcl
 site_md5 427a2e0002c1bc97682e2f4be2030d87 flow/tsmc65/site/site.csh
 site_md5 a992ad0a90ae60eae61911156b0a57b3 flow/tsmc65/site/site.sh
 site_md5 9c3c1428b4359d3a83f30d23f408822f flow/tsmc65/site/site.tcl
 site_md5 26e030de154b0b70e1410bad6a50ad2c flow/tsmc65/site/sram.sh
 inputs syn rgr_lane_tt_p2.0_topo netlist 38196a34ec38a091c4d798319dae32f0 sdc 60a5165e14bb5077ae7dd899d6e4137c run_env cf3d99fa9278a87a5618bd2d3064442a
-knobs QC_PNR_GUARD_HOLD=0.010 QC_PNR_GUARD_TRAN=0.05 QC_PNR_FROM=<unset> QC_PNR_TO=<unset> QC_ECO_ROUNDS=4 QC_ECO_HOLD_MARGIN=0.005 QC_ECO_DRV_MARGIN=0.02 QC_ECO_NOISE_MARGIN=0.02 QC_ECO_OVERRIDE_STOP=<unset> QC_ECO_PT_ONLY=<unset> QB_ICC2_CORES=16 QB_ECO_CORES=4 QB_ICC2_BIN=<unset> QB_ICC2_LABEL=<unset> QB36_LVS_EXTRA=<unset> QB36_HCELL=<unset> BLK_FILL_SED=-f,<flow>/signoff/calibre/fill_blk.sed BLK_ODPO_SED=-f,<flow>/signoff/calibre/odpo_blk.sed BLK_LVS_SED=-f,<flow>/signoff/calibre/lvs_case.sed BLK_DRC_SED=-f,<flow>/signoff/calibre/drc_blk.sed BLK_ANT_SED=<unset> QC_UNC_SETUP=<unset> QC_UNC_HOLD=<unset> QC_IO_PCT=<unset> QC_MAX_TRAN=<unset> QC_MAX_TRAN_PCT=<unset> QC_CLK_TRAN_MAX=<unset> QB5_SOUTH_IN=<unset> QC_ACT_HOLD_HUB=<unset> QB_ACT_LAUNCH=<unset>
+knobs QC_PNR_GUARD_HOLD=0.010 QC_PNR_GUARD_TRAN=0.05 QC_PNR_FROM=<unset> QC_PNR_TO=<unset> QC_ECO_ROUNDS=4 QC_ECO_HOLD_MARGIN=0.005 QC_ECO_DRV_MARGIN=0.02 QC_ECO_NOISE_MARGIN=0.02 QC_ECO_OVERRIDE_STOP=<unset> QC_ECO_PT_ONLY=<unset> QB_ICC2_CORES=16 QB_ECO_CORES=4 QB_ICC2_BIN=<unset> QB_ICC2_LABEL=<unset> QB36_LVS_EXTRA=<unset> QB36_HCELL=<unset> BLK_FILL_SED=-f,<flow>/signoff/calibre/fill_blk.sed BLK_ODPO_SED=-f,<flow>/signoff/calibre/odpo_blk.sed BLK_LVS_SED=-f,<flow>/signoff/calibre/lvs_case.sed BLK_DRC_SED=-f,<flow>/signoff/calibre/drc_blk.sed BLK_ANT_SED=<unset> QC_UNC_SETUP=<unset> QC_UNC_HOLD=<unset> QC_IO_PCT=<unset> QC_MAX_TRAN=<unset> QC_MAX_TRAN_PCT=<unset> QC_CLK_TRAN_MAX=<unset> QB5_SOUTH_IN=<unset> QC_ACT_HOLD_HUB=<unset> QB_ACT_LAUNCH=<unset> QC_ECO_SETUP_MARGIN=<unset>
 VERDICT qb_lane_n gates 294 pass 294 fail 0 missing 0; FAIL: none; MISSING: none; opt-in declared: none
 gate pt_log ss ss_rcw wcl wcl_rcw tt ff ff_rcb ml ml_rcb
 gate limits ss ss_rcw wcl wcl_rcw tt ff ff_rcb ml ml_rcb
