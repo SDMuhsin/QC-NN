@@ -18,7 +18,8 @@ set o $::R/out/$P(TOP)
 set def ${o}_fill.def
 if {![file exists $def] || [file mtime $def] < [file mtime $o.gds]} { error "QB extract: fill DEF $def missing or older than $o.gds" }
 read_def -include fills $def
-set_extraction_options -real_metalfill_extraction floating
+# the real fill replaces the virtual fill of P(VIRTUAL_FILL) (common.tcl qb_virtual_fill, set by qb_timer above)
+set_extraction_options -real_metalfill_extraction floating -virtual_metalfill_extraction none
 redirect $::R/rpt/extract_options.rpt { report_extraction_options }
 qb_line "extract label $label fill DEF [file tail $def] shapes [exec grep -c {^- LAYER } $def], real_metalfill_extraction floating"
 update_timing -full

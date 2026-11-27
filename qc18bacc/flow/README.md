@@ -77,7 +77,7 @@ qc18bacc/flow/synth/run.sh rgr                          # once per build root: D
 deploy.sh archives a commit (or tree) id, never the working tree; it writes VERSION (commit, tree, site source) and
 MANIFEST.md5 (every other file), verifies the MANIFEST on the host, makes the snapshot read-only and refuses an existing
 <dir>.  The block uses the shared driver like the column: `rgr.env` (netlist tag, period 2.5 ns, die 130 x 130 um, pins),
-`icc2.cfg` (the column's opt-ins HOLD_RESERVE / ISOLATE on this design), `io_budget.tcl` (the column's budget procs with
+`icc2.cfg` (the column's opt-ins HOLD_RESERVE / ISOLATE / VIRTUAL_FILL on this design), `io_budget.tcl` (the column's budget procs with
 its own class table `::QB5_BUDGET`), pins: `floorplan/edge_pins.py` (pin-only abstract LEF: inputs west, outputs east on
 M3 tracks) -> `floorplan/abstract_pins.py` (floorplan DEF).  Block-config hooks of the shared ICC2 steps: `P(IO_SAMPLE)`
 (init's logged IO delays) and `P(IO_PAIR)` (qb_io_lat's port-to-port clock delays; the column: act[0] -> act_o[0]).

@@ -12,6 +12,8 @@
 #                       and the SPEF had no coupling capacitance): SI delta delays in route_opt / eco timing, extraction
 #                       keeps the coupling capacitances, so outputs.tcl writes a coupled SPEF (PT sign-off runs SI too);
 #                       the OCV derate of common/derate.tcl (late 1.05 / early 0.95) on every scenario
+#                       and, with P(VIRTUAL_FILL) 1, qb_virtual_fill
+#   qb_virtual_fill     emulated floating dummy metal in ICC2 extraction (R96, opt-in P(VIRTUAL_FILL); below)
 #   qb_done <step> [as] dont_use gate (common/lib_cells.tcl qb_dont_use_gate, R77: no QC_DONT_USE lib cell usable, no
 #                       instance of one), save (as 1: save the current block as label <step>, the init step), log the
 #                       step end in <run>/summary.txt, QB_ICC2_DONE marker for the wrapper
@@ -95,6 +97,34 @@ proc qb_timer {} {
     set s0 [current_scenario]
     foreach_in_collection s [get_scenarios] { current_scenario $s; qb_derate }
     current_scenario $s0
+    qb_virtual_fill
+}
+# Virtual metal fill (opt-in P(VIRTUAL_FILL) 1; qb_timer, so every step from place_opt to the eco step's QoR): ICC2's
+# pre- / post-route extractor emulates floating dummy metal (set_extraction_options -virtual_metalfill_extraction floating,
+# a parameter file of "<layer> <fill_width> <fill_space>" lines; fill_space = fill-to-route spacing, man page: only
+# fill_width and fill_route_w_spacing are used).  Why: ICC2 routes and optimises without fill, the Calibre dummy metal is
+# added for sign-off only (extract.tcl, real fill read as DEF FILLS), so route_opt / the ECO never saw 5-7 ps that
+# PrimeTime sees.  R96 [M] rgr (qb_lane_n) route label, wcl setup: ICC2 7 violators, PrimeTime (fill-aware SPEF) 23,
+# ICC2 with the same fill DEF 22; per endpoint fill ground cap -4.4 to -5.5 ps, fill-induced SI delta up to -2.1 ps,
+# PT-vs-ICC2 SI engine -0.4 to -2.1 ps, the rest within 0.1 ps.  Rule (all layers the block fill covers, M1 - M7:
+# signoff/calibre/fill_blk.sed, no DM8 / DM9): fill width 1.2 um, fill-to-route 1.5 um, from the kit deck
+# (Dummy_Metal_Calibre_65nm.22c, x = 1..7: medium dummy 1.2 um side WMx_302 / LMx_302, big dummy to real metal
+# DMx_303 = 1.5) and calibrated on 3 rgr route labels (p26r, vf1a, vf1b), slack of the worst wcl endpoints against
+# ICC2's own real-fill extraction / PrimeTime: mean -2.0 / -0.8, -1.1 / +0.3, -0.4 / -0.1 ps (violators 23 vs 22 / 23,
+# 6 vs 6 / 6, 18 vs 18 / 18).  Rejected: 2.0 / 1.5 (big dummy alone) +0.4, +0.4, +2.7 ps (vf1b 8 violators vs 18);
+# 0.5 / 0.3 (small dummy) -26 ps on p26r (emulation fills every route edge, the deck stops at its density targets).
+# extract.tcl turns it off (real Calibre fill there).  Alternatives not taken: real Calibre fill read before route_opt
+# goes stale with every route_opt / ECO change (fill shapes become routing obstructions, a Calibre run per step);
+# signoff_create_metal_fill needs an IC Validator runset (the kit deck is Calibre).
+set ::QB_VFILL_LAYERS {M1 M2 M3 M4 M5 M6 M7}
+set ::QB_VFILL_RULE   {1.2 1.5}
+proc qb_virtual_fill {} {
+    global P
+    if {![info exists P(VIRTUAL_FILL)] || !$P(VIRTUAL_FILL)} return
+    set fn $::R/virtual_fill.txt
+    set h [open $fn w]; foreach l $::QB_VFILL_LAYERS { puts $h "$l $::QB_VFILL_RULE" }; close $h
+    set_extraction_options -virtual_metalfill_extraction floating -virtual_metalfill_parameter_file $fn
+    puts "QB_ICC2 virtual_fill floating $::QB_VFILL_LAYERS width / fill-to-route $::QB_VFILL_RULE um"
 }
 proc qb_io_load {} {
     global P
