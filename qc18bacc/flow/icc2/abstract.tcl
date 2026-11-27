@@ -8,7 +8,7 @@
 #                       hierarchical antenna data of ICC2 (derive_hier_antenna_property on the frame, kit antenna rules
 #                       of qb_antenna_rules): ANTENNAPARTIALMETALAREA / PARTIALMETALSIDEAREA / PARTIALCUTAREA per layer
 #                       (the block-side metal the top router adds to the net), ANTENNAGATEAREA / DIFFAREA, MAX*CAR (R67:
-#                       replaces the gate / diff-only patch of signoff/etm/blkant.py, which gave the top no metal data)
+#                       replaces the gate / diff-only patch of the OpenROAD-era blkant.py, which gave the top no metal data)
 #   gates (error on failure, one summary line each):
 #     antenna   every signal PIN of the LEF has ANTENNAPARTIALMETALAREA and ANTENNAPARTIALCUTAREA
 #     blockage  OBS on every metal layer up to P(LAYERS)'s top layer, none above (R71)

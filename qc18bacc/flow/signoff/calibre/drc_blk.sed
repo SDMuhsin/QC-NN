@@ -12,7 +12,7 @@ s#^//PO.DN.1 is checked by#\#ENDIF\n\#IFDEF QB_BLK_DN\n&#
 # R82 (PI decision): M8.DN.1 / M9.DN.1 (Metal8 / Metal9 local density over the layout extent) are chip-level density rules;
 # the block has no M8 / M9 metal (column: routing to M7), so on a block they flag the empty window, not the design.  These two
 # rules ONLY are unselected on a block (M8.DN.1.1 / M9.DN.1.1 and every other rule stay); the chip top MUST check them
-# (blocks/top/run.sh).  The exclusion holds only while the block has no M8 / M9 at all: rule QB_BLK.M8M9.0 flags every
+# (the chip top deck).  The exclusion holds only while the block has no M8 / M9 at all: rule QB_BLK.M8M9.0 flags every
 # M8 / M9 shape of every datatype this deck maps (drawn, dummy, not-use).  R84: the rule is appended at the END of the deck
 # (outside every #IFDEF; its LAYER inputs are defined at depth 0), so no deck switch can drop it; cal.sh fails the drc run on
 # any QB_* rule with results AND on any QB_* rule of the deck without a RULECHECK line in the summary report.

@@ -1,4 +1,4 @@
-# Netlist + P&R SDC of a hard block from its DC run (shared by the block configs blocks/col/col.cfg, blocks/act/act.cfg):
+# Netlist + P&R SDC of a hard block from its DC run (flow/icc2/init.tcl, every block config):
 #   P(NETLIST) = <syn>/<top>.v; when QC_PNR_OUT is set and <syn>/<top>.sdc exists, the DC SDC without the -min (ff / lt)
 #   operating condition (OpenROAD here loads the tt liberty only, STA-0115 otherwise) and without the per-net set_load /
 #   set_resistance of a topographical run is written to $QC_PNR_OUT/<top>_pnr.sdc = P(SDC).  QB_PNR_PERIOD

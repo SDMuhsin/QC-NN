@@ -1,13 +1,9 @@
 # PrimeTime ECO of a routed block.  The design setup is the block's own sign-off script QB_PT_SCRIPT (signoff/pt/
-# col_blk.tcl, act_blk.tcl, hub.tcl) up to its design setup (netlist, SDC, SPEF, propagated clock, IO budget: the script
-# returns there when ::QB_PT_SETUP_ONLY exists), plus the shared dont_use list (site.tcl QC_DONT_USE, read by DC too).  Two modes:
-# * one corner QC_CORNER (pt_shell; act / hub run.sh drveco, OpenROAD, R48): DRV only (fix_eco_drc max_transition /
-#   max_capacitance / noise, size_cell + insert_buffer of qb_eco_buffers); a QB_PT_PRE_ECO file (the changes of an earlier corner)
-#   is applied first, so the last corner's <QC_PNR_OUT>/out/drv_eco_<corner>.tcl (icctcl) is the cumulative ECO for
-#   OpenROAD (repair/hold_eco.tcl QB35_ECO_TCL).
-# * one round of the sign-off ECO loop (common/block.sh eco, R92) at every corner of QB_ECO_CORNERS together (pt_shell
+# col_blk.tcl, rgr_blk.tcl) up to its design setup (netlist, SDC, SPEF, propagated clock, IO budget: the script
+# returns there when ::QB_PT_SETUP_ONLY exists), plus the shared dont_use list (site.tcl QC_DONT_USE, read by DC too).
+# One round of the sign-off ECO loop (common/block.sh eco, R92) at every corner of QB_ECO_CORNERS together (pt_shell
 #   -multi_scenario, DMSA; ICC2, R56 results/r56.md): one scenario process per corner, physically aware (occupied_site)
-#   on the ICC2 design library QB_ECO_NLIB / block QB_ECO_BLOCK (required in both modes, R81);
+#   on the ICC2 design library QB_ECO_NLIB / block QB_ECO_BLOCK (required, R81);
 #     0. pre-fix state of every corner at the sign-off criterion -> eco_summary.txt "before" lines and "prefix_total n"
 #        (setup + hold + recovery + removal + max_transition + max_capacitance + noise violators over all corners, zero
 #        margin: every violator count the sign-off gates, signoff/pt/blk.tcl QB_PT_SIGNOFF; the clock-network DRV counts
@@ -131,14 +127,12 @@ proc qb_eco_note {l {kind {}}} {
     puts "QB_ECO[expr {$kind eq "" ? "" : "_$kind"}] $l"
     if {[info exists ::QB_ECO_SF]} { puts $::QB_ECO_SF $l; flush $::QB_ECO_SF }
 }
-# qb_eco_all <tag> <command>: the command (it returns a one-line record) in every scenario process of the ECO loop, or
-# in this session (one corner); the records become the lines "<tag> <corner> <record>" (log: QB_ECO_STATE <line>);
-# returns {corner record ...};
+# qb_eco_all <tag> <command>: the command (it returns a one-line record) in every scenario process of the ECO loop; the
+# records become the lines "<tag> <corner> <record>" (log: QB_ECO_STATE <line>); returns {corner record ...};
 # error unless every corner returned one (a scenario that failed the command would otherwise only miss a line).
 proc qb_eco_all {tag cmd} {
     set c "puts \"QB_ECO_REC \$::env(QC_CORNER) \[$cmd\]\""
-    if {[info exists ::env(QB_ECO_CORNERS)]} { set cs $::env(QB_ECO_CORNERS); redirect -variable r { remote_execute -verbose $c } } \
-    else { set cs $::env(QC_CORNER); redirect -variable r { uplevel #0 $c } }
+    set cs $::env(QB_ECO_CORNERS); redirect -variable r { remote_execute -verbose $c }
     set out {}
     foreach l [split $r "\n"] { if {[regexp {QB_ECO_REC (\w+) (.*)$} $l -> k x]} { qb_eco_note "$tag $k $x" STATE; lappend out $k $x } }
     if {[llength $out] != 2 * [llength $cs]} { puts $r; error "QB_PT_ECO $tag: a record from [expr {[llength $out] / 2}] of [llength $cs] corners" }
@@ -149,7 +143,7 @@ proc qb_eco_sum {recs keys} {
     set t 0; foreach {c x} $recs { foreach k $keys { incr t [dict get $x $k] } }
     return $t
 }
-# The procs below run in a scenario process (or the one-corner session) and return a record for qb_eco_all.
+# The procs below run in a scenario process and return a record for qb_eco_all.
 # qb_eco_timing_count: violators at the sign-off criterion (timing state, no guard active; recovery / removal:
 # signoff/pt/common.tcl qb_pt_async_count, as the sign-off); hold_band = endpoints with 0 <= hold slack <
 # QC_ECO_HOLD_MARGIN (the guard-band population; not violators)
@@ -222,16 +216,16 @@ proc qb_eco_noise_enter {mode} {
     set r [{*}$::QB_PT_NOISE_STATE $mode]; update_timing; update_noise
     return $r
 }
-# qb_eco_noise_state on|off (master / one-corner session): qb_eco_noise_enter everywhere, around every noise pass and
-# noise count.  In the ECO loop a scenario whose PrimeTime script sets no ::QB_PT_NOISE_STATE is an error (its noise
-# passes would silently run in another state than the sign-off's); the one-corner mode keeps such a block as it was.
+# qb_eco_noise_state on|off (master): qb_eco_noise_enter everywhere, around every noise pass and noise count.  A
+# scenario whose PrimeTime script sets no ::QB_PT_NOISE_STATE is an error (its noise passes would silently run in another
+# state than the sign-off's).
 proc qb_eco_noise_state {mode} {
     set r [qb_eco_all noise_state_$mode "qb_eco_noise_enter $mode"]
-    if {[info exists ::env(QB_ECO_CORNERS)] && [lsearch -exact $r none] >= 0} {
+    if {[lsearch -exact $r none] >= 0} {
         error "QB_PT_ECO: no ::QB_PT_NOISE_STATE from $::env(QB_PT_SCRIPT) in a scenario (noise_state_$mode lines)"
     }
 }
-# physical data of the ECO (both modes, R81): the ICC2 design library QB_ECO_NLIB / block QB_ECO_BLOCK, required (no
+# physical data of the ECO (R81): the ICC2 design library QB_ECO_NLIB / block QB_ECO_BLOCK, required (no
 # logic-only fallback), clock-network physical data on (-physical_enable_clock_data, PT Q-2019.12-SP2 set_eco_options
 # man: "Without this option, ECO operations ignore physical data for the clock network").
 # The kit's DCAP* / FILL* are not PT standard fillers: without -filler_cell_names every row site is occupied
@@ -271,20 +265,7 @@ if {[info exists ::qb_eco_corner]} {
     qb_eco_phys $::qb_eco_corner
     return
 }
-if {![info exists ::env(QB_ECO_CORNERS)]} {
-    set corner $::env(QC_CORNER); set dir $::env(QC_PNR_OUT)
-    qb_eco_setup $corner
-    file mkdir $dir/out/eco
-    qb_eco_phys $corner
-    if {[info exists ::env(QB_PT_PRE_ECO)] && [file exists $::env(QB_PT_PRE_ECO)]} { source $::env(QB_PT_PRE_ECO); puts "QB_DRV_ECO applied $::env(QB_PT_PRE_ECO)" }
-    update_timing
-    qb_pt_drv stdout
-    qb_eco_drc $dir/out/eco/${corner}_ [qb_eco_buffers]
-    qb_pt_drv stdout
-    write_changes -format icctcl -output $dir/out/drv_eco_$corner.tcl
-    puts "QB_DRV_ECO done $corner"
-    exit
-}
+if {![info exists ::env(QB_ECO_CORNERS)]} { error "QB_PT_ECO: QB_ECO_CORNERS not set (the sign-off ECO loop, common/block.sh eco)" }
 set eco_report_unfixed_reason_max_endpoints 1000
 set dir $::env(QC_PNR_OUT); set o $dir/out/eco; file mkdir $o
 file delete -force $o/pt_eco.tcl $o/pt_eco_cells.txt   ;# (R90: never a change list or record of an earlier round)

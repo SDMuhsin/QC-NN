@@ -1,7 +1,7 @@
 # QC_HOOK of the qb_act2_blk synthesis (synth/run.sh act; results/r9a.md, r13.md, r20.md).  As impl/r7c/topo_act.tcl (IO budget budget.tcl, buffered
 # multi-port nets, topographical context) with three changes that remove R7c's DRV-repair bloat at its root:
 #   * DRV limits = the P&R limits (QB9_MAXTRAN 0.30 ns, QB9_MAXFO 32) instead of min(0.5, 0.1 P) = 0.165 ns / 16:
-#     P&R (blocks/act/act.cfg) checks the same numbers, so DC's sizing / buffering is what P&R keeps
+#     P&R (the OpenROAD-era act config, removed: flow/README.md) checked the same numbers, so DC's sizing / buffering is what P&R keeps
 #   * compile_final_drc_fix all: R8c's DC log shows the DRV fixing pass followed by the -spg re-placement + area
 #     recovery, which deleted the fix buffers (design rule cost 77 k -> 205 k) and left 36 900 max-transition nets
 #     (e.g. act pipe0 -> pipe1, 1.8 ns) for the P&R repair

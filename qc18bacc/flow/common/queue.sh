@@ -11,8 +11,8 @@
 #   Fields are split on blanks (no globbing): write a blank in PAT as '.'.  VAR=val: env of that step only (QB50_MPA=1).
 # Out: <logdir>/queue.state (one line per step: n blk step run status start end rc; status pending|wait|run|ok|fail),
 #      <logdir>/q<n>_<blk>_<step>.out (step stdout + stderr), <logdir>/queue.log; <run dir>/queue.dir -> <logdir>
-#      (read by common/status.sh; run dir = what "run.sh rundir <run>" prints for a block on the shared driver
-#      common/block.sh, else $B/pnr/<run>).  rc = run.sh exit code: non-zero whenever a tool of the step failed (R53),
+#      (read by common/status.sh; run dir = what "run.sh rundir <run>" prints: every block is on the shared driver
+#      common/block.sh).  rc = run.sh exit code: non-zero whenever a tool of the step failed (R53),
 #      so the queue stops there.
 # A spec problem fails at launch, before anything starts (qspec, R97; [M] tau11 r97xq: with a missing spec the launcher's
 # cp failed, the queue started anyway and reported "QUEUE all done"): the spec is a readable file with at least one step
@@ -47,11 +47,11 @@ if [ "${QB_QUEUE_FG:-}" != 1 ]; then
     echo "QUEUE pid/pgid $! log $lg"; exit 0
 fi
 st=$lg/queue.state; mapfile -t L < <(grep -v '^\s*\(#\|$\)' "$spec")
-# run dir of <blk> <run> (R92: the column's is $B/icc2/col/<run>, where queue.dir never arrived)
-rundir() { local s=$QBF/blocks/$1/run.sh; { grep -q 'common/block\.sh' "$s" 2> /dev/null && "$s" rundir "$2"; } || echo "$B/pnr/$2"; }
+# run dir of <blk> <run> (common/block.sh rundir: $B/icc2/<blk>/<run>)
+rundir() { "$QBF/blocks/$1/run.sh" rundir "$2"; }
 : > "$st"; n=0
 for l in "${L[@]}"; do n=$((n + 1)); set -- $l; shift; while [[ $1 == *=* ]]; do shift; done
-    echo "$n $1 $2 $3 pending - - -" >> "$st"; rd=$(rundir "$1" "$3"); mkdir -p "$rd"; echo "$lg" > "$rd/queue.dir"
+    echo "$n $1 $2 $3 pending - - -" >> "$st"; rd=$(rundir "$1" "$3") && [ -n "$rd" ] || { echo "QUEUE_FAIL no run dir of $1 $3"; exit 1; }; mkdir -p "$rd"; echo "$lg" > "$rd/queue.dir"
 done
 put() { sed -i "${1}s/.*/$1 $2 $3 $4 $5 $6 $7 $8/" "$st"; }   # n blk step run status start end rc
 now() { date +%s; }

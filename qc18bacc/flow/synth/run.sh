@@ -5,8 +5,8 @@
 #   qc18bacc/flow/synth/run.sh act [tag]       act block DC (S1T) -> syn/<tag [r35_act]> + PT tt ss with act_pt_classes.tcl (results/r20.md)
 #   qc18bacc/flow/synth/run.sh chip <tag>        chip DC (QB_TOP_PTR=1 RTL, 8 column ETMs from $B/r5b_blk, ARM macros) -> syn/<tag>
 #                                                (r26_ptr for the hub partition, r35_ptr for the top; results/r26.md, r35.md)
-#   qc18bacc/flow/synth/run.sh part <syn tag> <dir>   hub partition (synth/partition.sh) -> $B/<dir> (r26_w for the hub, r35_w for the top)
-#   qc18bacc/flow/synth/run.sh topnl <part dir>  top netlist -> $B/r35/top_r35.v (+ _bpins / _equiv / _actmap; top_nl.py)
+#   qc18bacc/flow/synth/run.sh topnl <part dir>  top netlist -> $B/r35/top_r35.v (+ _bpins / _equiv / _actmap; top_nl.py) from a
+#                                                hub partition $B/<part dir> (frozen r35_w; partitioning: flow/README.md)
 #   qc18bacc/flow/synth/run.sh actpins           column act-pin table of the reference abstract -> $B/r35/col_act_pins.txt (act P&R pins)
 #   qc18bacc/flow/synth/run.sh macros            ARM SRAM views (flow/tsmc65/sram/mc_gen.sh) of macros.txt + macros_fc.txt
 # The commands are those recorded for the current inputs (results/*.md, tau logs); see flow/README.md for what was not recorded.
@@ -29,11 +29,10 @@ chip) t=${2:?tag}; G=$B/${t}_gen; "$here/chip_gen.sh" "$G" || exit 1
      QB_FL=$G/qb_chip_r5b.f QB_MACROS_EXTRA=$here/macros_fc.txt \
      QB_EXTRA_DB_TT=$B/r5b_blk/qb_col_blk_tt_lib.db QB_EXTRA_DB_SS=$B/r5b_blk/qb_col_blk_ss_lib.db \
      QB_EXTRA_DB_FF=$B/r5b_blk/qb_col_blk_ff_lib.db "$here/chip_dc.sh" syn qb_chip 1.65 "$t" || exit 1 ;;
-part) "$here/partition.sh" "${2:?syn tag}" "$B/${3:?work dir}" || exit 1 ;;
 topnl) mkdir -p "$B/r35"; cd "$B/r35" || exit 1
      "$PY" -I "$here/top_nl.py" "$B/${2:?part dir}/qb_chip_r9b_c.v" top_r35 > top_nl.log 2>&1; r=$?; tail -20 top_nl.log; [ $r = 0 ] || exit 1 ;;
 actpins) mkdir -p "$B/r35"; python3 -I "$here/col_act_pins.py" "$B/r5b_blk/qb_col_blk_ring.lef" "$B/r35/col_act_pins.txt" || exit 1 ;;
 macros) "$ROOT/flow/tsmc65/sram/mc_gen.sh" gen "$here/macros.txt" && "$ROOT/flow/tsmc65/sram/mc_gen.sh" gen "$here/macros_fc.txt" || exit 1 ;;
-*) sed -n '2,12p' "$0"; exit 1 ;;
+*) sed -n '2,13p' "$0"; exit 1 ;;
 esac
 echo "SYNTH_DONE $step $(date +%T)"

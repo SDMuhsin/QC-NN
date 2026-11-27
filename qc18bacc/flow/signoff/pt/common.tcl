@@ -1,4 +1,4 @@
-# PrimeTime helpers shared by the sign-off / ETM scripts (signoff/pt/blk.tcl + its blocks col_blk.tcl / rgr_blk.tcl, act_blk.tcl, hub.tcl, top_chip.tcl,
+# PrimeTime helpers shared by the sign-off / ETM scripts (signoff/pt/blk.tcl + its blocks col_blk.tcl / rgr_blk.tcl,
 # signoff/etm/etm.tcl).  Sourcing it also sets the sign-off timer options (the callers read the SPEF and update_timing
 # after it):
 #   timing_crpr_threshold_ps 1 (PT default 5): exact clock reconvergence pessimism removal.  The CCS receiver model gives
@@ -19,7 +19,7 @@
 #                             flow/icc2/extract.tcl, R71) or _pt.spef (OpenROAD def2spef flows); error if none or both
 #   qb_pt_lat <dir> <corner>  insertion delay L of this corner: p50 of the late rise arrival at the IO-path register clock
 #                             pins (signoff/pt/io_lat.tcl qb_clk_arrival late; ICC2's io pair regs, R85); "<p50> <min> <max>" written to
-#                             <dir>/out/clk_lat_<corner>.txt, which the chip top reads (blocks/top/run.sh views), by a
+#                             <dir>/out/clk_lat_<corner>.txt (the block's clock latency for the chip top), by a
 #                             sign-off session only: a setup-only session (::QB_PT_SETUP_ONLY: the DMSA ECO scenarios,
 #                             diagnostics) leaves the file alone.  The QB_PT_LAT log line carries the three values as written
 #                             and says whether they were; signoff/verdict.py gate clk_lat: the file = the post step's line
