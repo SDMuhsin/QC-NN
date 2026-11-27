@@ -91,6 +91,9 @@ proc qb_period_readback {} {
     return "init clock period $want ns = QB_PNR_PERIOD (read back in $n scenarios)"
 }
 
+# a new design library only (R109; hunt round 12: create_lib had no handling of an existing one, whose labels place .. eco
+# were built from another init): init in a run dir with <top>.nlib fails here, before anything is written
+if {[file exists $::QB_LIB]} { error "init: design library $::QB_LIB exists; init writes a new one only (a new run dir, or remove the library by hand)" }
 create_lib $::QB_LIB -technology $::QC_TF -ref_libs [list [qb_ndm]] -scale_factor $::QB_DBU
 # one parasitic tech per TLU+ file (named after it), shared by the corners that use it
 foreach c $::QC_SIGNOFF_CORNERS { set ptech($c) [file rootname $::QC_TLU_FILE($c)] }

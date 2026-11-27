@@ -33,6 +33,8 @@ qb_io_lat route2
 route_opt
 qb_fillers
 qb_route_close route
+# PG connectivity of the layout written out (R109, common.tcl qb_pg_connect, gated by signoff/verdict.py)
+qb_pg_connect route
 qb_io_load
 # legality of the layout written out (R107; hunt round 11 on d1978e1: route_opt sizes / inserts cells and the fillers
 # fill the rows after the cts gate, and nothing checked them; common.tcl qb_legality, gated by signoff/verdict.py)

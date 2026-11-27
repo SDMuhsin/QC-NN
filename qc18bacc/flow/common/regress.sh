@@ -30,6 +30,10 @@
 #                                               pass every check but the reference comparison: a changed gate set is a
 #                                               deliberate, reviewed reference update (git diff), never a silent one; so
 #                                               is a new site manifest or new DC inputs (a re-synthesised netlist)
+# By design the regression compares gate sets and verdicts, never numbers (R109 [M], icc2/common.tcl): ICC2 runs on several
+# cores are not run-to-run repeatable (two rgr runs of one tree, knobs and inputs differ from place_opt's global route on,
+# also with every ICC2 repeatability option set; 1-core runs are identical at ~2x the ICC2 wall time); the cores are a
+# knob (QB_ICC2_CORES, BLK_KNOBS), so equal to the reference's.
 # The run's own files are read (queue.state, summary.txt, the signoff step's output) and the verdict is re-run from the
 # snapshot on the run dir (blocks/rgr/run.sh signoff), which must equal the signoff step's output (check verdict_rerun);
 # the snapshot is found by its run name.
@@ -203,7 +207,8 @@ check() {
         { echo "# Regression reference (common/regress.sh check): the site manifest of the snapshot (site_md5), the DC inputs of"
           echo "# the run (inputs: md5 of netlist, DC SDC, run.env), the committed defaults of the flow knobs every step ran with"
           echo "# (knobs), the verdict line and the gate set (gate name: sign-off corners, '-' = block gate) of the run below;"
-          echo "# written by regress.sh ref, a change is a deliberate reference update"
+          echo "# written by regress.sh ref, a change is a deliberate reference update.  Repeatability: ICC2 on several cores is"
+          echo "# not run-to-run repeatable (R109 [M]), so a run's numbers differ from this run's; only the lines below are compared"
           echo "# run $2 host $1 snapshot $(sed -n 's/^V //p' <<< "$f")"
           sed -n 's/^S /site_md5 /p; s/^I /inputs /p' <<< "$f"
           echo "knobs $k"

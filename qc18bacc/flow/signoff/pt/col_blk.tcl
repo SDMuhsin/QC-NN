@@ -29,10 +29,10 @@ proc qb_blk_hook {stage args} {
             set_dont_touch [qb5_ft_cells] true
             set_dont_touch [get_nets -of_objects [get_ports {act_o[*]}]] true
             # act_o load = this block's own act[b] net (next column's act pin), per bit, on the routed SPEF
-            qb5_act_o_load [qb5_act_o_caps {apply {p {get_attribute [get_nets -of_objects $p] total_capacitance_max}}}]
+            qb5_io_load act_o [qb5_io_caps act {apply {p {get_attribute [get_nets -of_objects $p] total_capacitance_max}}}]
             update_timing
-            # act[b] input transition = own act_o[b] transition, iterated to a fixed point (io_budget.tcl qb5_act_tran_fix, R71)
-            set ::QB5_TRAN_RES [qb5_act_tran_fix]
+            # act[b] input transition = own act_o[b] transition, iterated to a fixed point (io_budget.tcl qb5_io_tran_fix, R71)
+            set ::QB5_TRAN_RES [qb5_io_tran_fix act act_o]
         }
         tcq { return [format " act_min_input_delay_ns %.4f (Le + QC_ACT_HOLD_HUB)" [qb_act_earliest $::Le]] }
         head { puts [lindex $args 0] [format "act_input_transition own act_o transition per bit, fixed-point residual %.5f ns" $::QB5_TRAN_RES] }

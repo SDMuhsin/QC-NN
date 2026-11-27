@@ -21,7 +21,7 @@
 #                       instance of one), save (as 1: save the current block as label <step>, the init step), log the
 #                       step end in <run>/summary.txt, QB_ICC2_DONE marker for the wrapper
 #   qb_io_load          IO loads that depend on the block's own layout: P(IO_LOAD) = {measure apply} procs of P(IO_BUDGET)
-#                       (column: blocks/col/io_budget.tcl qb5_act_o_caps / qb5_act_o_load, act_o[b] = own act[b] net),
+#                       (command prefixes; column: blocks/col/io_budget.tcl qb5_io_caps act / qb5_io_load act_o, act_o[b] = own act[b] net),
 #                       called per scenario on the current timing (placement estimate or routed); cts.tcl, route.tcl;
 #                       then P(IO_TRAN) = {measure apply diff} input transitions from the block's own outputs (column:
 #                       act[b] = own act_o[b] transition, R71), two measure / apply rounds, residual logged
@@ -59,6 +59,8 @@
 #                       the chip PG grid's pin layer (floorplan/pg_grid.tcl ::QB_PG_PIN): that layer only, strap width,
 #                       each across the whole die, low edges = qb_pg_expect of the core (VSS at core + offset, VDD at
 #                       + pitch / 2, pitch); error otherwise, one summary line
+#   qb_pg_connect <step>  PG connectivity gate (R109; route.tcl, eco.tcl): check_pg_connectivity with the standard-cell
+#                       pins, no floating object, every standard-cell PG pin on a net; error otherwise, one summary line
 #   qb_lef_grid         kit routing grid {layer {direction pitch offset}} of the LEF (site/pnr.tcl QC_PNR_LEF; R92)
 #   qb_track_check <step> <signal ports>  track gate (R92; floorplan.tcl): track phase against the rows = LEF OFFSET on
 #                       every LEF grid layer, every signal pin on a track of its layer; error otherwise, one summary line
@@ -84,6 +86,13 @@ set ::R $::env(QB_ICC2_RUN)
 set _h [open $::QC_TF]; regexp {lengthPrecision\s*=\s*(\d+)} [read $_h] -> ::QB_DBU; close $_h
 set ::QB_LIB $::R/$P(TOP).nlib
 file mkdir $::R/rpt $::R/out
+# Repeatability (R109 [M], rgr pnr, same tree / knobs / inputs): multithreaded runs are not run-to-run repeatable, and
+# ICC2's own options do not make them so: 16 cores, defaults: rgf51c41ba / bb (tau14) differ from place_opt's global route
+# on (place.log 32160.15 vs .14 um, cts.log M4 789.57 vs .56); 16 cores with place_opt / refine_opt / clock_opt
+# .flow.repeatability true and route.global.deterministic on (man: repeatable with the same thread count): x109det_a / b
+# (tau08) differ too (place.log 33651.32 vs .33 um, route DEF / netlist / QoR differ), runtime as the default; 1 core:
+# x109one_a (tau04) = x109one_b (tau14), route DEF, netlist and QoR identical, place / cts / route wall 8:28 vs 4:13 at 16
+# cores.  So the regression compares gate sets and verdicts, never numbers (common/regress.sh); cores = QB_ICC2_CORES, a knob.
 if {[info commands set_host_options] ne ""} { set_host_options -max_cores $::env(QB_ICC2_CORES) }
 
 proc qb_line {t} {
@@ -221,26 +230,26 @@ proc qb_io_load {} {
         current_scenario $s
         # port max_rise_load_cap of an input port = its net's pin + wire capacitance (R64 [M]: = PrimeTime's net
         # total_capacitance_max on the routed r62 block, 0.067407 pF act[0] ss)
-        set m([get_object_name $s]) [$measure {apply {p {get_attribute $p max_rise_load_cap}}}]
+        set m([get_object_name $s]) [{*}$measure {apply {p {get_attribute $p max_rise_load_cap}}}]
     }
     foreach_in_collection s [get_scenarios] {
         current_scenario $s
-        redirect -variable r { $apply $m([get_object_name $s]) }
+        redirect -variable r { {*}$apply $m([get_object_name $s]) }
         qb_line "io_load [get_object_name $s]: [lindex [regexp -inline -line {QB.*_LOAD.*$} $r] 0]"
     }
     # input transitions measured on the block's own outputs (P(IO_TRAN) = {measure apply diff}; column: act[b] = own
-    # act_o[b] transition, io_budget.tcl qb5_act_tran*), after the loads: every scenario measured, then applied; the second
+    # act_o[b] transition, io_budget.tcl qb5_io_tran*), after the loads: every scenario measured, then applied; the second
     # round logs how far the first moved them (PrimeTime iterates to its fixed point at sign-off, col_blk.tcl)
     if {[info exists P(IO_TRAN)]} {
         lassign $P(IO_TRAN) tmeasure tapply tdiff
         foreach i {1 2} {
             update_timing
-            foreach_in_collection s [get_scenarios] { current_scenario $s; set t([get_object_name $s]) [$tmeasure] }
+            foreach_in_collection s [get_scenarios] { current_scenario $s; set t([get_object_name $s]) [{*}$tmeasure] }
             set d 0.0
             foreach_in_collection s [get_scenarios] {
                 set n [get_object_name $s]; current_scenario $s
-                if {[info exists t0($n)]} { set d [expr {max($d, [$tdiff $t0($n) $t($n)])}] }
-                redirect -variable r { $tapply $t($n) }
+                if {[info exists t0($n)]} { set d [expr {max($d, [{*}$tdiff $t0($n) $t($n)])}] }
+                redirect -variable r { {*}$tapply $t($n) }
                 qb_line "io_tran $i $n: [lindex [regexp -inline -line {QB.*_TRAN .*$} $r] 0]"
             }
             if {$i > 1} { qb_line [format "io_tran residual %.5f ns (round 2 vs 1, max over scenarios)" $d] }
@@ -302,6 +311,8 @@ proc qb_qor {step} {
 }
 proc qb_done {step {as 0}} {
     global P
+    # ("dont_use <label> ...": every caller's <step> is the block label it saves, init .. route, eco, eco2, ...; R109
+    # signoff/verdict.py gates the lines of the labels out/ was built through)
     qb_line [qb_dont_use_gate $step 1]
     if {$as} { save_block -as $P(TOP)/$step } else { save_block }
     save_lib
@@ -993,6 +1004,36 @@ proc qb_pg_check {step} {
     }
     qb_line "$step pg_pins [expr {[llength $bad] ? "FAIL" : "ok"}] layer $::QB_PG_PIN w $w pitch $pitch VSS $n(VSS) from [format %.3f [expr {[lindex $c0 1] + $off}]] VDD $n(VDD) from [format %.3f [expr {[lindex $c0 1] + $off + $pitch / 2.0}]] bad [llength $bad] [lrange $bad 0 3]"
     if {[llength $bad]} { error "QB PG pins off the chip grid: [lrange $bad 0 3]" }
+}
+# PG connectivity gate (R109; hunt round 12: only floorplan.tcl reported check_pg_connectivity, without the standard
+# cells, and nothing gated it; route.tcl after the route closure, eco.tcl after each round's, i.e. on the layout written
+# out, gated by signoff/verdict.py pnr_pg_<route|eco>).  check_pg_connectivity -check_std_cell_pins all ->
+# rpt/<step>_pg_conn.rpt: every "Number of floating <objects>: N" count of the VDD and VSS sections 0 (wires, vias, std
+# cells, macros, pads, terminals, blocks; a section or count missing = NA, which fails), and every standard-cell PG pin on
+# a net (logical: [M] tau14 copy of rgf51c41ba route, a VDD pin disconnect_net-ed is invisible to check_pg_connectivity,
+# 0 floating, and counted here, 1 of 4658 pins).  Error otherwise, one summary line.
+# qb_pg_conn_counts <report>: {<net>:<objects> N ...} of the floating counts, NA for a missing section / count
+set ::QB_PG_FLOATING {wires vias {std cells} {hard macros} {I/O pads} terminals {hierarchical blocks}}
+proc qb_pg_conn_counts {t} {
+    set r {}
+    foreach net {VDD VSS} {
+        set b [expr {[regexp "Verify net $net connectivity\\*+\n(\[^*\]*)" $t -> b] ? $b : ""}]
+        foreach k $::QB_PG_FLOATING {
+            lappend r $net:[string map {{ } _ / {}} $k] [expr {[regexp -line "^\\s*Number of floating [string map {/ \\/} $k]: (\\d+)\\s*$" $b -> n] ? $n : "NA"}]
+        }
+    }
+    return $r
+}
+proc qb_pg_connect {step} {
+    redirect -variable t { check_pg_connectivity -check_std_cell_pins all }
+    set h [open $::R/rpt/${step}_pg_conn.rpt w]; puts $h $t; close $h
+    set c [qb_pg_conn_counts $t]
+    set pg [get_pins -quiet -of_objects [get_flat_cells -quiet] -filter "port_type==power || port_type==ground"]
+    set un [filter_collection $pg "undefined(net)"]
+    set bad [dict keys [dict filter $c script {k v} { expr {$v ne "0"} }]]
+    if {[sizeof_collection $un]} { lappend bad "unconnected_pg_pins [lrange [get_object_name $un] 0 2]" }
+    qb_line "$step pg_connectivity: floating [join [lmap {k v} $c { string cat $k " " $v }] {, }]; std-cell pg_pins [sizeof_collection $pg] unconnected [sizeof_collection $un]: [expr {[llength $bad] ? "FAIL ([join $bad {, }])" : "PASS"}]"
+    if {[llength $bad]} { error "$step: PG connectivity gate failed ([join $bad {, }]; rpt/${step}_pg_conn.rpt)" }
 }
 # Kit routing grid (R92): {layer {direction pitch offset} ...} of the LEF routing layers that state PITCH and OFFSET
 # (the tech section of site/pnr.tcl QC_PNR_LEF, before its first MACRO; of a two-value "x y" form the value across the

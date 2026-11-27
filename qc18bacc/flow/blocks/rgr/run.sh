@@ -12,9 +12,12 @@ here=$(cd "$(dirname "$0")" && pwd); . "$here/../../common/env.sh"; . "$here/rgr
 C=$QBF/signoff/calibre
 BLK=rgr BLK_TOP=$RGR_TOP BLK_SYN=$RGR_SYN BLK_PERIOD=$RGR_PERIOD BLK_CFG=$here/icc2.cfg BLK_PT=$QBF/signoff/pt/rgr_blk.tcl
 BLK_FILL_SED="-f $C/fill_blk.sed" BLK_ODPO_SED="-f $C/odpo_blk.sed" BLK_LVS_SED="-f $C/lvs_case.sed" BLK_DRC_SED="-f $C/drc_blk.sed"
+# (R109) one input of the block's own, so the regression runs the BLK_INPUTS code (common/block.sh blk_inputs / blk_input,
+# common/regress.sh inputs): the DC database the netlist was written from, checked unchanged with the netlist below
+BLK_INPUTS="ddc=$B/syn/$RGR_SYN/$RGR_TOP.ddc"
 export RGR_TOP RGR_DIE QC_PNR_GUARD_HOLD QC_PNR_GUARD_TRAN   # read by icc2.cfg, init.tcl qb_guard
 blk_pre_pnr() {
-    local n; n=$(blk_input netlist) || return 1
+    local n; n=$(blk_input netlist) && blk_input ddc > /dev/null || return 1
     "$PY" -I "$QBF/floorplan/edge_pins.py" "$n" "$RGR_TOP" $RGR_DIE $RGR_PINS "$d/pins.lef" &&
     "$PY" -I "$QBF/floorplan/abstract_pins.py" "$d/pins.lef" "$1"
 }

@@ -12,7 +12,7 @@ regression block `blocks/rgr`; the act / hub / top blocks are to be ported onto 
 | `synth/` | DC / top-netlist steps that produce the P&R input netlists |
 | `floorplan/` | `pg_grid.tcl` (chip PG strap grid), `abstract_pins.py` / `edge_pins.py` (floorplan pin DEF / pin-only abstract) |
 | `icc2/` | IC Compiler II steps (R54): `common.tcl` (kit + block config, `qb_open` / `qb_done` / `qb_qor`), `libs.tcl` (std-cell NDM, icc2_lm_shell), `init.tcl` (design library, TLU+, netlist, MCMM, SDC), `floorplan.tcl`, `place.tcl`, `cts.tcl`, `route.tcl` (`qb_route_setup` / `qb_fillers` / `qb_route_close` in common.tcl), `eco.tcl` (R56: sources the PrimeTime change list, legalise, route_eco, refill), `outputs.tcl` (label `QB_ICC2_LABEL`), `extract.tcl` (R68: Calibre fill read back as DEF FILLS, fill-aware SPEF per sign-off corner), `abstract.tcl` (abstract LEF + port antenna data + abutment check for the top); block facts in `blocks/<b>/icc2.cfg` |
-| `signoff/` | `pt/` PrimeTime (block sign-off `blk.tcl`, DMSA ECO `drv_eco.tcl`); `etm/` ETMs (`etm.tcl`, `etmcheck.py`); `calibre/` fill, LVS source, Calibre DRC / LVS (+ its ERC; `erc_allow.txt`: the ERC checks that may be NOT EXECUTED) / antenna (`drc_allow.txt`: the DRC / antenna rule checks that must be the NOT EXECUTED ones); `portcheck.py`; `verdict.sh` the machine verdict of a block run |
+| `signoff/` | `pt/` PrimeTime (block sign-off `blk.tcl`, DMSA ECO `drv_eco.tcl`); `etm/` ETMs (`etm.tcl`, `etmcheck.py`); `calibre/` fill, LVS source (`v2lvs_allow.txt`: the v2lvs warnings that may pass, R109), Calibre DRC / LVS (+ its ERC; `erc_allow.txt`: the ERC checks that may be NOT EXECUTED) / antenna (`drc_allow.txt`: the DRC / antenna rule checks that must be the NOT EXECUTED ones; every deck sed file states its results as `#@expect` / `#@absent` lines, cal.sh cal_deck, R109); `portcheck.py`; `verdict.sh` the machine verdict of a block run |
 | `blocks/<b>/` | per block on the driver: `<b>.env` (parameters), `icc2.cfg` (ICC2 block config), `io_budget.tcl`, `run.sh` (steps); `blocks/act/io_budget.tcl` is the act DC's IO budget (synth/run.sh act) |
 
 Every block is run from a host-local copy of the repository on the build server
@@ -61,7 +61,7 @@ Corners (R68): one table, `flow/tsmc65/site/site.tcl` QC_SIGNOFF (kit release no
 ICC2 MCMM, PT sign-off, the DMSA ECO, the block ETMs and the chip top use all of them (bash: common/env.sh `qb_corners`;
 R71), DC the base corners QC_CORNERS {ss tt ff}.  Feedthroughs act -> act_o: one fixed lib
 cell (blocks/col/io_budget.tcl QB5_FT), dont_touch with their act_o nets (icc2/init.tcl, PT col_blk.tcl); act[b] input
-transition = the block's own measured act_o[b] transition per corner (io_budget.tcl qb5_act_tran*, R71).  Abstract: M1 ..
+transition = the block's own measured act_o[b] transition per corner (io_budget.tcl qb5_io_tran*, R71).  Abstract: M1 ..
 M7 blocked over the die except the pins (icc2/abstract.tcl, R71; made on its own block label "abstract", R77).  Routing:
 redundant vias after every detail route (R71), route setup also before CTS (R77).  Lib cells (R77, common/lib_cells.tcl):
 clock-tree cells by exact family minus QC_DONT_USE, a dont_use gate in every ICC2 step / DMSA scenario / PT corner, and the
@@ -95,7 +95,11 @@ word; and its signoff step's verdict, which the snapshot's signoff
 step re-run on the run dir must reproduce line for line (R102, check verdict_rerun)
 (SIGNOFF PASS, no FAIL / MISSING gate, VERDICT line = the reference's) and compares its gate set (gate name x corner) with
 `blocks/rgr/reference.txt`, printing the difference: a checker that adds, drops or renames a gate fails the regression
-until the reference is rewritten with `ref` and the change is reviewed in the commit.  By hand, the chain is:
+until the reference is rewritten with `ref` and the change is reviewed in the commit.  Gate sets and verdicts, never
+numbers, by design (R109 [M], icc2/common.tcl): ICC2 on several cores is not run-to-run repeatable, two rgr runs of one
+tree, knobs and inputs differ from place_opt's global route on, also with every ICC2 repeatability option set
+(place_opt / refine_opt / clock_opt `.flow.repeatability`, `route.global.deterministic`); 1-core runs are identical (two
+hosts) at about twice the ICC2 wall time; the cores are the knob QB_ICC2_CORES.  By hand, the chain is:
 ```
 qc18bacc/flow/common/deploy.sh <commit> <host>:<dir>    # git archive of qc18bacc/flow + flow/tsmc65 at <commit> + the host's untracked site files -> <dir>
 qc18bacc/flow/synth/run.sh rgr                          # once per build root: DC of one PPU lane -> $B/syn/rgr_lane_tt_p2.0_topo
@@ -108,11 +112,11 @@ host's whole flow/ including tracked lib.tcl / tool.sh).  It writes VERSION (com
 = one `site_md5 <md5> <path>` line per site file, deploy time) and MANIFEST.md5 (every other file), verifies both on the
 host, makes the snapshot read-only and refuses an existing <dir>.  `check` also compares the site manifest and the run's
 inputs from outside the snapshot (summary.txt `init inputs`: md5 of netlist, DC SDC, run.env, then the block's own
-`BLK_INPUTS`, e.g. the column's reference abstract (R101); written by common/block.sh blk_inputs before each init step; every later reader, the portcheck and the floorplan pin
+`BLK_INPUTS`, e.g. the column's reference abstract (R101), the regression block's DC database (R109); written by common/block.sh blk_inputs after each successful init step (R109; init.tcl refuses an existing design library); every later reader, the portcheck and the floorplan pin
 DEF, gets the file through blk_input, which fails unless its md5 is still the recorded one, R102)
 with the reference (R100): a new site file or a re-synthesised netlist needs a reviewed `ref`.  The block uses the shared driver like the column: `rgr.env` (netlist tag, period 2.5 ns, die 130 x 130 um, pins,
 the column's P&R guard-bands QC_PNR_GUARD_HOLD 0.010 ns / QC_PNR_GUARD_TRAN 0.05, as `col.env`; environment overrides them),
-`icc2.cfg` (the column's opt-ins HOLD_RESERVE / ISOLATE / VIRTUAL_FILL / PREROUTE_CAP_SCALE / PREROUTE_SETUP_MARGIN on this design), `io_budget.tcl` (the column's budget procs with
+`icc2.cfg` (the column's opt-ins HOLD_RESERVE / ISOLATE / VIRTUAL_FILL / PREROUTE_CAP_SCALE / PREROUTE_SETUP_MARGIN and, R109, its per-bit chain IO IO_LOAD / IO_TRAN, y_o -> x, on this design), `io_budget.tcl` (the column's budget procs with
 its own class table `::QB5_BUDGET`), pins: `floorplan/edge_pins.py` (pin-only abstract LEF: inputs west, outputs east on
 M3 tracks) -> `floorplan/abstract_pins.py` (floorplan DEF).  Block-config hooks of the shared ICC2 steps: `P(IO_SAMPLE)`
 (init's logged IO delays) and `P(IO_PAIR)` (qb_io_lat's port-to-port clock delays; the column: act[0] -> act_o[0]).

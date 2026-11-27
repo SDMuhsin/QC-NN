@@ -59,7 +59,7 @@ def fresh(name, corner, chain):   # every file exists and none is older than the
 # without a holding model in it; opt-in act_noise = the column's act load pins on the QB5_FT driver, signoff/pt/col_blk.tcl;
 # their summary line as evidence)
 PT = ('setup hold recovery removal max_transition max_capacitance clock_max_transition min_pulse_width min_period '
-      'unannotated_pin_to_pin unconstrained_endpoints unclocked_register_pins loops unexpected_disabled_arcs floating_nets '
+      'unannotated_pin_to_pin unconstrained_endpoints unclocked_inputs unclocked_register_pins loops unexpected_disabled_arcs floating_nets '
       'noise noise_undriven_ports noise_undriven_pins').split()
 PT_OPT = ('act_noise', 'act_noise_unanalysed')   # (opt-in act_noise: gated when declared or logged)
 # sign-off limits (R99): the committed values, common/limits.txt (of the flow under test), against the session's
@@ -126,13 +126,22 @@ for c in corners:
 
 # ICC2 gates recorded in summary.txt: dont_use of every step, the name / load gate of every ECO round, the abstract
 s = text('summary.txt')
-# (the latest line of each step, R107: hunt round 11 on d1978e1, every line ever appended counted, so a step's failed
-# earlier attempt failed a clean re-run)
-du = dict((l.split()[1], l) for l in s.splitlines() if l.startswith('dont_use ') and len(l.split()) > 1)
-gate('dont_use_icc2', '-', all(zeros(l, ('usable', 'design_cells')) for l in du.values()) if du else None,
-     '%d steps, latest line each; %s' % (len(du), ' | '.join(l for l in du.values() if not zeros(l, ('usable', 'design_cells'))) or list(du.values())[-1] if du else 'none in summary.txt'))
 # the label of out/ (common/block.sh blk_out): out/label.txt, and no unfinished label (out/label.new)
 label = text('out/label.txt').strip(); pend = text('out/label.new').strip()
+# dont_use of the labels out/ was built through (icc2/common.tcl qb_done: "dont_use <label> ..."): init .. route, then the
+# ECO labels eco, eco2, ... up to the label of out/; the latest line of each, which must be there (R109; hunt round 12:
+# the latest line of every tag counted, so a later round's attempt that never became the label of out/, or a label of an
+# earlier layout, could fail or pass a clean label, and a label of the chain without a line passed; R107: one line per tag)
+def eco_chain(lab):   # the ECO labels up to lab (route: none); None for a label of no known form
+    m = re.match(r'^eco(\d*)$', lab)
+    return [] if lab == 'route' else None if not m else ['eco'] + ['eco%d' % k for k in range(2, int(m.group(1) or 1) + 1)]
+chain = eco_chain(label)
+du = dict((l.split()[1], l) for l in s.splitlines() if l.startswith('dont_use ') and len(l.split()) > 1)
+want = ['init', 'floorplan', 'place', 'cts', 'route'] + (chain or [])
+du_bad = ['%s: %s' % (k, du[k] if k in du else 'no line') for k in want if k not in du or not zeros(du[k], ('usable', 'design_cells'))]
+gate('dont_use_icc2', '-', not du_bad if chain is not None else None,
+     ('labels %s, latest line each; %s' % (' '.join(want), ' | '.join(du_bad) or du['route'])) if chain is not None else
+     'label of out/ %s is not route / eco<n>' % (label or 'missing'))
 gate('out_label', '-', bool(label) and not pend, 'out/label.txt %s, out/label.new %s' % (label or 'missing', pend or 'none'))
 # the name / load gate of the ECO round that built the label of out/ (icc2/eco.tcl "<label> eco names ..."): its latest
 # line only (a failed earlier attempt of that round, or an earlier round, is not the layout of out/)
@@ -155,6 +164,9 @@ for name, st in [(x, x) for x in ('place', 'cts', 'route')] + ([('eco', label or
 for name, lab in [('pnr_route_gate', 'route')] + ([('pnr_eco_gate', label or 'eco')] if label != 'route' else []):
     pnr(name, lab + ' gate: ... closure pass(es): PASS|FAIL', r'^%s gate: check_routes .*; check_lvs .* closure pass\(es\): (PASS|FAIL.*)$' % re.escape(lab),
         lambda m: m.group(1) == 'PASS')
+# PG connectivity of route and of the ECO label of out/ (R109, icc2/common.tcl qb_pg_connect)
+for name, lab in [('pnr_pg_route', 'route')] + ([('pnr_pg_eco', label or 'eco')] if label != 'route' else []):
+    pnr(name, lab + ' pg_connectivity: ... PASS|FAIL', r'^%s pg_connectivity: .*: (PASS|FAIL.*)$' % re.escape(lab), lambda m: m.group(1) == 'PASS')
 for k in ('lef', 'obs', 'abutment', 'pg_pins'):
     l = last(s, 'abstract %s ' % k)
     if k == 'abutment' and not l and 'abstract_abutment' not in optin: continue   # opt-in (icc2/abstract.tcl P(ABUT_PAIR))
@@ -196,7 +208,10 @@ def path_is(p, rel): return os.path.realpath(p) == os.path.realpath(os.path.join
 def deck_lines(deck, key): return re.findall(r'^%s\s+"(.*?)"' % key, text(deck), re.M)
 win = 'calibre/die_window.sed'
 WIN = re.compile(r'^s#\^VARIABLE (xLB|yLB|xRT|yRT) \.\*#VARIABLE \1 -?[0-9.]+#$')
-wl = text(win).splitlines(); win_ok = sorted(m.group(1) if m else '' for m in map(WIN.match, wl)) == ['xLB', 'xRT', 'yLB', 'yRT']
+# (its sed lines; R109: + one "#@expect" line of each result, which cal.sh check deck holds against the deck copy)
+wl = [l for l in text(win).splitlines() if not l.startswith('#@expect ')]
+win_ok = sorted(m.group(1) if m else '' for m in map(WIN.match, wl)) == ['xLB', 'xRT', 'yLB', 'yRT'] and \
+    len([l for l in text(win).splitlines() if l.startswith('#@expect ^VARIABLE ')]) == 4
 for mode, sub, layout, edits in (('fill', 'fill', g[0], {'QB55_FILL_SED': 'BLK_FILL_SED', 'QB55_WINDOW': win}),
                                  ('odpo', 'odpo', g[2], {'QB77_ODPO_SED': 'BLK_ODPO_SED', 'QB55_WINDOW': win}),
                                  ('lvs', 'lvs', g[4], {'QB36_LVS_SED': 'BLK_LVS_SED', 'QB36_LVS_EXTRA': 'QB36_LVS_EXTRA', 'QB36_HCELL': 'QB36_HCELL'}),
@@ -211,7 +226,10 @@ for mode, sub, layout, edits in (('fill', 'fill', g[0], {'QB55_FILL_SED': 'BLK_F
     elif os.path.getmtime(os.path.join(run, rec)) < os.path.getmtime(os.path.join(run, deck)): bad.append('%s older than %s' % (rec, deck))
     lp, pr = deck_lines(deck, 'LAYOUT PATH'), deck_lines(deck, 'LAYOUT PRIMARY')
     if not lp or not all(path_is(x, layout) for x in lp) or set(pr) != {top}: bad.append('LAYOUT PATH %s PRIMARY %s (want %s, %s)' % (lp, pr, layout, top))
-    gate('deck_' + mode, '-', not bad, '; '.join(bad) or '%s = committed defaults; LAYOUT %s %s' % (' '.join(w[2:]), layout, top))
+    # (R109) the edits took effect: every #@expect / #@absent line of the recorded sed files holds in the deck copy
+    rc, out = sh('bash %s/cal.sh check deck %s %s/calibre/%s' % (cal, top, run, sub))
+    if rc != 0: bad.append(last(out, 'CAL_DECK ') or out.strip()[-160:])
+    gate('deck_' + mode, '-', not bad, '; '.join(bad) or '%s = committed defaults; LAYOUT %s %s; %s' % (' '.join(w[2:]), layout, top, last(out, 'CAL_DECK ')))
 # the LVS source (R106): the deck's SOURCE PATH = the run's calibre/<blk>_src.spi (SOURCE PRIMARY <top>), built from
 # out/<top>_pg.v as it is now (signoff/calibre/lvs_src.sh records the md5 of the netlist it read)
 src, srec = 'calibre/%s_src.spi' % blk, 'calibre/%s_src.inputs.txt' % blk

@@ -1,5 +1,15 @@
 # R38 opt-in DRC deck switches for a BLOCK run (impl/r36/cal36.sh QB36_DRC_SED="-f drc_blk.sed"):
 # no chip-corner / seal-ring rules (FULL_CHIP off), GP process on, all results kept.
+# The results in the deck copy (signoff/calibre/cal.sh cal_deck, R109; the QB_ rule: signoff/verdict.py drc_qb_rules):
+#@absent ^#DEFINE FULL_CHIP\b
+#@expect ^//#DEFINE FULL_CHIP\b
+#@expect ^#DEFINE GP\b
+#@expect ^#DEFINE QB_BLK_DN\b
+#@expect ^#IFDEF QB_BLK_DN$
+#@absent ^DRC MAXIMUM RESULTS [0-9]
+#@expect ^DRC MAXIMUM RESULTS ALL$
+#@expect ^DRC UNSELECT CHECK M8\.DN\.1$
+#@expect ^DRC UNSELECT CHECK M9\.DN\.1$
 s#^\#DEFINE FULL_CHIP#//\#DEFINE FULL_CHIP#
 s#^//\#DEFINE GP #\#DEFINE GP #
 s#^DRC MAXIMUM RESULTS 1000#DRC MAXIMUM RESULTS ALL#

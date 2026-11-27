@@ -15,6 +15,9 @@ set_clock_transition 0.15 [get_clocks qb_clk]
 set_driving_cell -lib_cell [lindex $::QC_DRV_CLK 0] -library $lib -pin [lindex $::QC_DRV_CLK 1] [get_ports clk]
 
 set_false_path -from [get_ports rst_n]
+# the deliberate untimed inputs (no input delay: the false path above), declared for the PrimeTime coverage gate
+# unclocked_inputs (signoff/pt/common.tcl qb_pt_unclocked_inputs, R109)
+set ::QB_UNTIMED_INPUTS {rst_n}
 
 set data_in [remove_from_collection [all_inputs] [get_ports {clk rst_n}]]
 set_input_delay  [qb_io_delay $period] -clock qb_clk $data_in

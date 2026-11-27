@@ -12,11 +12,12 @@
 #   (blk_fill_label, blk_calibre) and logged in BLK_KNOBS
 #   BLK_GATES optional: the block's opt-in verdict gates, comma-separated (signoff/verdict.sh -g; the column's act gates)
 #   BLK_INPUTS optional: the block's further inputs from outside the snapshot, "<key>=<file> ..." (blk_inputs records
-#   their md5 after the DC inputs; the column's reference abstract)
+#   their md5 after the DC inputs; the column's reference abstract, the regression block's DC database)
+#   (BLK_GATES / BLK_INPUTS, like BLK_*_SED, are unset when this file is sourced: only the block's run.sh sets them)
 # Steps:  pnr      ICC2 libs init floorplan place cts route outputs, then portcheck + fill; QC_PNR_FROM / QC_PNR_TO select
 #                  a range, an unknown step name fails; a step init .. route drops the label of out/ and moves the
 #                  ECO history out/eco aside (blk_unlabel);
-#                  init first records the md5 of its DC inputs in summary.txt (blk_inputs)
+#                  init records the md5 of its DC inputs in summary.txt once it succeeded (blk_inputs)
 #         eco      sign-off ECO loop, at most QC_ECO_ROUNDS (common/env.sh) rounds: PrimeTime DMSA -> ICC2 eco -> outputs -> portcheck
 #                  -> fill; ends when a round's pre-fix state is clean in every corner at zero margin; fails if it never
 #                  is, if a round makes no progress (blk_eco_progress, R108: the pre-fix violation total shrinks, or
@@ -65,7 +66,9 @@ blk_main() {
 # The deck edits are knobs too (R104; hunt round 9 on 018af5e: ant took the DRC deck's QB36_DRC_SED, which came from
 # the environment and was recorded nowhere): BLK_KNOBS names every BLK_*_SED (paths in the flow as <flow>/...).
 BLK_DECK_EDITS="BLK_FILL_SED BLK_ODPO_SED BLK_LVS_SED BLK_DRC_SED BLK_ANT_SED"
-unset $BLK_DECK_EDITS
+# (the optional BLK_GATES / BLK_INPUTS too, R109; hunt round 12: an inherited value reached the verdict's opt-in gates /
+# the recorded inputs of a block that sets neither)
+unset $BLK_DECK_EDITS BLK_GATES BLK_INPUTS
 blk_knobs() { echo "BLK_KNOBS $BLK $1 $tag flow $QBF$(qb_knobs $BLK_DECK_EDITS)"; }
 # PrimeTime environment of $BLK_PT, set in the subshell of the caller.  Nothing of DC's run.env (R100; [M] hunt on a06c97:
 # it was sourced with set -a, and its QC_IO_PCT=20, written by flow/tsmc65 run_dc.sh, became an "environment override"
@@ -81,7 +84,7 @@ blk_portcheck() {   # gate on the outputs netlist: ports as the DC netlist (name
     "$PY" -I "$QBF/signoff/portcheck.py" "$n" "$d/out/$BLK_TOP.v" "$BLK_TOP"
 }
 blk_pnr() {
-    local all="libs init floorplan place cts route outputs" from=${QC_PNR_FROM:-libs} to=${QC_PNR_TO:-outputs} s on=0
+    local all="libs init floorplan place cts route outputs" from=${QC_PNR_FROM:-libs} to=${QC_PNR_TO:-outputs} s l on=0
     for s in "$from" "$to"; do
         case " $all " in *" $s "*) ;; *) echo "BLK_FAIL pnr: unknown step '$s' (QC_PNR_FROM / QC_PNR_TO: $all)"; return 1 ;; esac
     done
@@ -92,9 +95,10 @@ blk_pnr() {
         elif [ "$s" = libs ]; then blk_libs || return 1
         else
             blk_unlabel "$s" || return 1
-            if [ "$s" = init ]; then blk_inputs || return 1; fi
+            if [ "$s" = init ]; then l=$(blk_inputs) || { echo "$l"; return 1; }; fi
             if [ "$s" = floorplan ]; then blk_pins || return 1; fi
             qb_icc2 "$d" "$s" || return 1
+            if [ "$s" = init ]; then blk_inputs "$l" || return 1; fi
         fi
         [ "$s" = "$to" ] && break
     done
@@ -117,10 +121,14 @@ blk_unlabel() {
     rm -f "$d/out/label.txt" "$d/out/label.new"
 }
 # The inputs of the pnr step from outside the snapshot (R100 [M] hunt on a06c97: nothing recorded which netlist a run was
-# built from): one summary.txt line "init inputs syn <tag> netlist <md5> sdc <md5> run_env <md5> [<key> <md5> ...]" before
-# each init step: the DC inputs ($B/syn/$BLK_SYN: the netlist and DC SDC common/block_sdc.tcl reads, DC's run.env), then
-# the block's own BLK_INPUTS (R101: the column's pin-reference abstract COL_REFLEF was recorded nowhere); common/regress.sh
-# check compares the last line with the regression reference
+# built from): one summary.txt line "init inputs syn <tag> netlist <md5> sdc <md5> run_env <md5> [<key> <md5> ...]" per
+# successful init step: the DC inputs ($B/syn/$BLK_SYN: the netlist and DC SDC common/block_sdc.tcl reads, DC's run.env),
+# then the block's own BLK_INPUTS (R101: the column's pin-reference abstract COL_REFLEF was recorded nowhere);
+# common/regress.sh check compares the last line with the regression reference.
+#   blk_inputs           prints the line of the inputs as they are now (before init)
+#   blk_inputs <line>    after init succeeded: appends <line> to summary.txt, unless the inputs changed during init
+# (R109; hunt round 12: the line was appended before init, so a failed init left a last line that blk_input then took for
+# the layout's, which was built from the inputs before; icc2/init.tcl refuses an existing design library)
 blk_input_list() { local s=$B/syn/$BLK_SYN; echo "netlist=$s/$BLK_TOP.v sdc=$s/$BLK_TOP.sdc run_env=$s/run.env ${BLK_INPUTS:-}"; }
 blk_inputs() {
     local k f l="init inputs syn $BLK_SYN"
@@ -129,7 +137,9 @@ blk_inputs() {
         [ -f "$f" ] || { echo "BLK_FAIL pnr init: no input $f"; return 1; }
         l="$l ${k%%=*} $(md5sum < "$f" | cut -c1-32)"
     done
-    mkdir -p "$d" && echo "$l" >> "$d/summary.txt" && echo "BLK_INPUTS $l"
+    if [ $# = 0 ]; then echo "$l"; return 0; fi
+    [ "$l" = "$1" ] || { echo "BLK_FAIL pnr init: the inputs changed during init (before: $1; now: $l): nothing recorded"; return 1; }
+    echo "$l" >> "$d/summary.txt" && echo "BLK_INPUTS $l"
 }
 # blk_input <key>: prints the file of input <key> (netlist, sdc, run_env or a BLK_INPUTS key) once its md5 equals the one
 # the run recorded (the last "init inputs" line of summary.txt); fails otherwise.  Every reader of an input after init
@@ -224,7 +234,10 @@ blk_fill_label() {
     # fill 0.6 um)
     w=$(blk_die_window "$d/out/$BLK_TOP.def.gz") || { echo "BLK_FAIL no DIEAREA of integer points in a UNITS DISTANCE MICRONS 10^k out/$BLK_TOP.def.gz"; return 1; }
     set -- $w; [ $# = 4 ] || { echo "BLK_FAIL no DIEAREA in out/$BLK_TOP.def.gz"; return 1; }
-    printf 's#^VARIABLE xLB .*#VARIABLE xLB %s#\ns#^VARIABLE yLB .*#VARIABLE yLB %s#\ns#^VARIABLE xRT .*#VARIABLE xRT %s#\ns#^VARIABLE yRT .*#VARIABLE yRT %s#\n' "$@" > "$o/die_window.sed"
+    # (+ its results in the deck copy, R109: signoff/calibre/cal.sh cal_deck)
+    { printf 's#^VARIABLE xLB .*#VARIABLE xLB %s#\ns#^VARIABLE yLB .*#VARIABLE yLB %s#\ns#^VARIABLE xRT .*#VARIABLE xRT %s#\ns#^VARIABLE yRT .*#VARIABLE yRT %s#\n' "$@"
+      printf '#@expect ^VARIABLE xLB %s$\n#@expect ^VARIABLE yLB %s$\n#@expect ^VARIABLE xRT %s$\n#@expect ^VARIABLE yRT %s$\n' "${1//./\\.}" "${2//./\\.}" "${3//./\\.}" "${4//./\\.}"
+    } > "$o/die_window.sed"
     QB55_FILL_SED=$BLK_FILL_SED QB55_WINDOW=$o/die_window.sed bash "$C/cal.sh" fill "$d/out/$BLK_TOP.gds" "$BLK_TOP" "$o/fill" > "$o/fill.log" 2>&1 \
         || { cat "$o/fill.log"; return 1; }
     grep -v '^CAL55_fill' "$o/fill.log"

@@ -10,6 +10,8 @@
 #   qc18bacc/flow/signoff/calibre/cal.sh check <drc|ant|lvs|erc> <topcell> <rundir>   the result of a finished run from its
 #        files alone (cal_result; no Calibre): what the run modes end with and signoff/verdict.py reads (R92; erc: the
 #        ERC of an lvs run dir)
+#   qc18bacc/flow/signoff/calibre/cal.sh check deck <topcell> <rundir>   the deck edits of any run mode's dir took effect
+#        in its deck copy (cal_deck, R109)
 # env: QB36_DRC_SED / QB36_ANT_SED / QB36_LVS_SED / QB55_FILL_SED / QB77_ODPO_SED = extra sed arguments for the deck copy
 #      of that mode only (e.g. "-f drc_blk.sed"; common/block.sh sets each one explicitly per run), QB36_LVS_EXTRA,
 #      QB36_HCELL (hcell file); QB55_WINDOW = a sed file of the chip window (fill / odpo: common/block.sh die_window.sed)
@@ -31,6 +33,34 @@ AD=${A%/*}/drc_allow.txt
 cal_edits() {   # cal_edits <mode> <var> ...: deck_edits.txt of the current (run) dir
     local m=$1 v; shift
     { printf 'deck_edits %s' "$m"; for v; do if [ -n "${!v:-}" ]; then printf ' %s' "$(qb_knob "$v")"; else printf ' %s=<unset>' "$v"; fi; done; echo; } > deck_edits.txt
+}
+# The deck edits took effect (R109; hunt round 12: a sed expression that matches nothing is a silent no-op, and nothing
+# looked into the deck copy).  Every deck sed file (signoff/calibre/*_blk.sed, lvs_case.sed, the run's die_window.sed)
+# states the results of its edits as comment lines "#@expect <ERE>" (a line of the deck copy must match) and "#@absent
+# <ERE>" (no line may match); a sed file without one fails (its edits are unverifiable).
+# cal_deck <rundir>: one CAL_DECK line; non-zero unless deck_edits.txt is there and every sed file it records (the -f
+# files of the *_SED values, QB55_WINDOW) is readable and every one of its #@expect / #@absent lines holds in
+# deck.<mode> of <rundir>.  Run by every run mode right after the deck copy (before Calibre) and by check deck
+# (signoff/verdict.py deck_<mode>).
+cal_deck() {
+    local d=$1 m w k v a=() i f n=0 bad=()
+    read -ra w < "$d/deck_edits.txt" 2> /dev/null; m=${w[1]:-}
+    [ "${w[0]:-}" = deck_edits ] && [ -s "$d/deck.$m" ] || { echo "CAL_DECK FAIL $d: no deck_edits.txt or no deck copy deck.${m:-?}"; return 1; }
+    for k in "${w[@]:2}"; do
+        v=${k#*=}; [ "$v" != "<unset>" ] || continue; v=${v//<flow>/$QBF}; v=${v//,/ }
+        case ${k%%=*} in QB55_WINDOW) a+=(-f "$v") ;; *_SED) a+=($v) ;; esac
+    done
+    for ((i = 0; i < ${#a[@]}; i++)); do
+        [ "${a[i]}" = -f ] || continue; f=${a[i + 1]:-}
+        [ -r "$f" ] || { bad+=("unreadable:$f"); continue; }
+        grep -q '^#@\(expect\|absent\) ' "$f" || { bad+=("no_#@expect:${f##*/}"); continue; }
+        while IFS= read -r v; do n=$((n + 1)); k=${v%% *}; v=${v#* }
+            if [ "$k" = "#@expect" ]; then grep -Eq -- "$v" "$d/deck.$m" || bad+=("missing:${f##*/}:'$v'")
+            else ! grep -Eq -- "$v" "$d/deck.$m" || bad+=("present:${f##*/}:'$v'"); fi
+        done < <(grep '^#@\(expect\|absent\) ' "$f")
+    done
+    echo "CAL_DECK $([ ${#bad[@]} = 0 ] && echo PASS || echo FAIL) $m: $n expected edit results of the sed files (${a[*]//$QBF/<flow>}) in deck.$m; bad ${#bad[@]} ${bad[*]:0:6}"
+    [ ${#bad[@]} = 0 ]
 }
 # cal_result <drc|ant|lvs|erc> <topcell> <rundir>: one CAL36_RESULT line (+ CAL36_FAIL lines), non-zero unless
 #   lvs       lvs.rep is this run's (not older than deck.lvs), its overall result is CORRECT, the CELL SUMMARY row of
@@ -82,6 +112,13 @@ lvs_ports() {
     [ -n "$sl" ] && [ "$sl" = "$ss" ] && [ "$il" = "$(grep -c . <<< "$sl")" ] && [ "$tl" = "$il" ] && [ "$ts" = "$il" ] \
         && [ "${pl:-0}" = 0 ] && [ -n "$is" ] && [ $((is - il)) = "${ps:-0}" ] && [ "${ps:-0}" = "$ng" ]
 }
+# cal_named <deck copy> <statement>: the file a deck statement names ('<statement> "<file>"', its first one): as written
+# if absolute, else in the deck copy's dir (R109; hunt round 12: drc / ant always prefixed the dir, so an absolute summary
+# path failed; erc had this rule alone); nothing printed without the statement
+cal_named() {
+    local r; r=$(sed -n "s/^$2 \"\(.*\)\".*/\1/p" "$1" 2> /dev/null | head -1)
+    case $r in '') ;; /*) echo "$r" ;; *) echo "${1%/*}/$r" ;; esac
+}
 cal_result() {
     local mode=$1 top=$2 d=$3 rep f=0 o n b c r v q x s="no report of this run"
     case $mode in
@@ -101,7 +138,7 @@ cal_result() {
              [ "$o" = "CORRECT " ] && [ "$n" = 1 ] && [ "$b" = 0 ] && [ "$x" = 0 ] && [ $r = 0 ] || { echo "CAL36_FAIL lvs $top: $s"; f=1; }
              [ "$x" = 0 ] || grep -m 6 '^WARNING:\|^ERROR:\|^ *Net \|^ *Rejected\|Errors and Warnings' "$d/lvs.rep.ext" 2> /dev/null | sed 's/^/CAL36_FAIL lvs.rep.ext: /'
          fi ;;
-    drc|ant) rep=$d/$(sed -n 's/^DRC SUMMARY REPORT "\(.*\)".*/\1/p' "$d/deck.$mode" 2> /dev/null | head -1)
+    drc|ant) rep=$(cal_named "$d/deck.$mode" 'DRC SUMMARY REPORT')
          if [ ! -s "$d/deck.$mode" ] || [ ! -f "$rep" ] || [ ! -s "$rep" ]; then echo "CAL36_FAIL $mode $top: no deck copy $d/deck.$mode or no summary report of it"; f=1
          elif [ "$rep" -ot "$d/deck.$mode" ]; then echo "CAL36_FAIL $mode $top: $rep is older than deck.$mode (not this run's)"; f=1
          else
@@ -125,7 +162,7 @@ cal_result() {
                  [ -z "$o" ] || { echo "CAL36_FAIL QB_ gate rule $b: $o in $rep (needs one RULECHECK line, executed, 0 results)"; f=1; }
              done
          fi ;;
-    erc) rep=$(sed -n 's/^ERC SUMMARY REPORT "\(.*\)".*/\1/p' "$d/deck.lvs" 2> /dev/null | head -1); case $rep in /*) ;; *) rep=$d/$rep ;; esac
+    erc) rep=$(cal_named "$d/deck.lvs" 'ERC SUMMARY REPORT')
          if [ ! -s "$d/deck.lvs" ] || [ ! -f "$rep" ] || [ ! -s "$rep" ]; then echo "CAL36_FAIL erc $top: no deck copy $d/deck.lvs or no ERC summary of it"; f=1
          elif [ "$rep" -ot "$d/deck.lvs" ]; then echo "CAL36_FAIL erc $top: $rep is older than deck.lvs (not this run's)"; f=1
          else
@@ -166,6 +203,7 @@ drc|ant) d=$4; t=${5:-8}; mkdir -p "$d"; cd "$d" || exit 1
      sed -e "s#^\(LAYOUT PATH\) .*#\1 \"$gds\"#" -e "s#^\(LAYOUT PRIMARY\) .*#\1 \"$top\"#" \
          -e "s#^DRC MAXIMUM RESULTS ALL#DRC MAXIMUM RESULTS 1000#" $sx "$deck" > deck.$mode
      cal_edits $mode $([ $mode = drc ] && echo QB36_DRC_SED || echo QB36_ANT_SED)
+     cal_deck . || exit 1
      /usr/bin/time -v "$C/bin/calibre" -drc -hier -turbo "$t" deck.$mode > cal_$mode.log 2> cal_$mode.time; rc=$?
      rep=$(sed -n 's/^DRC SUMMARY REPORT "\(.*\)".*/\1/p' deck.$mode | head -1)
      echo "CAL36 $mode $top rc $rc $(grep 'TOTAL DRC Results Generated' "$rep") wall $(grep Elapsed cal_$mode.time | awk '{print $NF}') rss_kb $(grep Maximum cal_$mode.time | awk '{print $NF}')"
@@ -178,6 +216,7 @@ fill|odpo) d=$4; t=${5:-8}; mkdir -p "$d"; cd "$d" || exit 1
      sed -e "s#^\(LAYOUT PATH\) .*#\1 \"$gds\"#" -e "s#^\(LAYOUT PRIMARY\) .*#\1 \"$top\"#" \
          -e "s#^DRC RESULTS DATABASE \"$db.gds\" GDSII .*#DRC RESULTS DATABASE \"$db.gds\" GDSII _$db#" $sx "$deck" > deck.$mode
      cal_edits $mode $e QB55_WINDOW
+     cal_deck . || exit 1
      sum=$(sed -n 's/^DRC SUMMARY REPORT "\(.*\)".*/\1/p' deck.$mode | head -1)
      # the outputs of this run only (R104; hunt round 9 on 018af5e: a DM.gds of an earlier run stayed when Calibre
      # wrote none, and fill_def.py / the merge read it): removed first, then each must be there and newer than its input
@@ -196,13 +235,14 @@ lvs) src=$4; d=$5; t=${6:-8}; mkdir -p "$d"; cd "$d" || exit 1; L=$K/CRN65GP/TN6
          -e "s#^INCLUDE ./DFM/dfm_device#INCLUDE $L/DFM/dfm_device#" ${QB36_LVS_SED:-} "$L/calibre.lvs" > deck.lvs
      [ -n "${QB36_LVS_EXTRA:-}" ] && cat "$QB36_LVS_EXTRA" >> deck.lvs
      cal_edits lvs QB36_LVS_SED QB36_LVS_EXTRA QB36_HCELL
+     cal_deck . || exit 1
      hc=""; if [ -n "${QB36_HCELL:-}" ]; then hc="-hcell $QB36_HCELL"; fi
      /usr/bin/time -v "$C/bin/calibre" -lvs -hier $hc -turbo "$t" deck.lvs > cal_lvs.log 2> cal_lvs.time; rc=$?
      echo "CAL36 lvs $top rc $rc wall $(grep Elapsed cal_lvs.time | awk '{print $NF}') rss_kb $(grep Maximum cal_lvs.time | awk '{print $NF}')"
      grep -m4 "CORRECT\|INCORRECT\|NOT COMPARED" lvs.rep; awk '/CELL  SUMMARY/{f=1} f && /INCORRECT|NOT COMPARED/ {print "CAL36_CELL", $0} /LVS PARAMETERS/{f=0}' lvs.rep | head -40
      cal_result lvs "$top" . || res=1; cal_result erc "$top" . || res=1 ;;
-check) cal_result "$2" "$3" "${4:?rundir}"; exit ;;
-*) sed -n '2,11p' "$0"; exit 1 ;;
+check) if [ "$2" = deck ]; then cal_deck "${4:?rundir}"; else cal_result "$2" "$3" "${4:?rundir}"; fi; exit ;;
+*) sed -n '2,13p' "$0"; exit 1 ;;
 esac
 [ $rc = 0 ] || exit $rc     # Calibre's own failure first
 exit $res

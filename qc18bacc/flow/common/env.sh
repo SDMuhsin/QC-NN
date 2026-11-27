@@ -5,7 +5,7 @@
 #   qb_kit  sources flow/tsmc65 common/tool.sh (FLOW, qc_tool) and exports QC_KIT;  QC_PY = PY (exported)
 #   qb_pt   PrimeTime run + error check;  qb_wait  wait for background jobs, non-zero if one failed;  qb_icc2  ICC2 step (flow/icc2) in a run dir
 #   qb_corners  the sign-off corner names of the one corner table, flow/tsmc65/site/site.tcl (R68)
-#   qb_knobs    the flow knobs in force (QB_KNOBS, R103; below)
+#   qb_knobs    the flow knobs in force (QB_KNOBS, R103; below) and the Python tools' identity (qb_tools_id, R109)
 QBF=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd); ROOT=$(cd "$QBF/../.." && pwd)
 export QC_BUILD=${QC_BUILD:-/tmp/$USER/qc18bacc/build}; B=$QC_BUILD
 TOOLS=${QC_TOOLS:-/tmp/$USER/tools}; PY=$TOOLS/env/bin/python3
@@ -38,6 +38,16 @@ qb_knobs() {
     for k in $QB_KNOBS "$@" $(awk '{ sub(/#.*/, "") } NF { print $1 }' "$QBF/common/limits.txt") $(compgen -v QC_EXTRA_DB_); do
         printf ' %s' "$(qb_knob "$k")"
     done
+    qb_tools_id
+}
+# The Python tools of the flow (R109; hunt round 12: QC_TOOLS was recorded nowhere, so a run on another tools tree looked
+# the same): " QC_TOOLS=<path in force (TOOLS)> QB_TOOLS_PYTHON=<python version of its env> QB_TOOLS_KLAYOUT=<klayout
+# module version of its kl_py>" (none when one does not run), on every BLK_KNOBS line, so in the regression reference
+qb_tools_id() {
+    local p k
+    p=$("$PY" -I -c 'import platform; print(platform.python_version())' 2> /dev/null) || p=
+    k=$(PYTHONPATH=$TOOLS/kl_py "$PY" -c 'import klayout.db as d; print(d.__version__)' 2> /dev/null) || k=
+    printf ' QC_TOOLS=%s QB_TOOLS_PYTHON=%s QB_TOOLS_KLAYOUT=%s' "${TOOLS//[[:space:]]/,}" "${p:-none}" "${k:-none}"
 }
 # qb_committed_knobs <blk> <tag>: the BLK_KNOBS line of blocks/<blk>/run.sh knobs in an empty environment = the committed
 # defaults of the block's flow knobs (common/regress.sh check; signoff/verdict.sh: the Calibre deck edit gates, R106)
@@ -56,7 +66,7 @@ qb_kit() {
 # logs (out.log and parasitics logs in subdirs); PT prints the reduced line only when it grounds coupling, the
 # kept count is "Annotated coupling capacitances" (logged).
 # Sign-off gate (R67, signoff/pt/common.tcl qb_pt_si_checks; R68 col_blk.tcl: setup / hold / DRV): non-zero on any non-zero count of a QB_PT_SIGNOFF line of
-# <log> (noise, min pulse width, min period violators).
+# <log> (noise, min pulse width, min period violators), and on any count that is not an integer (qb_pt_signoff_fails, R109).
 # Positive evidence (R92; before, the gate only looked for bad lines, so a log that lacked them passed): non-zero also
 # unless <log> has PrimeTime's completion line "Thank you for using pt_shell!" (a killed / crashed session has none; a
 # script error ends the script with an '^Error' line) and no error in its "Diagnostics summary", the annotated coupling
@@ -101,11 +111,17 @@ qb_pt() {
     x=$(cat "$log" $F /dev/null | grep -c 'XTALK-011')
     c=$(cat $F /dev/null | grep -h 'Reduced coupling capacitances' | awk '{s += $NF; n++} END {printf "%d (%d lines)", s, n}')
     k=$(cat $F /dev/null | grep -h 'Annotated coupling capacitances' | awk '{s += $NF; n++} END {printf "%d (%d reads)", s, n}')
-    v=$(grep -h '^QB_PT_SIGNOFF' "$log" | awk '{for (i = 3; i <= NF; i += 2) if ($i + 0) b++} END {print b + 0}')
+    v=$(grep -h '^QB_PT_SIGNOFF' "$log" | qb_pt_signoff_fails)
     [ "$rc" = 0 ] && [ "$e" = 0 ] && [ "$p" = 0 ] && [ "$we" = 0 ] && [ "$x" = 0 ] && [ "${c%% *}" = 0 ] && [ "${k%% *}" -gt 0 ] \
         && [ "$dn" = 1 ] && [ "$de" = 0 ] && ev=ok
     echo "PT_ERRORS $(basename "$log") rc $rc errors ${e:-NA} parasitics_errors $p worker_errors $we xtalk011 $x reduced_coupling $c coupling_annotated $k completed $dn diagnostics_errors $de signoff_fails $v evidence $ev"
     [ $ev = ok ] && [ "$v" = 0 ]
+}
+# qb_pt_signoff_fails: QB_PT_SIGNOFF lines on stdin ("QB_PT_SIGNOFF <key> <count> ..."); prints how many counts fail: a
+# count that is not an integer (R109; hunt round 12: "$i + 0" made a non-numeric count, e.g. NA or a missing value, 0 =
+# pass) or not 0; and one per line that is not key / count pairs
+qb_pt_signoff_fails() {
+    awk '{ if (NF < 3 || NF % 2 == 0) b++; for (i = 3; i <= NF; i += 2) if ($i !~ /^-?[0-9]+$/ || $i + 0 != 0) b++ } END { print b + 0 }'
 }
 # qb_corners: site.tcl QC_SIGNOFF_CORNERS (every sign-off corner: PrimeTime sign-off / DMSA ECO, ICC2 MCMM, the block ETMs
 # and the chip top, R71), read from the corner table itself.  Non-zero with a QB_FAIL line on stderr when tclsh or

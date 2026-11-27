@@ -60,6 +60,7 @@ qb_line "$lab route_eco nets [sizeof_collection $rn] (pins of $nc changed cells)
 route_eco -nets $rn -utilize_dangling_wires true -reroute modified_nets_first_then_others
 qb_fillers
 qb_route_close $lab 0
+qb_pg_connect $lab
 qb_isolate_report $lab
 qb_qor $lab
 qb_done $lab

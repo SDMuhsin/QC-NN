@@ -1,0 +1,3 @@
+^Warning: Duplicate port/net name ".*" found in module ".*" while doing case-insensitive lookup$ -- the flat ICC2 netlist has escaped net names that differ in case only (u_lane/n10 vs N10, [M] rgr rgf51c41ba: 56); LVS compares case-sensitively (lvs_case.sed LAYOUT / SOURCE CASE YES)
+^WARNING: Please increase descriptors limit for best performance \([0-9]+\)$ -- a performance note of the host's open-file limit
+^Warning: No BUSDELIMITER statement in .*\.spi spice file, it will be set to .*$ -- the kit's standard-cell spice declares no buses; the default delimiter applies to the netlist's bus bits

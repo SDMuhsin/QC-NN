@@ -55,7 +55,9 @@
 #                             "There are N" counts, -1 if it reports neither (a gate never passes on an unread report)
 #   qb_pt_coverage <fh>       coverage gates (R92): what the checks above do NOT time must be explained by the design.
 #                             "coverage ..." lines to fh and QB_PT_SIGNOFF counts (common/env.sh qb_pt fails on non-zero):
-#                             unconstrained_endpoints (check_timing), unclocked_register_pins (register clock pins no
+#                             unconstrained_endpoints (check_timing), unclocked_inputs (qb_pt_unclocked_inputs: input
+#                             ports without a clock-relative input delay but the declared untimed ones, R109),
+#                             unclocked_register_pins (register clock pins no
 #                             clock reaches), loops (check_timing + loop-breaking disabled arcs), unexpected_disabled_arcs
 #                             (every disabled arc of report_disable_timing must be flag p / C on a cell with an input
 #                             pin on a tie-cell net, and every constant pin a tie output or such an input: r91b [M] 146
@@ -197,17 +199,49 @@ proc qb_pt_check_count {check} {
     set n 0; foreach {- v} [regexp -all -inline {There (?:are|is) (\d+)} $t] { incr n $v }
     return [expr {$n ? $n : -1}]
 }
+# qb_pt_unclocked_inputs: {N text}, N = the input ports without a clock-relative input delay on every edge (min / max x
+# rise / fall: report_port -input_delay, a "--" field or no related clock) but the clock sources and the deliberate
+# untimed inputs ::QB_UNTIMED_INPUTS (common/constraints.sdc: rst_n, a false path), + every declared name that is no
+# input port; -1 when the report does not list every input port once (unparsed).  R109; hunt round 12: the coverage
+# counted unconstrained endpoints only, so an input the IO budget missed started no timed path.  check_timing
+# no_input_delay is no such check: [M] tau14 PrimeTime on rgr rgf51c41ba ss, remove_input_delay x[0] -> "check_timing
+# succeeded" while report_port listed x[0] "--" and get_timing_paths -from x[0] found no path.
+proc qb_pt_unclocked_inputs {} {
+    set ins [get_ports -quiet * -filter "direction==in || direction==inout"]
+    if {![sizeof_collection $ins]} { return [list 0 "no input port"] }
+    redirect -variable t { report_port -input_delay -nosplit $ins }
+    set seen {}; set nd {}
+    # (rows "<port> <min rise> <min fall> <max rise> <max fall> <clock> <pin>" after the dash line; [ \t], not \s: \s
+    # also matches the newline)
+    foreach {- p f} [regexp -all -inline -line {^(\S+)((?:[ \t]+\S+){6})[ \t]*$} [regsub {^.*?\n-{20,}\n} $t {}]] {
+        lappend seen $p
+        lassign $f a b c d ck
+        if {"--" in [list $a $b $c $d $ck]} { lappend nd $p }
+    }
+    set want [lsort [get_object_name $ins]]
+    if {[lsort $seen] ne $want} { return [list -1 "unparsed: report_port -input_delay listed [llength $seen] of [llength $want] input ports"] }
+    set ck [get_object_name [get_attribute -quiet [get_clocks -quiet *] sources]]
+    set dl [expr {[info exists ::QB_UNTIMED_INPUTS] ? $::QB_UNTIMED_INPUTS : {}}]
+    set u [lmap w $nd { if {$w in $ck || $w in $dl} continue; set w }]
+    lappend u {*}[lmap w $dl { if {$w in $want} continue; string cat "declared_not_an_input:" $w }]
+    return [list [llength $u] "without input delay [llength $nd] ([lrange $nd 0 4]), clock sources ($ck), declared untimed ($dl), unexplained ([lrange $u 0 4])"]
+}
 proc qb_pt_coverage {{fh ""}} {
     set leaf [get_pins -quiet -hierarchical * -filter "is_hierarchical==false"]
-    # constants: tie cells (constant output, no input pin) and the input pins on their nets; anything else is a stray
+    # constants: tie cells (constant output, no input pin) and the input pins on their nets; anything else is a stray.
+    # (R109; hunt round 12: on a design without constants, e.g. rgr, the collection commands below got empty collections
+    # and PrimeTime warned SEL-003 twice per session: each step only on a non-empty collection)
     set cv [filter_collection $leaf "defined(case_value)"]
-    set src {}
-    foreach_in_collection p [filter_collection $cv "direction==out"] {
-        if {![sizeof_collection [get_pins -quiet -of_objects [get_cells -of_objects $p] -filter "direction==in"]]} { append_to_collection src $p }
+    set src {}; set tied {}; set stray {}
+    if {[sizeof_collection $cv]} {
+        foreach_in_collection p [filter_collection $cv "direction==out"] {
+            if {![sizeof_collection [get_pins -quiet -of_objects [get_cells -of_objects $p] -filter "direction==in"]]} { append_to_collection src $p }
+        }
+        if {[sizeof_collection $src]} { set tied [get_pins -quiet -leaf -of_objects [get_nets -quiet -segments -of_objects $src] -filter "direction==in"] }
+        set ex [expr {[sizeof_collection $src] ? [add_to_collection $src $tied] : {}}]
+        set stray [expr {[sizeof_collection $ex] ? [remove_from_collection $cv $ex] : $cv}]
     }
-    set tied [get_pins -quiet -leaf -of_objects [get_nets -quiet -segments -of_objects $src] -filter "direction==in"]
-    set stray [remove_from_collection $cv [add_to_collection $src $tied]]
-    foreach c [get_object_name [get_cells -quiet -of_objects $tied]] { set tc($c) 1 }
+    if {[sizeof_collection $tied]} { foreach c [get_object_name [get_cells -quiet -of_objects $tied]] { set tc($c) 1 } }
     # disabled arcs: expected = flag p / C (propagated constant, conditional arc) on a cell with a tie-driven input
     redirect -variable dis { report_disable_timing -nosplit }
     array set nf {p 0 C 0}; set bad 0; set loopf 0; set body 0
@@ -226,13 +260,15 @@ proc qb_pt_coverage {{fh ""}} {
     set fl [remove_from_collection $L $D]
     set regc [all_registers -clock_pins]
     set r(unconstrained_endpoints) [qb_pt_check_count unconstrained_endpoints]
-    set r(unclocked_register_pins) [sizeof_collection [filter_collection $regc "undefined(clocks)"]]
+    lassign [qb_pt_unclocked_inputs] r(unclocked_inputs) ui
+    set r(unclocked_register_pins) [expr {[sizeof_collection $regc] ? [sizeof_collection [filter_collection $regc "undefined(clocks)"]] : 0}]
     set r(loops) [expr {[set n [qb_pt_check_count loops]] < 0 ? -1 : $n + $loopf}]
     set r(unexpected_disabled_arcs) [expr {$bad + [sizeof_collection $stray]}]
     set r(floating_nets) [sizeof_collection $fl]
-    set l {}; foreach k {unconstrained_endpoints unclocked_register_pins loops unexpected_disabled_arcs floating_nets} { lappend l $k $r($k) }
+    set l {}; foreach k {unconstrained_endpoints unclocked_inputs unclocked_register_pins loops unexpected_disabled_arcs floating_nets} { lappend l $k $r($k) }
     if {$fh ne ""} {
-        puts $fh "coverage register_clock_pins [sizeof_collection $regc] constants: tie_cells [sizeof_collection $src] tied_input_pins [sizeof_collection $tied] on [array size tc] cells, stray_constant_pins [sizeof_collection $stray]; disabled_arcs p $nf(p) C $nf(C) on those cells, other $bad loop_breaking $loopf; nets with_driver [sizeof_collection $D] with_load [sizeof_collection $L] floating [sizeof_collection $fl] [lrange [get_object_name $fl] 0 2]"
+        puts $fh "coverage inputs $ui"
+        puts $fh "coverage register_clock_pins [sizeof_collection $regc] constants: tie_cells [sizeof_collection $src] tied_input_pins [sizeof_collection $tied] on [array size tc] cells, stray_constant_pins [sizeof_collection $stray]; disabled_arcs p $nf(p) C $nf(C) on those cells, other $bad loop_breaking $loopf; nets with_driver [sizeof_collection $D] with_load [sizeof_collection $L] floating [sizeof_collection $fl] [expr {[sizeof_collection $fl] ? [lrange [get_object_name $fl] 0 2] : ""}]"
         puts $fh "coverage_gate $l"
         puts "QB_PT_SIGNOFF $l"
     }

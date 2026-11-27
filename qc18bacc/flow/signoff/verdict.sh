@@ -9,16 +9,18 @@
 # did not pass, and the last line "SIGNOFF <top> PASS|FAIL"; exit status 0 only on PASS.  Gates (signoff/verdict.py): per
 # sign-off corner (common/env.sh qb_corners) the PrimeTime log evidence (qb_pt -check), the sign-off limits in force
 # (= common/limits.txt, R99), every QB_PT_SIGNOFF count (setup,
-# hold, recovery, removal, max transition, max capacitance, clock max transition, min pulse width, min period, coverage;
+# hold, recovery, removal, max transition, max capacitance, clock max transition, min pulse width, min period, coverage
+# with the unclocked inputs, R109;
 # noise on the block's noise state with its driver-model counts; opt-in: the column's act load pins; a key outside these fails,
 # R107), the chip top's clock latency
 # file (= the session's QB_PT_LAT line), the annotation split, the dont_use gate, the ETM (log, files, etmcheck) and the
 # freshness chain netlist -> fill DEF -> SPEF -> PT -> ETM; for the block the ICC2 gate lines of summary.txt (dont_use: the
-# latest line of each step,
+# latest line of each label out/ was built through, R109; PG connectivity of route and the ECO label of out/, R109;
 # floorplan tracks, place / cts / route legality and that of the ECO round of the label of out/ (R107), route gate, last ECO round's gate, ECO names and loads of the round that built
 # the label of out/, which must be complete [no unfinished label], abstract and its label [= the label of out/]; opt-in: the column's act / act_o abutment),
 # Calibre LVS + its ERC (calibre/erc_allow.txt) / DRC (with the block deck's QB_ gate rules) / antenna (calibre/cal.sh check) and
-# the chain GDS -> fill -> Calibre reports; per Calibre mode the deck edits applied (= the block's committed defaults) and
+# the chain GDS -> fill -> Calibre reports; per Calibre mode the deck edits applied (= the block's committed defaults; their
+# results in the deck copy, calibre/cal.sh check deck, R109) and
 # the layout read, the LVS source and the netlist it was built from (R106).  A gate whose evidence a run never produced
 # is MISSING (it fails too).
 # The step driver calls it last; the result table of the paper is made from its GATE lines.
