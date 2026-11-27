@@ -32,6 +32,7 @@ if {[qc_env QB21_ETM 0]} {
     qb_etm_context
     file mkdir $dir/out/etm
     extract_model -library_cell -output $dir/out/etm/${top}_$corner -format {lib db}
+    qb_etm_ref $dir/out/etm/${top}_${corner}_ref.txt
     puts "QB21_ETM_DONE $corner L $L"
     exit
 }

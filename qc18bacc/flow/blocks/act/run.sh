@@ -74,12 +74,12 @@ post) d=$B/pnr/$tag; o=$B/r9a_blk/$tag; mkdir -p "$o"
          for c in tt ss ff; do      # serial: parallel extract_model runs share the temp file ./<top>_lib.lib in the run dir
              QC_PNR_OUT=$d QC_TOP=$TOP QC_CORNER=$c qb_pt "etm_$c.log" pt_shell -f "$QBF/signoff/etm/etm.tcl" || exit 1
          done ) || exit 1
-       cp "$d/out/qb_act2_blk.v" "$d"/out/etm/qb_act2_blk_{tt,ss,ff}.lib "$d"/out/etm/qb_act2_blk_{tt,ss,ff}_lib.db "$o/"
+       cp "$d/out/qb_act2_blk.v" "$d"/out/etm/qb_act2_blk_{tt,ss,ff}{.lib,_ref.txt,_lib.db} "$o/"
        ls -la "$o" ) | tail -3
      ts blkant; QB35_AOUT=$o/blkant.txt QB35_ADB=finish "$QBF/common/or.sh" "$tag" "$QBF/signoff/etm/blkant.tcl" r38_blkant.log
      LEF=$(. "$d/kit.env"; echo $LEF); "$PY" -I "$QBF/signoff/etm/blkant.py" "$LEF" "$o/blkant.txt" "$o/qb_act2_blk.lef" "$o/qb_act2_blk_ant.lef" | tail -3
      "$PY" -I "$QBF/signoff/etm/lef_ring.py" "$o/qb_act2_blk_ant.lef" "$o/qb_act2_blk_ant_ring.lef" | tail -2
-     for c in tt ss ff; do "$PY" -I "$QBF/signoff/etm/etmcheck.py" "$o/qb_act2_blk_$c.lib" 3.0; done ;;
+     for c in tt ss ff; do "$PY" -I "$QBF/signoff/etm/etmcheck.py" "$o/qb_act2_blk_$c.lib"; done ;;
 drveco) d=$B/pnr/$tag   # PrimeTime DRV ECO (signoff/pt/drv_eco.tcl): ss, then tt on top (out/drv_eco_tt.tcl = both)
      ( . "$ROOT/flow/tsmc65/common/tool.sh"; . "$d/kit.env"; set -a; . "$(dirname "$NETLIST")/run.env"; set +a
        export QC_SDC=$QBF/common/constraints.sdc QC_PT_HOOK= QC_PERIOD=$ACT_PT_PERIOD QB_PT_SCRIPT=$QBF/signoff/pt/act_blk.tcl \

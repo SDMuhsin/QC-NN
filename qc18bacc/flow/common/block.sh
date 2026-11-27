@@ -233,7 +233,8 @@ blk_post() {
       done; exit $r )
 }
 # Views for the chip top: ICC2 abstract LEF with port antenna data + antenna / abutment / PG pin gates (flow/icc2/
-# abstract.tcl, label QB_ICC2_LABEL [the label of out/]) -> out/<top>.lef; ETM scan (etmcheck 3 ns) of the post step's ETMs
+# abstract.tcl, label QB_ICC2_LABEL [the label of out/]) -> out/<top>.lef; ETM gate (signoff/etm/etmcheck.py: against
+# the netlist reference of the same session) of the post step's ETMs
 blk_views() {
     local c cs own lab
     cs=$(qb_corners) || return 1
@@ -243,7 +244,7 @@ blk_views() {
     else echo "BLK_VIEWS abstract of label $lab (QB_ICC2_LABEL), NOT the label of out/ ($own)"; fi
     QB_ICC2_LABEL=$lab QB_PY=$PY qb_icc2 "$d" abstract || return 1
     grep '^abstract' "$d/summary.txt" | tail -n 3
-    for c in $cs; do "$PY" -I "$QBF/signoff/etm/etmcheck.py" "$d/out/etm/${BLK_TOP}_$c.lib" 3.0 || return 1; done
+    for c in $cs; do "$PY" -I "$QBF/signoff/etm/etmcheck.py" "$d/out/etm/${BLK_TOP}_$c.lib" || return 1; done
 }
 # The machine verdict of the run dir (signoff/verdict.sh: every sign-off gate re-read from the run's files; one GATE line
 # per gate, last line SIGNOFF <top> PASS|FAIL): its exit status is the step's

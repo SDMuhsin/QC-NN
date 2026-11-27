@@ -1,6 +1,6 @@
 # PrimeTime ETM of a routed hard block (column, act) at one corner (results/r5a.md, r45.md): routed netlist + def2spef SPEF,
 # propagated clock, inputs without driving cell, output load limit (signoff/pt/common.tcl qb_etm_context), extract_model -library_cell
-# -> <run>/out/etm/<top>_<c>.lib/.db
+# -> <run>/out/etm/<top>_<c>.lib/.db + its netlist reference <top>_<c>_ref.txt (qb_etm_ref, read by etmcheck.py)
 source $::env(QC_FLOW)/common/lib.tcl
 set corner $::env(QC_CORNER); set dir $::env(QC_PNR_OUT); set top $::env(QC_TOP)
 set_app_var search_path [concat . $::QC_LIBDIR]
@@ -16,5 +16,6 @@ qb_pt_spef [qb_pt_spef_file $dir $top $corner]
 update_timing
 file mkdir $dir/out/etm
 extract_model -library_cell -output $dir/out/etm/${top}_$corner -format {lib db}
+qb_etm_ref $dir/out/etm/${top}_${corner}_ref.txt
 puts "QB_ETM_DONE $corner"
 exit

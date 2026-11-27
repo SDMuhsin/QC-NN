@@ -103,6 +103,12 @@
 #                             index_1 0, 0.0311 .. 0.5), below the library's 0.0046 ns: the RC-011 extrapolation
 #                             warnings of an ETM log are those zero-slew index points on the first cells behind the
 #                             ports (r68 ss: slews 0.0001 .. 0.0004 ns)
+#   qb_etm_ref <file>         the netlist reference of the session's ETM, read by signoff/etm/etmcheck.py (R98):
+#                             first line "QB_ETM_REF period <P> max_transition <mt>" (the one clock's period, the
+#                             design max_transition of qb_etm_context), then "<port> <in|out|inout> <cap pF>" per port:
+#                             the port net's total_capacitance_max for an input (= the ETM input pin capacitance), its
+#                             wire_capacitance_max for an output (= the ETM output pin capacitance; R98 [M] r97x wcl:
+#                             all 12354 ports equal to the Liberty's 6 decimals)
 #   OCV derate late 1.05 / early 0.95 on cell + net delays (common/derate.tcl, the same as the ICC2 timer), applied when
 #   sourced (after the caller's constraints)
 set ::QB_PT_DIR [file normalize [file dirname [info script]]]
@@ -236,6 +242,18 @@ proc qb_etm_context {} {
     if {![llength $mc]} { error "qb_etm_context: no library max_capacitance on the [sizeof_collection $drv] output drivers" }
     set_app_var extract_model_capacitance_limit [tcl::mathfunc::max {*}$mc]
     puts "QB_ETM outputs: capacitance limit = max library max_capacitance of [llength $mc] driver lib pins ([sizeof_collection $drv] pins) = [tcl::mathfunc::max {*}$mc] pF"
+}
+proc qb_etm_ref {file} {
+    set ck [all_clocks]
+    if {[sizeof_collection $ck] != 1} { error "qb_etm_ref: [sizeof_collection $ck] clocks, the ETM check needs exactly one period" }
+    set f [open $file w]
+    puts $f [format "QB_ETM_REF period %.6f max_transition %.6f" [get_attribute $ck period] [get_attribute [current_design] max_transition]]
+    foreach_in_collection q [get_ports *] {
+        set d [get_attribute $q direction]
+        set c [get_attribute [get_nets -of_objects $q] [expr {$d eq "out" ? "wire_capacitance_max" : "total_capacitance_max"}]]
+        puts $f [format "%s %s %.6f" [get_object_name $q] $d $c]
+    }
+    close $f
 }
 proc qb_pt_si_checks {fh rpt {noise_state {}}} {
     # the clock pulse checks are timing results: before the noise state, which changes the port drivers

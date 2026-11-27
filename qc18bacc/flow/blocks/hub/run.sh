@@ -64,7 +64,7 @@ fin) o=$B/r22_$tag; mkdir -p "$o"
        grep -h "R21_ANT\|Found" "$d/ant.log" ) > "$d/ant_step.out" 2>&1 &
      ( ( qb_kit; cd "$d" && QC_PNR_OUT=$d QB21_ABS_OUT=$o "$OR" -no_init -no_splash -exit -log abs.log "$QBF/signoff/etm/hub_abs.tcl" > abs.out 2>&1 < /dev/null )
        grep "R21_ABS" "$d/abs.log"; "$PY" -I "$QBF/signoff/etm/lef_size.py" "$o/qb_hub.lef" "$d/abs.log"
-       cp "$d/out/qb_hub.v" "$d"/out/etm/qb_hub_{tt,ss,ff}.lib "$d"/out/etm/qb_hub_{tt,ss,ff}_lib.db "$o/" 2>/dev/null; ls -la "$o"
+       cp "$d/out/qb_hub.v" "$d"/out/etm/qb_hub_{tt,ss,ff}{.lib,_ref.txt,_lib.db} "$o/" 2>/dev/null; ls -la "$o"
        ( cd "$o" && "$PY" -I "$QBF/signoff/etm/lef_ring.py" qb_hub.lef qb_hub_ring.lef ) && echo HUB_RING_LEF ok ) > "$d/abs_step.out" 2>&1 &
      # SPEF ss / ff in parallel with PT + ETM tt (tt SPEF: dr step), then PT + ETM ss / ff (4 in parallel)
      ( for c in ss ff; do "$QBF/signoff/spef.sh" "$tag" $c > "$d/spef_$c.out" 2>&1 & done
@@ -72,7 +72,7 @@ fin) o=$B/r22_$tag; mkdir -p "$o"
        for c in ss ff; do pt $c "$QBF/signoff/pt/hub.tcl" pt_hub QB21_ETM=0 & pt $c "$QBF/signoff/pt/hub.tcl" etm QB21_ETM=1 & done; qb_wait || r=1
        for c in tt ss ff; do cat "$d/pt_hub_$c.txt"; done; exit $r )
      r=$?; wait
-     cp "$d"/out/etm/qb_hub_{tt,ss,ff}.lib "$d"/out/etm/qb_hub_{tt,ss,ff}_lib.db "$o/" 2>/dev/null; ls -la "$o"
+     cp "$d"/out/etm/qb_hub_{tt,ss,ff}{.lib,_ref.txt,_lib.db} "$o/" 2>/dev/null; ls -la "$o"
      tail -n 3 "$d/ant_step.out" "$d/abs_step.out"; [ $r = 0 ] || { echo HUB_FAIL fin PT; exit 1; } ;;
 antd) R29_DB=route_dr R29_TAG=dr "$QBF/common/or.sh" "$tag" "$QBF/signoff/antenna.tcl" r29_antd.log
      grep -hi "R29_ANTD\|found\|violat" "$d/r29_antd.log" | tail -4 ;;
@@ -111,7 +111,7 @@ signoff) o=$B/r22_$tag; c=$B/drc/$tag; C=$QBF/signoff/calibre; mkdir -p "$c"
      QB35_AOUT=$o/blkant.txt QB35_ADB=finish "$QBF/common/or.sh" "$tag" "$QBF/signoff/etm/blkant.tcl" r38_blkant.log
      LEF=$(. "$d/kit.env"; echo $LEF); "$PY" -I "$QBF/signoff/etm/blkant.py" "$LEF" "$o/blkant.txt" "$o/qb_hub.lef" "$o/qb_hub_ant.lef" | tail -3
      "$PY" -I "$QBF/signoff/etm/lef_ring.py" "$o/qb_hub_ant.lef" "$o/qb_hub_ant_ring.lef" | tail -2
-     for k in tt ss ff; do "$PY" -I "$QBF/signoff/etm/etmcheck.py" "$o/qb_hub_$k.lib" 3.0; done
+     for k in tt ss ff; do "$PY" -I "$QBF/signoff/etm/etmcheck.py" "$o/qb_hub_$k.lib"; done
      # SRAM views for LVS / GDS (no layout / netlist in the kit, R38 F7): pin-only LVS stubs (lefstub.py) and LEF
      # abstract GDS cells with pin stack cuts (kl.sh kl_abs, lef2gds.py stack 1) of the run's macro LEFs -> $B/drc/<tag>/sram
      ML=$(cd "$d" && . ./kit.env && echo "$MACRO_LEFS"); S=$c/sram; mkdir -p "$S"; . "$C/kl.sh"

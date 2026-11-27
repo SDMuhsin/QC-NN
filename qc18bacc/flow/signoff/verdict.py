@@ -85,7 +85,7 @@ for c in corners:
     db = have(lib[:-4] + '_lib.db')
     rc, out = sh('%s -I %s/signoff/etm/etmcheck.py %s' % (sys.executable, flow, lib)) if have(lib) else (None, '')
     gate('etmcheck', c, rc == 0 and db if have(lib) else None, '%s; %s_lib.db %d' % (last(out, 'ETMCHECK %s ' % lib) or out.strip()[-160:] or 'no ' + lib, lib[:-4], db))
-    fresh('etm', c, [log, lib])
+    fresh('etm', c, [log, lib, lib[:-4] + '_ref.txt'])
 
 # ICC2 gates recorded in summary.txt: dont_use of every step, the name / load gate of every ECO round, the abstract
 s = text('summary.txt')
