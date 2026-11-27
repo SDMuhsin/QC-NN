@@ -14,7 +14,10 @@
 #                                               manifest (VERSION site_md5 lines) and its inputs (the run's summary.txt
 #                                               "init inputs" line: md5 of netlist, DC SDC, run.env, the block's
 #                                               BLK_INPUTS; common/block.sh blk_inputs) are the reference's, the queue ran exactly the chain and
-#                                               every step is ok, the signoff step's verdict (signoff/verdict.sh) is
+#                                               every step is ok, every step ran from the run's snapshot with the
+#                                               snapshot's committed defaults of every flow knob (BLK_KNOBS lines, R103:
+#                                               settings) = the reference's knobs line, the queue spec has no VAR=val
+#                                               word, the signoff step's verdict (signoff/verdict.sh) is
 #                                               SIGNOFF PASS with no FAIL and no MISSING gate and its VERDICT line equals
 #                                               the reference's, and the gate set (gate name x corner) equals the
 #                                               reference's; prints the difference of the gate sets otherwise
@@ -81,6 +84,13 @@ echo "V $(head -n 1 "$snap/VERSION")"
 sed -n 's/^site_md5 /S /p' "$snap/VERSION"
 grep '^init inputs ' "$d/summary.txt" 2> /dev/null | tail -n 1 | sed 's/^init inputs /I /'
 sed 's/^/Q /' "$q/queue.state" || exit 1
+# the settings (R103): every step's BLK_KNOBS line (common/block.sh blk_knobs) as its queue output has it (K), the
+# snapshot's committed defaults = that line of run.sh knobs in an empty environment (D), the snapshot's flow root (F),
+# the VAR=val words of the queue spec's step lines (X: common/queue.sh puts them into the step's environment)
+while read -r n b s x; do echo "K $s $(grep -m 1 '^BLK_KNOBS ' "$q/q${n}_${b}_$s.out" 2> /dev/null || echo none)"; done < "$q/queue.state"
+echo "D $(env -i HOME="$HOME" USER="$USER" PATH="$PATH" "$snap/qc18bacc/flow/blocks/rgr/run.sh" knobs "$tag" 2>&1 | grep -m 1 '^BLK_KNOBS ' || echo none)"
+echo "F $snap/qc18bacc/flow"
+echo "X $(grep -v '^[[:space:]]*\(#\|$\)' "$q/queue.spec" | awk '{ for (i = 2; i <= NF && $i ~ /^[A-Za-z_][A-Za-z0-9_]*=/; i++) printf " %s", $i }')"
 # (an unfinished chain has no signoff output yet: the checks report it)
 n=$(awk '$3 == "signoff" { print $1 }' "$q/queue.state")
 [ -z "$n" ] || grep -h '^GATE \|^VERDICT \|^SIGNOFF ' "$q/q${n}_rgr_signoff.out" 2> /dev/null
@@ -119,9 +129,34 @@ provenance() {
     echo "CHECK $2 FAIL (< reference, > run; a deliberate change needs regress.sh ref + review):"
     diff <(echo "$a") <(echo "$b") | grep '^[<>]' | cut -c1-200 | head -n 20; return 1
 }
+# the settings of the run (R103; before, nothing checked them: hunt round 8 on 5fdd167): every step of the chain ran
+# from the run's own snapshot (its BLK_KNOBS line names that flow root) with the snapshot's committed defaults of every
+# flow knob (common/env.sh qb_knobs; the defaults = run.sh knobs in an empty environment), and the queue spec has no
+# VAR=val word.  settings <facts> <run>
+knobs_of() { awk '{ for (i = 7; i <= NF; i++) printf "%s%s", $i, (i < NF ? " " : "\n") }'; }   # the <name>=<value> words of a BLK_KNOBS line
+settings() {
+    local f=$1 tag=$2 root d x s l k bad= n=0 r=0
+    root=$(sed -n 's/^F //p' <<< "$f"); x=$(sed -n 's/^X *//p' <<< "$f"); d=$(sed -n 's/^D //p' <<< "$f")
+    if [ -z "$x" ]; then echo "CHECK queue_vars PASS no VAR=val word on the queue spec's step lines"
+    else echo "CHECK queue_vars FAIL VAR=val words on the queue spec's step lines:$x"; r=1; fi
+    [[ -n $root && $d == "BLK_KNOBS rgr knobs $tag flow $root "* ]] \
+        || { echo "CHECK knobs FAIL no committed defaults from the snapshot's run.sh knobs: '${d:0:200}'"; return 1; }
+    d=$(knobs_of <<< "$d")
+    while read -r s l; do n=$((n + 1))
+        if [[ $l != "BLK_KNOBS rgr $s $tag flow $root "* ]]; then bad="$bad $s:not_from_snapshot"; continue; fi
+        k=$(comm -13 <(tr ' ' '\n' <<< "$d" | sort) <(knobs_of <<< "$l" | tr ' ' '\n' | sort) | tr '\n' ' ')
+        [ -z "$k" ] && [ "$(knobs_of <<< "$l")" = "$d" ] || bad="$bad $s:${k:-order}"
+    done < <(sed -n 's/^K //p' <<< "$f")
+    if [ -z "$bad" ] && [ $n = "$(wc -w <<< "$CHAIN")" ]; then
+        echo "CHECK knobs PASS every step ($n) ran from $root with the snapshot's committed defaults of $(wc -w <<< "$d") knobs"
+    else
+        echo "CHECK knobs FAIL steps $n of $(wc -w <<< "$CHAIN"); step:knob differing from the committed defaults (or flow root not the snapshot $root):${bad:- none}" | cut -c1-400; r=1
+    fi
+    return $r
+}
 # check <host> <run> <rev> [1] (1 = ref: everything but the comparison with the reference)
 check() {
-    local f bad=0 st v s g r o
+    local f bad=0 st v s g r o k
     f=$(facts "$1" "$2") || { echo "$f"; die "no facts of run $2 on $1"; }
     [[ $f != *REGRESS_FAIL* ]] || { echo "$f"; die "no facts of run $2 on $1"; }
     # the verdict re-run on the run dir must be the signoff step's saved one; the checks below read the re-run
@@ -138,6 +173,8 @@ check() {
     st=$(awk '$1 == "Q" { printf "%s:%s:%s ", $4, $6, $9 }' <<< "$f")
     [ "$st" = "$(for s in $CHAIN; do printf '%s:ok:0 ' "$s"; done)" ] \
         && echo "CHECK chain PASS $CHAIN all ok" || { echo "CHECK chain FAIL steps (step:status:rc) $st"; bad=1; }
+    settings "$f" "$2" || bad=1
+    k=$(sed -n 's/^D //p' <<< "$f" | knobs_of)
     s=$(grep '^SIGNOFF ' <<< "$f" | tail -n 1); v=$(grep '^VERDICT ' <<< "$f" | tail -n 1)
     g=$(grep -c '^GATE .* \(FAIL\|MISSING\) ' <<< "$f")
     [[ $s == "SIGNOFF "*" PASS" ]] && [ "$g" = 0 ] && [[ $v == *" fail 0 missing 0; FAIL: none; MISSING: none;"* ]] \
@@ -147,16 +184,21 @@ check() {
         [ $bad = 0 ] || die "run $2 does not pass: no reference from it"
         grep -q '^S ' <<< "$f" && grep -q '^I ' <<< "$f" || die "run $2 has no site manifest or no 'init inputs' line: no reference from it"
         { echo "# Regression reference (common/regress.sh check): the site manifest of the snapshot (site_md5), the DC inputs of"
-          echo "# the run (inputs: md5 of netlist, DC SDC, run.env), the verdict line and the gate set (gate name: sign-off corners,"
-          echo "# '-' = block gate) of the run below; written by regress.sh ref, a change is a deliberate reference update"
+          echo "# the run (inputs: md5 of netlist, DC SDC, run.env), the committed defaults of the flow knobs every step ran with"
+          echo "# (knobs), the verdict line and the gate set (gate name: sign-off corners, '-' = block gate) of the run below;"
+          echo "# written by regress.sh ref, a change is a deliberate reference update"
           echo "# run $2 host $1 snapshot $(sed -n 's/^V //p' <<< "$f")"
           sed -n 's/^S /site_md5 /p; s/^I /inputs /p' <<< "$f"
+          echo "knobs $k"
           echo "$v"; grep '^GATE ' <<< "$f" | gates; } > "$ref"
         echo "REGRESS reference $ref from $2: $(grep -c '^gate ' "$ref") gate names"; return 0
     fi
     [ -f "$ref" ] || die "no reference $ref (regress.sh ref)"
     provenance "$f" site S site_md5 || bad=1
     provenance "$f" inputs I inputs || bad=1
+    [ "knobs $k" = "$(grep '^knobs ' "$ref")" ] && echo "CHECK knobs_ref PASS the committed knob defaults = reference" \
+        || { echo "CHECK knobs_ref FAIL (< reference, > the snapshot's committed defaults; a deliberate change needs regress.sh ref + review):"
+             diff <(grep '^knobs ' "$ref" | cut -d' ' -f2- | tr ' ' '\n') <(tr ' ' '\n' <<< "$k") | grep '^[<>]' | head -n 20; bad=1; }
     [ "$v" = "$(grep '^VERDICT ' "$ref")" ] && echo "CHECK verdict_line PASS = reference" \
         || { echo "CHECK verdict_line FAIL reference: $(grep '^VERDICT ' "$ref")"; bad=1; }
     if g=$(diff <(grep '^gate ' "$ref" | sort) <(grep '^GATE ' <<< "$f" | gates | sort)); then

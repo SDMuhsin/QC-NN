@@ -8,7 +8,11 @@
 #        (setup + hold + recovery + removal + max_transition + max_capacitance + noise violators over all corners, zero
 #        margin: every violator count the sign-off gates, signoff/pt/blk.tcl QB_PT_SIGNOFF; the clock-network DRV counts
 #        are part of max_transition / max_capacitance; noise counted as the sign-off counts it, in the block's noise
-#        state, qb_eco_noise_state).  n = 0: the block has converged, no change list.
+#        state, qb_eco_noise_state; + the column's act_noise violators).  Then "prefix_unfixable m": the corner:check
+#        counts of the sign-off's other gates (min pulse width / period, unannotated pin-to-pin, coverage, undriven noise
+#        drivers, unanalysed act pins: qb_eco_signoff_count / _noise_count) that are not 0, which no pass below fixes:
+#        m > 0 ends the round with no change list (eco none: FAIL), and the loop stops (R103).  n = 0 and m = 0: the
+#        block has converged (the post step's PrimeTime gates as far as this session sees them), no change list.
 #        QB_ECO_CHECK=1 (the loop's check after its last round): state only, no change list either.
 #     1. fix_eco_drc max_transition, then max_capacitance, then crosstalk noise (R67; update_noise in the setup), each
 #        physically aware only (R81, qb_eco_drc); max_transition / max_capacitance also in the clock network (R75,
@@ -156,6 +160,19 @@ proc qb_eco_timing_count {} {
     if {$m > 0} { foreach_in_collection p [get_timing_paths -delay_type min -max_paths 100000 -slack_lesser_than $m] { if {[get_attribute $p slack] >= 0} { incr hb } } }
     return "setup [regexp -all -line {VIOLATED} $s] hold [regexp -all -line {VIOLATED} $h] [qb_pt_async_count] max_tran [regexp -all -line {VIOLATED} $t] max_cap [regexp -all -line {VIOLATED} $k] clock_max_tran [qb_eco_clk_viol $t] clock_max_cap [qb_eco_clk_viol $k] cells [sizeof_collection [get_cells -hier -filter is_hierarchical==false]] hold_band $hb"
 }
+# qb_eco_signoff_count (timing state) / qb_eco_signoff_noise_count (noise state): the sign-off's other gate counts
+# (signoff/pt/blk.tcl QB_PT_SIGNOFF; R103) with the same procs: min pulse width / min period, unannotated pin-to-pin nets,
+# coverage (signoff/pt/common.tcl), then noise_undriven_ports / _pins and the block's noise-stage gates (qb_blk_hook
+# noise_count: the column's act_noise / act_noise_unanalysed)
+proc qb_eco_signoff_count {} {
+    redirect -variable a { report_annotated_parasitics }
+    return "[qb_pt_pulse] unannotated_pin_to_pin [dict get [qb_pt_ann_rows $a] pin_to_pin] [qb_pt_coverage]"
+}
+proc qb_eco_signoff_noise_count {} {
+    set r "noise_undriven_ports [qb_pt_check_count no_driving_cell] noise_undriven_pins [qb_pt_noise_undriven_pins]"
+    if {[llength [info procs qb_blk_hook]]} { append r " [qb_blk_hook noise_count]" }
+    return [string trim $r]
+}
 # qb_eco_guard <max_transition|max_capacitance> on|off|scan: the DRV fix guard-band (header).  The pins at or over limit x
 # (1 - QC_ECO_DRV_MARGIN), by the pin attributes report_constraint evaluates (man pin_attributes; r92 ss [M]: 84 pins over
 # the transition limit = report_constraint's 84, a tightened limit on 334 pins -> 333 violators, removed -> 84 and every
@@ -271,7 +288,7 @@ set dir $::env(QC_PNR_OUT); set o $dir/out/eco; file mkdir $o
 file delete -force $o/pt_eco.tcl $o/pt_eco_cells.txt   ;# (R90: never a change list or record of an earlier round)
 set corners $::env(QB_ECO_CORNERS)
 set pmode occupied_site
-set_host_options -num_processes [llength $corners] -max_cores [expr {[info exists ::env(QB_ECO_CORES)] ? $::env(QB_ECO_CORES) : 4}]
+set_host_options -num_processes [llength $corners] -max_cores $::env(QB_ECO_CORES)
 set multi_scenario_working_directory $o/work
 puts "QB_PT_WORKDIR [file normalize $o/work]"   ;# (common/env.sh qb_pt: the scenario logs of this session)
 set multi_scenario_merged_error_log $o/merged_errors.log
@@ -294,11 +311,26 @@ proc qb_eco_end {o} {
 # pre-fix state at the sign-off criterion: the timing counts in the timing state (before the first noise state: header),
 # the pins inside the DRV fix band, then noise in the noise state
 set tot [qb_eco_sum [qb_eco_all before qb_eco_timing_count] {setup hold recovery removal max_tran max_cap}]
+set other [qb_eco_all before_signoff qb_eco_signoff_count]
 foreach ty {max_transition max_capacitance} { qb_eco_all before_$ty "qb_eco_guard $ty scan" }
 qb_eco_noise_state on
 incr tot [qb_eco_sum [qb_eco_all before qb_eco_noise_count] noise]
+lappend other {*}[qb_eco_all before_signoff_noise qb_eco_signoff_noise_count]
 qb_eco_noise_state off
-qb_eco_note "prefix_total $tot (setup + hold + recovery + removal + max_tran + max_cap + noise violators of [llength $corners] corners before any fix, zero margin)"
+# the sign-off's other gates (R103; before, prefix_total 0 was "converged" whatever they said, and the post step failed
+# on them later): act_noise violators are noise the noise passes fix (PT man set_noise_parameters: both analysis types
+# catch all noise violations), so they count in prefix_total; every other one is a check no ECO pass fixes (pulse width
+# / period, annotation, coverage, undriven noise drivers, unanalysed act pins): any non-zero one stops the loop
+set unfix {}
+foreach {c x} $other {
+    dict for {k v} $x { if {$k eq "act_noise"} { incr tot $v } elseif {$v != 0} { lappend unfix "$c:$k=$v" } }
+}
+qb_eco_note "prefix_total $tot (setup + hold + recovery + removal + max_tran + max_cap + noise + act_noise violators of [llength $corners] corners before any fix, zero margin)"
+qb_eco_note "prefix_unfixable [llength $unfix] (non-zero sign-off counts no ECO pass fixes: [expr {[llength $unfix] ? [lrange $unfix 0 19] : "none"}])"
+if {[llength $unfix]} {
+    qb_eco_note "eco none: FAIL [llength $unfix] corner:check counts the sign-off fails and the ECO cannot fix (before_signoff* lines); no change list"
+    qb_eco_end $o
+}
 set chk [expr {[info exists ::env(QB_ECO_CHECK)] && $::env(QB_ECO_CHECK)}]
 if {$tot == 0 || $chk} {
     qb_eco_note "eco none: [expr {$tot == 0 ? "converged (pre-fix state clean in every corner)" : "check only (QB_ECO_CHECK)"}]"

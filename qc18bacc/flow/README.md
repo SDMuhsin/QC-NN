@@ -49,7 +49,8 @@ of the label of out/ only (an inherited QB_ICC2_LABEL naming another label fails
 verdict's abstract_label gate compares with out/label.txt.  The floorplan pin DEF is the run's own `<run>/pins.def`
 (QB_PIN_DEF, written by the block's blk_pre_pnr before each floorplan step; R99, was one file per host).
 Sign-off limits (R99): `common/limits.txt` is the one committed value of QC_UNC_SETUP / QC_UNC_HOLD / QC_IO_PCT /
-QC_CLK_TRAN_MAX / QB5_SOUTH_IN (`common/limits.tcl` qb_limit: DC / PT SDC, IO budget, PT clock limit, ICC2 CTS); an
+QC_MAX_TRAN / QC_MAX_TRAN_PCT / QC_CLK_TRAN_MAX / QB5_SOUTH_IN (`common/limits.tcl` qb_limit: DC / PT SDC, P&R SDC
+(R103, common/block_sdc.tcl), IO budget, PT clock limit, ICC2 CTS, ICC2 setup uncertainty (R103, icc2/init.tcl qb_sdc)); an
 environment value overrides it for an experiment, PrimeTime logs the values in force (QB_PT_LIMITS) and the verdict's
 limits gate fails every corner where they differ from limits.txt.  DC's run.env is not read by the block PrimeTime
 (R100, common/block.sh blk_pt_env: its QC_IO_PCT acted as such an override).
@@ -81,7 +82,12 @@ qc18bacc/flow/common/regress.sh ref <host> <run> [<commit>]    # (re)writes bloc
 `run` names the run rg<7 hex digits of the commit><first free letter> and launches pnr eco calibre post views signoff from
 the snapshot (queue log dir <run dir>q); the block's configuration alone decides the run, no VAR=val on the queue line.
 `check` first ties the run to the flow under test (R99): the tree in the snapshot's VERSION must have the
-qc18bacc/flow and flow/tsmc65 of `<commit>` (or tree; default HEAD) apart from reference.txt; then it reads the run's queue.state (exactly that chain, every step ok, rc 0) and its signoff step's verdict, which the snapshot's signoff
+qc18bacc/flow and flow/tsmc65 of `<commit>` (or tree; default HEAD) apart from reference.txt; then it reads the run's queue.state (exactly that chain, every step ok, rc 0),
+the settings (R103): every step's `BLK_KNOBS` line (common/block.sh blk_knobs: the flow root the step ran from and
+every flow knob in force, common/env.sh qb_knobs: P&R guard-bands, ECO margins / rounds / modes, pnr range, cores, ICC2
+binary / label, LVS deck extras, the sign-off limits) must name the snapshot and equal the snapshot's committed defaults
+(`run.sh knobs` in an empty environment), which equal the reference's `knobs` line, and the queue spec has no VAR=val
+word; and its signoff step's verdict, which the snapshot's signoff
 step re-run on the run dir must reproduce line for line (R102, check verdict_rerun)
 (SIGNOFF PASS, no FAIL / MISSING gate, VERDICT line = the reference's) and compares its gate set (gate name x corner) with
 `blocks/rgr/reference.txt`, printing the difference: a checker that adds, drops or renames a gate fails the regression

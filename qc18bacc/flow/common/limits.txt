@@ -1,11 +1,14 @@
 # Sign-off limits of the qc18bacc ICC2 blocks (R99, PI rule): the ONE committed value of each, read through
 # common/limits.tcl qb_limit by DC / PrimeTime (common/constraints.sdc), the IO budget (blocks/col/io_budget.tcl), the
-# PrimeTime clock-network limit (signoff/pt/common.tcl) and ICC2 CTS (icc2/cts.tcl).  An environment variable of the same
+# PrimeTime clock-network limit (signoff/pt/common.tcl), ICC2 CTS (icc2/cts.tcl), the P&R SDC (common/block_sdc.tcl:
+# IO delay, max transition) and ICC2's setup uncertainty (icc2/init.tcl qb_sdc, common.tcl qb_preroute).  An environment variable of the same
 # name overrides a value for an experiment; PrimeTime logs the values in force (QB_PT_LIMITS) and signoff/verdict.py gate
 # limits fails every corner whose values differ from this file, so an override can never sign off.
 # <name> <value>   # meaning
-QC_UNC_SETUP     0.25   # setup clock uncertainty (ns)
+QC_UNC_SETUP     0.25   # setup clock uncertainty (ns); ICC2 checks the DC SDC against it and uses it (icc2/init.tcl qb_sdc)
 QC_UNC_HOLD      0.05   # hold clock uncertainty (ns); = the IO budget's U_hold (icc2/init.tcl qb_sdc checks the DC SDC)
 QC_IO_PCT        20     # IO delay of the ports outside a block IO budget (% of the period)
+QC_MAX_TRAN      0.5    # design max transition ceiling (ns): max transition = min(QC_MAX_TRAN, QC_MAX_TRAN_PCT % of the period)
+QC_MAX_TRAN_PCT  10     # design max transition (% of the period, at most QC_MAX_TRAN; common/limits.tcl qb_max_tran)
 QC_CLK_TRAN_MAX  0.25   # clock-network max transition (ns; R92 PI decision, CTS builds to 0.15)
 QB5_SOUTH_IN     0.20   # the column's south-input budget (fraction of the period; blocks/col/io_budget.tcl)

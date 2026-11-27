@@ -95,7 +95,7 @@
 #                             input pin's max_transition = the context slew of its port (R64 [M] on r62: input transition
 #                             0 -> 0 on every input, 0.2 -> 0.2; a port set_max_transition or the extract_model_*_
 #                             transition_limit variables leave it at 0), so every input gets the design max_transition
-#                             (min(0.5, 0.1 P), constraints.sdc) as its input transition, and the tables are
+#                             (constraints.sdc qb_max_tran) as its input transition, and the tables are
 #                             characterised up to that limit (extract_model_{data,clock}_transition_limit, default 5 ns).
 #                             Output load index (R71): extract_model_capacitance_limit = the largest library
 #                             max_capacitance of the cells driving the output ports (unset it is 64 pF, MEXT-6; R71 [M]
@@ -132,13 +132,20 @@ proc qb_pt_lat {dir corner} {
         $corner $L $mn $mx $n $p10 $p90 [expr {$w ? "written to out/clk_lat_$corner.txt" : "not written (setup-only session)"}]]
     return $L
 }
+# qb_pt_ann_rows <report_annotated_parasitics text>: {pin_to_pin N driverless N loadless N} = the Not Annotated counts of
+# those rows (internal + boundary), -1 where the row pair is missing (qb_pt_ann; the ECO's pre-fix record, drv_eco.tcl)
+proc qb_pt_ann_rows {ann} {
+    set out {}
+    foreach k {pin_to_pin driverless loadless} r {{Pin to pin} Driverless Loadless} {
+        set n 0; set m 0
+        foreach {- v} [regexp -all -line -inline "^\\s*- $r nets\\s*\\|(?:\\s*\\d+\\s*\\|){5}\\s*(\\d+)\\s*\\|" $ann] { incr n $v; incr m }
+        lappend out $k [expr {$m == 2 ? $n : -1}]
+    }
+    return $out
+}
 proc qb_pt_ann {} {
     redirect -variable ann { report_annotated_parasitics }
-    foreach k {pin_to_pin driverless loadless} r {{Pin to pin} Driverless Loadless} {
-        set n($k) 0; set m 0
-        foreach {- v} [regexp -all -line -inline "^\\s*- $r nets\\s*\\|(?:\\s*\\d+\\s*\\|){5}\\s*(\\d+)\\s*\\|" $ann] { incr n($k) $v; incr m }
-        if {$m != 2} { set n($k) -1 }
-    }
+    array set n [qb_pt_ann_rows $ann]
     puts "QB_PT_SIGNOFF unannotated_pin_to_pin $n(pin_to_pin)"
     if {![regexp {\n\s*\|\s*(\d+)\s*\|\s*\d+\s*\|\s*\d+\s*\|\s*(\d+)\s*\|\s*(\d+)\s*\|\s*(\d+)\s*\|} $ann -> tot rc cc na]} { return NA }
     return "total $tot rc_network $rc coupled_network $cc not_annotated $na (driverless $n(driverless) loadless $n(loadless) pin_to_pin $n(pin_to_pin))"
@@ -185,7 +192,7 @@ proc qb_pt_check_count {check} {
     set n 0; foreach {- v} [regexp -all -inline {There (?:are|is) (\d+)} $t] { incr n $v }
     return [expr {$n ? $n : -1}]
 }
-proc qb_pt_coverage {fh} {
+proc qb_pt_coverage {{fh ""}} {
     set leaf [get_pins -quiet -hierarchical * -filter "is_hierarchical==false"]
     # constants: tie cells (constant output, no input pin) and the input pins on their nets; anything else is a stray
     set cv [filter_collection $leaf "defined(case_value)"]
@@ -218,10 +225,13 @@ proc qb_pt_coverage {fh} {
     set r(loops) [expr {[set n [qb_pt_check_count loops]] < 0 ? -1 : $n + $loopf}]
     set r(unexpected_disabled_arcs) [expr {$bad + [sizeof_collection $stray]}]
     set r(floating_nets) [sizeof_collection $fl]
-    puts $fh "coverage register_clock_pins [sizeof_collection $regc] constants: tie_cells [sizeof_collection $src] tied_input_pins [sizeof_collection $tied] on [array size tc] cells, stray_constant_pins [sizeof_collection $stray]; disabled_arcs p $nf(p) C $nf(C) on those cells, other $bad loop_breaking $loopf; nets with_driver [sizeof_collection $D] with_load [sizeof_collection $L] floating [sizeof_collection $fl] [lrange [get_object_name $fl] 0 2]"
     set l {}; foreach k {unconstrained_endpoints unclocked_register_pins loops unexpected_disabled_arcs floating_nets} { lappend l $k $r($k) }
-    puts $fh "coverage_gate $l"
-    puts "QB_PT_SIGNOFF $l"
+    if {$fh ne ""} {
+        puts $fh "coverage register_clock_pins [sizeof_collection $regc] constants: tie_cells [sizeof_collection $src] tied_input_pins [sizeof_collection $tied] on [array size tc] cells, stray_constant_pins [sizeof_collection $stray]; disabled_arcs p $nf(p) C $nf(C) on those cells, other $bad loop_breaking $loopf; nets with_driver [sizeof_collection $D] with_load [sizeof_collection $L] floating [sizeof_collection $fl] [lrange [get_object_name $fl] 0 2]"
+        puts $fh "coverage_gate $l"
+        puts "QB_PT_SIGNOFF $l"
+    }
+    return $l
 }
 proc qb_pt_spef {spef} {
     if {[info exists ::env(QB_PT_PARA_LOG)]} { set_app_var parasitics_log_file $::env(QB_PT_PARA_LOG) }
@@ -261,12 +271,23 @@ proc qb_etm_ref {file} {
     }
     close $f
 }
-proc qb_pt_si_checks {fh rpt {noise_state {}}} {
-    # the clock pulse checks are timing results: before the noise state, which changes the port drivers
+# qb_pt_pulse [<rpt>]: "min_pulse_width N min_period N" violators (report_constraint -all_violators), both reports to
+# <rpt>_pulse.rpt when given (qb_pt_si_checks; the ECO's pre-fix record, signoff/pt/drv_eco.tcl)
+proc qb_pt_pulse {{rpt ""}} {
     redirect -variable w { report_constraint -min_pulse_width -all_violators -nosplit }
     redirect -variable p { report_constraint -min_period -all_violators -nosplit }
-    redirect ${rpt}_pulse.rpt { puts $w; puts $p }
-    set l "min_pulse_width [regexp -all -line {VIOLATED} $w] min_period [regexp -all -line {VIOLATED} $p]"
+    if {$rpt ne ""} { redirect ${rpt}_pulse.rpt { puts $w; puts $p } }
+    return "min_pulse_width [regexp -all -line {VIOLATED} $w] min_period [regexp -all -line {VIOLATED} $p]"
+}
+# qb_pt_noise_undriven_pins (after update_noise): driver pins PrimeTime holds with no model at all (check_noise "none",
+# both regions; 0, or the noise count is not evidence); -1 when the report has no such row
+proc qb_pt_noise_undriven_pins {} {
+    redirect -variable cn { check_noise -include {noise_driver} }
+    return [expr {[regexp -line {^\s*none\s+(\d+)\s+(\d+)\s*$} $cn -> a b] ? $a + $b : -1}]
+}
+proc qb_pt_si_checks {fh rpt {noise_state {}}} {
+    # the clock pulse checks are timing results: before the noise state, which changes the port drivers
+    set l [qb_pt_pulse $rpt]
     if {[llength $noise_state]} {
         puts $fh "noise_state [uplevel #0 $noise_state]"
         append l " noise_undriven_ports [qb_pt_check_count no_driving_cell]"
@@ -275,9 +296,7 @@ proc qb_pt_si_checks {fh rpt {noise_state {}}} {
     update_noise
     redirect -variable n { report_noise -all_violators -nosplit }
     redirect ${rpt}_noise.rpt { puts $n }
-    # driver pins PrimeTime holds with no model at all (check_noise "none", both regions): 0 or the noise count is not evidence
-    redirect -variable cn { check_noise -include {noise_driver} }
-    set none [expr {[regexp -line {^\s*none\s+(\d+)\s+(\d+)\s*$} $cn -> a b] ? $a + $b : -1}]
+    set none [qb_pt_noise_undriven_pins]
     puts $fh "noise_hold constant drivers $hold; on their [sizeof_collection $cpins] load pins: [lindex [qb_pt_noise_pins $cpins] 1]"
     set l "noise [qb_pt_noise_viol $n] $l noise_undriven_pins $none"
     puts $fh "signoff $l"

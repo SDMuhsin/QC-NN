@@ -19,6 +19,8 @@
 #     lines <fh>           further lines after the hold classes
 #     paths <r> <pd>       further path reports (qb_pt_paths) after <r>_io.rpt
 #     noise <fh>           after qb_pt_si_checks (the session is in the noise state): further noise lines / gates
+#     noise_count          (the PrimeTime ECO's pre-fix record, in the noise state, R103) returns "<gate> N ..." = the
+#                          counts the noise stage gates, the session left in the ECO's noise analysis
 # The design setup ends at "setup" for the PrimeTime ECO (signoff/pt/drv_eco.tcl: returns when ::QB_PT_SETUP_ONLY exists).
 set t0 [clock seconds]
 source $::env(QC_FLOW)/common/lib.tcl

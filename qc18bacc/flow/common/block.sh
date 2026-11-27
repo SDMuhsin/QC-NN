@@ -13,9 +13,10 @@
 # Steps:  pnr      ICC2 libs init floorplan place cts route outputs, then portcheck + fill; QC_PNR_FROM / QC_PNR_TO select
 #                  a range, an unknown step name fails; a step init .. route drops the label of out/ (blk_unlabel);
 #                  init first records the md5 of its DC inputs in summary.txt (blk_inputs)
-#         eco      sign-off ECO loop, at most QC_ECO_ROUNDS (4) rounds: PrimeTime DMSA -> ICC2 eco -> outputs -> portcheck
+#         eco      sign-off ECO loop, at most QC_ECO_ROUNDS (common/env.sh) rounds: PrimeTime DMSA -> ICC2 eco -> outputs -> portcheck
 #                  -> fill; ends when a round's pre-fix state is clean in every corner at zero margin; fails if it never
-#                  is, or if the pre-fix violation total does not shrink.  Fix guard-bands (env.sh): hold
+#                  is, if the pre-fix violation total does not shrink, or at once if a sign-off check no ECO pass fixes
+#                  is not clean (drv_eco.tcl prefix_unfixable, R103).  Fix guard-bands (env.sh): hold
 #                  QC_ECO_HOLD_MARGIN, max_transition / max_capacitance QC_ECO_DRV_MARGIN, noise QC_ECO_NOISE_MARGIN.
 #                  The loop's history is out/eco/rounds.txt: a later eco step continues it (round number = position of
 #                  the label of out/ in the chain route, eco, eco2, ...) and a recorded stop stays a stop unless
@@ -25,7 +26,8 @@
 #                  one)                                                 calibre  LVS, DRC, antenna (fails on cal.sh's status)
 #         post     PrimeTime sign-off + ETMs in every corner   views  abstract LEF + ETM scan   signoff  signoff/verdict.sh
 #
-# Details.  rundir <tag> (a further step) prints the run dir (common/queue.sh).  The label of out/ is out/label.txt
+# Details.  rundir <tag> (a further step) prints the run dir (common/queue.sh), knobs <tag> the BLK_KNOBS line
+# every step starts with (blk_knobs: flow root + flow knobs in force).  The label of out/ is out/label.txt
 # (blk_out, written once outputs, portcheck, fill and SPEFs of the label passed): route, then eco, eco2, ... (one ICC2 label per ECO round, so every round's layout stays in the
 # design library).  ECO round files: out/eco/<label>/ = what that round produced and nothing else (PrimeTime log,
 # eco_summary.txt, change list + new-cell record [pt_eco.not_applied.* when the loop stopped before applying it],
@@ -34,20 +36,27 @@
 # Why a loop (R92, PI decision; r91b [M]): one zero-margin ECO pass predicted 0 violators in 9 corners and its own ECO
 # route left 2 hold endpoints at -0.04 / -0.09 ps and one net 1.7 ps over max_transition, all on nets the ECO had not
 # touched (264 hold endpoints within 5 ps of zero at wcl).  Convergence is judged by PrimeTime at the sign-off criterion
-# (signoff/pt/drv_eco.tcl prefix_total: setup + hold + max_transition + max_capacitance + noise, zero margin), never at
+# (signoff/pt/drv_eco.tcl prefix_total: setup + hold + recovery + removal + max_transition + max_capacitance + noise, zero margin; and
+# prefix_unfixable, R103: the other sign-off gates, which no ECO pass fixes), never at
 # the fix margin; a total that does not shrink is a bug to diagnose, so the step stops there.
 blk_main() {
     local step=${1:?step} tag=${2:?tag}; d=$B/icc2/$BLK/$tag
     export QB_SYN=$BLK_SYN QB_PNR_PERIOD=$BLK_PERIOD QB_ICC2_CFG=$BLK_CFG QB_PIN_DEF=$d/pins.def
     case $step in
     rundir) echo "$d"; return 0 ;;
+    knobs) blk_knobs "$step"; return 0 ;;
     pnr|eco|fill|calibre|post|views|signoff) ;;
     *) sed '/^#$/,$d' "${BASH_SOURCE[0]}"; echo "BLK_FAIL $BLK: unknown step '$step'"; return 1 ;;
     esac
     echo "BLK_STEP $BLK $step $tag $(date +%T)"
+    blk_knobs "$step"
     "blk_$step" || { echo "BLK_FAIL $BLK $step $tag $(date +%T)"; return 1; }
     echo "BLK_DONE $BLK $step $tag $(date +%T)"
 }
+# The run's record of its settings (R103): one line per step, "BLK_KNOBS <blk> <step> <tag> flow <flow root> <name>=<value>
+# ...": the flow the step runs (a snapshot's, common/deploy.sh) and the flow knobs in force (common/env.sh qb_knobs).
+# Step "knobs" prints the line alone (common/regress.sh: in an empty environment = the snapshot's committed defaults).
+blk_knobs() { echo "BLK_KNOBS $BLK $1 $tag flow $QBF$(qb_knobs)"; }
 # PrimeTime environment of $BLK_PT, set in the subshell of the caller.  Nothing of DC's run.env (R100; [M] hunt on a06c97:
 # it was sourced with set -a, and its QC_IO_PCT=20, written by flow/tsmc65 run_dc.sh, became an "environment override"
 # of common/limits.txt in every PrimeTime session): the block's PrimeTime reads only the variables below, the sign-off
@@ -57,7 +66,7 @@ blk_pt_env() {
     export QC_SDC=$QBF/common/constraints.sdc QC_PT_HOOK= QC_PERIOD=$BLK_PERIOD QC_PNR_OUT=$d QC_TOP=$BLK_TOP
     cd "$d"
 }
-blk_portcheck() {   # gate on the outputs netlist: port bits as the DC netlist, no port-to-port assign (signoff/portcheck.py)
+blk_portcheck() {   # gate on the outputs netlist: ports as the DC netlist (names, directions, ranges: R103), no port-to-port assign (signoff/portcheck.py)
     local n; n=$(blk_input netlist) || return 1
     "$PY" -I "$QBF/signoff/portcheck.py" "$n" "$d/out/$BLK_TOP.v" "$BLK_TOP"
 }
@@ -201,7 +210,7 @@ blk_fill_label() {
 blk_eco_label() { case $1 in route) echo eco ;; eco) echo eco2 ;; eco[1-9]*) echo "eco$(( ${1#eco} + 1 ))" ;; *) return 1 ;; esac; }
 blk_eco_index() { case $1 in route) echo 0 ;; eco) echo 1 ;; eco[1-9]*) echo "${1#eco}" ;; *) return 1 ;; esac; }
 blk_eco() {
-    local max=${QC_ECO_ROUNDS:-4} e=$d/out/eco h k from to a tot prev r f cs n
+    local max=$QC_ECO_ROUNDS e=$d/out/eco h k from to a tot un prev r f cs n
     cs=$(qb_corners) || return 1   # (assigned first: a command substitution in an assignment prefix hides the status)
     h=$e/rounds.txt; mkdir -p "$e"
     # The history decides (R92 review; before, a second eco step forgot the stop and the previous total): a recorded stop
@@ -238,11 +247,19 @@ blk_eco() {
         cat "$e/eco_summary.txt"
         tot=$(awk '$1 == "prefix_total" { print $2; exit }' "$e/eco_summary.txt")
         case $tot in ''|*[!0-9]*) echo "BLK_FAIL eco: no prefix_total in out/eco/eco_summary.txt"; return 1 ;; esac
+        # the sign-off's gates no ECO pass fixes (R103, drv_eco.tcl prefix_unfixable: non-zero ones end the loop; before, a
+        # round with prefix_total 0 was "converged" and the post step failed on them)
+        un=$(awk '$1 == "prefix_unfixable" { print $2; exit }' "$e/eco_summary.txt")
+        case $un in ''|*[!0-9]*) echo "BLK_FAIL eco: no prefix_unfixable in out/eco/eco_summary.txt"; return 1 ;; esac
         # opt-in QC_ECO_PT_ONLY=1: this round's PrimeTime half only (a check of the PT side, e.g. on a copy of a run): the
         # record and a history line, no verdict on the loop, nothing applied
         if [ "${QC_ECO_PT_ONLY:-}" = 1 ]; then
-            echo "ECO round $k $(date +%F_%T) label $from prefix_total $tot: PrimeTime only (QC_ECO_PT_ONLY=1), change list not applied" | tee -a "$h"
+            echo "ECO round $k $(date +%F_%T) label $from prefix_total $tot: PrimeTime only (QC_ECO_PT_ONLY=1), prefix_unfixable $un, change list not applied" | tee -a "$h"
             return 0
+        fi
+        if [ "$un" != 0 ]; then
+            echo "ECO round $k $(date +%F_%T) label $from prefix_total $tot: FAIL $un sign-off check count(s) the ECO cannot fix: $(awk '$1 == "prefix_unfixable"' "$e/eco_summary.txt" | sed 's/^[^(]*(//; s/)$//' | cut -c1-300)" | tee -a "$h"
+            return 1
         fi
         if [ "$tot" = 0 ]; then
             echo "ECO round $k $(date +%F_%T) label $from prefix_total 0: converged" | tee -a "$h"

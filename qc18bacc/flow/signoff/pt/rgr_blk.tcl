@@ -9,7 +9,7 @@ proc qb_blk_hook {stage args} {
         setup { update_timing }
         max   { return [list in2reg [list -from $in -to [lindex $args 0]] reg2out [list -to [all_outputs]]] }
         hold  { return [list hold_reg2out [list -to [all_outputs]]] }
-        tcq - head - lines - paths - noise { return "" }
+        tcq - head - lines - paths - noise - noise_count { return "" }
         default { error "qb_blk_hook: unknown stage $stage" }
     }
 }

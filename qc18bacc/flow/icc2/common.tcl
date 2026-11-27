@@ -1,6 +1,6 @@
 # Shared Tcl of every ICC2 step (flow/icc2/<step>.tcl; run by common/env.sh qb_icc2 from blocks/<b>/run.sh).
 # Environment: QC_FLOW (flow/tsmc65, set by its common/tool.sh), QB_ICC2_CFG (block config, e.g. blocks/col/icc2.cfg),
-#   QB_ICC2_RUN (run dir: <run>/<top>.nlib design library, rpt/, out/), QC_BUILD, QB_ICC2_CORES (default 16).
+#   QB_ICC2_RUN (run dir: <run>/<top>.nlib design library, rpt/, out/), QC_BUILD, QB_ICC2_CORES (common/env.sh).
 # Kit facts come from the flow/tsmc65 site files (site.tcl: libraries, tf, TLU+; site/pnr.tcl: LEF, GDS, cells, layers).
 #   ::QB_DBU            database units / um = the tech file's lengthPrecision (NDM, design library, GDS; R77)
 #   qb_open <from> <to> open the design library, copy block label <from> to <to> (from = to: reopen it), make it current,
@@ -77,7 +77,7 @@ set ::R $::env(QB_ICC2_RUN)
 set _h [open $::QC_TF]; regexp {lengthPrecision\s*=\s*(\d+)} [read $_h] -> ::QB_DBU; close $_h
 set ::QB_LIB $::R/$P(TOP).nlib
 file mkdir $::R/rpt $::R/out
-if {[info commands set_host_options] ne ""} { set_host_options -max_cores [qc_env QB_ICC2_CORES 16] }
+if {[info commands set_host_options] ne ""} { set_host_options -max_cores $::env(QB_ICC2_CORES) }
 
 proc qb_line {t} {
     puts "QB_ICC2 $t"
@@ -150,7 +150,7 @@ proc qb_virtual_fill {} {
 #   use_route_aware_estimation) models layer resistance spread, which detours / RC show to be ~0 here; a flat
 #   -late_cap_scale would also scale the routed extraction of route_opt / ECO / sign-off SPEF.
 #   SI: no pre-route coupling to correct (ICC2 has no pre-route SI estimate), so a stage-specific margin: setup clock
-#   uncertainty = SDC value + P(PREROUTE_SETUP_MARGIN) in every scenario for place_opt / clock_opt, the SDC value again
+#   uncertainty = QC_UNC_SETUP + P(PREROUTE_SETUP_MARGIN) in every scenario for place_opt / clock_opt, QC_UNC_SETUP again
 #   from route_auto on (the Synopsys reference-flow practice of extra pre-route uncertainty that is removed for route_opt).
 #   Size: the routed SI delta, [M] -41 to -49 ps per worst rgr path, -30 ps mean of the 40 worst after the 1.2 scale.
 # Hold, the early capacitance, PrimeTime (fill-aware SPEF of real routes) and every routed stage keep their own constraints.
@@ -162,8 +162,9 @@ proc qb_preroute {mode} {
     if {$cs eq "" && $sm eq ""} return
     if {($cs ne "" && $cs < 1.0) || ($sm ne "" && $sm < 0)} { error "qb_preroute: P(PREROUTE_CAP_SCALE) '$cs' < 1 or P(PREROUTE_SETUP_MARGIN) '$sm' < 0" }
     set on [expr {$mode eq "on"}]
-    set f [open $::R/$P(TOP)_icc2.sdc]; set t [read $f]; close $f
-    if {![regexp -line {^set_clock_uncertainty\s+-setup\s+([0-9.]+)} $t -> us]} { error "qb_preroute: no set_clock_uncertainty -setup in $P(TOP)_icc2.sdc" }
+    # the sign-off setup uncertainty (R103: the limit itself; before, the value of the frozen DC SDC, which init's qb_sdc
+    # now checks against it)
+    set us [qb_limit QC_UNC_SETUP]
     set x [expr {$on && $cs ne "" ? $cs : 1.0}]
     set u [expr {$on && $sm ne "" ? $us + $sm : $us}]
     set_extraction_options -corners [get_corners *] -late_vr_horizontal_cap_scale $x -late_vr_vertical_cap_scale $x
@@ -185,7 +186,7 @@ proc qb_preroute {mode} {
             if {![string is double -strict $v] || abs($v - $x) > 1e-9} { lappend bad "[get_object_name $c] $k '$v'" }
         }
     }
-    qb_line "preroute $mode: virtual-route late cap scale $x (P(PREROUTE_CAP_SCALE) '$cs'; read back [lsort -unique $xr] in [sizeof_collection [get_corners *]] corners), setup uncertainty $u ns (SDC $us + P(PREROUTE_SETUP_MARGIN) '$sm' [expr {$on ? "on" : "off"}]; read back [lsort -unique $ur] in [sizeof_collection [all_scenarios]] scenarios)"
+    qb_line "preroute $mode: virtual-route late cap scale $x (P(PREROUTE_CAP_SCALE) '$cs'; read back [lsort -unique $xr] in [sizeof_collection [get_corners *]] corners), setup uncertainty $u ns (QC_UNC_SETUP $us + P(PREROUTE_SETUP_MARGIN) '$sm' [expr {$on ? "on" : "off"}]; read back [lsort -unique $ur] in [sizeof_collection [all_scenarios]] scenarios)"
     if {[llength $bad]} { error "qb_preroute $mode: not in force: [lrange $bad 0 3]" }
 }
 proc qb_io_load {} {

@@ -5,6 +5,7 @@
 #   qb_kit  sources flow/tsmc65 common/tool.sh (FLOW, qc_tool) and exports QC_KIT;  QC_PY = PY (exported)
 #   qb_pt   PrimeTime run + error check;  qb_wait  wait for background jobs, non-zero if one failed;  qb_icc2  ICC2 step (flow/icc2) in a run dir
 #   qb_corners  the sign-off corner names of the one corner table, flow/tsmc65/site/site.tcl (R68)
+#   qb_knobs    the flow knobs in force (QB_KNOBS, R103; below)
 QBF=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd); ROOT=$(cd "$QBF/../.." && pwd)
 export QC_BUILD=${QC_BUILD:-/tmp/$USER/qc18bacc/build}; B=$QC_BUILD
 TOOLS=${QC_TOOLS:-/tmp/$USER/tools}; PY=$TOOLS/env/bin/python3
@@ -23,6 +24,25 @@ export QC_ECO_HOLD_MARGIN=${QC_ECO_HOLD_MARGIN:-0.005}
 # DRV / noise fix guard-bands of the sign-off ECO (fraction of the limit; R92, PI decision): drv_eco.tcl qb_eco_guard.
 export QC_ECO_DRV_MARGIN=${QC_ECO_DRV_MARGIN:-0.02}
 export QC_ECO_NOISE_MARGIN=${QC_ECO_NOISE_MARGIN:-0.02}
+# ECO loop rounds (common/block.sh blk_eco), ICC2 cores (icc2/common.tcl), PrimeTime DMSA ECO cores per scenario
+# (signoff/pt/drv_eco.tcl): their one default (R103; each was a default of its reader)
+export QC_ECO_ROUNDS=${QC_ECO_ROUNDS:-4} QB_ICC2_CORES=${QB_ICC2_CORES:-16} QB_ECO_CORES=${QB_ECO_CORES:-4}
+# Flow knobs (R103): every environment setting a block step reads that changes what it does (the P&R guard-bands of the
+# block .env, the ECO margins / rounds / modes above, pnr range, cores, ICC2 binary and label, LVS deck extras), the
+# sign-off limits (common/limits.txt names) and any QC_EXTRA_DB_<corner>.  qb_knobs prints " <name>=<value in force>"
+# for each (<unset> when not set); common/block.sh logs them as the BLK_KNOBS line of every step, and common/regress.sh
+# check fails unless every step's equal the snapshot's committed defaults (run.sh knobs in an empty environment) and
+# the reference's.  (Hunt round 8 on 5fdd167: these came from the environment and nothing checked them; a queue
+# VAR=val word or a login-shell export changed the regression run unseen.)
+QB_KNOBS="QC_PNR_GUARD_HOLD QC_PNR_GUARD_TRAN QC_PNR_FROM QC_PNR_TO QC_ECO_ROUNDS QC_ECO_HOLD_MARGIN QC_ECO_DRV_MARGIN
+    QC_ECO_NOISE_MARGIN QC_ECO_OVERRIDE_STOP QC_ECO_PT_ONLY QB_ICC2_CORES QB_ECO_CORES QB_ICC2_BIN QB_ICC2_LABEL
+    QB36_LVS_EXTRA QB36_HCELL"
+qb_knobs() {
+    local k
+    for k in $QB_KNOBS $(awk '{ sub(/#.*/, "") } NF { print $1 }' "$QBF/common/limits.txt") $(compgen -v QC_EXTRA_DB_); do
+        printf ' %s=%s' "$k" "${!k-<unset>}"
+    done
+}
 qb_kit() {
     . "$ROOT/flow/tsmc65/common/tool.sh"
     QC_KIT=$(tcsh -f -c "source $FLOW/site/site.csh >& /dev/null; printenv QC_KIT"); export QC_KIT
