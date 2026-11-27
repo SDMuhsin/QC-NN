@@ -76,6 +76,20 @@ proc qb_guard_readback {uh} {
     if {[llength $bad]} { error "qb_guard: hold uncertainty $uh ns not held by [lrange $bad 0 2]" }
     return $u
 }
+# Read-back of the clock period (R107; hunt round 11 on d1978e1: block_sdc.tcl's period rewrite was never checked): the
+# period of every clock in every scenario, error unless it is QB_PNR_PERIOD (common/block.sh BLK_PERIOD)
+proc qb_period_readback {} {
+    if {![info exists ::env(QB_PNR_PERIOD)]} { error "qb_period_readback: QB_PNR_PERIOD not set (common/block.sh)" }
+    set want $::env(QB_PNR_PERIOD); set s0 [current_scenario]; set bad {}; set n 0
+    foreach_in_collection s [all_scenarios] {
+        current_scenario $s; incr n
+        set p [lsort -unique [get_attribute [all_clocks] period]]
+        if {[llength $p] != 1 || ![string is double -strict $p] || abs($p - $want) > 1e-9} { lappend bad "[get_object_name $s] '$p'" }
+    }
+    current_scenario $s0
+    if {[llength $bad] || !$n} { error "qb_period_readback: clock period != QB_PNR_PERIOD $want in [lrange $bad 0 2] ($n scenarios)" }
+    return "init clock period $want ns = QB_PNR_PERIOD (read back in $n scenarios)"
+}
 
 create_lib $::QB_LIB -technology $::QC_TF -ref_libs [list [qb_ndm]] -scale_factor $::QB_DBU
 # one parasitic tech per TLU+ file (named after it), shared by the corners that use it
@@ -131,6 +145,7 @@ foreach c $::QC_SIGNOFF_CORNERS {
         -min_capacitance false -leakage_power false -dynamic_power false
 }
 lassign $gb gh uh gt mt
+qb_line [qb_period_readback]
 qb_line "init guard-bands QC_PNR_GUARD_HOLD $gh ns: hold uncertainty $uh ns (SDC $::QB_SDC_HOLD_UNC; read back [expr {$uh eq "none" ? "none" : [qb_guard_readback $uh]}] in [llength $::QC_SIGNOFF_CORNERS] scenarios), QC_PNR_GUARD_TRAN $gt: design max_transition $mt ns (SDC $::QB_SDC_MAX_TRAN; read back at cts)"
 qb_timer
 set du {}; foreach p $::QC_DONT_USE { lappend du */$p }

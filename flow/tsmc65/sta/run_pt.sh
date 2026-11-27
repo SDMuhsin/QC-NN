@@ -14,7 +14,7 @@ dir=$(cd "$dir" && pwd) || exit 1
 [ -f "$dir/run.env" ] || { echo "no run.env in $dir"; exit 1; }
 io=${QC_IO_PCT:-}
 set -a; . "$dir/run.env"; set +a
-# DC's QC_IO_PCT (run.env always has one, default 20) is the IO delay of the generated constraints only: with a design SDC
+# DC's QC_IO_PCT (a run.env before qc18bacc R107 always has one, default 20; since, only without QC_SDC) is the IO delay of the generated constraints only: with a design SDC
 # it is not passed on, so the SDC's own value is in force (qc18bacc common/constraints.sdc: limits.txt; R102, as the
 # block PrimeTime since R100) unless the caller's environment sets one
 [ -z "${QC_SDC:-}" ] || QC_IO_PCT=$io

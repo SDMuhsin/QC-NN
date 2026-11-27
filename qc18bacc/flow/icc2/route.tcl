@@ -2,7 +2,7 @@
 # qb_feedthru_ndr, R74): kit antenna rules (Milkyway clf antennaRule_n65_<n>lm.tcl, read in ICC2 syntax), diodes ANTENNA, route_auto,
 # route_opt (MCMM setup / hold / DRV) twice, standard-cell decap + filler cells (site/pnr.tcl), route closure + hard gate
 # (common.tcl qb_route_close, R92: route_detail on the DRCs the capped detail routes of route_auto / route_opt leave, then
-# check_routes / check_lvs -check_child_cells all 0 or the step fails).
+# check_routes / check_lvs -check_child_cells all 0 or the step fails), legality gate (common.tcl qb_legality, R107).
 # Block label cts -> route.  route_opt fixes hold (R55: 122 ropt_h_inst buffers, 142 -> 0 func_ff hold violators before its
 # ECO routing) against the parasitics before it ECO-routes its own changes; that ECO routing leaves ps-level hold misses
 # (R55: 70, WHV 2.4 ps).  The second, incremental route_opt (Synopsys RM) re-optimises on the routed parasitics.
@@ -34,6 +34,9 @@ route_opt
 qb_fillers
 qb_route_close route
 qb_io_load
+# legality of the layout written out (R107; hunt round 11 on d1978e1: route_opt sizes / inserts cells and the fillers
+# fill the rows after the cts gate, and nothing checked them; common.tcl qb_legality, gated by signoff/verdict.py)
+qb_legality route
 qb_isolate_report route
 qb_qor route
 qb_done route

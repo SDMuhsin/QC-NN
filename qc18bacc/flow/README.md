@@ -8,7 +8,7 @@ regression block `blocks/rgr`; the act / hub / top blocks are to be ported onto 
 
 | dir | contents |
 |---|---|
-| `common/` | `env.sh` (bash: `QBF`, `ROOT`, `B`, `TOOLS`, `PY`, `qb_kit`, `qb_pt`, `qb_icc2`, `qb_corners`), `block.sh` (shared ICC2 hard-block driver), `block_sdc.tcl` (netlist + P&R SDC of a hard block from its DC run), `constraints.sdc` (DC / PT SDC), `limits.tcl` / `limits.txt` (sign-off limits), `derate.tcl`, `lib_cells.tcl` / `lib_tcq.py`, `eco_changes.tcl`, `queue.sh` (detached step queue per host), `status.sh` (run status digest), `deploy.sh` (immutable flow snapshot of one commit on a build host), `regress.sh` (the flow regression) |
+| `common/` | `env.sh` (bash: `QBF`, `ROOT`, `B`, `TOOLS`, `PY`, `qb_kit`, `qb_pt`, `qb_icc2`, `qb_corners`), `block.sh` (shared ICC2 hard-block driver), `block_sdc.tcl` (netlist + P&R SDC of a hard block from its DC run), `act_chain.tcl` (the act chain contract of the act source and the column budgets, R107), `constraints.sdc` (DC / PT SDC), `limits.tcl` / `limits.txt` (sign-off limits), `derate.tcl`, `lib_cells.tcl` / `lib_tcq.py`, `eco_changes.tcl`, `queue.sh` (detached step queue per host), `status.sh` (run status digest), `deploy.sh` (immutable flow snapshot of one commit on a build host), `regress.sh` (the flow regression) |
 | `synth/` | DC / top-netlist steps that produce the P&R input netlists |
 | `floorplan/` | `pg_grid.tcl` (chip PG strap grid), `abstract_pins.py` / `edge_pins.py` (floorplan pin DEF / pin-only abstract) |
 | `icc2/` | IC Compiler II steps (R54): `common.tcl` (kit + block config, `qb_open` / `qb_done` / `qb_qor`), `libs.tcl` (std-cell NDM, icc2_lm_shell), `init.tcl` (design library, TLU+, netlist, MCMM, SDC), `floorplan.tcl`, `place.tcl`, `cts.tcl`, `route.tcl` (`qb_route_setup` / `qb_fillers` / `qb_route_close` in common.tcl), `eco.tcl` (R56: sources the PrimeTime change list, legalise, route_eco, refill), `outputs.tcl` (label `QB_ICC2_LABEL`), `extract.tcl` (R68: Calibre fill read back as DEF FILLS, fill-aware SPEF per sign-off corner), `abstract.tcl` (abstract LEF + port antenna data + abutment check for the top); block facts in `blocks/<b>/icc2.cfg` |
@@ -50,11 +50,12 @@ of the label of out/ only (an inherited QB_ICC2_LABEL naming another label fails
 verdict's abstract_label gate compares with out/label.txt.  The floorplan pin DEF is the run's own `<run>/pins.def`
 (QB_PIN_DEF, written by the block's blk_pre_pnr before each floorplan step; R99, was one file per host).
 Sign-off limits (R99): `common/limits.txt` is the one committed value of QC_UNC_SETUP / QC_UNC_HOLD / QC_IO_PCT /
-QC_MAX_TRAN / QC_MAX_TRAN_PCT / QC_CLK_TRAN_MAX / QB5_SOUTH_IN (`common/limits.tcl` qb_limit: DC / PT SDC, P&R SDC
+QC_MAX_TRAN / QC_MAX_TRAN_PCT / QC_CLK_TRAN_MAX / QB5_SOUTH_IN and the act chain's QC_ACT_HOLD_HUB / QB_ACT_LAUNCH (R107, both ends: `common/act_chain.tcl`) (`common/limits.tcl` qb_limit: DC / PT SDC, P&R SDC
 (R103, common/block_sdc.tcl), IO budget, PT clock limit, ICC2 CTS, ICC2 setup uncertainty (R103, icc2/init.tcl qb_sdc)); an
 environment value overrides it for an experiment, PrimeTime logs the values in force (QB_PT_LIMITS) and the verdict's
 limits gate fails every corner where they differ from limits.txt.  DC's run.env is not read by the block PrimeTime
-(R100, common/block.sh blk_pt_env: its QC_IO_PCT acted as such an override).
+(R100, common/block.sh blk_pt_env: its QC_IO_PCT acted as such an override); since R107 it records the limits DC used
+and every knob a DC hook declares (flow/tsmc65 `common/knobs.tcl`), and QC_IO_PCT only without a design SDC.
 Corners (R68): one table, `flow/tsmc65/site/site.tcl` QC_SIGNOFF (kit release note RN_TCBN65GPLUS_140B NOTE I): setup
 {wc wcl} x {Cworst RCworst} (ss ss_rcw wcl wcl_rcw), hold {lt ml} x {Cbest RCbest} (ff ff_rcb ml ml_rcb), tc typical (tt);
 ICC2 MCMM, PT sign-off, the DMSA ECO, the block ETMs and the chip top use all of them (bash: common/env.sh `qb_corners`;

@@ -31,7 +31,7 @@ chip) t=${2:?tag}; G=$B/${t}_gen; "$here/chip_gen.sh" "$G" || exit 1
      QB_EXTRA_DB_FF=$B/r5b_blk/qb_col_blk_ff_lib.db "$here/chip_dc.sh" syn qb_chip 1.65 "$t" || exit 1 ;;
 topnl) mkdir -p "$B/r35"; cd "$B/r35" || exit 1
      "$PY" -I "$here/top_nl.py" "$B/${2:?part dir}/qb_chip_r9b_c.v" top_r35 > top_nl.log 2>&1; r=$?; tail -20 top_nl.log; [ $r = 0 ] || exit 1 ;;
-actpins) mkdir -p "$B/r35"; python3 -I "$here/col_act_pins.py" "$B/r5b_blk/qb_col_blk_ring.lef" "$B/r35/col_act_pins.txt" || exit 1 ;;
+actpins) mkdir -p "$B/r35"; "$PY" -I "$here/col_act_pins.py" "$B/r5b_blk/qb_col_blk_ring.lef" "$B/r35/col_act_pins.txt" || exit 1 ;;
 macros) "$ROOT/flow/tsmc65/sram/mc_gen.sh" gen "$here/macros.txt" && "$ROOT/flow/tsmc65/sram/mc_gen.sh" gen "$here/macros_fc.txt" || exit 1 ;;
 *) sed -n '2,13p' "$0"; exit 1 ;;
 esac

@@ -6,7 +6,7 @@
 #   QC_WLM_GROUP / QC_WLM_MODE  wire-load selection group (site.tcl QC_WLM_GROUP) and mode (enclosed), QC_TOPO=0
 #   QC_CLK      clock port name                              (clk)
 #   QC_SDC      design SDC to use instead of the generated constraints (common/lib.tcl qc_constraints)
-#   QC_IO_PCT   IO delay, % of the period                    (20)
+#   QC_IO_PCT   IO delay, % of the period                    (20; generated constraints only, not with QC_SDC)
 #   QC_PARAMS   top-level parameters, DC syntax "W=8,N=4"
 #   QC_HOOK     Tcl file sourced after link, before compile (design-specific DC settings)
 #   QC_POST_HOOK Tcl file sourced after compile + change_names, before the outputs (optional)
@@ -14,7 +14,7 @@
 #   QC_EXTRA_DB_SS / _TT / _FF   extra link libraries (.db) per corner, e.g. SRAM macros (black boxes)
 #   QC_CORES    max cores (8)     QC_BUILD  output root (<repo>/build/tsmc65)
 # Output: $QC_BUILD/syn/<tag>/  (tag = <top>_<corner>_p<period>[_topo]): <top>.v .ddc .sdc [.spef], dc.log, rpt/,
-#   summary.txt, run.env (read by sta/run_pt.sh).
+#   summary.txt, run.env (read by sta/run_pt.sh; + "# knob" / record comment lines, common/knobs.tcl).
 set -u
 . "$(dirname "$0")/../common/tool.sh"
 [ $# -ge 3 ] || { sed -n '2,18p' "$0"; exit 1; }
@@ -24,12 +24,15 @@ tag=${4:-${top}_${corner}_p${period}$([ "$topo" = 1 ] && echo _topo)}
 out=$BUILD/syn/$tag
 rm -rf "$out"; mkdir -p "$out/rpt"
 export QC_FLIST=$flist QC_TOP=$top QC_PERIOD=$period QC_CORNER=$corner QC_TOPO=$topo QC_OUT=$out
+# run.env: the settings of this run; QC_IO_PCT only for the generated constraints (with a design SDC QC_SDC the SDC's own
+# IO delay is in force: qc18bacc R107, run.env recorded the environment's value DC never used).  syn/dc.tcl appends the
+# hook's declared knobs and the design's registered records in force (common/knobs.tcl).
 cat > "$out/run.env" <<EOT
 QC_TOP=$top
 QC_PERIOD=$period
 QC_CLK=${QC_CLK:-clk}
 QC_SDC=${QC_SDC:-}
-QC_IO_PCT=${QC_IO_PCT:-20}
+$([ -z "${QC_SDC:-}" ] && echo "QC_IO_PCT=${QC_IO_PCT:-20}")
 QC_TOPO=$topo
 QC_WLM_GROUP=${QC_WLM_GROUP:-}
 QC_WLM_MODE=${QC_WLM_MODE:-}

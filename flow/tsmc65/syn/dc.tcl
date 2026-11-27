@@ -56,6 +56,8 @@ set_clock_gating_style -sequential_cell latch -positive_edge_logic integrated -c
 check_design -nosplit > $out/rpt/check_design.rpt
 set hook [qc_env QC_HOOK]
 if {$hook ne ""} { source $hook }
+# the hook's declared knobs and the registered records (e.g. limits) in force, appended to run.env (common/knobs.tcl)
+qc_knobs_record $out/run.env
 
 # ---- compile
 eval [qc_env QC_COMPILE "compile_ultra -no_autoungroup -gate_clock"]

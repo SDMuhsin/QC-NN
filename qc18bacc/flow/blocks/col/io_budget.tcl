@@ -8,9 +8,9 @@
 # it, as OCV does for an internal path (late launch / early capture for setup, early launch / late capture for hold):
 #   input  -max  budget + Ll     (upstream register launches late)       input  -min  Le + Tq (below)
 #   output -max  budget - Le     (downstream register captures early)    output -min  0 - Ll (captures late)
-#   act    -min  Le + Tq + H (R81, PI decision): H = QC_ACT_HOLD_HUB (common/env.sh), the act hold budget allocated once,
-#                to the act source (the hub's act output -min = -H): act is a point-to-point chain of identical columns,
-#                each adding its feedthrough, so the earliest act arrival at any column is the hub's guaranteed minimum
+#   act    -min  Le + Tq + H (R81, PI decision): H = QC_ACT_HOLD_HUB (common/act_chain.tcl qb_act_hold), the act hold budget
+#                allocated once, to the act source (its act output -min = -H, blocks/act/io_budget.tcl): act is a point-to-point chain of identical columns,
+#                each adding its feedthrough, so the earliest act arrival at any column is the source's guaranteed minimum
 #                (qb5_act_in_min; pf / pw / the other inputs keep Le + Tq)
 #   act_o  -min  -(Le + Tq + H - U_hold) (R78/R79/R81, PI decisions): act_o[b] drives the next, identical column's act[b], whose hold checks
 #                assume act changes no earlier than Le + Tq + H (its input -min); act_o's hold contract is that same
@@ -22,8 +22,10 @@
 #                passes that capture latency Lc and gets Lc - (Le + Tq) (qb5_act_o_min_icc2).  (R78 [M]:
 #                -network_latency_included instead removed the capture latency from the act_o -max checks too: cts
 #                act -> act_o setup -0.64 ns on all 4608 bits.)
-#   act (west, 16 x 288)   max 0.55 P: launch flop + top wire (0.06 P) + 7 upstream feedthroughs (7 x 0.07 P) = column 7
-#   act_o (east)           output 0.38 P - U = P - 0.55 P - 0.07 P - U: feedthrough act -> act_o <= 0.07 P per column
+#   act (west, 16 x 288)   max 0.55 P: the act source's launch + wire QB_ACT_LAUNCH (0.06 P; common/act_chain.tcl
+#                          qb_act_launch, = the act source's own output budget) + 7 upstream feedthroughs (7 x QB5_ACT_FT
+#                          0.07 P) = column 7
+#   act_o (east)           output 0.38 P - U = P - 0.55 P - 0.07 P - U: feedthrough act -> act_o <= QB5_ACT_FT 0.07 P per column
 #                          (U = setup uncertainty QC_UNC_SETUP 0.25 ns, counted once on the top-level flop -> flop path)
 #   north inputs           cd / ctl / t2 (codes, item controls, T2): 0.30 P
 #   south inputs           pf / pw / p_ld / w_ld (parameter loads), s_rd / w_r (stream reads), f_vld / f_src / f_sh /
@@ -65,18 +67,24 @@
 #                          net as its load), which the 0.55 P act input delay already counts, so the driving cell counted
 #                          it twice.  R71 [M] r68 ss: act_o[8] 0.218 / 0.141 ns rise / fall vs 0.034 / 0.024 from the
 #                          bare BUFFD4 at act[8].
-# (QC_UNC_SETUP / QC_UNC_HOLD / QB5_SOUTH_IN: common/limits.txt through qb_limit, R99)
-source [file join [file dirname [file normalize [info script]]] .. .. common limits.tcl]
+# (QC_UNC_SETUP / QC_UNC_HOLD / QB5_SOUTH_IN: common/limits.txt through qb_limit, R99; the act chain's QC_ACT_HOLD_HUB /
+# QB_ACT_LAUNCH through common/act_chain.tcl, R107)
+source [file join [file dirname [file normalize [info script]]] .. .. common act_chain.tcl]
 set ::QB5_FT {BUFFD4 Z}
+# act feedthrough budget per column (fraction of P) and the columns upstream of the last one
+set ::QB5_ACT_FT 0.07
+set ::QB5_ACT_UPSTREAM 7
 proc qb5_budget {} {
     # opt-in: a block that reuses these procs sets its own class table ::QB5_BUDGET before sourcing (blocks/rgr/io_budget.tcl)
     if {[info exists ::QB5_BUDGET]} { return $::QB5_BUDGET }
     set si [qb_limit QB5_SOUTH_IN]
+    set ai [expr {[qb_act_launch] + $::QB5_ACT_UPSTREAM * $::QB5_ACT_FT}]
+    set ao [expr {1.0 - $ai - $::QB5_ACT_FT}]
     return [subst -nocommands {
-        in  {act[*]}                                   0.55
+        in  {act[*]}                                   $ai
         in  {cd[*] ctl[*] t2[*]}                       0.30
         in  {pf[*] pw[*] p_ld w_ld s_rd[*] w_r[*] f_vld f_src f_sh w_vld w_sh} $si
-        out {act_o[*]}                                 0.38
+        out {act_o[*]}                                 $ao
         out {f_y[*] f_b[*] w_y[*] w_b[*] f_vld_o w_vld_o b2[*] b2_vld} 0.25
     }]
 }
@@ -94,15 +102,10 @@ proc qb5_unc_hold {} { qb_limit QC_UNC_HOLD }
 # flop (its input -min = qb5_hold_min).  The timer adds U_hold to every hold check at the act_o port, so the contract
 # hands it back: act_o -min = -(qb5_hold_min - U_hold) (+ Lc in ICC2, header), i.e. hold slack act -> act_o = the
 # feedthrough min delay, without a second U_hold.  No new constant, no margin; one place for ICC2 and PrimeTime.
-# act input -min (R81, PI decision; header, common/env.sh QC_ACT_HOLD_HUB): the generic hold bound + the hub's act hold
-# budget.  The budget is a property of the act SOURCE (the hub), not of each column: every column sees the hub's minimum
-# arrival plus its upstream feedthroughs, which only add delay.  Read strictly from the environment (no default here), so
-# the column and the hub cannot hold two different values.
-proc qb5_act_hold_hub {} {
-    if {![info exists ::env(QC_ACT_HOLD_HUB)]} { error "qb5_act_hold_hub: QC_ACT_HOLD_HUB not set (common/env.sh)" }
-    return $::env(QC_ACT_HOLD_HUB)
-}
-proc qb5_act_in_min {Le Tq} { expr {[qb5_hold_min $Le $Tq] + [qb5_act_hold_hub]} }
+# act input -min (R81, PI decision; header): the generic hold bound + the act source's hold budget.  The budget is a
+# property of the act SOURCE, not of each column: every column sees the source's minimum arrival plus its upstream
+# feedthroughs, which only add delay.  One value for both ends: common/act_chain.tcl qb_act_hold (R107).
+proc qb5_act_in_min {Le Tq} { expr {[qb5_hold_min $Le $Tq] + [qb_act_hold]} }
 # (R81: from qb5_act_in_min, the next column's act input -min, so hold slack act -> act_o stays the feedthrough min delay)
 proc qb5_act_o_min {Le Tq {Lc 0.0}} { expr {$Lc - ([qb5_act_in_min $Le $Tq] - [qb5_unc_hold])} }
 proc qb5_act_o_min_line {Le Tq {Lc 0.0}} {
@@ -116,7 +119,7 @@ proc qb5_io_lines {per Ll Le Tq} {
         set su [expr {[string match act_o* $pats] ? $U : 0.0}]
         if {$d eq "in"} {
             lappend out [format "set_input_delay -max %.4f -clock qb_clk \[get_ports {%s}\]" [expr {$mx * $per + $Ll}] $pats]
-            # (R81: act gets the hub's act hold budget on top, qb5_act_in_min; every other input the generic bound)
+            # (R81: act gets the act source's hold budget on top, qb5_act_in_min; every other input the generic bound)
             set mn [expr {$pats eq {act[*]} ? [qb5_act_in_min $Le $Tq] : $inmin}]
             lappend out [format "set_input_delay -min %.4f -clock qb_clk \[get_ports {%s}\]" $mn $pats]
         } else {
@@ -126,8 +129,11 @@ proc qb5_io_lines {per Ll Le Tq} {
         }
     }
     # (the act driving cell only where the budget has the act class: every column; not a ::QB5_BUDGET block without act)
+    # (and the act chain contract check, R107: act -max = the source's launch + the upstream feedthroughs, -min = the
+    # generic hold bound + the source's hold budget)
     if {[lsearch -exact [qb5_budget] {act[*]}] >= 0} {
         lappend out "set_driving_cell -lib_cell [lindex $::QB5_FT 0] -pin [lindex $::QB5_FT 1] \[get_ports {act\[*\]}\]"
+        qb_act_chain_check col [join $out "\n"] $per [expr {$Ll + $::QB5_ACT_UPSTREAM * $::QB5_ACT_FT * $per}] $inmin
     }
     return [join $out "\n"]
 }

@@ -61,6 +61,7 @@ def fresh(name, corner, chain):   # every file exists and none is older than the
 PT = ('setup hold recovery removal max_transition max_capacitance clock_max_transition min_pulse_width min_period '
       'unannotated_pin_to_pin unconstrained_endpoints unclocked_register_pins loops unexpected_disabled_arcs floating_nets '
       'noise noise_undriven_ports noise_undriven_pins').split()
+PT_OPT = ('act_noise', 'act_noise_unanalysed')   # (opt-in act_noise: gated when declared or logged)
 # sign-off limits (R99): the committed values, common/limits.txt (of the flow under test), against the session's
 # QB_PT_LIMITS line (signoff/pt/blk.tcl: the values in force); an environment override of any of them fails
 def num(x):   # a number, or the text itself (which then differs from any committed value)
@@ -88,9 +89,14 @@ for c in corners:
             for k, x in zip(t[0::2], t[1::2]): v.setdefault(k, []).append(x)
     # (act_noise_unanalysed, R100: the act load pins on nets with an aggressor that PrimeTime gave no bump; without it the
     # act_noise count was over 0 analysed pins in 6 of 9 corners of r94 / r97)
-    for k in PT + [k for k in ('act_noise', 'act_noise_unanalysed') if 'act_noise' in optin or 'act_noise' in v]:
+    for k in PT + [k for k in PT_OPT if 'act_noise' in optin or 'act_noise' in v]:
         gate(k, c, v[k] == ['0'] if k in v else None,
              'violators %s%s' % (' '.join(v[k]), '; ' + last(text(txt), k + ' ') if last(text(txt), k + ' ') else '') if k in v else 'no QB_PT_SIGNOFF %s count in %s' % (k, log))
+    # (R107; hunt round 11 on d1978e1: a QB_PT_SIGNOFF count of a new key, e.g. from a block hook, was never gated) every
+    # key the session logged is a known one, until a new one is added to PT / PT_OPT deliberately
+    unk = sorted(set(v) - set(PT) - set(PT_OPT))
+    gate('pt_signoff_keys', c, not unk if v else None, ('QB_PT_SIGNOFF keys not gated here: ' + ', '.join('%s %s' % (k, ' '.join(v[k])) for k in unk))
+         if unk else '%d keys, all gated' % len(v) if v else 'no QB_PT_SIGNOFF line in ' + log)
     # the chip top's clock latency (signoff/pt/common.tcl qb_pt_lat): out/clk_lat_<c>.txt holds the "p50 min max" this
     # sign-off session logged as written (a later setup-only or foreign session must not have replaced them)
     lf = 'out/clk_lat_%s.txt' % c; got = text(lf).split()
@@ -120,8 +126,11 @@ for c in corners:
 
 # ICC2 gates recorded in summary.txt: dont_use of every step, the name / load gate of every ECO round, the abstract
 s = text('summary.txt')
-du = [l for l in s.splitlines() if l.startswith('dont_use ')]
-gate('dont_use_icc2', '-', all(zeros(l, ('usable', 'design_cells')) for l in du) if du else None, '%d step lines; %s' % (len(du), du[-1] if du else 'none in summary.txt'))
+# (the latest line of each step, R107: hunt round 11 on d1978e1, every line ever appended counted, so a step's failed
+# earlier attempt failed a clean re-run)
+du = dict((l.split()[1], l) for l in s.splitlines() if l.startswith('dont_use ') and len(l.split()) > 1)
+gate('dont_use_icc2', '-', all(zeros(l, ('usable', 'design_cells')) for l in du.values()) if du else None,
+     '%d steps, latest line each; %s' % (len(du), ' | '.join(l for l in du.values() if not zeros(l, ('usable', 'design_cells'))) or list(du.values())[-1] if du else 'none in summary.txt'))
 # the label of out/ (common/block.sh blk_out): out/label.txt, and no unfinished label (out/label.new)
 label = text('out/label.txt').strip(); pend = text('out/label.new').strip()
 gate('out_label', '-', bool(label) and not pend, 'out/label.txt %s, out/label.new %s' % (label or 'missing', pend or 'none'))
@@ -137,9 +146,11 @@ def pnr(name, what, rx, ok):   # the last line in the gate's own format; an olde
     m = list(re.finditer(rx, s, re.M))
     gate(name, '-', bool(ok(m[-1])) if m else None, m[-1].group(0) if m else 'no "%s" gate line in summary.txt' % what)
 pnr('pnr_tracks', 'floorplan tracks ok|FAIL', r'^floorplan tracks (\S+) row_origin .*$', lambda m: m.group(1) == 'ok')
-for st in ('place', 'cts'):
-    pnr('pnr_legality_' + st, st + ' check_legality: total / cell overlaps / unplaced cells / verdict',
-        r'^%s check_legality: total (\S+) violations, cell overlaps (\S+), unplaced cells (\S+), verdict (\S+)$' % st,
+# (route and the ECO label of out/, R107: hunt round 11 on d1978e1, nothing checked legality after route_opt / the fillers,
+# and the verdict read place / cts only; the ECO round's line is its legality after place_eco_cells, icc2/eco.tcl)
+for name, st in [(x, x) for x in ('place', 'cts', 'route')] + ([('eco', label or 'eco')] if label != 'route' else []):
+    pnr('pnr_legality_' + name, st + ' check_legality: total / cell overlaps / unplaced cells / verdict',
+        r'^%s check_legality: total (\S+) violations, cell overlaps (\S+), unplaced cells (\S+), verdict (\S+)$' % re.escape(st),
         lambda m: m.groups() == ('0', '0', '0', 'succeeded'))
 for name, lab in [('pnr_route_gate', 'route')] + ([('pnr_eco_gate', label or 'eco')] if label != 'route' else []):
     pnr(name, lab + ' gate: ... closure pass(es): PASS|FAIL', r'^%s gate: check_routes .*; check_lvs .* closure pass\(es\): (PASS|FAIL.*)$' % re.escape(lab),

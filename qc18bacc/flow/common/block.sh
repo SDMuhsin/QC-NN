@@ -196,17 +196,31 @@ blk_fill() {
 }
 # Calibre dummy metal + dummy OD / PO of out/<top>.gds; metal -> DEF FILLS -> fill-aware SPEFs of every sign-off corner
 # (flow/icc2/extract.tcl on label $1, the label out/ was written from)
-blk_fill_label() {
-    local l=$1 o=$d/calibre C=$QBF/signoff/calibre w; mkdir -p "$o"
-    # chip window of both fill decks = the DEF DIEAREA (DIEAREA as a rectangle or, as ICC2 writes it, a polygon: its
-    # bounding box) -> calibre/die_window.sed.  Metal too since R99 (signoff/calibre/fill_blk.sed ChipWindowUsed; [M] rgr
-    # rg44735f5a: without a window the metal fill took the drawn extent, y 4.76 .. 124.04 of the 130-um die, and stopped
-    # 7.3 / 8.5 um short of the bottom / top edge, the OD / PO fill 0.6 um)
-    w=$(zcat "$d/out/$BLK_TOP.def.gz" | awk '$1 == "UNITS" { u = $4 } $1 == "DIEAREA" { n = 0
-        for (i = 2; i <= NF; i++) if ($i ~ /^-?[0-9.]+$/) v[n++] = $i / u
+# blk_die_window <def.gz>: "xLB yLB xRT yRT" (um) of the DEF DIEAREA (a rectangle or, as ICC2 writes it, a polygon: its
+# bounding box), exact: integer database units (UNITS DISTANCE MICRONS, a power of 10) written as decimals with as many
+# digits as the unit has (R107; hunt round 11 on d1978e1: awk's %s printed 6 significant digits, 1043.285 -> 1043.29).
+# Fails without a DIEAREA of integer points or with another unit.
+blk_die_window() {
+    zcat "$1" | awk '$1 == "UNITS" && $2 == "DISTANCE" && $3 == "MICRONS" { u = $4 }
+        function dec(x,   s, m) { s = x < 0 ? "-" : ""; x = x < 0 ? -x : x; if (k == 0) return s x
+            m = sprintf("%0" (k + 1) "d", x); return s substr(m, 1, length(m) - k) "." substr(m, length(m) - k + 1) }
+        $1 == "DIEAREA" { n = 0
+        if (u !~ /^1(0)*$/) exit 1
+        k = length(u) - 1
+        for (i = 2; i <= NF; i++) if ($i ~ /^-?[0-9]+$/) v[n++] = $i + 0; else if ($i !~ /^[();]$/) exit 1
+        if (n < 4 || n % 2) exit 1
         x0 = x1 = v[0]; y0 = y1 = v[1]
         for (i = 2; i + 1 < n; i += 2) { x0 = v[i] < x0 ? v[i] : x0; x1 = v[i] > x1 ? v[i] : x1; y0 = v[i+1] < y0 ? v[i+1] : y0; y1 = v[i+1] > y1 ? v[i+1] : y1 }
-        printf "%s %s %s %s", x0, y0, x1, y1; exit }')
+        printf "%s %s %s %s\n", dec(x0), dec(y0), dec(x1), dec(y1); ok = 1; exit }
+        END { exit !ok }'
+}
+blk_fill_label() {
+    local l=$1 o=$d/calibre C=$QBF/signoff/calibre w; mkdir -p "$o"
+    # chip window of both fill decks = the DEF DIEAREA (blk_die_window) -> calibre/die_window.sed.  Metal too since R99
+    # (signoff/calibre/fill_blk.sed ChipWindowUsed; [M] rgr rg44735f5a: without a window the metal fill took the drawn
+    # extent, y 4.76 .. 124.04 of the 130-um die, and stopped 7.3 / 8.5 um short of the bottom / top edge, the OD / PO
+    # fill 0.6 um)
+    w=$(blk_die_window "$d/out/$BLK_TOP.def.gz") || { echo "BLK_FAIL no DIEAREA of integer points in a UNITS DISTANCE MICRONS 10^k out/$BLK_TOP.def.gz"; return 1; }
     set -- $w; [ $# = 4 ] || { echo "BLK_FAIL no DIEAREA in out/$BLK_TOP.def.gz"; return 1; }
     printf 's#^VARIABLE xLB .*#VARIABLE xLB %s#\ns#^VARIABLE yLB .*#VARIABLE yLB %s#\ns#^VARIABLE xRT .*#VARIABLE xRT %s#\ns#^VARIABLE yRT .*#VARIABLE yRT %s#\n' "$@" > "$o/die_window.sed"
     QB55_FILL_SED=$BLK_FILL_SED QB55_WINDOW=$o/die_window.sed bash "$C/cal.sh" fill "$d/out/$BLK_TOP.gds" "$BLK_TOP" "$o/fill" > "$o/fill.log" 2>&1 \

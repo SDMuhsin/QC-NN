@@ -2,6 +2,7 @@
 set ::QC_FLOW [file normalize [file dirname [info script]]/..]
 source $::QC_FLOW/site/site.tcl
 source $::QC_FLOW/common/flist.tcl
+source $::QC_FLOW/common/knobs.tcl
 
 proc qc_env {name {default ""}} {
     if {[info exists ::env($name)] && $::env($name) ne ""} { return $::env($name) }

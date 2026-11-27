@@ -41,7 +41,8 @@ flow/tsmc65/sim/run_vcs.sh <tag> <tb_top> <a.f> [b.f ...]       # -> build/tsmc6
 
 Options are environment variables, documented in each script's header: `QC_CORNER`, `QC_TOPO=1`
 (topographical mode), `QC_WLM_GROUP` / `QC_WLM_MODE` (wire-load model, see below), `QC_CLK`, `QC_SDC` (a design SDC instead of the generated single-clock constraints),
-`QC_IO_PCT`, `QC_PARAMS`, `QC_HOOK` (Tcl sourced before compile), `QC_COMPILE`, `QC_CORES`, `QC_BUILD`,
+`QC_IO_PCT`, `QC_PARAMS`, `QC_HOOK` (Tcl sourced before compile; the knobs it reads declared with `qc_knobs_declare`
+and read with `qc_knob`, recorded in run.env: `common/knobs.tcl`), `QC_COMPILE`, `QC_CORES`, `QC_BUILD`,
 `QC_EXTRA_DB_SS` / `_TT` / `_FF` (extra link libraries per corner, e.g. SRAM macros as black boxes; kept in run.env
 for PrimeTime), `QC_PT_HOOK` (Tcl sourced by PrimeTime after its reports, design-specific numbers).
 Every run writes the full reports under `build/` (git-ignored, stays on the server) and a short `summary.txt` /

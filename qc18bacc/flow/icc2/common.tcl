@@ -58,7 +58,7 @@
 #   qb_lef_grid         kit routing grid {layer {direction pitch offset}} of the LEF (site/pnr.tcl QC_PNR_LEF; R92)
 #   qb_track_check <step> <signal ports>  track gate (R92; floorplan.tcl): track phase against the rows = LEF OFFSET on
 #                       every LEF grid layer, every signal pin on a track of its layer; error otherwise, one summary line
-#   qb_legality <step>  placement legality gate (R92; place.tcl, cts.tcl): check_legality TOTAL, cell overlaps and
+#   qb_legality <step>  placement legality gate (R92; place.tcl, cts.tcl, eco.tcl; route.tcl R107): check_legality TOTAL, cell overlaps and
 #                       verdict parsed from its report; error on any violation or an unparsed report
 #   qb_ndm              the standard-cell NDM of the kit state it is built from (R92; libs.tcl, init.tcl): its name
 #                       carries a key of the LEF, the tech file, the corner .db set, libs.tcl, the diode cell and the

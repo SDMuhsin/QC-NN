@@ -10,10 +10,12 @@
 # sign-off corner (common/env.sh qb_corners) the PrimeTime log evidence (qb_pt -check), the sign-off limits in force
 # (= common/limits.txt, R99), every QB_PT_SIGNOFF count (setup,
 # hold, recovery, removal, max transition, max capacitance, clock max transition, min pulse width, min period, coverage;
-# noise on the block's noise state with its driver-model counts; opt-in: the column's act load pins), the chip top's clock latency
+# noise on the block's noise state with its driver-model counts; opt-in: the column's act load pins; a key outside these fails,
+# R107), the chip top's clock latency
 # file (= the session's QB_PT_LAT line), the annotation split, the dont_use gate, the ETM (log, files, etmcheck) and the
-# freshness chain netlist -> fill DEF -> SPEF -> PT -> ETM; for the block the ICC2 gate lines of summary.txt (dont_use,
-# floorplan tracks, place / cts legality, route gate, last ECO round's gate, ECO names and loads of the round that built
+# freshness chain netlist -> fill DEF -> SPEF -> PT -> ETM; for the block the ICC2 gate lines of summary.txt (dont_use: the
+# latest line of each step,
+# floorplan tracks, place / cts / route legality and that of the ECO round of the label of out/ (R107), route gate, last ECO round's gate, ECO names and loads of the round that built
 # the label of out/, which must be complete [no unfinished label], abstract and its label [= the label of out/]; opt-in: the column's act / act_o abutment),
 # Calibre LVS + its ERC (calibre/erc_allow.txt) / DRC (with the block deck's QB_ gate rules) / antenna (calibre/cal.sh check) and
 # the chain GDS -> fill -> Calibre reports; per Calibre mode the deck edits applied (= the block's committed defaults) and

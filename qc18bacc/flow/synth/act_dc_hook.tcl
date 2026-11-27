@@ -8,21 +8,23 @@
 #   * topographical die = the P&R die: utilisation QB_UTIL_T (default 0.46) and aspect QB_ASPECT (default 2.7), act pins
 #     east, S / map read data + read ports south, controls / tokens / descriptors / flags north (QB9_CTL_SIDE T)
 source [file dirname [info script]]/../blocks/act/io_budget.tcl
+# knobs (flow/tsmc65/common/knobs.tcl: declared once, recorded by DC in run.env)
+qc_knobs_declare {QB9_MAXTRAN 0.30 QB9_MAXFO 32 QB_UTIL_T 0.46 QB_ASPECT 2.7 QB9_CTL_SIDE T}
 qb7_io_apply [get_attribute [get_clocks qb_clk] period]
 set_fix_multiple_port_nets -all -buffer_constants
-set_max_transition [qc_env QB9_MAXTRAN 0.30] [current_design]
-set_max_fanout [qc_env QB9_MAXFO 32] [current_design]
+set_max_transition [qc_knob QB9_MAXTRAN] [current_design]
+set_max_fanout [qc_knob QB9_MAXFO] [current_design]
 if {[catch {set_app_var compile_final_drc_fix all} e]} { puts "QB9_TOPO compile_final_drc_fix unavailable: $e" }
 if {[shell_is_in_topographical_mode]} {
-    set_utilization [qc_env QB_UTIL_T 0.46]
-    set_aspect_ratio [qc_env QB_ASPECT 2.7]
+    set_utilization [qc_knob QB_UTIL_T]
+    set_aspect_ratio [qc_knob QB_ASPECT]
     set _a [get_ports {act[*]}]
     set _s [get_ports {s_q[*] m_q[*] s_ren s_ra[*] s_ctx m_ren m_ra[*] m_ctx}]
     set_port_side -side R $_a
     set_port_side -side B $_s
     set _c [remove_from_collection [add_to_collection [all_inputs] [all_outputs]] [add_to_collection $_a $_s]]
-    set_port_side -side [qc_env QB9_CTL_SIDE T] $_c
-    puts "QB9_TOPO util [qc_env QB_UTIL_T 0.46] aspect [qc_env QB_ASPECT 2.7] maxtran [qc_env QB9_MAXTRAN 0.30] maxfo [qc_env QB9_MAXFO 32] ctl [sizeof_collection $_c]"
+    set_port_side -side [qc_knob QB9_CTL_SIDE] $_c
+    puts "QB9_TOPO util [qc_knob QB_UTIL_T] aspect [qc_knob QB_ASPECT] maxtran [qc_knob QB9_MAXTRAN] maxfo [qc_knob QB9_MAXFO] ctl [sizeof_collection $_c]"
 }
 # R13: keep the QB_ACT_RPL replicas apart.  The 16 s1c copies (s1c_r) and the 2 x 128 line-buffer write-enable copies (wer)
 # have identical D logic; compile_ultra's register merging would fold each group back into one flop and rebuild the 16 k-fanout

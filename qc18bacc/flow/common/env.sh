@@ -10,15 +10,8 @@ QBF=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd); ROOT=$(cd "$QBF/../.." && 
 export QC_BUILD=${QC_BUILD:-/tmp/$USER/qc18bacc/build}; B=$QC_BUILD
 TOOLS=${QC_TOOLS:-/tmp/$USER/tools}; PY=$TOOLS/env/bin/python3
 export QC_PY=$PY   # (the tools' Tcl runs flow Python through it: common/lib_cells.tcl qb_lib_tcq)
-# act chain hold budget QC_ACT_HOLD_HUB (ns; R81, PI decision): the one value both ends of the act chain read.  act is a
-# 7-deep point-to-point chain hub -> col 0 -> act_o -> col 1 -> ...; every column is the same macro and column c gets
-# act at column c-1's arrival + its feedthrough, so the minimum arrival at any column's act input is the hub's
-# guaranteed minimum.  The hold budget is therefore allocated ONCE, to the act source: the column's act input -min =
-# qb5_hold_min + QC_ACT_HOLD_HUB (blocks/col/io_budget.tcl qb5_act_in_min; act_o -min follows through qb5_act_o_min),
-# the hub's act output -min = -QC_ACT_HOLD_HUB (the hub's SDC; its OpenROAD-era blocks/hub/sdc.py was removed).  Basis: R80 [M] act -> u_pe hold demand 0.066-0.070 ns
-# at ff / ml plus a derate spread up to 0.074 ns -> 0.10 ns.  (R80 [M]: without it the column-0 launch bound was applied
-# to all 8 columns, 18042 hold buffers in u_pe.)  Exported: the ICC2 / PrimeTime Tcl read it.
-export QC_ACT_HOLD_HUB=0.10
+# (The act chain hold budget QC_ACT_HOLD_HUB, R81, is a sign-off limit of common/limits.txt since R107, read by both
+# ends of the act chain through common/act_chain.tcl; it was exported here, and only the column read it.)
 # Hold slack margin of the sign-off ECO QC_ECO_HOLD_MARGIN (ns; R92): read by signoff/pt/drv_eco.tcl.
 export QC_ECO_HOLD_MARGIN=${QC_ECO_HOLD_MARGIN:-0.005}
 # DRV / noise fix guard-bands of the sign-off ECO (fraction of the limit; R92, PI decision): drv_eco.tcl qb_eco_guard.

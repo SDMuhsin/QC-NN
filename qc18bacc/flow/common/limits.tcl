@@ -2,7 +2,8 @@
 #   qb_limit <name>   the value in force: the environment variable <name> if set and not empty (an experiment), else
 #                     the committed value; error for a name limits.txt does not have
 #   qb_limits         "<name> <value> ..." of every limit of limits.txt as in force (PrimeTime logs it as QB_PT_LIMITS,
-#                     signoff/pt/blk.tcl; signoff/verdict.py gate limits compares it with limits.txt)
+#                     signoff/pt/blk.tcl; signoff/verdict.py gate limits compares it with limits.txt; DC records it in
+#                     run.env, ::QC_RECORD below)
 #   qb_io_delay <P>   IO delay at period P of the ports outside a block IO budget: QC_IO_PCT % of P (constraints.sdc,
 #                     common/block_sdc.tcl; R103: block_sdc had its own 0.2 P)
 #   qb_max_tran <P>   design max transition at period P: min(QC_MAX_TRAN, QC_MAX_TRAN_PCT % of P) (constraints.sdc,
@@ -26,5 +27,7 @@ proc qb_limit {name} {
     return [dict get $c $name]
 }
 proc qb_limits {} { join [lmap {n -} [qb_limits_committed] { list $n [qb_limit $n] }] }
+# DC records the limits in force in run.env after its hook (flow/tsmc65/common/knobs.tcl qc_knobs_record, R107)
+set ::QC_RECORD(limits) qb_limits
 proc qb_io_delay {per} { expr {$per * [qb_limit QC_IO_PCT] / 100.0} }
 proc qb_max_tran {per} { expr {min([qb_limit QC_MAX_TRAN], $per * [qb_limit QC_MAX_TRAN_PCT] / 100.0)} }
