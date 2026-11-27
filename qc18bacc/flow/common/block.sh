@@ -62,10 +62,20 @@ blk_pnr() {
     for s in $all; do
         [ "$s" = "$from" ] && on=1; [ $on = 1 ] || continue
         if [ "$s" = outputs ]; then blk_out route || return 1
-        else qb_icc2 "$d" "$s" "$([ "$s" = libs ] && echo icc2_lm_shell)" || return 1; fi
+        elif [ "$s" = libs ]; then blk_libs || return 1
+        else qb_icc2 "$d" "$s" || return 1; fi
         [ "$s" = "$to" ] && break
     done
     tail -n 40 "$d/summary.txt"
+}
+# libs step under the host's NDM build lock (R97; [M] two pnr runs of one snapshot collided on the shared NDM build):
+# a concurrent libs step waits for the build, then reuses its NDM (flow/icc2/libs.tcl builds it atomically).  flock
+# drops the lock when its holder dies, so a killed build never blocks the next one.
+blk_libs() {
+    local k=$B/icc2/ndm/.build.lock
+    mkdir -p "${k%/*}" || return 1
+    ( flock -n 9 || { echo "BLK_LIBS waiting for the NDM build lock $k $(date +%T)"; flock 9; } || exit 1
+      qb_icc2 "$d" libs icc2_lm_shell ) 9> "$k"
 }
 # The label of out/ (R96: one atomic set per label).  out/label.txt names the ICC2 label whose outputs (flow/icc2/
 # outputs.tcl), portcheck, Calibre fill and fill-aware SPEFs out/ holds; it exists only once all of them passed for that

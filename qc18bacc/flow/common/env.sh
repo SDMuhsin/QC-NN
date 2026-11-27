@@ -49,26 +49,32 @@ qb_kit() {
 # count of the run's parasitics logs is > 0 (a run that read no coupled SPEF timed nothing with SI), and the DMSA
 # scenario logs (worker_errors: out.log and parasitics logs in subdirs) have no '^Error' line either (an error in a
 # worker alone used to pass: only <log> and its own parasitics log were counted).
+# The scenario logs are the session's own (R97; before, any out.log / parasitics log under the run dir newer than the
+# session's start counted, so a later ECO round's workers added errors or coupling counts to an older session's
+# evidence): only those in the DMSA work dir the session names in its log (QB_PT_WORKDIR line, signoff/pt/drv_eco.tcl;
+# a session without one has no scenario logs) and written between its start and its end.
 # The PT_ERRORS line ends "signoff_fails N evidence ok|bad": evidence = everything but the QB_PT_SIGNOFF counts.
 # qb_pt -check <log>: the same gate on the logs of a finished run, no tool run (signoff/verdict.py, which reads the
-# evidence word; run it in the dir the run ran in): exit status and start time from qc_tool's <log>.time (rc NA
+# evidence word; run it in the dir the run ran in): exit status, start and end time from qc_tool's <log>.time (rc NA
 # without one, which fails).
 qb_pt() {
-    local log rc e p=0 x c k v t0 F W pl b we dn de chk=0 ev=bad
+    local log rc e p=0 x c k v t0 t1 F W wd pl b we dn de chk=0 ev=bad
     if [ "$1" = -check ]; then chk=1; shift; fi
     log=$1; pl=${1%.log}_parasitics.log; b=$(basename "$pl")
     if [ $chk = 1 ]; then
         rc=$(sed -n 's/^[[:space:]]*Exit status: //p' "$log.time" 2> /dev/null); rc=${rc:-NA}
         t0=$(awk '/Elapsed/ {n = split($NF, a, ":"); for (i = 1; i <= n; i++) s = s * 60 + a[i]} END {printf "%d", s + 1}' "$log.time" 2> /dev/null)
-        t0=$(( $(stat -c %Y "$log.time" 2> /dev/null || echo 0) - ${t0:-0} ))
+        t1=$(( $(stat -c %Y "$log.time" 2> /dev/null || echo 0) + 1 )); t0=$(( t1 - 1 - ${t0:-0} ))
     else
         rm -f "$pl" "$b"; t0=$(date +%s)
         QB_PT_PARA_LOG=$b qc_tool "$@"; rc=$?   # relative: DMSA scenario workers write theirs in their own work dirs
+        t1=$(( $(date +%s) + 1 ))
         if [ -f "$b" ] && ! [ "$b" -ef "$pl" ]; then mv "$b" "$pl"; fi
     fi
     e=$(grep -c '^Error' "$log"); [ -f "$pl" ] && p=$(grep -c '^Error' "$pl")
-    W=$(find . -mindepth 2 -maxdepth 5 -name '*.nlib' -prune -o -type f \( -name "$b" -o -name parasitics_command.log \
-        -o -name out.log \) -newermt "@$t0" -print)
+    wd=$(sed -n 's/^QB_PT_WORKDIR //p' "$log" | tail -n 1)
+    W=$([ -n "$wd" ] && [ -d "$wd" ] && find "$wd" -mindepth 1 -maxdepth 3 -type f \( -name "$b" -o -name parasitics_command.log \
+        -o -name out.log \) -newermt "@$t0" ! -newermt "@$t1" -print)
     F="$W $([ -f "$pl" ] && echo "$pl")"
     we=$(cat $W /dev/null | grep -c '^Error')
     dn=$(grep -c '^Thank you for using pt_shell!' "$log"); de=$(grep -c '^Diagnostics summary:.* error' "$log")

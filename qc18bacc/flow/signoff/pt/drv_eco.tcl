@@ -292,6 +292,7 @@ set corners $::env(QB_ECO_CORNERS)
 set pmode occupied_site
 set_host_options -num_processes [llength $corners] -max_cores [expr {[info exists ::env(QB_ECO_CORES)] ? $::env(QB_ECO_CORES) : 4}]
 set multi_scenario_working_directory $o/work
+puts "QB_PT_WORKDIR [file normalize $o/work]"   ;# (common/env.sh qb_pt: the scenario logs of this session)
 set multi_scenario_merged_error_log $o/merged_errors.log
 foreach c $corners {
     set qb_eco_corner $c

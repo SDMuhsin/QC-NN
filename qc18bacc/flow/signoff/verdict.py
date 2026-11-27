@@ -84,7 +84,7 @@ for c in corners:
     gate('etm_log', c, ok and done and not bad if ok is not None else None, '%s; QB_ETM_DONE %d; MEXT-6/81/97 lines %d' % (l, done, bad))
     db = have(lib[:-4] + '_lib.db')
     rc, out = sh('%s -I %s/signoff/etm/etmcheck.py %s' % (sys.executable, flow, lib)) if have(lib) else (None, '')
-    gate('etmcheck', c, rc == 0 and db if have(lib) else None, '%s; %s_lib.db %d' % (last(out, 'ETMCHECK input pins') or out.strip()[-160:] or 'no ' + lib, lib[:-4], db))
+    gate('etmcheck', c, rc == 0 and db if have(lib) else None, '%s; %s_lib.db %d' % (last(out, 'ETMCHECK %s ' % lib) or out.strip()[-160:] or 'no ' + lib, lib[:-4], db))
     fresh('etm', c, [log, lib])
 
 # ICC2 gates recorded in summary.txt: dont_use of every step, the name / load gate of every ECO round, the abstract

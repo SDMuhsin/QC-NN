@@ -54,7 +54,8 @@
 #   qb_legality <step>  placement legality gate (R92; place.tcl, cts.tcl): check_legality TOTAL, cell overlaps and
 #                       verdict parsed from its report; error on any violation or an unparsed report
 #   qb_ndm              the standard-cell NDM of the kit state it is built from (R92; libs.tcl, init.tcl): its name
-#                       carries a key of the LEF, the tech file, the corner .db set and libs.tcl
+#                       carries a key of the LEF, the tech file, the corner .db set, libs.tcl, the diode cell and the
+#                       ICC2 release
 set ::QBF [file normalize [file dirname [info script]]/..]
 set ::QC_BUILD $::env(QC_BUILD)
 source $::env(QC_FLOW)/common/lib.tcl
@@ -774,10 +775,11 @@ proc qb_legality {step} {
 }
 # Standard-cell NDM (R92; libs.tcl builds it, init.tcl references it), shared by every block under $QC_BUILD/icc2/ndm.
 # Its name carries a key of what it is built from - the md5 of the cell LEF, the tech file, the .db of every sign-off
-# corner (the corner table's library set) and libs.tcl - so a changed input is another NDM: never a silent reuse (the
-# name was LEF + DBU only) and never an overwrite under a design library that references the old one.
+# corner (the corner table's library set) and libs.tcl, the diode cell libs.tcl marks (site/pnr.tcl QC_PNR_DIODE) and
+# the ICC2 release that writes it (sh_product_version; R97) - so a changed input is another NDM: never a silent reuse
+# (the name was LEF + DBU only) and never an overwrite under a design library that references the old one.
 proc qb_ndm {} {
     set src [list $::QC_PNR_LEF $::QC_TF {*}[lsort -unique [lmap c $::QC_SIGNOFF_CORNERS { qc_db $c }]] $::QBF/icc2/libs.tcl]
-    set key [string range [exec md5sum << [exec md5sum {*}$src]] 0 7]
+    set key [string range [exec md5sum << "[exec md5sum {*}$src]\ndiode $::QC_PNR_DIODE\nicc2 $::sh_product_version"] 0 7]
     return $::QC_BUILD/icc2/ndm/[file rootname [file tail $::QC_PNR_LEF]]_dbu${::QB_DBU}_$key.ndm
 }

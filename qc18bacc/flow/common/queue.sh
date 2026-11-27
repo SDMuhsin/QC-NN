@@ -14,11 +14,35 @@
 #      (read by common/status.sh; run dir = what "run.sh rundir <run>" prints for a block on the shared driver
 #      common/block.sh, else $B/pnr/<run>).  rc = run.sh exit code: non-zero whenever a tool of the step failed (R53),
 #      so the queue stops there.
+# A spec problem fails at launch, before anything starts (qspec, R97; [M] tau11 r97xq: with a missing spec the launcher's
+# cp failed, the queue started anyway and reported "QUEUE all done"): the spec is a readable file with at least one step
+# line, and every step line parses: each wait condition one of the forms above, then VAR=val words, then <blk> <step>
+# <run> with an executable blocks/<blk>/run.sh.  The detached queue checks its copy again.
 set -uf
 . "$(dirname "$0")/env.sh"
+qspec() {   # qspec <spec>: one QUEUE_FAIL line per problem, non-zero if there is any
+    local f=$1 l c n=0 m=0 bad=0 C
+    [ -f "$f" ] && [ -r "$f" ] || { echo "QUEUE_FAIL spec $f: missing or unreadable"; return 1; }
+    while IFS= read -r l || [ -n "$l" ]; do n=$((n + 1))
+        [[ $l =~ ^[[:space:]]*(#|$) ]] && continue; m=$((m + 1)); set -- $l
+        if [ "$1" != - ]; then
+            [[ $1 =~ ^,|,,|,$ ]] && { echo "QUEUE_FAIL spec $f line $n: empty wait condition in '$1'"; bad=1; }
+            IFS=, read -ra C <<< "$1"
+            for c in "${C[@]}"; do
+                [[ $c =~ ^(pid:[0-9]+|file:.+|(grep|need):[^:]+:.+)$ ]] || { echo "QUEUE_FAIL spec $f line $n: bad wait condition '$c'"; bad=1; }
+            done
+        fi; shift
+        while [ $# -gt 0 ] && [[ $1 =~ ^[A-Za-z_][A-Za-z0-9_]*= ]]; do shift; done
+        if [ $# -lt 3 ]; then echo "QUEUE_FAIL spec $f line $n: no <blk> <step> <run> after the wait and VAR=val words"; bad=1
+        elif [ ! -x "$QBF/blocks/$1/run.sh" ]; then echo "QUEUE_FAIL spec $f line $n: no executable blocks/$1/run.sh"; bad=1; fi
+    done < "$f"
+    [ $m -gt 0 ] || { echo "QUEUE_FAIL spec $f: no step line"; bad=1; }
+    return $bad
+}
 lg=${1:?logdir}; spec=${2:?spec}
+qspec "$spec" || exit 1
 if [ "${QB_QUEUE_FG:-}" != 1 ]; then
-    mkdir -p "$lg"; lg=$(cd "$lg" && pwd); cp "$spec" "$lg/queue.spec"
+    mkdir -p "$lg" && lg=$(cd "$lg" && pwd) && cp "$spec" "$lg/queue.spec" || { echo "QUEUE_FAIL cannot copy $spec to $lg"; exit 1; }
     QB_QUEUE_FG=1 setsid nohup "$0" "$lg" "$lg/queue.spec" > "$lg/queue.log" 2>&1 < /dev/null &
     echo "QUEUE pid/pgid $! log $lg"; exit 0
 fi
@@ -42,7 +66,6 @@ for l in "${L[@]}"; do n=$((n + 1)); set -- $l; w=$1; shift; ev=()
         file) until [ -e "$a" ]; do sleep 60; done ;;
         grep) until grep -q "${a#*:}" "${a%%:*}" 2> /dev/null; do sleep 60; done ;;
         need) grep -q "${a#*:}" "${a%%:*}" 2> /dev/null || { echo "QUEUE need failed: $a"; rc=97; } ;;
-        *)    echo "QUEUE bad wait $c"; rc=98 ;;
         esac
     done
     if [ $rc = 0 ]; then t0=$(now); put $n $blk $step $run run $t0 - -; echo "QUEUE $n start $blk $step $run $(date +%T)"

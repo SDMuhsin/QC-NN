@@ -24,8 +24,8 @@ A=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/erc_allow.txt   # (resolved befo
 #   lvs       lvs.rep is this run's (not older than deck.lvs), its overall result is CORRECT, the CELL SUMMARY row of
 #             <topcell> is CORRECT and no cell is INCORRECT / NOT COMPARED
 #   drc, ant  the summary report the deck copy names is this run's and of <topcell>, has its TOTAL line with 0 results,
-#             and every QB_* rule check of the deck copy (a gate a deck sed adds, R82 drc_blk.sed) has a RULECHECK line
-#             (R84: a gate that did not run fails)
+#             and every QB_* rule check of the deck copy (a gate a deck sed adds, R82 drc_blk.sed) has one RULECHECK
+#             line, executed with 0 results (R84: a gate that did not run fails; R97: NOT EXECUTED fails too)
 #   erc       the ERC summary of the lvs run (the deck copy's ERC SUMMARY REPORT; lvs ends with both) is this run's and
 #             of <topcell>, at least one check executed, every executed check 0 results, its SUMMARY counts agree, and
 #             a NOT EXECUTED check passes only if erc_allow.txt names it (reason from the deck) and every marker layer
@@ -56,11 +56,14 @@ cal_result() {
              s="results ${n:-NA} rules_with_results $v rule_checks $r qb_gate_rules $(echo $q | wc -w)"
              [ "$c" = "$top" ] || { echo "CAL36_FAIL $mode $top: $rep is of cell '$c'"; f=1; }
              [ "$n" = 0 ] && [ "$v" = 0 ] && [ "$r" -gt 0 ] || { echo "CAL36_FAIL $mode $top: $s (needs the TOTAL line with 0 results and at least one rule check)"; f=1; }
-             # our own deck gates (QB_* rule checks added by a deck sed, e.g. drc_blk.sed QB_BLK.M8M9.0)
+             # our own deck gates (QB_* rule checks added by a deck sed, e.g. drc_blk.sed QB_BLK.M8M9.0): each passes only
+             # with its RULECHECK line executed at 0 results (R97: "RULECHECK <rule> .... NOT EXECUTED" passed before)
              for b in $q; do
-                 grep -q "^RULECHECK $b \." "$rep" || { echo "CAL36_FAIL QB_ gate rule $b has no RULECHECK line in $rep"; f=1; }
+                 o=$(awk -v b="$b" '$1 == "RULECHECK" && $2 == b { n++; l = $0 }
+                     END { if (n != 1) print n + 0 " RULECHECK lines"
+                           else if (l !~ /^RULECHECK [^ ]+ \.+ TOTAL Result Count = 0 \(0\) *$/) { sub(/^RULECHECK [^ ]+ \.* */, "", l); print l } }' "$rep")
+                 [ -z "$o" ] || { echo "CAL36_FAIL QB_ gate rule $b: $o in $rep (needs one RULECHECK line, executed, 0 results)"; f=1; }
              done
-             if grep -q '^RULECHECK QB_.* TOTAL Result Count = [1-9]' "$rep"; then echo "CAL36_FAIL QB_ gate rule with results"; f=1; fi
          fi ;;
     erc) rep=$(sed -n 's/^ERC SUMMARY REPORT "\(.*\)".*/\1/p' "$d/deck.lvs" 2> /dev/null | head -1); case $rep in /*) ;; *) rep=$d/$rep ;; esac
          if [ ! -s "$d/deck.lvs" ] || [ ! -f "$rep" ] || [ ! -s "$rep" ]; then echo "CAL36_FAIL erc $top: no deck copy $d/deck.lvs or no ERC summary of it"; f=1

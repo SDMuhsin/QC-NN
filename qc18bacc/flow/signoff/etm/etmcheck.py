@@ -3,6 +3,8 @@
 the largest index_1 (input transition) of the constraint tables, and setup / hold / clk->out values outside +-LIM ns.
 R64 (results/r64.md): input pins' max_transition (min / max); exit 1 if an input pin has none or 0 (R63: the ETM context
 set_input_transition 0 gave max_transition 0 on all 6958 data inputs, signoff/pt/common.tcl qb_etm_context).
+R97: exit 1 also on any table value beyond +-LIM ns, any pin capacitance above CAP pF, or no table value at all (before,
+those limits only printed counts and the exit status covered input max_transition alone).
 usage: etmcheck.py <etm.lib> [LIM=3.0] [CAP=0.065]"""
 import re, sys
 src = sys.argv[1]; LIM = float(sys.argv[2]) if len(sys.argv) > 2 else 3.0; CAP = float(sys.argv[3]) if len(sys.argv) > 3 else 0.065
@@ -20,7 +22,8 @@ for m in re.finditer(r'timing_type\s*:\s*"?(\w+)"?\s*;(.*?)(?=\n\s*timing\s*\(|\
             except ValueError: continue
             vals.setdefault(k, []).append(x)
             if abs(x) > LIM: bad[k] = bad.get(k, 0) + 1
-print('ETMCHECK %s pins_cap max %.4f pF, > %.3f: %d of %d' % (src, max(caps) if caps else 0, CAP, sum(c > CAP for c in caps), len(caps)))
+ncap = sum(c > CAP for c in caps)
+print('ETMCHECK %s pins_cap max %.4f pF, > %.3f: %d of %d' % (src, max(caps) if caps else 0, CAP, ncap, len(caps)))
 print('ETMCHECK max table input transition %.3f ns' % (max(idx) if idx else 0))
 for k, v in sorted(vals.items()):
     print('ETMCHECK %-8s n %7d min %8.3f max %8.3f  beyond +-%.1f: %d' % (k, len(v), min(v), max(v), LIM, bad.get(k, 0)))
@@ -33,4 +36,8 @@ for m in re.finditer(r'\n\s*pin\s*\(\s*"?([^")]+)"?\s*\)\s*\{(.*?)(?=\n\s*(?:pin
 z = sorted(p for p, v in mt.items() if v <= 0)
 print('ETMCHECK input pins %d max_transition min %.4f max %.4f, missing or 0: %d %s' % (len(mt), min(mt.values()) if mt else 0,
       max(mt.values()) if mt else 0, len(z), ' '.join(z[:3])))
-sys.exit(1 if z or not mt else 0)
+nbad = sum(bad.values())
+fail = [w for w, f in (('input max_transition', z or not mt), ('values beyond +-%.1f ns: %d' % (LIM, nbad), nbad),
+                       ('capacitance > %.3f pF: %d' % (CAP, ncap), ncap), ('no table values', not vals)) if f]
+print('ETMCHECK %s %s' % (src, 'FAIL ' + ', '.join(fail) if fail else 'PASS'))
+sys.exit(1 if fail else 0)
