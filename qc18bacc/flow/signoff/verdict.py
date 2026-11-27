@@ -51,9 +51,26 @@ def fresh(name, corner, chain):   # every file exists and none is older than the
 PT = ('setup hold recovery removal max_transition max_capacitance clock_max_transition min_pulse_width min_period '
       'unannotated_pin_to_pin unconstrained_endpoints unclocked_register_pins loops unexpected_disabled_arcs floating_nets '
       'noise noise_undriven_ports noise_undriven_pins').split()
+# sign-off limits (R99): the committed values, common/limits.txt (of the flow under test), against the session's
+# QB_PT_LIMITS line (signoff/pt/blk.tcl: the values in force); an environment override of any of them fails
+def num(x):   # a number, or the text itself (which then differs from any committed value)
+    try: return float(x)
+    except ValueError: return x
+def limits_of(t):
+    v = {}
+    for l in t.splitlines():
+        l = l.split('#')[0].split()
+        if l: v[l[0]] = num(l[1])
+    return v
+LIMITS = limits_of(open('%s/common/limits.txt' % flow).read())
 for c in corners:
     log, txt, spef, lib = 'pt_blk_%s.log' % c, 'pt_blk_%s.txt' % c, 'out/%s_%s_pt.spef.gz' % (top, c), 'out/etm/%s_%s.lib' % (top, c)
     gate('pt_log', c, *pt_log(log))
+    l = last(text(log), 'QB_PT_LIMITS ').split()[1:]
+    used = dict((k, num(x)) for k, x in zip(l[0::2], l[1::2])) if len(l) % 2 == 0 else {}
+    diff = ['%s %s (committed %s)' % (k, used.get(k, 'missing'), LIMITS.get(k, 'none')) for k in sorted(set(LIMITS) | set(used)) if used.get(k) != LIMITS.get(k)]
+    gate('limits', c, not diff if l else None, ('differ from common/limits.txt: ' + ', '.join(diff)) if diff and l else
+         ' '.join(l) if l else 'no QB_PT_LIMITS line in ' + log)
     v = {}
     for l in text(log).splitlines():
         if l.startswith('QB_PT_SIGNOFF '):
@@ -120,6 +137,10 @@ for k in ('lef', 'obs', 'abutment', 'pg_pins'):
     gate('abstract_' + k, '-', set(n) == {'0'} if l else None, l or 'no "abstract %s" line in summary.txt' % k)
 al = text('abstract.log'); ne = len(re.findall(r'^Error', al, re.M))
 gate('abstract_log', '-', 'QB_ICC2_DONE abstract' in al and not ne if al else None, 'QB_ICC2_DONE abstract %d, Error lines %d' % ('QB_ICC2_DONE abstract' in al, ne) if al else 'no abstract.log')
+# the label the abstract was made from (icc2/abstract.tcl, its last summary line) = the label of out/ (R99)
+m = list(re.finditer(r'^abstract label (\S+) done\b.*$', s, re.M))
+gate('abstract_label', '-', m[-1].group(1) == label if m else None,
+     '%s; out/label.txt %s' % (m[-1].group(0) if m else 'no "abstract label ... done" line in summary.txt', label or 'missing'))
 fresh('abstract', '-', ['out/%s.def.gz' % top, 'out/%s.lef' % top])
 
 # Calibre on the filled GDS: cal.sh check (LVS CORRECT; the LVS run's ERC; DRC / antenna 0 results, every QB_ gate rule

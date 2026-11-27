@@ -40,7 +40,7 @@ stops at that step.  The OpenROAD steps are unchanged.
 
 ```
 qc18bacc/flow/blocks/col/run.sh pnr <tag>       # ICC2 libs init floorplan place cts route outputs + fill -> $QC_BUILD/icc2/col/<tag>
-qc18bacc/flow/blocks/col/run.sh fill <tag>      # (portcheck +) Calibre dummy metal of the outputs GDS -> DEF FILLS (signoff/calibre/fill_def.py) -> fill-aware ICC2 SPEFs (icc2/extract.tcl), every sign-off corner; kit dummy OD / PO (cal.sh odpo, odpo_blk.sed, R77)
+qc18bacc/flow/blocks/col/run.sh fill <tag>      # (portcheck +) Calibre dummy metal of the outputs GDS -> DEF FILLS (signoff/calibre/fill_def.py) -> fill-aware ICC2 SPEFs (icc2/extract.tcl), every sign-off corner; kit dummy OD / PO (cal.sh odpo, odpo_blk.sed, R77); both fills in the chip window = DEF DIEAREA (R99)
 qc18bacc/flow/blocks/col/run.sh eco <tag>       # the sign-off ECO loop (common/block.sh): per round one PT DMSA ECO in every sign-off corner (signoff/pt/drv_eco.tcl: DRV, setup, hold, noise) applied by ICC2 eco.tcl, outputs + fill of its label (eco, eco2, ...)
 qc18bacc/flow/blocks/col/run.sh post <tag>      # PT in every sign-off corner at 6.5 ns on the ICC2 netlist + fill-aware SPEF (gzip), ETMs of every sign-off corner
 qc18bacc/flow/blocks/col/run.sh views <tag>     # ICC2 abstract LEF with port antenna data + antenna / abutment / PG pin gates (out/qb_col_blk.lef), etmcheck (read by blocks/top/run.sh views)
@@ -48,7 +48,15 @@ qc18bacc/flow/blocks/col/run.sh calibre <tag>   # LVS source, Calibre LVS / DRC 
 ```
 The label of out/ (R96, common/block.sh blk_out): `out/label.txt` names the ICC2 label whose outputs, portcheck, fill and
 SPEFs out/ holds, written only once all of them passed; an unfinished label (`out/label.new`) is finished by the next fill
-or eco step, and post / calibre / views / the verdict refuse a run without a complete label.
+or eco step, and post / calibre / views / the verdict refuse a run without a complete label.  A pnr step init .. route
+drops the label of out/ (R99: a partial re-run would leave out/ of the old layout under a label); views makes the abstract
+of the label of out/ only (an inherited QB_ICC2_LABEL naming another label fails) and abstract.tcl records it, which the
+verdict's abstract_label gate compares with out/label.txt.  The floorplan pin DEF is the run's own `<run>/pins.def`
+(QB_PIN_DEF, written by the block's blk_pre_pnr before each floorplan step; R99, was one file per host).
+Sign-off limits (R99): `common/limits.txt` is the one committed value of QC_UNC_SETUP / QC_UNC_HOLD / QC_IO_PCT /
+QC_CLK_TRAN_MAX / QB5_SOUTH_IN (`common/limits.tcl` qb_limit: DC / PT SDC, IO budget, PT clock limit, ICC2 CTS); an
+environment value overrides it for an experiment, PrimeTime logs the values in force (QB_PT_LIMITS) and the verdict's
+limits gate fails every corner where they differ from limits.txt.
 Corners (R68): one table, `flow/tsmc65/site/site.tcl` QC_SIGNOFF (kit release note RN_TCBN65GPLUS_140B NOTE I): setup
 {wc wcl} x {Cworst RCworst} (ss ss_rcw wcl wcl_rcw), hold {lt ml} x {Cbest RCbest} (ff ff_rcb ml ml_rcb), tc typical (tt);
 ICC2 MCMM, PT sign-off, the DMSA ECO, the block ETMs and the chip top use all of them (bash: common/env.sh `qb_corners`;
@@ -62,7 +70,7 @@ library's fastest clock -> Q (common/lib_tcq.py) as the period-independent min i
 late / early per check (PT signoff/pt/io_lat.tcl, ICC2 compute_clock_latency).  Database unit = tech file 1000 / um (R77).
 Inputs: netlist + SDC `$B/syn/qb_col_blk_r5d_s20_tt_p1.65_topo` (P&R SDC: common/block_sdc.tcl + blocks/col/io_budget.tcl
 at 5.0 ns), pin positions of the reference abstract `$B/r5b_blk/qb_col_blk_ring.lef` (the ones r48 placed), written as the
-floorplan DEF `COL_PIN_DEF` by floorplan/abstract_pins.py in the pnr step (R72). Parameters: `col.env`, `icc2.cfg`.  The OpenROAD
+floorplan DEF `<run>/pins.def` by floorplan/abstract_pins.py in the pnr step (R72). Parameters: `col.env`, `icc2.cfg`.  The OpenROAD
 config `col.cfg` / `route_pre.tcl` (OpenROAD, R48) were deleted in R54 (git history).
 
 ## Regression block qb_lane_n (`blocks/rgr`) and flow snapshots (`common/deploy.sh`)
@@ -71,12 +79,13 @@ Every flow change passes the regression block before it may run on the column, t
 `common/regress.sh` (local checkout; ssh command QC_SSH, as deploy.sh):
 ```
 qc18bacc/flow/common/regress.sh run <commit> <host>     # deploy.sh -> /tmp/<user>/qc18bacc/rgr_<run>, the chain detached (queue.sh)
-qc18bacc/flow/common/regress.sh check <host> <run>      # exit 0 only on: chain complete, SIGNOFF PASS, gate set = reference
-qc18bacc/flow/common/regress.sh ref <host> <run>        # (re)writes blocks/rgr/reference.txt from a passing run
+qc18bacc/flow/common/regress.sh check <host> <run> [<commit>]  # exit 0 only on: run of <commit> (default HEAD), chain complete, SIGNOFF PASS, gate set = reference
+qc18bacc/flow/common/regress.sh ref <host> <run> [<commit>]    # (re)writes blocks/rgr/reference.txt from a passing run of <commit>
 ```
 `run` names the run rg<7 hex digits of the commit><first free letter> and launches pnr eco calibre post views signoff from
 the snapshot (queue log dir <run dir>q); the block's configuration alone decides the run, no VAR=val on the queue line.
-`check` reads the run's queue.state (exactly that chain, every step ok, rc 0) and its signoff step's verdict
+`check` first ties the run to the flow under test (R99): the tree in the snapshot's VERSION must have the
+qc18bacc/flow of `<commit>` (or tree; default HEAD) apart from reference.txt; then it reads the run's queue.state (exactly that chain, every step ok, rc 0) and its signoff step's verdict
 (SIGNOFF PASS, no FAIL / MISSING gate, VERDICT line = the reference's) and compares its gate set (gate name x corner) with
 `blocks/rgr/reference.txt`, printing the difference: a checker that adds, drops or renames a gate fails the regression
 until the reference is rewritten with `ref` and the change is reviewed in the commit.  By hand, the chain is:

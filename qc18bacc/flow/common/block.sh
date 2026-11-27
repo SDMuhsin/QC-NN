@@ -4,11 +4,12 @@
 #   BLK block name   BLK_TOP top cell   BLK_SYN DC netlist tag ($B/syn/<tag>)   BLK_PERIOD clock period (ns) of P&R and
 #   sign-off   BLK_CFG ICC2 block config (flow/icc2 QB_ICC2_CFG; export what it reads from the environment yourself)
 #   BLK_PT PrimeTime sign-off script of one corner QC_CORNER (writes <run>/pt_blk_<corner>.txt; must return after its
-#   design setup when ::QB_PT_SETUP_ONLY exists)   blk_pre_pnr optional function run before pnr's ICC2 steps (pin DEF)
+#   design setup when ::QB_PT_SETUP_ONLY exists)   blk_pre_pnr <def>: writes the floorplan pin DEF <def> (run before
+#   pnr's floorplan step: blk_pins)
 #   BLK_FILL_SED BLK_ODPO_SED BLK_LVS_SED BLK_DRC_SED Calibre deck seds as sed arguments ("-f <file>" ...)
 #   BLK_GATES optional: the block's opt-in verdict gates, comma-separated (signoff/verdict.sh -g; the column's act gates)
 # Steps:  pnr      ICC2 libs init floorplan place cts route outputs, then portcheck + fill; QC_PNR_FROM / QC_PNR_TO select
-#                  a range, an unknown step name fails
+#                  a range, an unknown step name fails; a step init .. route drops the label of out/ (blk_unlabel)
 #         eco      sign-off ECO loop, at most QC_ECO_ROUNDS (4) rounds: PrimeTime DMSA -> ICC2 eco -> outputs -> portcheck
 #                  -> fill; ends when a round's pre-fix state is clean in every corner at zero margin; fails if it never
 #                  is, or if the pre-fix violation total does not shrink.  Fix guard-bands (env.sh): hold
@@ -34,7 +35,7 @@
 # the fix margin; a total that does not shrink is a bug to diagnose, so the step stops there.
 blk_main() {
     local step=${1:?step} tag=${2:?tag}; d=$B/icc2/$BLK/$tag
-    export QB_SYN=$BLK_SYN QB_PNR_PERIOD=$BLK_PERIOD QB_ICC2_CFG=$BLK_CFG
+    export QB_SYN=$BLK_SYN QB_PNR_PERIOD=$BLK_PERIOD QB_ICC2_CFG=$BLK_CFG QB_PIN_DEF=$d/pins.def
     case $step in
     rundir) echo "$d"; return 0 ;;
     pnr|eco|fill|calibre|post|views|signoff) ;;
@@ -58,15 +59,36 @@ blk_pnr() {
         case " $all " in *" $s "*) ;; *) echo "BLK_FAIL pnr: unknown step '$s' (QC_PNR_FROM / QC_PNR_TO: $all)"; return 1 ;; esac
     done
     case "$all " in *"$to "*"$from "*) echo "BLK_FAIL pnr: QC_PNR_TO=$to is before QC_PNR_FROM=$from"; return 1 ;; esac
-    if declare -F blk_pre_pnr > /dev/null; then blk_pre_pnr || return 1; fi
     for s in $all; do
         [ "$s" = "$from" ] && on=1; [ $on = 1 ] || continue
         if [ "$s" = outputs ]; then blk_out route || return 1
         elif [ "$s" = libs ]; then blk_libs || return 1
-        else qb_icc2 "$d" "$s" || return 1; fi
+        else
+            blk_unlabel "$s" || return 1
+            if [ "$s" = floorplan ]; then blk_pins || return 1; fi
+            qb_icc2 "$d" "$s" || return 1
+        fi
         [ "$s" = "$to" ] && break
     done
     tail -n 40 "$d/summary.txt"
+}
+# A pnr step that writes a design label (init .. route) rewrites route, which every label of out/ (route, eco, eco2, ...)
+# is built from, so out/ is no longer the layout of its label: the label of out/ and an unfinished one are dropped before
+# the step (R99; [M] hunt on 44735f5: QC_PNR_TO=route kept out/label.txt = route over the old out/, and post / calibre
+# signed off the old layout).  A pnr range that ends with outputs writes the label of out/ again.
+blk_unlabel() {
+    [ -e "$d/out/label.txt" ] || [ -e "$d/out/label.new" ] || return 0
+    echo "BLK_LABEL pnr $1 rewrites the layout: label of out/ $(cat "$d/out/label.txt" 2> /dev/null || echo none), unfinished $(cat "$d/out/label.new" 2> /dev/null || echo none): dropped"
+    rm -f "$d/out/label.txt" "$d/out/label.new"
+}
+# The floorplan pin DEF of the run, QB_PIN_DEF = <run>/pins.def (the block config's P(PIN_DEF)): written by the block's
+# blk_pre_pnr right before each floorplan step, as <def>.part renamed into place (R99; before, $B/icc2/<blk>/pins*.def:
+# one file per host that every pnr rewrote in place, so concurrent runs raced and a later floorplan re-run read another
+# run's pins)
+blk_pins() {
+    declare -F blk_pre_pnr > /dev/null || { echo "BLK_FAIL pnr floorplan: the block has no blk_pre_pnr (pin DEF)"; return 1; }
+    mkdir -p "$d" && rm -f "$QB_PIN_DEF.part" && blk_pre_pnr "$QB_PIN_DEF.part" && mv -f "$QB_PIN_DEF.part" "$QB_PIN_DEF" \
+        && echo "BLK_PINS $QB_PIN_DEF md5 $(md5sum < "$QB_PIN_DEF" | cut -c1-12)"
 }
 # libs step under the host's NDM build lock (R97; [M] two pnr runs of one snapshot collided on the shared NDM build):
 # a concurrent libs step waits for the build, then reuses its NDM (flow/icc2/libs.tcl builds it atomically).  flock
@@ -114,20 +136,23 @@ blk_fill() {
 # (flow/icc2/extract.tcl on label $1, the label out/ was written from)
 blk_fill_label() {
     local l=$1 o=$d/calibre C=$QBF/signoff/calibre w; mkdir -p "$o"
-    QB55_FILL_SED=$BLK_FILL_SED bash "$C/cal.sh" fill "$d/out/$BLK_TOP.gds" "$BLK_TOP" "$o/fill" > "$o/fill.log" 2>&1 \
-        || { cat "$o/fill.log"; return 1; }
-    grep -v '^CAL55_fill' "$o/fill.log"
-    # dummy OD / PO (R77) on the metal-filled GDS, chip window = the DEF DIEAREA (signoff/calibre/odpo_blk.sed) ->
-    # odpo/<top>_fill.gds: the GDS of Calibre LVS / DRC / antenna (calibre step).  FEOL dummies only: no effect on the
-    # metal SPEFs.  (DIEAREA as a rectangle or, as ICC2 writes it, a polygon: its bounding box)
+    # chip window of both fill decks = the DEF DIEAREA (DIEAREA as a rectangle or, as ICC2 writes it, a polygon: its
+    # bounding box) -> calibre/die_window.sed.  Metal too since R99 (signoff/calibre/fill_blk.sed ChipWindowUsed; [M] rgr
+    # rg44735f5a: without a window the metal fill took the drawn extent, y 4.76 .. 124.04 of the 130-um die, and stopped
+    # 7.3 / 8.5 um short of the bottom / top edge, the OD / PO fill 0.6 um)
     w=$(zcat "$d/out/$BLK_TOP.def.gz" | awk '$1 == "UNITS" { u = $4 } $1 == "DIEAREA" { n = 0
         for (i = 2; i <= NF; i++) if ($i ~ /^-?[0-9.]+$/) v[n++] = $i / u
         x0 = x1 = v[0]; y0 = y1 = v[1]
         for (i = 2; i + 1 < n; i += 2) { x0 = v[i] < x0 ? v[i] : x0; x1 = v[i] > x1 ? v[i] : x1; y0 = v[i+1] < y0 ? v[i+1] : y0; y1 = v[i+1] > y1 ? v[i+1] : y1 }
         printf "%s %s %s %s", x0, y0, x1, y1; exit }')
     set -- $w; [ $# = 4 ] || { echo "BLK_FAIL no DIEAREA in out/$BLK_TOP.def.gz"; return 1; }
-    printf 's#^VARIABLE xLB .*#VARIABLE xLB %s#\ns#^VARIABLE yLB .*#VARIABLE yLB %s#\ns#^VARIABLE xRT .*#VARIABLE xRT %s#\ns#^VARIABLE yRT .*#VARIABLE yRT %s#\n' "$@" > "$o/odpo_window.sed"
-    QB77_ODPO_SED="$BLK_ODPO_SED -f $o/odpo_window.sed" bash "$C/cal.sh" odpo "$o/fill/${BLK_TOP}_fill.gds" "$BLK_TOP" "$o/odpo" > "$o/odpo.log" 2>&1 \
+    printf 's#^VARIABLE xLB .*#VARIABLE xLB %s#\ns#^VARIABLE yLB .*#VARIABLE yLB %s#\ns#^VARIABLE xRT .*#VARIABLE xRT %s#\ns#^VARIABLE yRT .*#VARIABLE yRT %s#\n' "$@" > "$o/die_window.sed"
+    QB55_FILL_SED="$BLK_FILL_SED -f $o/die_window.sed" bash "$C/cal.sh" fill "$d/out/$BLK_TOP.gds" "$BLK_TOP" "$o/fill" > "$o/fill.log" 2>&1 \
+        || { cat "$o/fill.log"; return 1; }
+    grep -v '^CAL55_fill' "$o/fill.log"
+    # dummy OD / PO (R77) on the metal-filled GDS (signoff/calibre/odpo_blk.sed) -> odpo/<top>_fill.gds: the GDS of
+    # Calibre LVS / DRC / antenna (calibre step).  FEOL dummies only: no effect on the metal SPEFs.
+    QB77_ODPO_SED="$BLK_ODPO_SED -f $o/die_window.sed" bash "$C/cal.sh" odpo "$o/fill/${BLK_TOP}_fill.gds" "$BLK_TOP" "$o/odpo" > "$o/odpo.log" 2>&1 \
         || { cat "$o/odpo.log"; return 1; }
     cat "$o/odpo.log"
     ( . "$C/kl.sh"; kl_run "$C/fill_def.py" -rd gds="$o/fill/DM.gds" -rd design="$BLK_TOP" -rd out="$d/out/${BLK_TOP}_fill.def" ) || return 1
@@ -233,16 +258,19 @@ blk_post() {
       done; exit $r )
 }
 # Views for the chip top: ICC2 abstract LEF with port antenna data + antenna / abutment / PG pin gates (flow/icc2/
-# abstract.tcl, label QB_ICC2_LABEL [the label of out/]) -> out/<top>.lef; ETM gate (signoff/etm/etmcheck.py: against
-# the netlist reference of the same session) of the post step's ETMs
+# abstract.tcl, on the label of out/, which it records in summary.txt for signoff/verdict.py) -> out/<top>.lef; ETM
+# gate (signoff/etm/etmcheck.py: against the netlist reference of the same session) of the post step's ETMs
 blk_views() {
-    local c cs own lab
+    local c cs own
     cs=$(qb_corners) || return 1
-    own=$(blk_label) || return 1; lab=${QB_ICC2_LABEL:-$own}
-    # (R92 review) an inherited QB_ICC2_LABEL must not pick another layout than the one of out/ silently
-    if [ "$lab" = "$own" ]; then echo "BLK_VIEWS abstract of label $lab = the label of out/"
-    else echo "BLK_VIEWS abstract of label $lab (QB_ICC2_LABEL), NOT the label of out/ ($own)"; fi
-    QB_ICC2_LABEL=$lab QB_PY=$PY qb_icc2 "$d" abstract || return 1
+    own=$(blk_label) || return 1
+    # (R99; was a warning since R92) the abstract is of the layout of out/ only: an inherited QB_ICC2_LABEL naming
+    # another label fails
+    if [ -n "${QB_ICC2_LABEL:-}" ] && [ "$QB_ICC2_LABEL" != "$own" ]; then
+        echo "BLK_FAIL views: QB_ICC2_LABEL=$QB_ICC2_LABEL is not the label of out/ ($own)"; return 1
+    fi
+    echo "BLK_VIEWS abstract of label $own = the label of out/"
+    QB_ICC2_LABEL=$own QB_PY=$PY qb_icc2 "$d" abstract || return 1
     grep '^abstract' "$d/summary.txt" | tail -n 3
     for c in $cs; do "$PY" -I "$QBF/signoff/etm/etmcheck.py" "$d/out/etm/${BLK_TOP}_$c.lib" || return 1; done
 }

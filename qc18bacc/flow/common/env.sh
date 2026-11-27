@@ -18,11 +18,6 @@ export QC_PY=$PY   # (the tools' Tcl runs flow Python through it: common/lib_cel
 # at ff / ml plus a derate spread up to 0.074 ns -> 0.10 ns.  (R80 [M]: without it the column-0 launch bound was applied
 # to all 8 columns, 18042 hold buffers in u_pe.)  Exported: the ICC2 / PrimeTime Tcl and the hub's Python read it.
 export QC_ACT_HOLD_HUB=0.10
-# Clock-network transition sign-off limit QC_CLK_TRAN_MAX (ns; R92, PI decision): the ONE limit every clock-network pin is
-# signed off against (set_max_transition -clock_path: PrimeTime sign-off and ECO setup, signoff/pt/common.tcl
-# qb_pt_clk_tran; ICC2 applies the same variable).  CTS builds to 0.15 ns (constraints.sdc clock transition: the
-# guard-band); before, sign-off checked clock pins against the 0.5 ns data limit only (r91b ss [M]: worst 0.178 ns).
-export QC_CLK_TRAN_MAX=${QC_CLK_TRAN_MAX:-0.25}
 # Hold slack margin of the sign-off ECO QC_ECO_HOLD_MARGIN (ns; R92): read by signoff/pt/drv_eco.tcl.
 export QC_ECO_HOLD_MARGIN=${QC_ECO_HOLD_MARGIN:-0.005}
 # DRV / noise fix guard-bands of the sign-off ECO (fraction of the limit; R92, PI decision): drv_eco.tcl qb_eco_guard.

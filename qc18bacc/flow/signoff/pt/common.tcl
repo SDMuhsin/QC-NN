@@ -35,8 +35,8 @@
 #                             QB_PT_ANY_SLACK (R71: PrimeTime lists only violators when -max_paths / -nworst > 1 and no
 #                             slack bound is given, so the R68 reports of clean runs were empty; with the bound the
 #                             worst N paths are always on disk as sign-off evidence)
-#   qb_pt_clk_tran            the ONE clock-network transition limit (R92, PI decision; common/env.sh QC_CLK_TRAN_MAX,
-#                             0.25 ns): set_max_transition -clock_path on every clock, applied when sourced, so the
+#   qb_pt_clk_tran            the ONE clock-network transition limit (R92, PI decision; QC_CLK_TRAN_MAX of
+#                             common/limits.txt, common/limits.tcl qb_limit, R99): set_max_transition -clock_path on every clock, applied when sourced, so the
 #                             sign-off scripts and the DMSA ECO setup (drv_eco.tcl sources the block script) check and
 #                             fix the clock network against it (before: the 0.5 ns design limit only; CTS builds to 0.15)
 #   qb_pt_drv <fh>            sign-off DRV line: max-transition violators split into data pins and clock-network pins
@@ -112,6 +112,7 @@
 #   OCV derate late 1.05 / early 0.95 on cell + net delays (common/derate.tcl, the same as the ICC2 timer), applied when
 #   sourced (after the caller's constraints)
 set ::QB_PT_DIR [file normalize [file dirname [info script]]]
+source [file normalize [file dirname [info script]]/../../common/limits.tcl]
 set_app_var timing_crpr_threshold_ps 1
 set_app_var si_enable_analysis true
 source [file normalize [file dirname [info script]]/../../common/derate.tcl]
@@ -142,8 +143,8 @@ proc qb_pt_paths {rpt args} {
     redirect $rpt { foreach a $args { report_timing -slack_lesser_than $::QB_PT_ANY_SLACK -nosplit {*}$a } }
 }
 proc qb_pt_clk_tran {} {
-    set_max_transition $::env(QC_CLK_TRAN_MAX) -clock_path [all_clocks]
-    puts "QB_PT_CLK_TRAN clock-network max_transition $::env(QC_CLK_TRAN_MAX) ns on [sizeof_collection [all_clocks]] clocks (QC_CLK_TRAN_MAX)"
+    set_max_transition [qb_limit QC_CLK_TRAN_MAX] -clock_path [all_clocks]
+    puts "QB_PT_CLK_TRAN clock-network max_transition [qb_limit QC_CLK_TRAN_MAX] ns on [sizeof_collection [all_clocks]] clocks (QC_CLK_TRAN_MAX)"
 }
 qb_pt_clk_tran
 proc qb_pt_drv {fh} {
@@ -160,7 +161,7 @@ proc qb_pt_drv {fh} {
     }
     set mc [regexp -all -line {VIOLATED} $c]
     puts $fh [format "drv max_transition_violators %d max_capacitance_violators %d (design max_transition %s) clock_max_transition_violators %d (clock network %d pins, worst %.4f ns, limit QC_CLK_TRAN_MAX %s)" \
-        $nd $mc [get_attribute [current_design] max_transition] $nc [sizeof_collection $cp] $w $::env(QC_CLK_TRAN_MAX)]
+        $nd $mc [get_attribute [current_design] max_transition] $nc [sizeof_collection $cp] $w [qb_limit QC_CLK_TRAN_MAX]]
     return "max_transition $nd max_capacitance $mc clock_max_transition $nc"
 }
 proc qb_pt_async_count {} {

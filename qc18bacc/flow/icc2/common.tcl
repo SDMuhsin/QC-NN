@@ -63,6 +63,7 @@ set ::QC_BUILD $::env(QC_BUILD)
 source $::env(QC_FLOW)/common/lib.tcl
 source $::env(QC_FLOW)/site/pnr.tcl
 source $::QBF/common/lib_cells.tcl
+source $::QBF/common/limits.tcl
 source $::QBF/common/eco_changes.tcl
 source $::env(QB_ICC2_CFG)
 set ::R $::env(QB_ICC2_RUN)

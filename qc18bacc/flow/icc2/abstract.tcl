@@ -15,10 +15,13 @@
 #     abutment  opt-in P(ABUT_PAIR) {<in> <out>} (the column: {act act_o}): every <in>[b] / <out>[b] pair on the same
 #               layer and y, <in> on the west and <out> on the east die edge; no line without it (signoff/verdict.py)
 #     pg_pins   qb_pg_check: VDD / VSS pins = the chip PG grid's pin-layer straps (floorplan/pg_grid.tcl)
+#   summary line "abstract label <label> done" last (R99): the label the abstract is of (common/block.sh blk_views passes
+#   the label of out/; signoff/verdict.py abstract_label)
 # The frame and its antenna data are made on a copy, block label "abstract" (R77): the label QB_ICC2_LABEL is the signed-off
 # design (post / calibre read its outputs) and is never saved after its own step (R75 saved the frame into label eco).
 source [file dirname [info script]]/common.tcl
-qb_open [qc_env QB_ICC2_LABEL route] abstract
+set label [qc_env QB_ICC2_LABEL route]
+qb_open $label abstract
 set o $::R/out/$P(TOP)
 qb_antenna_rules
 create_frame -block_all [lindex $P(LAYERS) end]
@@ -88,4 +91,6 @@ if {[info exists P(ABUT_PAIR)]} {
     if {[llength $bad]} { error "QB abstract abutment: [llength $bad] $pi / $po pairs off ([lrange $bad 0 4])" }
 }
 qb_pg_check abstract
+# the label the abstract was made from, after every gate passed (R99; signoff/verdict.py abstract_label: = out/label.txt)
+qb_line "abstract label $label done, gates passed"
 puts "QB_ICC2_DONE abstract"

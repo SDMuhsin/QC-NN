@@ -65,11 +65,13 @@
 #                          net as its load), which the 0.55 P act input delay already counts, so the driving cell counted
 #                          it twice.  R71 [M] r68 ss: act_o[8] 0.218 / 0.141 ns rise / fall vs 0.034 / 0.024 from the
 #                          bare BUFFD4 at act[8].
+# (QC_UNC_SETUP / QC_UNC_HOLD / QB5_SOUTH_IN: common/limits.txt through qb_limit, R99)
+source [file join [file dirname [file normalize [info script]]] .. .. common limits.tcl]
 set ::QB5_FT {BUFFD4 Z}
 proc qb5_budget {} {
     # opt-in: a block that reuses these procs sets its own class table ::QB5_BUDGET before sourcing (blocks/rgr/io_budget.tcl)
     if {[info exists ::QB5_BUDGET]} { return $::QB5_BUDGET }
-    set si [expr {[info exists ::env(QB5_SOUTH_IN)] ? $::env(QB5_SOUTH_IN) : 0.20}]
+    set si [qb_limit QB5_SOUTH_IN]
     return [subst -nocommands {
         in  {act[*]}                                   0.55
         in  {cd[*] ctl[*] t2[*]}                       0.30
@@ -86,7 +88,7 @@ proc qb5_budget {} {
 proc qb5_hold_min {Le Tq} { expr {$Le + $Tq * $::QB_DERATE_EARLY} }
 # hold uncertainty U_hold of the SDC: the variable common/constraints.sdc reads (QC_UNC_HOLD, PrimeTime) and DC wrote
 # into the SDC ICC2 reads (flow/icc2/init.tcl qb_sdc checks the two agree)
-proc qb5_unc_hold {} { expr {[info exists ::env(QC_UNC_HOLD)] ? $::env(QC_UNC_HOLD) : 0.05} }
+proc qb5_unc_hold {} { qb_limit QC_UNC_HOLD }
 # act_o -min (R79, PI decision): hold uncertainty is charged ONCE, at the real capture register.  act -> act_o is a
 # port-to-port budget path with no capture flop in this block; the next column charges U_hold at its own act capture
 # flop (its input -min = qb5_hold_min).  The timer adds U_hold to every hold check at the act_o port, so the contract
@@ -108,7 +110,7 @@ proc qb5_act_o_min_line {Le Tq {Lc 0.0}} {
 }
 proc qb5_io_lines {per Ll Le Tq} {
     set out {}
-    set U [expr {[info exists ::env(QC_UNC_SETUP)] ? $::env(QC_UNC_SETUP) : 0.25}]
+    set U [qb_limit QC_UNC_SETUP]
     set inmin [qb5_hold_min $Le $Tq]
     foreach {d pats mx} [qb5_budget] {
         set su [expr {[string match act_o* $pats] ? $U : 0.0}]

@@ -48,6 +48,8 @@ source $::QB_BLK_IO_BUDGET
 qb5_io_apply $per $L $Le $Tq
 proc qb_blk_has {} { expr {[llength [info procs qb_blk_hook]] > 0} }
 if {[qb_blk_has]} { qb_blk_hook setup } else { update_timing }
+# the sign-off limits in force (R99; common/limits.tcl): signoff/verdict.py gate limits fails unless = common/limits.txt
+puts "QB_PT_LIMITS [qb_limits]"
 # the timing state is the noise state (no block hook): the SDC's driving cells hold every input port net
 proc qb_blk_sdc_noise_state {{mode on}} {
     return [expr {$mode eq "off" ? "timing state kept (it is the noise state)" : "timing state = noise state (input ports driven by the SDC's driving cells)"}]

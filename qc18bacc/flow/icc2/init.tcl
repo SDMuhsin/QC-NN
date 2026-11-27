@@ -22,9 +22,13 @@ proc qb_sdc {} {
     if {[info exists P(IO_BUDGET)]} { set nio [regsub -all -line {^set_(input|output)_delay .*\n} $t {} t] }
     set ::QB_PNR_PER $per
     # hold uncertainty of this SDC (DC wrote it from QC_UNC_HOLD); the block IO budget's act_o -min hands back the same
-    # U_hold (blocks/col/io_budget.tcl qb5_unc_hold, R79), so the two must agree
+    # U_hold (blocks/col/io_budget.tcl qb5_unc_hold, R79), so the two must agree.  Every block (R99: the check ran only
+    # where the block config had already sourced the budget, the column; the regression block loads it per scenario
+    # below, so its check never ran): the budget is sourced here, and a block without qb5_unc_hold fails
     set uh [expr {[regexp -line {^set_clock_uncertainty -hold ([0-9.]+)} $t -> uh] ? $uh : "none"}]
-    if {[llength [info procs qb5_unc_hold]] && $uh != [qb5_unc_hold]} { error "qb_sdc: SDC hold uncertainty $uh != io budget U_hold [qb5_unc_hold]" }
+    if {[info exists P(IO_BUDGET)]} { uplevel #0 [list source $P(IO_BUDGET)] }
+    if {![llength [info procs qb5_unc_hold]]} { error "qb_sdc: no qb5_unc_hold (block IO budget P(IO_BUDGET)) to check the SDC hold uncertainty $uh against" }
+    if {$uh != [qb5_unc_hold]} { error "qb_sdc: SDC hold uncertainty $uh != io budget U_hold [qb5_unc_hold]" }
     # the sign-off values the P&R guard-bands start from (qb_guard)
     set ::QB_SDC_HOLD_UNC $uh
     set ::QB_SDC_MAX_TRAN [expr {[regexp -line {^set_max_transition ([0-9.]+)} $t -> mt] ? $mt : "none"}]

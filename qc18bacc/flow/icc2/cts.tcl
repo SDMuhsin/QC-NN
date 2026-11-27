@@ -35,9 +35,9 @@ set ctran [lmap {- v} [regexp -all -inline -line {^set_clock_transition\s+(?:-\S
 if {![llength $ctran]} { error "cts: no set_clock_transition -max in $P(TOP)_icc2.sdc" }
 set ctran [tcl::mathfunc::max {*}$ctran]
 # Two clock-path limits (R92, PI decision): the value above is the CTS BUILD TARGET only; the sign-off limit of clock-network
-# pins is the one variable QC_CLK_TRAN_MAX (env, default 0.25 ns; PrimeTime checks it), set after clock_opt in every
+# pins is the one limit QC_CLK_TRAN_MAX (common/limits.txt, qb_limit; PrimeTime checks it), set after clock_opt in every
 # scenario, so ICC2's DRV counts and post-route fixing from here on use the limit that is signed off
-set csign [qc_env QC_CLK_TRAN_MAX 0.25]
+set csign [qb_limit QC_CLK_TRAN_MAX]
 if {$csign < $ctran} { error "cts: sign-off clock transition limit QC_CLK_TRAN_MAX $csign < CTS build target $ctran ns" }
 proc qb_clk_tran {v} {
     foreach_in_collection s [all_scenarios] { set_max_transition $v -clock_path [get_clocks qb_clk] -scenarios [get_object_name $s] }

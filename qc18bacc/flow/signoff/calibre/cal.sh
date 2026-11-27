@@ -22,7 +22,8 @@ K=/CMC/kits/tsmc_65nm
 A=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/erc_allow.txt   # (resolved before the run modes cd into their dirs)
 # cal_result <drc|ant|lvs|erc> <topcell> <rundir>: one CAL36_RESULT line (+ CAL36_FAIL lines), non-zero unless
 #   lvs       lvs.rep is this run's (not older than deck.lvs), its overall result is CORRECT, the CELL SUMMARY row of
-#             <topcell> is CORRECT and no cell is INCORRECT / NOT COMPARED
+#             <topcell> is CORRECT and no cell is INCORRECT / NOT COMPARED, and the extraction report lvs.rep.ext of
+#             this run has no line after its header (no extraction / soft-connection finding, R99)
 #   drc, ant  the summary report the deck copy names is this run's and of <topcell>, has its TOTAL line with 0 results,
 #             and every QB_* rule check of the deck copy (a gate a deck sed adds, R82 drc_blk.sed) has one RULECHECK
 #             line, executed with 0 results (R84: a gate that did not run fails; R97: NOT EXECUTED fails too)
@@ -33,7 +34,7 @@ A=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/erc_allow.txt   # (resolved befo
 #             device does not exist); anything else fails
 # Reads files only, so a missing, stale or truncated report fails instead of passing by default.
 cal_result() {
-    local mode=$1 top=$2 d=$3 rep f=0 o n b c r v q s="no report of this run"
+    local mode=$1 top=$2 d=$3 rep f=0 o n b c r v q x s="no report of this run"
     case $mode in
     lvs) rep=$d/lvs.rep
          if [ ! -s "$d/deck.lvs" ] || [ ! -s "$rep" ]; then echo "CAL36_FAIL lvs $top: no deck copy $d/deck.lvs or no report $rep"; f=1
@@ -42,8 +43,13 @@ cal_result() {
              o=$(sed -n '/OVERALL COMPARISON RESULTS/,/CELL  SUMMARY\|LVS PARAMETERS/s/.*# *\(NOT COMPARED\|INCORRECT\|CORRECT\) *#.*/\1/p' "$rep" | sort -u | tr '\n' ' ')
              n=$(awk -v t="$top" '/CELL  SUMMARY/ {f = 1; next} /LVS PARAMETERS/ {f = 0} f && $1 == "CORRECT" && $2 == t && $3 == t {c++} END {print c + 0}' "$rep")
              b=$(awk '/CELL  SUMMARY/ {f = 1; next} /LVS PARAMETERS/ {f = 0} f && /INCORRECT|NOT COMPARED/ {c++} END {print c + 0}' "$rep")
-             s="overall ${o:-none }top_cell_correct $n bad_cells $b"
-             [ "$o" = "CORRECT " ] && [ "$n" = 1 ] && [ "$b" = 0 ] || { echo "CAL36_FAIL lvs $top: $s"; f=1; }
+             # the circuit extraction report (R99): its header only.  [M] a VDD-tied N-well tap bridged to a signal net
+             # (an SCONNECT "Stamping conflict" warning, there and nowhere else) left lvs.rep CORRECT and the ERC clean
+             x=$(awk '/^CALIBRE VERSION:/ { h = 1; next } h && NF { n++ } END { print h ? n + 0 : "no_header" }' "$d/lvs.rep.ext" 2> /dev/null)
+             [ -s "$d/lvs.rep.ext" ] && ! [ "$d/lvs.rep.ext" -ot "$d/deck.lvs" ] || x=missing
+             s="overall ${o:-none }top_cell_correct $n bad_cells $b extraction_report_lines ${x:-NA}"
+             [ "$o" = "CORRECT " ] && [ "$n" = 1 ] && [ "$b" = 0 ] && [ "$x" = 0 ] || { echo "CAL36_FAIL lvs $top: $s"; f=1; }
+             [ "$x" = 0 ] || grep -m 6 '^WARNING:\|^ERROR:\|^ *Net \|^ *Rejected\|Errors and Warnings' "$d/lvs.rep.ext" 2> /dev/null | sed 's/^/CAL36_FAIL lvs.rep.ext: /'
          fi ;;
     drc|ant) rep=$d/$(sed -n 's/^DRC SUMMARY REPORT "\(.*\)".*/\1/p' "$d/deck.$mode" 2> /dev/null | head -1)
          if [ ! -s "$d/deck.$mode" ] || [ ! -f "$rep" ] || [ ! -s "$rep" ]; then echo "CAL36_FAIL $mode $top: no deck copy $d/deck.$mode or no summary report of it"; f=1

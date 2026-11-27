@@ -7,12 +7,16 @@
 #                                               then the chain detached (common/queue.sh, log dir <run dir>q); prints the
 #                                               run, its run dir and the queue.  <run> = rg + the first 7 hex digits of
 #                                               the commit (of the tree when a tree id is given) + the first free letter
-#   regress.sh check <host> <run>               exit 0 only if the queue ran exactly the chain and every step is ok, the
-#                                               signoff step's verdict (signoff/verdict.sh) is SIGNOFF PASS with no FAIL
-#                                               and no MISSING gate and its VERDICT line equals the reference's, and the
-#                                               gate set (gate name x corner) equals the reference's; prints the
-#                                               difference of the gate sets otherwise
-#   regress.sh ref <host> <run>                 writes blocks/rgr/reference.txt of this checkout from <run>, which must
+#   regress.sh check <host> <run> [<commit | tree-ish>]
+#                                               exit 0 only if the run is of the flow under test (its snapshot's
+#                                               VERSION tree has the qc18bacc/flow of <commit | tree-ish>, default HEAD,
+#                                               apart from blocks/rgr/reference.txt), the queue ran exactly the chain and
+#                                               every step is ok, the signoff step's verdict (signoff/verdict.sh) is
+#                                               SIGNOFF PASS with no FAIL and no MISSING gate and its VERDICT line equals
+#                                               the reference's, and the gate set (gate name x corner) equals the
+#                                               reference's; prints the difference of the gate sets otherwise
+#   regress.sh ref <host> <run> [<commit | tree-ish>]
+#                                               writes blocks/rgr/reference.txt of this checkout from <run>, which must
 #                                               pass every check but the reference comparison: a changed gate set is a
 #                                               deliberate, reviewed reference update (git diff), never a silent one
 # The run's own files are read (queue.state, the signoff step's output); the snapshot is found by its run name.
@@ -21,7 +25,8 @@ die() { echo "REGRESS_FAIL $*" >&2; exit 1; }
 here=$(cd "$(dirname "$0")" && pwd); ref=$(cd "$here/.." && pwd)/blocks/rgr/reference.txt
 ssh=${QC_SSH:-ssh}
 CHAIN="pnr eco calibre post views signoff"
-cmd=${1:-}; [ $# = 3 ] || die "usage: regress.sh run <commit | tree-ish> <host> | check <host> <run> | ref <host> <run>"
+cmd=${1:-}; [ $# = 3 ] || { [ $# = 4 ] && [ "$cmd" != run ]; } \
+    || die "usage: regress.sh run <commit | tree-ish> <host> | check <host> <run> [<commit | tree-ish>] | ref <host> <run> [<commit | tree-ish>]"
 name_ok() { [[ $1 =~ ^[A-Za-z0-9_.-]+$ ]] || die "'$1' is not a name of [A-Za-z0-9_.-]"; }
 
 # run: snapshot + detached chain
@@ -75,12 +80,29 @@ EOF
 # the gate set of GATE lines on stdin: one line "gate <name> <corner ...>" per gate name, in verdict order
 gates() { awk '$1 == "GATE" { if (!($2 in c)) o[n++] = $2; c[$2] = c[$2] " " $3 } END { for (i = 0; i < n; i++) print "gate " o[i] c[o[i]] }'; }
 
-# check (ref = 1: everything but the comparison with the reference)
+# the run is of the flow under test (R99; before, check compared ANY run with the checkout's reference): the tree of the
+# snapshot's VERSION line "commit <c> tree <t>" has the qc18bacc/flow of <rev> (the flow deploy.sh archives), apart from
+# the reference the run is compared with (ref writes it from the run, so it differs in the reviewed commit)
+version() {   # version <VERSION line> <rev>
+    local t want f=':(top)qc18bacc/flow' x=':(top,exclude)qc18bacc/flow/blocks/rgr/reference.txt'
+    want=$(git -C "$here" rev-parse --verify --quiet "$2^{tree}" 2> /dev/null) || { echo "CHECK version FAIL '$2' is not a commit or tree"; return 1; }
+    t=$(sed -n 's/^commit [0-9a-fnoe]* tree \([0-9a-f]\{40\}\)$/\1/p' <<< "$1")
+    [ -n "$t" ] || { echo "CHECK version FAIL no 'commit <c> tree <t>' VERSION line: '$1'"; return 1; }
+    git -C "$here" cat-file -e "$t^{tree}" 2> /dev/null || { echo "CHECK version FAIL run tree $t is not in this repository"; return 1; }
+    if git -C "$here" diff --quiet "$want" "$t" -- "$f" "$x"; then
+        echo "CHECK version PASS run tree ${t:0:12} = $2 (tree ${want:0:12}) in qc18bacc/flow"
+    else
+        echo "CHECK version FAIL run tree ${t:0:12} is not $2 (tree ${want:0:12}): qc18bacc/flow differs in"
+        git -C "$here" diff --stat "$want" "$t" -- "$f" "$x" | head -n 20; return 1
+    fi
+}
+# check <host> <run> <rev> [1] (1 = ref: everything but the comparison with the reference)
 check() {
     local f bad=0 st v s g
     f=$(facts "$1" "$2") || { echo "$f"; die "no facts of run $2 on $1"; }
     [[ $f != *REGRESS_FAIL* ]] || { echo "$f"; die "no facts of run $2 on $1"; }
     echo "REGRESS $2 on $1: $(sed -n 's/^V //p' <<< "$f")"
+    version "$(sed -n 's/^V //p' <<< "$f")" "$3" || bad=1
     st=$(awk '$1 == "Q" { printf "%s:%s:%s ", $4, $6, $9 }' <<< "$f")
     [ "$st" = "$(for s in $CHAIN; do printf '%s:ok:0 ' "$s"; done)" ] \
         && echo "CHECK chain PASS $CHAIN all ok" || { echo "CHECK chain FAIL steps (step:status:rc) $st"; bad=1; }
@@ -89,7 +111,7 @@ check() {
     [[ $s == "SIGNOFF "*" PASS" ]] && [ "$g" = 0 ] && [[ $v == *" fail 0 missing 0; FAIL: none; MISSING: none;"* ]] \
         && echo "CHECK verdict PASS $v" || { echo "CHECK verdict FAIL '${s:-no SIGNOFF line}' gates FAIL / MISSING $g: ${v:-no VERDICT line}"; bad=1; }
     grep '^GATE .* \(FAIL\|MISSING\) ' <<< "$f" | cut -c1-160 | head -n 20
-    if [ "${3:-0}" = 1 ]; then
+    if [ "${4:-0}" = 1 ]; then
         [ $bad = 0 ] || die "run $2 does not pass: no reference from it"
         { echo "# Regression reference (common/regress.sh check): the verdict line and the gate set (gate name: sign-off corners,"
           echo "# '-' = block gate) of the run below; written by regress.sh ref, a change is a deliberate reference update"
@@ -112,7 +134,7 @@ check() {
 
 case $cmd in
 run) run "$2" "$3" ;;
-check) check "$2" "$3" ;;
-ref) check "$2" "$3" 1 ;;
+check) check "$2" "$3" "${4:-HEAD}" ;;
+ref) check "$2" "$3" "${4:-HEAD}" 1 ;;
 *) die "unknown command '$cmd' (run | check | ref)" ;;
 esac
