@@ -67,7 +67,19 @@ config `col.cfg` / `route_pre.tcl` (OpenROAD, R48) were deleted in R54 (git hist
 
 ## Regression block qb_lane_n (`blocks/rgr`) and flow snapshots (`common/deploy.sh`)
 
-Every flow change passes the regression block before it may run on the column.  It runs from a snapshot of a commit:
+Every flow change passes the regression block before it may run on the column, through its one entry point
+`common/regress.sh` (local checkout; ssh command QC_SSH, as deploy.sh):
+```
+qc18bacc/flow/common/regress.sh run <commit> <host>     # deploy.sh -> /tmp/<user>/qc18bacc/rgr_<run>, the chain detached (queue.sh)
+qc18bacc/flow/common/regress.sh check <host> <run>      # exit 0 only on: chain complete, SIGNOFF PASS, gate set = reference
+qc18bacc/flow/common/regress.sh ref <host> <run>        # (re)writes blocks/rgr/reference.txt from a passing run
+```
+`run` names the run rg<7 hex digits of the commit><first free letter> and launches pnr eco calibre post views signoff from
+the snapshot (queue log dir <run dir>q); the block's configuration alone decides the run, no VAR=val on the queue line.
+`check` reads the run's queue.state (exactly that chain, every step ok, rc 0) and its signoff step's verdict
+(SIGNOFF PASS, no FAIL / MISSING gate, VERDICT line = the reference's) and compares its gate set (gate name x corner) with
+`blocks/rgr/reference.txt`, printing the difference: a checker that adds, drops or renames a gate fails the regression
+until the reference is rewritten with `ref` and the change is reviewed in the commit.  By hand, the chain is:
 ```
 qc18bacc/flow/common/deploy.sh <commit> <host>:<dir>    # git archive of qc18bacc/flow at <commit> + the host's flow/ (site layer) -> <dir>
 qc18bacc/flow/synth/run.sh rgr                          # once per build root: DC of one PPU lane -> $B/syn/rgr_lane_tt_p2.0_topo
@@ -76,7 +88,8 @@ qc18bacc/flow/synth/run.sh rgr                          # once per build root: D
 ```
 deploy.sh archives a commit (or tree) id, never the working tree; it writes VERSION (commit, tree, site source) and
 MANIFEST.md5 (every other file), verifies the MANIFEST on the host, makes the snapshot read-only and refuses an existing
-<dir>.  The block uses the shared driver like the column: `rgr.env` (netlist tag, period 2.5 ns, die 130 x 130 um, pins),
+<dir>.  The block uses the shared driver like the column: `rgr.env` (netlist tag, period 2.5 ns, die 130 x 130 um, pins,
+the column's P&R guard-bands QC_PNR_GUARD_HOLD 0.010 ns / QC_PNR_GUARD_TRAN 0.05, as `col.env`; environment overrides them),
 `icc2.cfg` (the column's opt-ins HOLD_RESERVE / ISOLATE / VIRTUAL_FILL / PREROUTE_CAP_SCALE / PREROUTE_SETUP_MARGIN on this design), `io_budget.tcl` (the column's budget procs with
 its own class table `::QB5_BUDGET`), pins: `floorplan/edge_pins.py` (pin-only abstract LEF: inputs west, outputs east on
 M3 tracks) -> `floorplan/abstract_pins.py` (floorplan DEF).  Block-config hooks of the shared ICC2 steps: `P(IO_SAMPLE)`

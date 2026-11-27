@@ -12,7 +12,7 @@ here=$(cd "$(dirname "$0")" && pwd); . "$here/../../common/env.sh"; . "$here/rgr
 C=$QBF/signoff/calibre
 BLK=rgr BLK_TOP=$RGR_TOP BLK_SYN=$RGR_SYN BLK_PERIOD=$RGR_PERIOD BLK_CFG=$here/icc2.cfg BLK_PT=$QBF/signoff/pt/rgr_blk.tcl
 BLK_FILL_SED="-f $C/fill_blk.sed" BLK_ODPO_SED="-f $C/odpo_blk.sed" BLK_LVS_SED="-f $C/lvs_case.sed" BLK_DRC_SED="-f $C/drc_blk.sed"
-export RGR_TOP RGR_DIE RGR_PIN_DEF   # read by icc2.cfg
+export RGR_TOP RGR_DIE RGR_PIN_DEF QC_PNR_GUARD_HOLD QC_PNR_GUARD_TRAN   # read by icc2.cfg, init.tcl qb_guard
 blk_pre_pnr() {
     mkdir -p "$(dirname "$RGR_PIN_LEF")" "$(dirname "$RGR_PIN_DEF")" &&
     "$PY" -I "$QBF/floorplan/edge_pins.py" "$B/syn/$RGR_SYN/$RGR_TOP.v" "$RGR_TOP" $RGR_DIE $RGR_PINS "$RGR_PIN_LEF" &&

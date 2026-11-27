@@ -33,7 +33,8 @@ proc qb_sdc {} {
     qb_line "init sdc $out period $per hold_uncertainty $uh dc_io_delay_lines_replaced $nio"
     return $out
 }
-# P&R guard-bands (R92, PI decision; opt-in, default 0 = none; sign-off itself never changes): implementation closes to
+# P&R guard-bands (R92, PI decision; default 0 = none, the block .env sets them: blocks/col/col.env, blocks/rgr/rgr.env;
+# sign-off itself never changes): implementation closes to
 # exactly zero margin, and r91b's ECO re-route pushed untouched near-zero paths across zero ([M] 264 hold endpoints
 # within 5 ps at wcl).  QC_PNR_GUARD_HOLD: ns added to the SDC hold uncertainty; QC_PNR_GUARD_TRAN: fraction f, design
 # max transition = (1 - f) x the SDC's.  qb_guard applies them in the current scenario (after its SDC) and returns

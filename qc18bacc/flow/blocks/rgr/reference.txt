@@ -1,0 +1,55 @@
+# Regression reference (common/regress.sh check): the verdict line and the gate set (gate name: sign-off corners,
+# '-' = block gate) of the run below; written by regress.sh ref, a change is a deliberate reference update
+# run rg89abce8a host engr-tau-13.usask.ca snapshot commit none tree 89abce869bfdd1722a7950f6ea4747402f4ef9c1
+VERDICT qb_lane_n gates 267 pass 267 fail 0 missing 0; FAIL: none; MISSING: none; opt-in declared: none
+gate pt_log ss ss_rcw wcl wcl_rcw tt ff ff_rcb ml ml_rcb
+gate setup ss ss_rcw wcl wcl_rcw tt ff ff_rcb ml ml_rcb
+gate hold ss ss_rcw wcl wcl_rcw tt ff ff_rcb ml ml_rcb
+gate recovery ss ss_rcw wcl wcl_rcw tt ff ff_rcb ml ml_rcb
+gate removal ss ss_rcw wcl wcl_rcw tt ff ff_rcb ml ml_rcb
+gate max_transition ss ss_rcw wcl wcl_rcw tt ff ff_rcb ml ml_rcb
+gate max_capacitance ss ss_rcw wcl wcl_rcw tt ff ff_rcb ml ml_rcb
+gate clock_max_transition ss ss_rcw wcl wcl_rcw tt ff ff_rcb ml ml_rcb
+gate min_pulse_width ss ss_rcw wcl wcl_rcw tt ff ff_rcb ml ml_rcb
+gate min_period ss ss_rcw wcl wcl_rcw tt ff ff_rcb ml ml_rcb
+gate unannotated_pin_to_pin ss ss_rcw wcl wcl_rcw tt ff ff_rcb ml ml_rcb
+gate unconstrained_endpoints ss ss_rcw wcl wcl_rcw tt ff ff_rcb ml ml_rcb
+gate unclocked_register_pins ss ss_rcw wcl wcl_rcw tt ff ff_rcb ml ml_rcb
+gate loops ss ss_rcw wcl wcl_rcw tt ff ff_rcb ml ml_rcb
+gate unexpected_disabled_arcs ss ss_rcw wcl wcl_rcw tt ff ff_rcb ml ml_rcb
+gate floating_nets ss ss_rcw wcl wcl_rcw tt ff ff_rcb ml ml_rcb
+gate noise ss ss_rcw wcl wcl_rcw tt ff ff_rcb ml ml_rcb
+gate noise_undriven_ports ss ss_rcw wcl wcl_rcw tt ff ff_rcb ml ml_rcb
+gate noise_undriven_pins ss ss_rcw wcl wcl_rcw tt ff ff_rcb ml ml_rcb
+gate clk_lat ss ss_rcw wcl wcl_rcw tt ff ff_rcb ml ml_rcb
+gate annotation ss ss_rcw wcl wcl_rcw tt ff ff_rcb ml ml_rcb
+gate dont_use ss ss_rcw wcl wcl_rcw tt ff ff_rcb ml ml_rcb
+gate fresh_spef ss ss_rcw wcl wcl_rcw tt ff ff_rcb ml ml_rcb
+gate fresh_pt ss ss_rcw wcl wcl_rcw tt ff ff_rcb ml ml_rcb
+gate etm_log ss ss_rcw wcl wcl_rcw tt ff ff_rcb ml ml_rcb
+gate etmcheck ss ss_rcw wcl wcl_rcw tt ff ff_rcb ml ml_rcb
+gate fresh_etm ss ss_rcw wcl wcl_rcw tt ff ff_rcb ml ml_rcb
+gate dont_use_icc2 -
+gate out_label -
+gate eco_names -
+gate pnr_tracks -
+gate pnr_legality_place -
+gate pnr_legality_cts -
+gate pnr_route_gate -
+gate pnr_eco_gate -
+gate abstract_lef -
+gate abstract_obs -
+gate abstract_pg_pins -
+gate abstract_log -
+gate fresh_abstract -
+gate lvs -
+gate fresh_gds_fill_lvs -
+gate lvs_erc -
+gate fresh_gds_fill_lvs_erc -
+gate drc -
+gate fresh_gds_fill_drc -
+gate antenna -
+gate fresh_gds_fill_antenna -
+gate drc_qb_rules -
+gate fresh_gds_fill_def -
+gate fresh_lvs_source -
