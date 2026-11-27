@@ -77,9 +77,9 @@
 #                             must have written every timing result before: the session is in the noise state afterwards
 #   qb_pt_noise_viol <report> the violators of a report_noise -all_violators -nosplit report (every listed pin line counts;
 #                             qb_pt_si_checks, the ECO's noise counts signoff/pt/drv_eco.tcl)
-#   qb_pt_noise_pins <pins>   after update_noise: {violators text} of the given load pins from their si_noise_* pin
-#                             attributes (above_low and below_high: pins PrimeTime analysed in detail, worst total bump,
-#                             negative slacks; a net under its noise filter has no values and is not counted)
+#   qb_pt_noise_pins <pins>   after update_noise: {violators text unanalysed} of the given load pins from their si_noise_*
+#                             pin attributes (above_low and below_high: pins PrimeTime analysed in detail, worst total
+#                             bump, negative slacks; unanalysed: pins on a net with an aggressor and no bump, see the proc)
 #   qb_pt_const_hold <corner> holding model of the constant drivers (R92): the kit's tie cells have no noise model
 #                             (check_noise "none": r91b 147 driver pins, holding 227 clock-gate TE pins and one flop E),
 #                             so a "noise 0" said nothing about those pins.  The kit does give the tie's resistance to
@@ -115,6 +115,11 @@ set ::QB_PT_DIR [file normalize [file dirname [info script]]]
 source [file normalize [file dirname [info script]]/../../common/limits.tcl]
 set_app_var timing_crpr_threshold_ps 1
 set_app_var si_enable_analysis true
+# DRV on case-constant nets too (R100; [M] hunt on a06c97, col s96b ss: report_constraint max_capacitance 4 vs 5 pins over
+# their limit by the pin attributes): PrimeTime leaves tie / constant nets out of the max_capacitance / max_transition
+# checks unless these are true.  Every PrimeTime session of the flow (sign-off, DMSA ECO scenarios, ETMs) sources this file.
+set_app_var timing_enable_max_capacitance_set_case_analysis true
+set_app_var timing_enable_max_transition_set_case_analysis true
 source [file normalize [file dirname [info script]]/../../common/derate.tcl]
 qb_derate
 source [file normalize [file dirname [info script]]/io_lat.tcl]
@@ -292,8 +297,12 @@ proc qb_pt_const_hold {corner} {
     }
     return [list "[join $rec {, }] (steady-state resistance = library intrinsic_resistance, library unit)" $pins]
 }
+# qb_pt_noise_pins <pins>: {violators text unanalysed} of load pins after update_noise.  A pin is analysed in a region when
+# PrimeTime gave it a bump (si_noise_total_bump_*); unanalysed = pins on a net with an aggressor (number_of_aggressors > 0)
+# that lack a bump in either region: PrimeTime's default noise analysis type (violators) analyses in detail only the nets
+# it deems potentially violating, the others get no bump at all (NOISE-015), so their slack is no evidence (R100)
 proc qb_pt_noise_pins {pins} {
-    set viol 0; set txt {}
+    set viol 0; set txt {}; set un 0; set cp 0
     foreach r {above_low below_high} {
         set w 0.0; set wp -; set n 0
         foreach_in_collection p $pins {
@@ -305,5 +314,13 @@ proc qb_pt_noise_pins {pins} {
         }
         lappend txt [format "%s %d analysed, worst bump %.3f V at %s" $r $n $w $wp]
     }
-    return [list $viol "[sizeof_collection $pins] load pins: [join $txt {; }]; violators $viol"]
+    foreach_in_collection p $pins {
+        set a [get_attribute -quiet [get_nets -of_objects $p] number_of_aggressors]
+        if {![string is integer -strict $a] || $a == 0} continue
+        incr cp
+        foreach r {above_low below_high} {
+            if {![string is double -strict [lindex [get_attribute -quiet $p si_noise_total_bump_$r] 0]]} { incr un; break }
+        }
+    }
+    return [list $viol "[sizeof_collection $pins] load pins: [join $txt {; }]; on nets with aggressors $cp, of them unanalysed $un; violators $viol" $un]
 }

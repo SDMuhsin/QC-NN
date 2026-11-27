@@ -76,7 +76,9 @@ for c in corners:
         if l.startswith('QB_PT_SIGNOFF '):
             t = l.split()[1:]
             for k, x in zip(t[0::2], t[1::2]): v.setdefault(k, []).append(x)
-    for k in PT + [k for k in ('act_noise',) if k in optin or k in v]:
+    # (act_noise_unanalysed, R100: the act load pins on nets with an aggressor that PrimeTime gave no bump; without it the
+    # act_noise count was over 0 analysed pins in 6 of 9 corners of r94 / r97)
+    for k in PT + [k for k in ('act_noise', 'act_noise_unanalysed') if 'act_noise' in optin or 'act_noise' in v]:
         gate(k, c, v[k] == ['0'] if k in v else None,
              'violators %s%s' % (' '.join(v[k]), '; ' + last(text(txt), k + ' ') if last(text(txt), k + ' ') else '') if k in v else 'no QB_PT_SIGNOFF %s count in %s' % (k, log))
     # the chip top's clock latency (signoff/pt/common.tcl qb_pt_lat): out/clk_lat_<c>.txt holds the "p50 min max" this

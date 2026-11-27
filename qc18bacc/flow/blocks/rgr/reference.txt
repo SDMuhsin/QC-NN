@@ -1,6 +1,13 @@
-# Regression reference (common/regress.sh check): the verdict line and the gate set (gate name: sign-off corners,
+# Regression reference (common/regress.sh check): the site manifest of the snapshot (site_md5), the DC inputs of
+# the run (inputs: md5 of netlist, DC SDC, run.env), the verdict line and the gate set (gate name: sign-off corners,
 # '-' = block gate) of the run below; written by regress.sh ref, a change is a deliberate reference update
-# run rg654710da host engr-tau-13.usask.ca snapshot commit none tree 654710d653d3ad5b51806e679c197e6c4b2943f0
+# run rg2091381a host engr-tau-13.usask.ca snapshot commit none tree 2091381f4a8c70e4e6e9fe35e78e95b4cd7f9a42
+site_md5 50b51bb3d985181eb1ca5dd9aaabe024 flow/tsmc65/site/pnr.tcl
+site_md5 427a2e0002c1bc97682e2f4be2030d87 flow/tsmc65/site/site.csh
+site_md5 a992ad0a90ae60eae61911156b0a57b3 flow/tsmc65/site/site.sh
+site_md5 9c3c1428b4359d3a83f30d23f408822f flow/tsmc65/site/site.tcl
+site_md5 26e030de154b0b70e1410bad6a50ad2c flow/tsmc65/site/sram.sh
+inputs syn rgr_lane_tt_p2.0_topo netlist 38196a34ec38a091c4d798319dae32f0 sdc 60a5165e14bb5077ae7dd899d6e4137c run_env cf3d99fa9278a87a5618bd2d3064442a
 VERDICT qb_lane_n gates 277 pass 277 fail 0 missing 0; FAIL: none; MISSING: none; opt-in declared: none
 gate pt_log ss ss_rcw wcl wcl_rcw tt ff ff_rcb ml ml_rcb
 gate limits ss ss_rcw wcl wcl_rcw tt ff ff_rcb ml ml_rcb

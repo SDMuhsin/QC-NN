@@ -48,11 +48,20 @@ proc qb_blk_hook {stage args} {
                 [list -delay_type min -max_paths 3 -from [get_ports {act[*]}] -to [get_ports {act_o[*]}] {*}$pd]
         }
         noise {
-            # the act load pins on the QB5_FT driver of the noise state: their own line and gate
+            # the act load pins on the QB5_FT driver of the noise state: their own line and gate.  Detailed noise analysis
+            # of every net (set_noise_parameters -analysis_type all), so each act load pin on a net with an aggressor has
+            # its bump: R100 [M] col s96b ss (r94 copy) in the default analysis type (violators), PrimeTime analysed none of the
+            # 9214 act load pins on coupled nets (NOISE-015 "not analyzed for detailed noise analysis": a net it deems
+            # unable to violate), r94 / r97 0 analysed in 6 of 9 corners, and the gate counted violators among 0 pins.
+            # The design's noise gate (qb_pt_si_checks, before) stays in the default type, as the ECO's noise count.
+            # act_noise_unanalysed = act load pins on nets with an aggressor and no bump (must be 0): 0 analysed passes
+            # only when no act net has an aggressor
             set fh [lindex $args 0]
-            lassign [qb_pt_noise_pins [get_pins -leaf -of_objects [get_nets -of_objects [get_ports {act[*]}]] -filter "direction==in"]] an at
-            puts $fh "act_noise $at"
-            puts "QB_PT_SIGNOFF act_noise $an"
+            set_noise_parameters -analysis_type all
+            update_noise
+            lassign [qb_pt_noise_pins [get_pins -leaf -of_objects [get_nets -of_objects [get_ports {act[*]}]] -filter "direction==in"]] an at un
+            puts $fh "act_noise analysis_type all: $at"
+            puts "QB_PT_SIGNOFF act_noise $an act_noise_unanalysed $un"
         }
         default { error "qb_blk_hook: unknown stage $stage" }
     }

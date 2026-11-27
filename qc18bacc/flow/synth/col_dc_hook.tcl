@@ -1,7 +1,13 @@
 # QC_HOOK of the qb_col_blk synthesis (results/r5a.md): topographical context of the hard-block strip (utilisation,
 # aspect, pin sides of floorplan/col_pins.tcl), the IO budget (budget.tcl) and a buffered act -> act_o feedthrough.
-source [file dirname [info script]]/../blocks/col/io_budget.tcl
-qb5_io_apply [get_attribute [get_clocks qb_clk] period]
+# The budget at the DC clock (ideal: clock arrivals Ll = Le = 0, as ICC2 init) with the min input delay of the DC corner's
+# library clock -> Q x the early OCV derate (qb5_hold_min: common/derate.tcl, common/lib_cells.tcl qb_lib_tcq).  R100 [M]
+# hunt on a06c97: the call had kept its pre-R77 one-argument form, so this hook stopped on "wrong # args".
+set _h [file dirname [file normalize [info script]]]
+source $_h/../common/derate.tcl
+source $_h/../common/lib_cells.tcl
+source $_h/../blocks/col/io_budget.tcl
+qb5_io_apply [get_attribute [get_clocks qb_clk] period] 0.0 0.0 [qb_lib_tcq $::env(QC_CORNER)]
 set_fix_multiple_port_nets -all -buffer_constants
 if {[shell_is_in_topographical_mode]} {
     set_utilization [qc_env QB_UTIL_T 0.70]

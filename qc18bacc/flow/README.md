@@ -51,7 +51,8 @@ verdict's abstract_label gate compares with out/label.txt.  The floorplan pin DE
 Sign-off limits (R99): `common/limits.txt` is the one committed value of QC_UNC_SETUP / QC_UNC_HOLD / QC_IO_PCT /
 QC_CLK_TRAN_MAX / QB5_SOUTH_IN (`common/limits.tcl` qb_limit: DC / PT SDC, IO budget, PT clock limit, ICC2 CTS); an
 environment value overrides it for an experiment, PrimeTime logs the values in force (QB_PT_LIMITS) and the verdict's
-limits gate fails every corner where they differ from limits.txt.
+limits gate fails every corner where they differ from limits.txt.  DC's run.env is not read by the block PrimeTime
+(R100, common/block.sh blk_pt_env: its QC_IO_PCT acted as such an override).
 Corners (R68): one table, `flow/tsmc65/site/site.tcl` QC_SIGNOFF (kit release note RN_TCBN65GPLUS_140B NOTE I): setup
 {wc wcl} x {Cworst RCworst} (ss ss_rcw wcl wcl_rcw), hold {lt ml} x {Cbest RCbest} (ff ff_rcb ml ml_rcb), tc typical (tt);
 ICC2 MCMM, PT sign-off, the DMSA ECO, the block ETMs and the chip top use all of them (bash: common/env.sh `qb_corners`;
@@ -79,19 +80,23 @@ qc18bacc/flow/common/regress.sh ref <host> <run> [<commit>]    # (re)writes bloc
 `run` names the run rg<7 hex digits of the commit><first free letter> and launches pnr eco calibre post views signoff from
 the snapshot (queue log dir <run dir>q); the block's configuration alone decides the run, no VAR=val on the queue line.
 `check` first ties the run to the flow under test (R99): the tree in the snapshot's VERSION must have the
-qc18bacc/flow of `<commit>` (or tree; default HEAD) apart from reference.txt; then it reads the run's queue.state (exactly that chain, every step ok, rc 0) and its signoff step's verdict
+qc18bacc/flow and flow/tsmc65 of `<commit>` (or tree; default HEAD) apart from reference.txt; then it reads the run's queue.state (exactly that chain, every step ok, rc 0) and its signoff step's verdict
 (SIGNOFF PASS, no FAIL / MISSING gate, VERDICT line = the reference's) and compares its gate set (gate name x corner) with
 `blocks/rgr/reference.txt`, printing the difference: a checker that adds, drops or renames a gate fails the regression
 until the reference is rewritten with `ref` and the change is reviewed in the commit.  By hand, the chain is:
 ```
-qc18bacc/flow/common/deploy.sh <commit> <host>:<dir>    # git archive of qc18bacc/flow at <commit> + the host's flow/ (site layer) -> <dir>
+qc18bacc/flow/common/deploy.sh <commit> <host>:<dir>    # git archive of qc18bacc/flow + flow/tsmc65 at <commit> + the host's untracked site files -> <dir>
 qc18bacc/flow/synth/run.sh rgr                          # once per build root: DC of one PPU lane -> $B/syn/rgr_lane_tt_p2.0_topo
 <dir>/qc18bacc/flow/blocks/rgr/run.sh pnr <tag>         # the column's pnr (libs .. outputs, portcheck, fill) -> $B/icc2/rgr/<tag>
 <dir>/qc18bacc/flow/blocks/rgr/run.sh <eco|calibre|post|views|signoff> <tag>   # the rest of the chain, in this order
 ```
-deploy.sh archives a commit (or tree) id, never the working tree; it writes VERSION (commit, tree, site source) and
-MANIFEST.md5 (every other file), verifies the MANIFEST on the host, makes the snapshot read-only and refuses an existing
-<dir>.  The block uses the shared driver like the column: `rgr.env` (netlist tag, period 2.5 ns, die 130 x 130 um, pins,
+deploy.sh archives a commit (or tree) id, never the working tree: every tracked file of qc18bacc/flow and flow/tsmc65
+(`deploy.sh --paths`); from the host only the untracked kit-derived site files of flow/tsmc65/site (R100: before, the
+host's whole flow/ including tracked lib.tcl / tool.sh).  It writes VERSION (commit, tree, site source, the site manifest
+= one `site_md5 <md5> <path>` line per site file, deploy time) and MANIFEST.md5 (every other file), verifies both on the
+host, makes the snapshot read-only and refuses an existing <dir>.  `check` also compares the site manifest and the run's
+DC inputs (summary.txt `init inputs`: md5 of netlist, DC SDC, run.env, written by common/block.sh blk_inputs before
+each init step) with the reference (R100): a new site file or a re-synthesised netlist needs a reviewed `ref`.  The block uses the shared driver like the column: `rgr.env` (netlist tag, period 2.5 ns, die 130 x 130 um, pins,
 the column's P&R guard-bands QC_PNR_GUARD_HOLD 0.010 ns / QC_PNR_GUARD_TRAN 0.05, as `col.env`; environment overrides them),
 `icc2.cfg` (the column's opt-ins HOLD_RESERVE / ISOLATE / VIRTUAL_FILL / PREROUTE_CAP_SCALE / PREROUTE_SETUP_MARGIN on this design), `io_budget.tcl` (the column's budget procs with
 its own class table `::QB5_BUDGET`), pins: `floorplan/edge_pins.py` (pin-only abstract LEF: inputs west, outputs east on

@@ -160,8 +160,8 @@ proc qb_eco_timing_count {} {
 # (1 - QC_ECO_DRV_MARGIN), by the pin attributes report_constraint evaluates (man pin_attributes; r92 ss [M]: 84 pins over
 # the transition limit = report_constraint's 84, a tightened limit on 334 pins -> 333 violators, removed -> 84 and every
 # limit as before).  on: each gets limit x (1 - margin) as a pin-level limit; off: exactly those are removed; scan: count
-# only.  The record is taken at the sign-off limits (before on / after off): over = pins over their limit (including the
-# constant pins report_constraint does not list: r92 ss [M] max_capacitance 8 against its 6), band = pins in [limit x
+# only.  The record is taken at the sign-off limits (before on / after off): over = pins over their limit (the constant
+# pins too, which report_constraint lists since R100, signoff/pt/common.tcl; r92 ss [M] before: 8 against its 6), band = pins in [limit x
 # (1 - margin), limit].
 array set ::QB_ECO_DRV_ATTR {
     max_transition  {drc_actual_max_transition constraining_max_transition}

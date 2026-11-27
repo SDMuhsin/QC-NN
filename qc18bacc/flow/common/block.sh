@@ -9,7 +9,8 @@
 #   BLK_FILL_SED BLK_ODPO_SED BLK_LVS_SED BLK_DRC_SED Calibre deck seds as sed arguments ("-f <file>" ...)
 #   BLK_GATES optional: the block's opt-in verdict gates, comma-separated (signoff/verdict.sh -g; the column's act gates)
 # Steps:  pnr      ICC2 libs init floorplan place cts route outputs, then portcheck + fill; QC_PNR_FROM / QC_PNR_TO select
-#                  a range, an unknown step name fails; a step init .. route drops the label of out/ (blk_unlabel)
+#                  a range, an unknown step name fails; a step init .. route drops the label of out/ (blk_unlabel);
+#                  init first records the md5 of its DC inputs in summary.txt (blk_inputs)
 #         eco      sign-off ECO loop, at most QC_ECO_ROUNDS (4) rounds: PrimeTime DMSA -> ICC2 eco -> outputs -> portcheck
 #                  -> fill; ends when a round's pre-fix state is clean in every corner at zero margin; fails if it never
 #                  is, or if the pre-fix violation total does not shrink.  Fix guard-bands (env.sh): hold
@@ -45,8 +46,12 @@ blk_main() {
     "blk_$step" || { echo "BLK_FAIL $BLK $step $tag $(date +%T)"; return 1; }
     echo "BLK_DONE $BLK $step $tag $(date +%T)"
 }
-blk_pt_env() {   # PrimeTime environment of $BLK_PT, set in the subshell of the caller
-    qb_kit; set -a; . "$B/syn/$BLK_SYN/run.env"; set +a
+# PrimeTime environment of $BLK_PT, set in the subshell of the caller.  Nothing of DC's run.env (R100; [M] hunt on a06c97:
+# it was sourced with set -a, and its QC_IO_PCT=20, written by flow/tsmc65 run_dc.sh, became an "environment override"
+# of common/limits.txt in every PrimeTime session): the block's PrimeTime reads only the variables below, the sign-off
+# limits come from limits.txt (or a deliberate experiment override in the caller's environment).
+blk_pt_env() {
+    qb_kit
     export QC_SDC=$QBF/common/constraints.sdc QC_PT_HOOK= QC_PERIOD=$BLK_PERIOD QC_PNR_OUT=$d QC_TOP=$BLK_TOP
     cd "$d"
 }
@@ -65,6 +70,7 @@ blk_pnr() {
         elif [ "$s" = libs ]; then blk_libs || return 1
         else
             blk_unlabel "$s" || return 1
+            if [ "$s" = init ]; then blk_inputs || return 1; fi
             if [ "$s" = floorplan ]; then blk_pins || return 1; fi
             qb_icc2 "$d" "$s" || return 1
         fi
@@ -80,6 +86,18 @@ blk_unlabel() {
     [ -e "$d/out/label.txt" ] || [ -e "$d/out/label.new" ] || return 0
     echo "BLK_LABEL pnr $1 rewrites the layout: label of out/ $(cat "$d/out/label.txt" 2> /dev/null || echo none), unfinished $(cat "$d/out/label.new" 2> /dev/null || echo none): dropped"
     rm -f "$d/out/label.txt" "$d/out/label.new"
+}
+# The DC inputs of the init step ($B/syn/$BLK_SYN, outside the snapshot; R100 [M] hunt on a06c97: nothing recorded which
+# netlist a run was built from): one summary.txt line "init inputs syn <tag> netlist <md5> sdc <md5> run_env <md5>" (the
+# netlist and DC SDC common/block_sdc.tcl reads, DC's run.env) before each init step; common/regress.sh check compares
+# the last one with the regression reference
+blk_inputs() {
+    local s=$B/syn/$BLK_SYN k f l="init inputs syn $BLK_SYN"
+    for k in "netlist $BLK_TOP.v" "sdc $BLK_TOP.sdc" "run_env run.env"; do
+        f=$s/${k#* }; [ -f "$f" ] || { echo "BLK_FAIL pnr init: no DC input $f"; return 1; }
+        l="$l ${k%% *} $(md5sum < "$f" | cut -c1-32)"
+    done
+    mkdir -p "$d" && echo "$l" >> "$d/summary.txt" && echo "BLK_INPUTS $l"
 }
 # The floorplan pin DEF of the run, QB_PIN_DEF = <run>/pins.def (the block config's P(PIN_DEF)): written by the block's
 # blk_pre_pnr right before each floorplan step, as <def>.part renamed into place (R99; before, $B/icc2/<blk>/pins*.def:
