@@ -6,7 +6,10 @@
 #   BLK_PT PrimeTime sign-off script of one corner QC_CORNER (writes <run>/pt_blk_<corner>.txt; must return after its
 #   design setup when ::QB_PT_SETUP_ONLY exists)   blk_pre_pnr <def>: writes the floorplan pin DEF <def> (run before
 #   pnr's floorplan step: blk_pins)
-#   BLK_FILL_SED BLK_ODPO_SED BLK_LVS_SED BLK_DRC_SED Calibre deck seds as sed arguments ("-f <file>" ...)
+#   BLK_FILL_SED BLK_ODPO_SED BLK_LVS_SED BLK_DRC_SED BLK_ANT_SED the deck edits of each Calibre mode (signoff/calibre/
+#   cal.sh) as sed arguments ("-f <file>" ...); unset unless the block's run.sh sets them after sourcing this file (an
+#   inherited value is dropped here; BLK_ANT_SED is optional, the others required), passed to cal.sh one per mode
+#   (blk_fill_label, blk_calibre) and logged in BLK_KNOBS
 #   BLK_GATES optional: the block's opt-in verdict gates, comma-separated (signoff/verdict.sh -g; the column's act gates)
 #   BLK_INPUTS optional: the block's further inputs from outside the snapshot, "<key>=<file> ..." (blk_inputs records
 #   their md5 after the DC inputs; the column's reference abstract)
@@ -56,7 +59,11 @@ blk_main() {
 # The run's record of its settings (R103): one line per step, "BLK_KNOBS <blk> <step> <tag> flow <flow root> <name>=<value>
 # ...": the flow the step runs (a snapshot's, common/deploy.sh) and the flow knobs in force (common/env.sh qb_knobs).
 # Step "knobs" prints the line alone (common/regress.sh: in an empty environment = the snapshot's committed defaults).
-blk_knobs() { echo "BLK_KNOBS $BLK $1 $tag flow $QBF$(qb_knobs)"; }
+# The deck edits are knobs too (R104; hunt round 9 on 018af5e: ant took the DRC deck's QB36_DRC_SED, which came from
+# the environment and was recorded nowhere): BLK_KNOBS names every BLK_*_SED (paths in the flow as <flow>/...).
+BLK_DECK_EDITS="BLK_FILL_SED BLK_ODPO_SED BLK_LVS_SED BLK_DRC_SED BLK_ANT_SED"
+unset $BLK_DECK_EDITS
+blk_knobs() { echo "BLK_KNOBS $BLK $1 $tag flow $QBF$(qb_knobs $BLK_DECK_EDITS)"; }
 # PrimeTime environment of $BLK_PT, set in the subshell of the caller.  Nothing of DC's run.env (R100; [M] hunt on a06c97:
 # it was sourced with set -a, and its QC_IO_PCT=20, written by flow/tsmc65 run_dc.sh, became an "environment override"
 # of common/limits.txt in every PrimeTime session): the block's PrimeTime reads only the variables below, the sign-off
@@ -292,7 +299,7 @@ blk_calibre() {
     bash "$C/lvs_src.sh" "$d/out/${BLK_TOP}_pg.v" "$o/${BLK}_src.spi" > "$o/src.log" 2>&1; r=$?; tail -n 3 "$o/src.log"; [ $r = 0 ] || return 1
     QB36_LVS_SED=$BLK_LVS_SED bash "$C/cal.sh" lvs "$g" "$BLK_TOP" "$o/${BLK}_src.spi" "$o/lvs" > "$o/lvs.log" 2>&1 || r=1
     QB36_DRC_SED=$BLK_DRC_SED bash "$C/cal.sh" drc "$g" "$BLK_TOP" "$o/drcb" > "$o/drcb.log" 2>&1 || r=1
-    bash "$C/cal.sh" ant "$g" "$BLK_TOP" "$o/ant" > "$o/ant.log" 2>&1 || r=1
+    QB36_ANT_SED=${BLK_ANT_SED:-} bash "$C/cal.sh" ant "$g" "$BLK_TOP" "$o/ant" > "$o/ant.log" 2>&1 || r=1
     cat "$o/lvs.log" "$o/drcb.log" "$o/ant.log"; return $r
 }
 # PrimeTime in every sign-off corner on the ICC2 netlist + SPEF (fails on any setup / hold / DRV / noise / min pulse width
@@ -307,9 +314,14 @@ blk_post() {
       done
       [ $r = 0 ] || exit 1
       for c in $cs; do
+          # the corner's ETM files are this session's (R104; hunt round 9 on 018af5e: the .db was only counted over
+          # out/etm, so an older one passed): removed first, then each there and none older than the one before
+          e=out/etm/${BLK_TOP}_$c; rm -f "$e.lib" "${e}_lib.db" "${e}_ref.txt"
           QC_CORNER=$c qb_pt "etm_$c.log" pt_shell -f "$QBF/signoff/etm/etm.tcl" || r=1
           ! grep -m 3 'MEXT-6)\|MEXT-81\|MEXT-97' "etm_$c.log" || { echo "ETM $c: table limit / driving cell / feedthrough warnings"; r=1; }
-          echo "ETM $c $(ls out/etm/ 2> /dev/null | grep -c '_lib.db$') dbs, $(grep -c 'RC-011' "etm_$c.log") RC-011 lines"
+          [ -s "$e.lib" ] && [ -s "${e}_lib.db" ] && [ -s "${e}_ref.txt" ] && ! [ "${e}_lib.db" -ot "$e.lib" ] && ! [ "${e}_ref.txt" -ot "${e}_lib.db" ] \
+              || { echo "ETM $c: $e.lib / _lib.db / _ref.txt missing, empty or out of order"; r=1; }
+          echo "ETM $c $(grep -c 'RC-011' "etm_$c.log") RC-011 lines"
       done; exit $r )
 }
 # Views for the chip top: ICC2 abstract LEF with port antenna data + antenna / abutment / PG pin gates (flow/icc2/

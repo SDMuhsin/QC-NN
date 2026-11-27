@@ -10,11 +10,13 @@
 #   qc18bacc/flow/signoff/calibre/cal.sh check <drc|ant|lvs|erc> <topcell> <rundir>   the result of a finished run from its
 #        files alone (cal_result; no Calibre): what the run modes end with and signoff/verdict.py reads (R92; erc: the
 #        ERC of an lvs run dir)
-# env: QB36_DRC_SED / QB36_LVS_SED / QB55_FILL_SED / QB77_ODPO_SED = extra sed arguments for the deck copy (e.g. "-f drc_blk.sed"), QB36_LVS_EXTRA,
+# env: QB36_DRC_SED / QB36_ANT_SED / QB36_LVS_SED / QB55_FILL_SED / QB77_ODPO_SED = extra sed arguments for the deck copy
+#      of that mode only (e.g. "-f drc_blk.sed"; common/block.sh sets each one explicitly per run), QB36_LVS_EXTRA,
 #      QB36_HCELL (hcell file)
 # Summary: grep of the TOTAL counts and the rule checks with results (CAL36 lines), then cal_result's CAL36_RESULT line.
 # Exit status (R92; before, Calibre's alone: r91b LVS INCORRECT + 4 DRC results ended "ok"): Calibre's if non-zero, else
-# drc / ant / lvs: 1 unless cal_result passes (lvs: cal_result lvs and erc); fill / odpo: 1 if the merge failed.
+# drc / ant / lvs: 1 unless cal_result passes (lvs: cal_result lvs and erc); fill / odpo: 1 if the merge failed or the
+# results GDS / merged GDS is missing or older than its input (R104).
 set -u
 C=/CMC/tools/siemens/calibre/aok_cal_2026.1_26.19/aok_cal_2026.1_26.19
 export CALIBRE_HOME=$C MGC_HOME=$C MGLS_LICENSE_FILE=${MGLS_LICENSE_FILE:-6056@engrcmc2.usask.ca}
@@ -35,7 +37,8 @@ A=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/erc_allow.txt   # (resolved befo
 #             device does not exist); anything else fails
 # Reads files only, so a missing, stale or truncated report fails instead of passing by default.
 # lvs_ports <rundir> <topcell> <lvs.rep>: the LVS port gate (R103); prints "ports ..." and is non-zero unless the
-# layout's top-cell ports (svdb/<top>.sp .SUBCKT) are by name the source's (the deck's SOURCE PATH .SUBCKT), the
+# layout's top-cell ports (svdb/<top>.sp .SUBCKT, which must be this run's: not older than deck.lvs, R104) are by name
+# the source's (the deck's SOURCE PATH .SUBCKT), the
 # report's initial layout port count is their number and both counts after transformation are it too, no layout
 # passthrough net was deleted, and the source's surplus of initial ports = its passthrough nets deleted = its global
 # nets that are not top-cell ports (.GLOBAL of the source and its .INCLUDE files; LVS GLOBALS ARE PORTS YES makes each
@@ -51,9 +54,11 @@ lvs_subckt_ports() {   # lvs_subckt_ports <cell> <spice>: the port names of .SUB
                    f && /^\+/ { for (i = 2; i <= NF; i++) print $i; next } f { exit }' "$2" 2> /dev/null | LC_ALL=C sort
 }
 lvs_ports() {
-    local d=$1 top=$2 rep=$3 src sl ss il is tl ts ps pl g ng
+    local d=$1 top=$2 rep=$3 src sl ss il is tl ts ps pl g ng sp=$1/svdb/$2.sp fr=fresh
     src=$(sed -n 's/^SOURCE PATH *"\(.*\)".*/\1/p' "$d/deck.lvs" | head -1)
-    sl=$(lvs_subckt_ports "$top" "$d/svdb/$top.sp"); ss=$(lvs_subckt_ports "$top" "$src")
+    # (R104; hunt round 9 on 018af5e: a svdb/<top>.sp left by an earlier run was read as this run's layout ports)
+    [ -s "$sp" ] && ! [ "$sp" -ot "$d/deck.lvs" ] || { fr=stale; sp=/dev/null; }
+    sl=$(lvs_subckt_ports "$top" "$sp"); ss=$(lvs_subckt_ports "$top" "$src")
     read -r il is < <(awk '/^INITIAL NUMBERS OF OBJECTS/ { f = 1 } f && $1 == "Ports:" { print $2, $3; exit }' "$rep")
     read -r tl ts < <(awk '/^NUMBERS OF OBJECTS AFTER TRANSFORMATION/ { f = 1 } f && $1 == "Ports:" { print $2, $3; exit }' "$rep")
     ps=$(sed -n 's/^ *\([0-9][0-9]*\) passthrough source nets\{0,1\} w[a-z]* deleted\..*/\1/p' "$rep" | head -1)
@@ -61,7 +66,7 @@ lvs_ports() {
     g=$({ cat "$src"; sed -n 's/^\.INCLUDE *"\{0,1\}\([^" ]*\)"\{0,1\}.*/\1/Ip' "$src" | xargs -r cat; } 2> /dev/null \
         | awk 'toupper($1) == ".GLOBAL" { for (i = 2; i <= NF; i++) print $i }' | LC_ALL=C sort -u | LC_ALL=C comm -23 - <(LC_ALL=C sort -u <<< "$ss"))
     ng=$(grep -c . <<< "$g")
-    echo "ports layout ${il:-NA} source ${is:-NA} after_transformation ${tl:-NA}/${ts:-NA} top_cell_port_names $([ -n "$sl" ] && [ "$sl" = "$ss" ] && echo equal || echo differ)($(grep -c . <<< "$sl")/$(grep -c . <<< "$ss")) passthrough_deleted source ${ps:-0} layout ${pl:-0} source_globals_not_ports $ng ($(echo $g))"
+    echo "ports layout_netlist $fr layout ${il:-NA} source ${is:-NA} after_transformation ${tl:-NA}/${ts:-NA} top_cell_port_names $([ -n "$sl" ] && [ "$sl" = "$ss" ] && echo equal || echo differ)($(grep -c . <<< "$sl")/$(grep -c . <<< "$ss")) passthrough_deleted source ${ps:-0} layout ${pl:-0} source_globals_not_ports $ng ($(echo $g))"
     [ -n "$sl" ] && [ "$sl" = "$ss" ] && [ "$il" = "$(grep -c . <<< "$sl")" ] && [ "$tl" = "$il" ] && [ "$ts" = "$il" ] \
         && [ "${pl:-0}" = 0 ] && [ -n "$is" ] && [ $((is - il)) = "${ps:-0}" ] && [ "${ps:-0}" = "$ng" ]
 }
@@ -138,9 +143,12 @@ cal_result() {
 mode=${1:?drc|ant|lvs|fill|odpo|check}; gds=${2:?}; top=${3:?}; res=0
 case $mode in
 drc|ant) d=$4; t=${5:-8}; mkdir -p "$d"; cd "$d" || exit 1
-     [ $mode = drc ] && deck=$K/CLN65GP/DRC/MAIN_DRC_TopMz/CLN65S_9M_6X2Z.23a || deck=$K/CLN65GP/DRC/ANTENNA_DRC/CN65S_9M.ANT.23a
+     # each mode its own deck edits (R104; hunt round 9 on 018af5e: ant read QB36_DRC_SED too, so the DRC deck's
+     # edits, or any value inherited from the environment, reached the antenna deck)
+     if [ $mode = drc ]; then deck=$K/CLN65GP/DRC/MAIN_DRC_TopMz/CLN65S_9M_6X2Z.23a; sx=${QB36_DRC_SED:-}
+     else deck=$K/CLN65GP/DRC/ANTENNA_DRC/CN65S_9M.ANT.23a; sx=${QB36_ANT_SED:-}; fi
      sed -e "s#^\(LAYOUT PATH\) .*#\1 \"$gds\"#" -e "s#^\(LAYOUT PRIMARY\) .*#\1 \"$top\"#" \
-         -e "s#^DRC MAXIMUM RESULTS ALL#DRC MAXIMUM RESULTS 1000#" ${QB36_DRC_SED:-} "$deck" > deck.$mode
+         -e "s#^DRC MAXIMUM RESULTS ALL#DRC MAXIMUM RESULTS 1000#" $sx "$deck" > deck.$mode
      /usr/bin/time -v "$C/bin/calibre" -drc -hier -turbo "$t" deck.$mode > cal_$mode.log 2> cal_$mode.time; rc=$?
      rep=$(sed -n 's/^DRC SUMMARY REPORT "\(.*\)".*/\1/p' deck.$mode | head -1)
      echo "CAL36 $mode $top rc $rc $(grep 'TOTAL DRC Results Generated' "$rep") wall $(grep Elapsed cal_$mode.time | awk '{print $NF}') rss_kb $(grep Maximum cal_$mode.time | awk '{print $NF}')"
@@ -151,10 +159,16 @@ fill|odpo) d=$4; t=${5:-8}; mkdir -p "$d"; cd "$d" || exit 1
      else deck=$K/CLN65GP/autofill_OD_PO/Dummy_OD_PO_Calibre_65nm.22b; db=DODPO; sx=${QB77_ODPO_SED:-}; fi
      sed -e "s#^\(LAYOUT PATH\) .*#\1 \"$gds\"#" -e "s#^\(LAYOUT PRIMARY\) .*#\1 \"$top\"#" \
          -e "s#^DRC RESULTS DATABASE \"$db.gds\" GDSII .*#DRC RESULTS DATABASE \"$db.gds\" GDSII _$db#" $sx "$deck" > deck.$mode
+     sum=$(sed -n 's/^DRC SUMMARY REPORT "\(.*\)".*/\1/p' deck.$mode | head -1)
+     # the outputs of this run only (R104; hunt round 9 on 018af5e: a DM.gds of an earlier run stayed when Calibre
+     # wrote none, and fill_def.py / the merge read it): removed first, then each must be there and newer than its input
+     rm -f "$db.gds" "${top}_fill.gds" merge.log ${sum:+"$sum"}
      /usr/bin/time -v "$C/bin/calibre" -drc -hier -turbo "$t" deck.$mode > cal_$mode.log 2> cal_$mode.time; rc=$?
      [ $rc = 0 ] && "$C/bin/calibredrv" -a layout filemerge -in "$gds" \
          -infile "{-name $db.gds -placecell {-refcell ${top}_$db -incell $top -x 0 -y 0}}" -out "${top}_fill.gds" > merge.log 2>&1 || rc=1
-     sum=$(sed -n 's/^DRC SUMMARY REPORT "\(.*\)".*/\1/p' deck.$mode | head -1)
+     for o in "$db.gds:deck.$mode" "${top}_fill.gds:$db.gds"; do
+         [ -s "${o%%:*}" ] && ! [ "${o%%:*}" -ot "${o#*:}" ] || { echo "CAL55_FAIL $mode $top: ${o%%:*} missing, empty or older than ${o#*:} (not this run's)"; rc=1; }
+     done
      echo "CAL55 $mode $top rc $rc $(grep 'TOTAL DRC Results Generated' "$sum") wall $(grep Elapsed cal_$mode.time | awk '{print $NF}') out $(ls -s "${top}_fill.gds" 2>/dev/null)"
      grep "RULECHECK .* TOTAL Result Count = [1-9]" "$sum" | awk -v m=$mode '{print "CAL55_" m, $2, $(NF-1)}' | head -40 ;;
 lvs) src=$4; d=$5; t=${6:-8}; mkdir -p "$d"; cd "$d" || exit 1; L=$K/CRN65GP/TN65CMSP018K1_V1.0C/Calibre/lvs

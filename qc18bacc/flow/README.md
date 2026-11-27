@@ -82,10 +82,12 @@ qc18bacc/flow/common/regress.sh ref <host> <run> [<commit>]    # (re)writes bloc
 `run` names the run rg<7 hex digits of the commit><first free letter> and launches pnr eco calibre post views signoff from
 the snapshot (queue log dir <run dir>q); the block's configuration alone decides the run, no VAR=val on the queue line.
 `check` first ties the run to the flow under test (R99): the tree in the snapshot's VERSION must have the
-qc18bacc/flow and flow/tsmc65 of `<commit>` (or tree; default HEAD) apart from reference.txt; then it reads the run's queue.state (exactly that chain, every step ok, rc 0),
+qc18bacc/flow and flow/tsmc65 of `<commit>` (or tree; default HEAD) apart from reference.txt, and (R104) the snapshot's
+files must still match its MANIFEST.md5 on the host (md5sum -c, no unlisted file); the reference compared with is
+`<commit>`'s own blocks/rgr/reference.txt (git show), not the checkout's; then it reads the run's queue.state (exactly that chain, every step ok, rc 0),
 the settings (R103): every step's `BLK_KNOBS` line (common/block.sh blk_knobs: the flow root the step ran from and
 every flow knob in force, common/env.sh qb_knobs: P&R guard-bands, ECO margins / rounds / modes, pnr range, cores, ICC2
-binary / label, LVS deck extras, the sign-off limits) must name the snapshot and equal the snapshot's committed defaults
+binary / label, LVS deck extras, the Calibre deck edits of every mode BLK_*_SED (R104: ant has its own, BLK_ANT_SED), the sign-off limits) must name the snapshot and equal the snapshot's committed defaults
 (`run.sh knobs` in an empty environment), which equal the reference's `knobs` line, and the queue spec has no VAR=val
 word; and its signoff step's verdict, which the snapshot's signoff
 step re-run on the run dir must reproduce line for line (R102, check verdict_rerun)

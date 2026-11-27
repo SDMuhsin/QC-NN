@@ -34,13 +34,15 @@ export QC_ECO_ROUNDS=${QC_ECO_ROUNDS:-4} QB_ICC2_CORES=${QB_ICC2_CORES:-16} QB_E
 # check fails unless every step's equal the snapshot's committed defaults (run.sh knobs in an empty environment) and
 # the reference's.  (Hunt round 8 on 5fdd167: these came from the environment and nothing checked them; a queue
 # VAR=val word or a login-shell export changed the regression run unseen.)
+# qb_knobs <name> ...: the caller's further knobs too (common/block.sh: the Calibre deck edits BLK_*_SED).  A value is
+# printed as one word: the flow root as <flow>, blanks as ',' (R104: a run's line is compared across snapshots)
 QB_KNOBS="QC_PNR_GUARD_HOLD QC_PNR_GUARD_TRAN QC_PNR_FROM QC_PNR_TO QC_ECO_ROUNDS QC_ECO_HOLD_MARGIN QC_ECO_DRV_MARGIN
     QC_ECO_NOISE_MARGIN QC_ECO_OVERRIDE_STOP QC_ECO_PT_ONLY QB_ICC2_CORES QB_ECO_CORES QB_ICC2_BIN QB_ICC2_LABEL
     QB36_LVS_EXTRA QB36_HCELL"
 qb_knobs() {
-    local k
-    for k in $QB_KNOBS $(awk '{ sub(/#.*/, "") } NF { print $1 }' "$QBF/common/limits.txt") $(compgen -v QC_EXTRA_DB_); do
-        printf ' %s=%s' "$k" "${!k-<unset>}"
+    local k v
+    for k in $QB_KNOBS "$@" $(awk '{ sub(/#.*/, "") } NF { print $1 }' "$QBF/common/limits.txt") $(compgen -v QC_EXTRA_DB_); do
+        v=${!k-<unset>}; v=${v//"$QBF"/<flow>}; printf ' %s=%s' "$k" "${v//[[:space:]]/,}"
     done
 }
 qb_kit() {
@@ -68,6 +70,12 @@ qb_kit() {
 # session's start counted, so a later ECO round's workers added errors or coupling counts to an older session's
 # evidence): only those in the DMSA work dir the session names in its log (QB_PT_WORKDIR line, signoff/pt/drv_eco.tcl;
 # a session without one has no scenario logs) and written between its start and its end.
+# Errors of a command run under redirect (the report counts of signoff/pt/common.tcl) ARE counted, by diagnostics_errors:
+# their message goes to the redirect variable / file, not the log, but PrimeTime's exit line "Diagnostics summary: N
+# errors" counts them.  [M] R100: that line counted 9 errors against 4 visible '^Error' log lines, = get_message_info
+# -error_count; [M] R104 tau14, a seeded report_timing -from <no such pin> + report_constraint without a design, both
+# under redirect + catch: 0 '^Error' log lines, 2 in the redirect variables, error_count 2, "Diagnostics summary: 2
+# errors" -> diagnostics_errors 1, evidence bad (the same script without them: diagnostics_errors 0).
 # The PT_ERRORS line ends "signoff_fails N evidence ok|bad": evidence = everything but the QB_PT_SIGNOFF counts.
 # qb_pt -check <log>: the same gate on the logs of a finished run, no tool run (signoff/verdict.py, which reads the
 # evidence word; run it in the dir the run ran in): exit status, start and end time from qc_tool's <log>.time (rc NA

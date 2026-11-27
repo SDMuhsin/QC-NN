@@ -159,6 +159,11 @@ proc qb_pt_clk_tran {} {
     puts "QB_PT_CLK_TRAN clock-network max_transition [qb_limit QC_CLK_TRAN_MAX] ns on [sizeof_collection [all_clocks]] clocks (QC_CLK_TRAN_MAX)"
 }
 qb_pt_clk_tran
+# The counts below read reports captured with redirect.  An error of such a report command is NOT lost: its message goes
+# to the variable, not the log, but PrimeTime's "Diagnostics summary: N errors" at exit counts it and common/env.sh
+# qb_pt fails the session on it (diagnostics_errors).  [M] R100: 9 errors in that line against 4 visible '^Error' log
+# lines, = get_message_info -error_count; [M] R104 tau14: two seeded failing reports under redirect, 0 '^Error' log
+# lines, "Diagnostics summary: 2 errors", evidence bad.
 proc qb_pt_drv {fh} {
     redirect -variable t { report_constraint -max_transition -all_violators -nosplit }
     redirect -variable c { report_constraint -max_capacitance -all_violators -nosplit }
@@ -302,6 +307,8 @@ proc qb_pt_si_checks {fh rpt {noise_state {}}} {
     puts $fh "signoff $l"
     puts "QB_PT_SIGNOFF $l"
 }
+# qb_pt_noise_viol: validated on real violators, [M] col r94 ml_rcb: its report_noise -all_violators listed 4 violator
+# rows and the count was "noise 4"
 proc qb_pt_noise_viol {rpt} { regexp -all -line {^\s*\S+ \(\S+\)\s+[-0-9.]+\s+[-0-9.]+\s+[-0-9.]+\s*$} $rpt }
 proc qb_pt_const_hold {corner} {
     set rec {}; set pins {}

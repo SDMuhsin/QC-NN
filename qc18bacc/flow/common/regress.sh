@@ -10,7 +10,9 @@
 #   regress.sh check <host> <run> [<commit | tree-ish>]
 #                                               exit 0 only if the run is of the flow under test (its snapshot's
 #                                               VERSION tree has the archived paths [deploy.sh --paths] of <commit |
-#                                               tree-ish>, default HEAD, apart from blocks/rgr/reference.txt), its site
+#                                               tree-ish>, default HEAD, apart from blocks/rgr/reference.txt), the
+#                                               snapshot's files still match its MANIFEST.md5 (md5sum -c on the host, no
+#                                               unlisted file; R104), its site
 #                                               manifest (VERSION site_md5 lines) and its inputs (the run's summary.txt
 #                                               "init inputs" line: md5 of netlist, DC SDC, run.env, the block's
 #                                               BLK_INPUTS; common/block.sh blk_inputs) are the reference's, the queue ran exactly the chain and
@@ -20,7 +22,9 @@
 #                                               word, the signoff step's verdict (signoff/verdict.sh) is
 #                                               SIGNOFF PASS with no FAIL and no MISSING gate and its VERDICT line equals
 #                                               the reference's, and the gate set (gate name x corner) equals the
-#                                               reference's; prints the difference of the gate sets otherwise
+#                                               reference's; prints the difference of the gate sets otherwise.  The
+#                                               reference is blocks/rgr/reference.txt of <commit | tree-ish> (git show;
+#                                               R104: before, the checkout's file)
 #   regress.sh ref <host> <run> [<commit | tree-ish>]
 #                                               writes blocks/rgr/reference.txt of this checkout from <run>, which must
 #                                               pass every check but the reference comparison: a changed gate set is a
@@ -31,7 +35,10 @@
 # the snapshot is found by its run name.
 set -uo pipefail
 die() { echo "REGRESS_FAIL $*" >&2; exit 1; }
-here=$(cd "$(dirname "$0")" && pwd); ref=$(cd "$here/.." && pwd)/blocks/rgr/reference.txt
+# the reference: REFP in the repository; check reads it at the revision under test (git show <rev>:REFP, R104), ref
+# writes the checkout's file $ref
+REFP=qc18bacc/flow/blocks/rgr/reference.txt
+here=$(cd "$(dirname "$0")" && pwd); ref=$(git -C "$here" rev-parse --show-toplevel)/$REFP
 ssh=${QC_SSH:-ssh}
 CHAIN="pnr eco calibre post views signoff"
 cmd=${1:-}; [ $# = 3 ] || { [ $# = 4 ] && [ "$cmd" != run ]; } \
@@ -81,6 +88,13 @@ snap=$1 tag=$2
 d=$("$snap/qc18bacc/flow/blocks/rgr/run.sh" rundir "$tag") && q=$(cat "$d/queue.dir" 2> /dev/null) \
     || { echo "REGRESS_FAIL no queue of run dir $d"; exit 1; }
 echo "V $(head -n 1 "$snap/VERSION")"
+# the snapshot's files now (R104; before, only deploy.sh verified them, once): md5sum -c of MANIFEST.md5 (every file but
+# itself, VERSION and the site files included) and no file it does not name
+( cd "$snap" && [ -s MANIFEST.md5 ] || exit 0
+  o=$(md5sum --quiet -c MANIFEST.md5 2>&1); r=$?   # (files that differ or are gone: their ': FAILED' lines; NA when
+  b=$(grep -c ': FAILED' <<< "$o"); [ $r = 0 ] || [ "$b" != 0 ] || b=NA   # md5sum fails without one, e.g. a bad line)
+  x=$(LC_ALL=C comm -3 <(find . -type f ! -path ./MANIFEST.md5 -printf '%P\n' | LC_ALL=C sort) <(sed 's/^[0-9a-f]*  //' MANIFEST.md5 | LC_ALL=C sort) | grep -c .)
+  echo "M files $(wc -l < MANIFEST.md5) md5_mismatch $b unlisted_or_missing $x" )
 sed -n 's/^site_md5 /S /p' "$snap/VERSION"
 grep '^init inputs ' "$d/summary.txt" 2> /dev/null | tail -n 1 | sed 's/^init inputs /I /'
 sed 's/^/Q /' "$q/queue.state" || exit 1
@@ -105,7 +119,7 @@ gates() { awk '$1 == "GATE" { if (!($2 in c)) o[n++] = $2; c[$2] = c[$2] " " $3 
 # snapshot's VERSION line "commit <c> tree <t>" has the paths deploy.sh archives (R100: qc18bacc/flow and flow/tsmc65) of
 # <rev>, apart from the reference the run is compared with (ref writes it from the run, so it differs in the reviewed commit)
 version() {   # version <VERSION line> <rev>
-    local t want p f=() x=':(top,exclude)qc18bacc/flow/blocks/rgr/reference.txt'
+    local t want p f=() x=":(top,exclude)$REFP"
     for p in $(bash "$here/deploy.sh" --paths); do f+=(":(top)$p"); done
     want=$(git -C "$here" rev-parse --verify --quiet "$2^{tree}" 2> /dev/null) || { echo "CHECK version FAIL '$2' is not a commit or tree"; return 1; }
     t=$(sed -n 's/^commit [0-9a-fnoe]* tree \([0-9a-f]\{40\}\)$/\1/p' <<< "$1")
@@ -120,10 +134,10 @@ version() {   # version <VERSION line> <rev>
 }
 # provenance outside the commit (R100), each equal to the reference's: the site manifest of the snapshot (VERSION
 # site_md5 lines, common/deploy.sh) and the DC inputs of the run (summary.txt "init inputs" line, common/block.sh
-# blk_inputs).  provenance <facts> <name> <fact key> <reference key>
+# blk_inputs).  provenance <facts> <name> <fact key> <reference key> <reference text>
 provenance() {
     local a b
-    a=$(grep "^$4 " "$ref" | LC_ALL=C sort); b=$(sed -n "s/^$3 /$4 /p" <<< "$1" | LC_ALL=C sort)
+    a=$(grep "^$4 " <<< "$5" | LC_ALL=C sort); b=$(sed -n "s/^$3 /$4 /p" <<< "$1" | LC_ALL=C sort)
     if [ -z "$b" ]; then echo "CHECK $2 FAIL the run has no '$4' line"; return 1; fi
     if [ "$a" = "$b" ]; then echo "CHECK $2 PASS $(wc -l <<< "$b") '$4' line(s) = reference"; return 0; fi
     echo "CHECK $2 FAIL (< reference, > run; a deliberate change needs regress.sh ref + review):"
@@ -156,7 +170,7 @@ settings() {
 }
 # check <host> <run> <rev> [1] (1 = ref: everything but the comparison with the reference)
 check() {
-    local f bad=0 st v s g r o k
+    local f bad=0 st v s g r o k m rt
     f=$(facts "$1" "$2") || { echo "$f"; die "no facts of run $2 on $1"; }
     [[ $f != *REGRESS_FAIL* ]] || { echo "$f"; die "no facts of run $2 on $1"; }
     # the verdict re-run on the run dir must be the signoff step's saved one; the checks below read the re-run
@@ -170,6 +184,9 @@ check() {
     f=$(grep -v '^GATE \|^VERDICT \|^SIGNOFF \|^R ' <<< "$f"; echo "$r")
     echo "REGRESS $2 on $1: $(sed -n 's/^V //p' <<< "$f")"
     version "$(sed -n 's/^V //p' <<< "$f")" "$3" || bad=1
+    m=$(sed -n 's/^M //p' <<< "$f")
+    [[ $m == "files "[1-9]*" md5_mismatch 0 unlisted_or_missing 0" ]] && echo "CHECK manifest PASS snapshot $m (md5sum -c MANIFEST.md5 on $1)" \
+        || { echo "CHECK manifest FAIL snapshot ${m:-no MANIFEST.md5 result}"; bad=1; }
     st=$(awk '$1 == "Q" { printf "%s:%s:%s ", $4, $6, $9 }' <<< "$f")
     [ "$st" = "$(for s in $CHAIN; do printf '%s:ok:0 ' "$s"; done)" ] \
         && echo "CHECK chain PASS $CHAIN all ok" || { echo "CHECK chain FAIL steps (step:status:rc) $st"; bad=1; }
@@ -193,16 +210,18 @@ check() {
           echo "$v"; grep '^GATE ' <<< "$f" | gates; } > "$ref"
         echo "REGRESS reference $ref from $2: $(grep -c '^gate ' "$ref") gate names"; return 0
     fi
-    [ -f "$ref" ] || die "no reference $ref (regress.sh ref)"
-    provenance "$f" site S site_md5 || bad=1
-    provenance "$f" inputs I inputs || bad=1
-    [ "knobs $k" = "$(grep '^knobs ' "$ref")" ] && echo "CHECK knobs_ref PASS the committed knob defaults = reference" \
+    # the reference of the revision under test (R104; before, the checkout's file, which need not be <rev>'s)
+    rt=$(git -C "$here" show "$3:$REFP" 2> /dev/null) && [ -n "$rt" ] || die "no reference $REFP at '$3' (regress.sh ref, then commit / git add it)"
+    echo "CHECK reference = $3:$REFP ($(grep -c '^gate ' <<< "$rt") gate names)"
+    provenance "$f" site S site_md5 "$rt" || bad=1
+    provenance "$f" inputs I inputs "$rt" || bad=1
+    [ "knobs $k" = "$(grep '^knobs ' <<< "$rt")" ] && echo "CHECK knobs_ref PASS the committed knob defaults = reference" \
         || { echo "CHECK knobs_ref FAIL (< reference, > the snapshot's committed defaults; a deliberate change needs regress.sh ref + review):"
-             diff <(grep '^knobs ' "$ref" | cut -d' ' -f2- | tr ' ' '\n') <(tr ' ' '\n' <<< "$k") | grep '^[<>]' | head -n 20; bad=1; }
-    [ "$v" = "$(grep '^VERDICT ' "$ref")" ] && echo "CHECK verdict_line PASS = reference" \
-        || { echo "CHECK verdict_line FAIL reference: $(grep '^VERDICT ' "$ref")"; bad=1; }
-    if g=$(diff <(grep '^gate ' "$ref" | sort) <(grep '^GATE ' <<< "$f" | gates | sort)); then
-        echo "CHECK gate_set PASS $(grep -c '^gate ' "$ref") gate names = reference"
+             diff <(grep '^knobs ' <<< "$rt" | cut -d' ' -f2- | tr ' ' '\n') <(tr ' ' '\n' <<< "$k") | grep '^[<>]' | head -n 20; bad=1; }
+    [ "$v" = "$(grep '^VERDICT ' <<< "$rt")" ] && echo "CHECK verdict_line PASS = reference" \
+        || { echo "CHECK verdict_line FAIL reference: $(grep '^VERDICT ' <<< "$rt")"; bad=1; }
+    if g=$(diff <(grep '^gate ' <<< "$rt" | sort) <(grep '^GATE ' <<< "$f" | gates | sort)); then
+        echo "CHECK gate_set PASS $(grep -c '^gate ' <<< "$rt") gate names = reference"
     else
         echo "CHECK gate_set FAIL (< reference, > run $2; a checker change needs regress.sh ref + review):"
         echo "$g" | grep '^[<>]' | cut -c1-200 | head -n 60; bad=1

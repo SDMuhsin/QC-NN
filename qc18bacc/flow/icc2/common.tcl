@@ -15,7 +15,8 @@
 #                       and, with P(VIRTUAL_FILL) 1, qb_virtual_fill
 #   qb_virtual_fill     emulated floating dummy metal in ICC2 extraction (R96, opt-in P(VIRTUAL_FILL); below)
 #   qb_preroute on|off  pre-route correlation (R98, opt-in P(PREROUTE_CAP_SCALE) / P(PREROUTE_SETUP_MARGIN); below):
-#                       virtual-route late cap scale + extra setup uncertainty for place_opt / clock_opt, off from route
+#                       virtual-route cap scale (late and early: one per corner, ICC2 NEX-026) + extra setup uncertainty
+#                       for place_opt / clock_opt, off from route
 #   qb_done <step> [as] dont_use gate (common/lib_cells.tcl qb_dont_use_gate, R77: no QC_DONT_USE lib cell usable, no
 #                       instance of one), save (as 1: save the current block as label <step>, the init step), log the
 #                       step end in <run>/summary.txt, QB_ICC2_DONE marker for the wrapper
@@ -153,7 +154,19 @@ proc qb_virtual_fill {} {
 #   uncertainty = QC_UNC_SETUP + P(PREROUTE_SETUP_MARGIN) in every scenario for place_opt / clock_opt, QC_UNC_SETUP again
 #   from route_auto on (the Synopsys reference-flow practice of extra pre-route uncertainty that is removed for route_opt).
 #   Size: the routed SI delta, [M] -41 to -49 ps per worst rgr path, -30 ps mean of the 40 worst after the 1.2 scale.
-# Hold, the early capacitance, PrimeTime (fill-aware SPEF of real routes) and every routed stage keep their own constraints.
+#   Early (hold) analysis gets the same scale (R104): ICC2 keeps one virtual-route scaling per parasitic tech and
+#   temperature (man NEX-026), i.e. per corner here, so with the late scale alone every timing update warned "Ignore
+#   corner <c> EARLY vr scaling, will use corner <c> LATE vr scaling" ([M] rgr rg4a92633a: 3906 lines in place.log, 2700
+#   in cts.log) and analysed hold at 1.2 too ([M] tau14 ab104b cts label, late 1.2 + early 1.0: report_qor = the one at 1.2 /
+#   1.2).  So early is set to the same value explicitly and read back with late: the line says what ICC2 does.  Cost
+#   [M] rgr A/B on tau14 (ab104a = this flow, ab104b = scale 1.0, P(PREROUTE_SETUP_MARGIN) kept): hold at the cts label
+#   re-timed at 1.0 vs 1.2: ab104a 4 vs 2 endpoints < 0, worst -3.9 vs -0.8 ps, 120 vs 106 within 10 ps, i.e. pre-route
+#   hold looks 1.5 - 3 ps better; route_opt then adds 5 hold cells (ab104b 2), clock_opt 54 (ab104b 68): 59 vs 70 in
+#   all; PrimeTime hold at the route label 0 in 9 corners in both, and no ECO hold change (rg4a92633a: 2 size_cell, setup
+#   only; ab104b's ECO stopped on a wcl setup endpoint, 2 -> 1 -> 1, hold 0 every round).  Negligible, so kept: no
+#   per-mode or per-stage vr scaling exists in Q-2019.12-SP2 (set_extraction_options is per corner; early = late is
+#   forced), and route_opt fixes hold on real routes at 1.0 (qb_preroute off).
+# Hold, PrimeTime (fill-aware SPEF of real routes) and every routed stage keep their own constraints.
 # qb_preroute on|off: apply / remove, then read back per corner / scenario (error unless in force) and one summary line.
 proc qb_preroute {mode} {
     global P
@@ -167,7 +180,8 @@ proc qb_preroute {mode} {
     set us [qb_limit QC_UNC_SETUP]
     set x [expr {$on && $cs ne "" ? $cs : 1.0}]
     set u [expr {$on && $sm ne "" ? $us + $sm : $us}]
-    set_extraction_options -corners [get_corners *] -late_vr_horizontal_cap_scale $x -late_vr_vertical_cap_scale $x
+    set_extraction_options -corners [get_corners *] -late_vr_horizontal_cap_scale $x -late_vr_vertical_cap_scale $x \
+        -early_vr_horizontal_cap_scale $x -early_vr_vertical_cap_scale $x
     set s0 [current_scenario]; set bad {}; set ur {}
     foreach_in_collection s [all_scenarios] {
         current_scenario $s
@@ -180,13 +194,13 @@ proc qb_preroute {mode} {
     set xr {}
     foreach_in_collection c [get_corners *] {
         redirect -variable r { report_extraction_options -corners $c }
-        foreach k {late_vr_horizontal_cap_scale late_vr_vertical_cap_scale} {
+        foreach k {late_vr_horizontal_cap_scale late_vr_vertical_cap_scale early_vr_horizontal_cap_scale early_vr_vertical_cap_scale} {
             set v [expr {[regexp "$k = (\\S+)" $r -> v] ? $v : "NA"}]
             lappend xr $v
             if {![string is double -strict $v] || abs($v - $x) > 1e-9} { lappend bad "[get_object_name $c] $k '$v'" }
         }
     }
-    qb_line "preroute $mode: virtual-route late cap scale $x (P(PREROUTE_CAP_SCALE) '$cs'; read back [lsort -unique $xr] in [sizeof_collection [get_corners *]] corners), setup uncertainty $u ns (QC_UNC_SETUP $us + P(PREROUTE_SETUP_MARGIN) '$sm' [expr {$on ? "on" : "off"}]; read back [lsort -unique $ur] in [sizeof_collection [all_scenarios]] scenarios)"
+    qb_line "preroute $mode: virtual-route cap scale late = early $x (P(PREROUTE_CAP_SCALE) '$cs'; read back late + early [lsort -unique $xr] in [sizeof_collection [get_corners *]] corners), setup uncertainty $u ns (QC_UNC_SETUP $us + P(PREROUTE_SETUP_MARGIN) '$sm' [expr {$on ? "on" : "off"}]; read back [lsort -unique $ur] in [sizeof_collection [all_scenarios]] scenarios)"
     if {[llength $bad]} { error "qb_preroute $mode: not in force: [lrange $bad 0 3]" }
 }
 proc qb_io_load {} {

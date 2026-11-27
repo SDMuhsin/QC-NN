@@ -101,10 +101,12 @@ for c in corners:
     e = 'etm_%s.log' % c; et = text(e); ok, l = pt_log(e)
     done = ('QB_ETM_DONE %s' % c) in et.splitlines(); bad = len(re.findall(r'MEXT-6\)|MEXT-81|MEXT-97', et))
     gate('etm_log', c, ok and done and not bad if ok is not None else None, '%s; QB_ETM_DONE %d; MEXT-6/81/97 lines %d' % (l, done, bad))
-    db = have(lib[:-4] + '_lib.db')
+    db = lib[:-4] + '_lib.db'
     rc, out = sh('%s -I %s/signoff/etm/etmcheck.py %s' % (sys.executable, flow, lib)) if have(lib) else (None, '')
-    gate('etmcheck', c, rc == 0 and db if have(lib) else None, '%s; %s_lib.db %d' % (last(out, 'ETMCHECK %s ' % lib) or out.strip()[-160:] or 'no ' + lib, lib[:-4], db))
-    fresh('etm', c, [log, lib, lib[:-4] + '_ref.txt'])
+    gate('etmcheck', c, rc == 0 and have(db) if have(lib) else None, '%s; %s %d' % (last(out, 'ETMCHECK %s ' % lib) or out.strip()[-160:] or 'no ' + lib, db, have(db)))
+    # (the .db in the chain, R104: extract_model writes .lib, then .db, then qb_etm_ref the _ref.txt; before, the .db
+    # was only required to exist, so one of an earlier session passed)
+    fresh('etm', c, [log, lib, db, lib[:-4] + '_ref.txt'])
 
 # ICC2 gates recorded in summary.txt: dont_use of every step, the name / load gate of every ECO round, the abstract
 s = text('summary.txt')
@@ -151,15 +153,18 @@ cal = '%s/signoff/calibre' % flow
 def named(deck, key):   # a file the deck copy names (summary report, LVS source): as written if absolute, else in the deck's dir
     m = re.search(r'^%s "(.*?)"' % key, text(deck), re.M)
     return os.path.join(os.path.dirname(deck), m.group(1)) if m else '%s: no %s' % (deck, key)
-g = ['out/%s.gds' % top, 'calibre/fill/%s_fill.gds' % top, 'calibre/odpo/%s_fill.gds' % top]
+# (the fill chain, R104: out GDS -> Calibre's dummy metal DM.gds -> merged metal-filled GDS -> dummy OD / PO DODPO.gds ->
+# merged GDS of LVS / DRC / antenna; before, DM.gds, which fill_def.py reads, was in no chain)
+g = ['out/%s.gds' % top, 'calibre/fill/DM.gds', 'calibre/fill/%s_fill.gds' % top, 'calibre/odpo/DODPO.gds', 'calibre/odpo/%s_fill.gds' % top]
 # (lvs_erc: the ERC of the LVS run, cal.sh check erc on its summary and signoff/calibre/erc_allow.txt)
 for name, mode, d, dm in (('lvs', 'lvs', 'lvs', 'lvs'), ('lvs_erc', 'erc', 'lvs', 'lvs'), ('drc', 'drc', 'drcb', 'drc'), ('antenna', 'ant', 'ant', 'ant')):
     deck = 'calibre/%s/deck.%s' % (d, dm)
     rc, out = sh('bash %s/cal.sh check %s %s %s/calibre/%s' % (cal, mode, top, run, d))
     res = last(out, 'CAL36_RESULT '); fails = [x for x in out.splitlines() if x.startswith('CAL36_FAIL')]
     gate(name, '-', rc == 0 and ' PASS ' in res if have(deck) else None, ' | '.join([res] + fails))
-    fresh('gds_fill_' + name, '-', g + [deck, 'calibre/lvs/lvs.rep' if mode == 'lvs' else
-                                        named(deck, 'ERC SUMMARY REPORT' if mode == 'erc' else 'DRC SUMMARY REPORT')])
+    # (lvs: the extracted layout netlist svdb/<top>.sp, which cal.sh lvs_ports reads, between the deck copy and the report, R104)
+    fresh('gds_fill_' + name, '-', g + [deck] + (['calibre/lvs/svdb/%s.sp' % top, 'calibre/lvs/lvs.rep'] if mode == 'lvs' else
+                                        [named(deck, 'ERC SUMMARY REPORT' if mode == 'erc' else 'DRC SUMMARY REPORT')]))
 qb = lambda t: set(re.findall(r'^(QB_[A-Za-z0-9_.]*) *\{', t, re.M))
 want = qb(open('%s/drc_blk.sed' % cal).read()); got = qb(text('calibre/drcb/deck.drc'))
 gate('drc_qb_rules', '-', bool(want) and want <= got if have('calibre/drcb/deck.drc') else None, 'block deck gate rules %s, in the deck copy %s' % (sorted(want), sorted(got)))
