@@ -1,0 +1,7 @@
+# Rule checks of the kit DRC / antenna decks that are NOT EXECUTED in a block run (signoff/calibre/cal.sh cal_result drc /
+# ant, R106): the set of NOT EXECUTED RULECHECK lines of the run's summary report must equal this mode's rules, so a deck
+# edit that drops a kit rule's input fails, and so does a rule listed here that runs.  One line per rule check:
+#   <mode drc|ant> <rule check> -- <reason from the deck / its block sed>
+# The antenna deck (CN65S_9M.ANT.23a, no block sed) has none: [M] r97x calibre/ant/DRC.rep 38 RULECHECK lines, 0 NOT EXECUTED.
+drc M8.DN.1 -- drc_blk.sed "DRC UNSELECT CHECK M8.DN.1" (R82, PI decision): Metal8 local density over the layout extent is a chip-level rule; the block has no M8 (gate QB_BLK.M8M9.0), the chip top deck checks it
+drc M9.DN.1 -- drc_blk.sed "DRC UNSELECT CHECK M9.DN.1" (R82, PI decision): Metal9 local density over the layout extent is a chip-level rule; the block has no M9 (gate QB_BLK.M8M9.0), the chip top deck checks it

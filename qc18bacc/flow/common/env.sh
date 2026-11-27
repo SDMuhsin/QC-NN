@@ -35,16 +35,20 @@ export QC_ECO_ROUNDS=${QC_ECO_ROUNDS:-4} QB_ICC2_CORES=${QB_ICC2_CORES:-16} QB_E
 # the reference's.  (Hunt round 8 on 5fdd167: these came from the environment and nothing checked them; a queue
 # VAR=val word or a login-shell export changed the regression run unseen.)
 # qb_knobs <name> ...: the caller's further knobs too (common/block.sh: the Calibre deck edits BLK_*_SED).  A value is
-# printed as one word: the flow root as <flow>, blanks as ',' (R104: a run's line is compared across snapshots)
+# printed as one word (qb_knob): the flow root as <flow>, blanks as ',' (R104: a run's line is compared across snapshots)
 QB_KNOBS="QC_PNR_GUARD_HOLD QC_PNR_GUARD_TRAN QC_PNR_FROM QC_PNR_TO QC_ECO_ROUNDS QC_ECO_HOLD_MARGIN QC_ECO_DRV_MARGIN
     QC_ECO_NOISE_MARGIN QC_ECO_OVERRIDE_STOP QC_ECO_PT_ONLY QB_ICC2_CORES QB_ECO_CORES QB_ICC2_BIN QB_ICC2_LABEL
     QB36_LVS_EXTRA QB36_HCELL"
+qb_knob() { local v=${!1-<unset>}; v=${v//"$QBF"/<flow>}; printf '%s=%s' "$1" "${v//[[:space:]]/,}"; }   # qb_knob <name>: "<name>=<word>"
 qb_knobs() {
-    local k v
+    local k
     for k in $QB_KNOBS "$@" $(awk '{ sub(/#.*/, "") } NF { print $1 }' "$QBF/common/limits.txt") $(compgen -v QC_EXTRA_DB_); do
-        v=${!k-<unset>}; v=${v//"$QBF"/<flow>}; printf ' %s=%s' "$k" "${v//[[:space:]]/,}"
+        printf ' %s' "$(qb_knob "$k")"
     done
 }
+# qb_committed_knobs <blk> <tag>: the BLK_KNOBS line of blocks/<blk>/run.sh knobs in an empty environment = the committed
+# defaults of the block's flow knobs (common/regress.sh check; signoff/verdict.sh: the Calibre deck edit gates, R106)
+qb_committed_knobs() { env -i HOME="$HOME" USER="$USER" PATH="$PATH" "$QBF/blocks/$1/run.sh" knobs "$2" 2>&1 | grep -m 1 '^BLK_KNOBS '; }
 qb_kit() {
     . "$ROOT/flow/tsmc65/common/tool.sh"
     QC_KIT=$(tcsh -f -c "source $FLOW/site/site.csh >& /dev/null; printenv QC_KIT"); export QC_KIT
@@ -130,13 +134,24 @@ qb_wait() { local j r=0; for j in $(jobs -p); do wait "$j" || r=1; done; return 
 # That count (R92): the errors of a command run under redirect go to the variable / report file, not the log ([M]
 # size_cell on a missing cell under redirect: 0 '^Error' log lines, get_message_info -error_count 2), so the step runs
 # through <rundir>/<step>.run.tcl = the step script, then one QB_ICC2_MSG line with get_message_info -error_count.
+# qb_icc2 -check <rundir> <step>: the same gate on the log of a finished step, no tool run (signoff/verdict.py; R106:
+# its abstract_log gate read only the done marker and the '^Error' lines): the exit status from qc_tool's <log>.time
+# (rc NA without one, which fails).
 ICC2_BIN=${QB_ICC2_BIN:-/CMC/tools/synopsys/icc2_vQ-2019.12-SP2/icc2/Q-2019.12-SP2/bin}
 qb_icc2() {
-    local d=$1 s=$2 sh=${3:-icc2_shell} log rc e m
-    . "$ROOT/flow/tsmc65/common/tool.sh"; mkdir -p "$d"; cd "$d" || return 1; log=$d/$s.log
-    printf 'source %s\nputs "QB_ICC2_MSG %s errors [get_message_info -error_count]"\n' "$QBF/icc2/$s.tcl" "$s" > "$d/$s.run.tcl"
-    QB_ICC2_RUN=$d qc_tool "$log" "setenv LD_PRELOAD /lib64/libz.so.1; $ICC2_BIN/$sh -batch -f $d/$s.run.tcl"; rc=$?
-    e=$(grep -c '^Error' "$log"); m=$(sed -n "s/^QB_ICC2_MSG $s errors //p" "$log" | tail -n 1)
-    echo "ICC2_STEP $s rc $rc errors $e tool_errors ${m:-NA} done $(grep -c "^QB_ICC2_DONE $s" "$log") $(qc_time "$log")"
-    [ $rc = 0 ] && [ "$e" = 0 ] && [ "$m" = 0 ] && grep -q "^QB_ICC2_DONE $s" "$log"
+    local d s sh log rc e m n chk=0
+    if [ "$1" = -check ]; then chk=1; shift; fi
+    d=$1 s=$2 sh=${3:-icc2_shell}; log=$d/$s.log
+    . "$ROOT/flow/tsmc65/common/tool.sh"
+    if [ $chk = 1 ]; then
+        rc=$(sed -n 's/^[[:space:]]*Exit status: //p' "$log.time" 2> /dev/null); rc=${rc:-NA}
+    else
+        mkdir -p "$d"; cd "$d" || return 1
+        printf 'source %s\nputs "QB_ICC2_MSG %s errors [get_message_info -error_count]"\n' "$QBF/icc2/$s.tcl" "$s" > "$d/$s.run.tcl"
+        QB_ICC2_RUN=$d qc_tool "$log" "setenv LD_PRELOAD /lib64/libz.so.1; $ICC2_BIN/$sh -batch -f $d/$s.run.tcl"; rc=$?
+    fi
+    e=$(grep -c '^Error' "$log" 2> /dev/null); m=$(sed -n "s/^QB_ICC2_MSG $s errors //p" "$log" 2> /dev/null | tail -n 1)
+    n=$(grep -c "^QB_ICC2_DONE $s" "$log" 2> /dev/null)
+    echo "ICC2_STEP $s rc $rc errors ${e:-NA} tool_errors ${m:-NA} done ${n:-0} $(qc_time "$log")"
+    [ "$rc" = 0 ] && [ "$e" = 0 ] && [ "$m" = 0 ] && [ "${n:-0}" -gt 0 ]
 }

@@ -5,15 +5,21 @@ sign-off corners of the one corner table).  One line per gate, 'GATE <name> <cor
 naming the gates that did not pass, and the last line 'SIGNOFF <top> PASS|FAIL'; exit status 1 on FAIL.  Only PASS
 passes: a missing file or count, or a file older than what it was made from, can never sign off.
 The criteria of the tools' own gates are not repeated here: PrimeTime log evidence = common/env.sh qb_pt -check,
-Calibre results = signoff/calibre/cal.sh check, ETM scan = signoff/etm/etmcheck.py.
+ICC2 step logs = common/env.sh qb_icc2 -check, Calibre results = signoff/calibre/cal.sh check, ETM scan =
+signoff/etm/etmcheck.py.
+The block's committed flow knob defaults (-k: its BLK_KNOBS line of run.sh knobs in an empty environment, common/env.sh
+qb_committed_knobs) are what the Calibre deck edits / add-ons must be; -b names the block (its LVS source calibre/<blk>_src.spi).
 Opt-in gates (OPT_IN: the column's act feedthrough gates) are checked when the block declares them (-g, its run.sh
 BLK_GATES) and also whenever the run has their evidence, so a block that has them cannot pass without them.
-usage: verdict.py <run dir> <top> <flow dir> [-g <gate,...>] <corner> ..."""
-import os, re, subprocess, sys
-run, top, flow = sys.argv[1:4]; corners = sys.argv[4:]
+usage: verdict.py <run dir> <top> <flow dir> -b <blk> -k <committed BLK_KNOBS line> [-g <gate,...>] <corner> ..."""
+import hashlib, os, re, subprocess, sys
+run, top, flow = sys.argv[1:4]; corners = sys.argv[4:]; opt = {}
+while corners[:1] in (['-b'], ['-k'], ['-g']) and len(corners) > 1: opt[corners[0]] = corners[1]; corners = corners[2:]
+if '-b' not in opt or not opt.get('-k', '').startswith('BLK_KNOBS %s knobs ' % opt['-b']):
+    sys.exit('usage: verdict.py <run dir> <top> <flow dir> -b <blk> -k <BLK_KNOBS <blk> knobs ... line> [-g <gate,...>] <corner> ...')
+blk = opt['-b']; KNOBS = dict(w.split('=', 1) for w in opt['-k'].split()[6:])
 OPT_IN = ('act_noise', 'abstract_abutment')
-optin = set(corners[1].split(',')) - {''} if corners[:1] == ['-g'] else set()
-corners = corners[2:] if corners[:1] == ['-g'] else corners
+optin = set(opt.get('-g', '').split(',')) - {''}
 if optin - set(OPT_IN): sys.exit('verdict.py: unknown opt-in gate(s) %s (known: %s)' % (sorted(optin - set(OPT_IN)), ' '.join(OPT_IN)))
 gates = []
 def gate(name, corner, ok, evidence):   # ok: True / False / None (no evidence)
@@ -36,6 +42,10 @@ def pt_log(log):         # common/env.sh qb_pt -check: completion line, exit sta
     if not have(log): return None, 'no ' + log
     l = last(sh('. %s/common/env.sh; qb_pt -check %s' % (flow, log))[1], 'PT_ERRORS ')
     return l.endswith(' evidence ok'), l
+def icc2_log(step):     # common/env.sh qb_icc2 -check: exit status, '^Error' lines, the tool's error count, done marker
+    if not have(step + '.log'): return None, 'no %s.log' % step
+    rc, out = sh('. %s/common/env.sh; qb_icc2 -check %s %s' % (flow, run, step))
+    return rc == 0 and bool(last(out, 'ICC2_STEP ')), last(out, 'ICC2_STEP ') or out.strip()[-160:]
 def fresh(name, corner, chain):   # every file exists and none is older than the one it was made from
     gone = [p for p in chain if not have(p)]
     if gone: return gate('fresh_' + name, corner, None, 'no ' + ', '.join(gone))
@@ -139,8 +149,7 @@ for k in ('lef', 'obs', 'abutment', 'pg_pins'):
     if k == 'abutment' and not l and 'abstract_abutment' not in optin: continue   # opt-in (icc2/abstract.tcl P(ABUT_PAIR))
     n = re.findall(r'\b(?:bad|missing) (-?\d+)', l)
     gate('abstract_' + k, '-', set(n) == {'0'} if l else None, l or 'no "abstract %s" line in summary.txt' % k)
-al = text('abstract.log'); ne = len(re.findall(r'^Error', al, re.M))
-gate('abstract_log', '-', 'QB_ICC2_DONE abstract' in al and not ne if al else None, 'QB_ICC2_DONE abstract %d, Error lines %d' % ('QB_ICC2_DONE abstract' in al, ne) if al else 'no abstract.log')
+gate('abstract_log', '-', *icc2_log('abstract'))
 # the label the abstract was made from (icc2/abstract.tcl, its last summary line) = the label of out/ (R99)
 m = list(re.finditer(r'^abstract label (\S+) done\b.*$', s, re.M))
 gate('abstract_label', '-', m[-1].group(1) == label if m else None,
@@ -169,7 +178,41 @@ qb = lambda t: set(re.findall(r'^(QB_[A-Za-z0-9_.]*) *\{', t, re.M))
 want = qb(open('%s/drc_blk.sed' % cal).read()); got = qb(text('calibre/drcb/deck.drc'))
 gate('drc_qb_rules', '-', bool(want) and want <= got if have('calibre/drcb/deck.drc') else None, 'block deck gate rules %s, in the deck copy %s' % (sorted(want), sorted(got)))
 fresh('gds_fill_def', '-', g[:2] + ['out/%s_fill.def' % top])
-fresh('lvs_source', '-', ['out/%s_pg.v' % top, named('calibre/lvs/deck.lvs', 'SOURCE PATH'), 'calibre/lvs/lvs.rep'])
+# the deck copies (R106): per mode the edits / add-ons cal.sh applied (its deck_edits.txt, not older than the deck copy) =
+# the block's committed defaults (-k; fill / odpo: and the run's chip window calibre/die_window.sed, four VARIABLE lines),
+# and the layout the deck reads (every LAYOUT PATH / LAYOUT PRIMARY line) = the input of that mode in the chain above
+def path_is(p, rel): return os.path.realpath(p) == os.path.realpath(os.path.join(run, rel))
+def deck_lines(deck, key): return re.findall(r'^%s\s+"(.*?)"' % key, text(deck), re.M)
+win = 'calibre/die_window.sed'
+WIN = re.compile(r'^s#\^VARIABLE (xLB|yLB|xRT|yRT) \.\*#VARIABLE \1 -?[0-9.]+#$')
+wl = text(win).splitlines(); win_ok = sorted(m.group(1) if m else '' for m in map(WIN.match, wl)) == ['xLB', 'xRT', 'yLB', 'yRT']
+for mode, sub, layout, edits in (('fill', 'fill', g[0], {'QB55_FILL_SED': 'BLK_FILL_SED', 'QB55_WINDOW': win}),
+                                 ('odpo', 'odpo', g[2], {'QB77_ODPO_SED': 'BLK_ODPO_SED', 'QB55_WINDOW': win}),
+                                 ('lvs', 'lvs', g[4], {'QB36_LVS_SED': 'BLK_LVS_SED', 'QB36_LVS_EXTRA': 'QB36_LVS_EXTRA', 'QB36_HCELL': 'QB36_HCELL'}),
+                                 ('drc', 'drcb', g[4], {'QB36_DRC_SED': 'BLK_DRC_SED'}), ('ant', 'ant', g[4], {'QB36_ANT_SED': 'BLK_ANT_SED'})):
+    deck, rec = 'calibre/%s/deck.%s' % (sub, mode), 'calibre/%s/deck_edits.txt' % sub
+    if not have(deck): gate('deck_' + mode, '-', None, 'no ' + deck); continue
+    w = text(rec).split(); got = dict(x.split('=', 1) for x in w[2:] if '=' in x)
+    bad = ['%s %s (committed %s)' % (v, got.get(v, 'missing'), KNOBS.get(k, 'none')) for v, k in edits.items()
+           if k != win and got.get(v) != KNOBS.get(k)]
+    if win in edits.values() and not (path_is(got.get('QB55_WINDOW', ''), win) and win_ok): bad.append('QB55_WINDOW %s (the run\'s %s, 4 VARIABLE lines: %s)' % (got.get('QB55_WINDOW', 'missing'), win, win_ok))
+    if w[:2] != ['deck_edits', mode] or set(got) != set(edits): bad.append('%s: %s' % (rec, ' '.join(w[:2] + sorted(got)) if w else 'none'))
+    elif os.path.getmtime(os.path.join(run, rec)) < os.path.getmtime(os.path.join(run, deck)): bad.append('%s older than %s' % (rec, deck))
+    lp, pr = deck_lines(deck, 'LAYOUT PATH'), deck_lines(deck, 'LAYOUT PRIMARY')
+    if not lp or not all(path_is(x, layout) for x in lp) or set(pr) != {top}: bad.append('LAYOUT PATH %s PRIMARY %s (want %s, %s)' % (lp, pr, layout, top))
+    gate('deck_' + mode, '-', not bad, '; '.join(bad) or '%s = committed defaults; LAYOUT %s %s' % (' '.join(w[2:]), layout, top))
+# the LVS source (R106): the deck's SOURCE PATH = the run's calibre/<blk>_src.spi (SOURCE PRIMARY <top>), built from
+# out/<top>_pg.v as it is now (signoff/calibre/lvs_src.sh records the md5 of the netlist it read)
+src, srec = 'calibre/%s_src.spi' % blk, 'calibre/%s_src.inputs.txt' % blk
+sp, spr = deck_lines('calibre/lvs/deck.lvs', 'SOURCE PATH'), deck_lines('calibre/lvs/deck.lvs', 'SOURCE PRIMARY')
+pg = 'out/%s_pg.v' % top
+md5 = hashlib.md5(open(os.path.join(run, pg), 'rb').read()).hexdigest() if have(pg) else 'none'
+r = [l.split() for l in text(srec).splitlines() if l.strip()]
+bad = ([] if sp and all(path_is(x, src) for x in sp) and set(spr) == {top} else ['SOURCE PATH %s PRIMARY %s (want %s, %s)' % (sp, spr, src, top)]) + \
+      ([] if len(r) == 1 and len(r[0]) == 4 and r[0][0] == 'input' and path_is(r[0][1], pg) and r[0][2:] == ['md5', md5] else
+       ['%s %s (want one line: input %s md5 %s)' % (srec, ' | '.join(' '.join(x) for x in r) or 'none', pg, md5)])
+gate('lvs_source_netlist', '-', not bad if have('calibre/lvs/deck.lvs') else None, '; '.join(bad) or '%s from %s md5 %s' % (src, pg, md5))
+fresh('lvs_source', '-', [pg, named('calibre/lvs/deck.lvs', 'SOURCE PATH'), srec, 'calibre/lvs/lvs.rep'])
 
 def names(st):   # gate names of one status, corners grouped: noise@ml,ml_rcb
     d = {}

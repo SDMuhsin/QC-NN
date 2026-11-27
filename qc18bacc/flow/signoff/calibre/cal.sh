@@ -12,7 +12,11 @@
 #        ERC of an lvs run dir)
 # env: QB36_DRC_SED / QB36_ANT_SED / QB36_LVS_SED / QB55_FILL_SED / QB77_ODPO_SED = extra sed arguments for the deck copy
 #      of that mode only (e.g. "-f drc_blk.sed"; common/block.sh sets each one explicitly per run), QB36_LVS_EXTRA,
-#      QB36_HCELL (hcell file)
+#      QB36_HCELL (hcell file); QB55_WINDOW = a sed file of the chip window (fill / odpo: common/block.sh die_window.sed)
+# Record (R106): every run mode writes <rundir>/deck_edits.txt, one line "deck_edits <mode> <var>=<value> ..." of the
+# edits / add-ons it applied to the deck copy (the env variables of that mode above; common/env.sh qb_knob words, an
+# empty value as <unset>), which signoff/verdict.py compares with the block's committed defaults (before, they were only
+# in the step's BLK_KNOBS line, which only common/regress.sh read: an experiment's deck edit could sign off).
 # Summary: grep of the TOTAL counts and the rule checks with results (CAL36 lines), then cal_result's CAL36_RESULT line.
 # Exit status (R92; before, Calibre's alone: r91b LVS INCORRECT + 4 DRC results ended "ok"): Calibre's if non-zero, else
 # drc / ant / lvs: 1 unless cal_result passes (lvs: cal_result lvs and erc); fill / odpo: 1 if the merge failed or the
@@ -22,6 +26,12 @@ C=/CMC/tools/siemens/calibre/aok_cal_2026.1_26.19/aok_cal_2026.1_26.19
 export CALIBRE_HOME=$C MGC_HOME=$C MGLS_LICENSE_FILE=${MGLS_LICENSE_FILE:-6056@engrcmc2.usask.ca}
 K=/CMC/kits/tsmc_65nm
 A=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/erc_allow.txt   # (resolved before the run modes cd into their dirs)
+AD=${A%/*}/drc_allow.txt
+. "${A%/*}/../../common/env.sh"   # (qb_knob: the deck edit record)
+cal_edits() {   # cal_edits <mode> <var> ...: deck_edits.txt of the current (run) dir
+    local m=$1 v; shift
+    { printf 'deck_edits %s' "$m"; for v; do if [ -n "${!v:-}" ]; then printf ' %s' "$(qb_knob "$v")"; else printf ' %s=<unset>' "$v"; fi; done; echo; } > deck_edits.txt
+}
 # cal_result <drc|ant|lvs|erc> <topcell> <rundir>: one CAL36_RESULT line (+ CAL36_FAIL lines), non-zero unless
 #   lvs       lvs.rep is this run's (not older than deck.lvs), its overall result is CORRECT, the CELL SUMMARY row of
 #             <topcell> is CORRECT and no cell is INCORRECT / NOT COMPARED, and the extraction report lvs.rep.ext of
@@ -29,7 +39,9 @@ A=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/erc_allow.txt   # (resolved befo
 #             lvs_ports (R103)
 #   drc, ant  the summary report the deck copy names is this run's and of <topcell>, has its TOTAL line with 0 results,
 #             and every QB_* rule check of the deck copy (a gate a deck sed adds, R82 drc_blk.sed) has one RULECHECK
-#             line, executed with 0 results (R84: a gate that did not run fails; R97: NOT EXECUTED fails too)
+#             line, executed with 0 results (R84: a gate that did not run fails; R97: NOT EXECUTED fails too); the set of
+#             NOT EXECUTED rule checks is exactly the mode's rules of drc_allow.txt (R106; before, only QB_* rules had to
+#             execute, so a deck edit that dropped a kit rule's input passed)
 #   erc       the ERC summary of the lvs run (the deck copy's ERC SUMMARY REPORT; lvs ends with both) is this run's and
 #             of <topcell>, at least one check executed, every executed check 0 results, its SUMMARY counts agree, and
 #             a NOT EXECUTED check passes only if erc_allow.txt names it (reason from the deck) and every marker layer
@@ -97,7 +109,11 @@ cal_result() {
              n=$(sed -n 's/^TOTAL DRC Results Generated: *\([0-9][0-9]*\) .*/\1/p' "$rep" | tail -1)
              r=$(grep -c '^RULECHECK ' "$rep"); v=$(grep -c '^RULECHECK .* TOTAL Result Count = [1-9]' "$rep")
              q=$(sed -n 's/^\(QB_[A-Za-z0-9_.]*\) *{.*/\1/p' "$d/deck.$mode")
-             s="results ${n:-NA} rules_with_results $v rule_checks $r qb_gate_rules $(echo $q | wc -w)"
+             # NOT EXECUTED rule checks = the allow-list's of this mode, no more, no fewer (R106)
+             x=$(awk '$1 == "RULECHECK" && / NOT EXECUTED *$/ { print $2 }' "$rep" | LC_ALL=C sort -u)
+             o=$(awk -v m=$mode '!/^#/ && $1 == m && $3 == "--" { print $2 }' "$AD" 2> /dev/null | LC_ALL=C sort -u)
+             s="results ${n:-NA} rules_with_results $v rule_checks $r qb_gate_rules $(echo $q | wc -w) not_executed $(grep -c . <<< "$x") ($(echo $x))"
+             [ -s "$AD" ] && [ "$x" = "$o" ] || { echo "CAL36_FAIL $mode $top: NOT EXECUTED rule checks ($(echo $x)) are not the allowed ones of $AD ($(echo $o))"; f=1; }
              [ "$c" = "$top" ] || { echo "CAL36_FAIL $mode $top: $rep is of cell '$c'"; f=1; }
              [ "$n" = 0 ] && [ "$v" = 0 ] && [ "$r" -gt 0 ] || { echo "CAL36_FAIL $mode $top: $s (needs the TOTAL line with 0 results and at least one rule check)"; f=1; }
              # our own deck gates (QB_* rule checks added by a deck sed, e.g. drc_blk.sed QB_BLK.M8M9.0): each passes only
@@ -149,16 +165,19 @@ drc|ant) d=$4; t=${5:-8}; mkdir -p "$d"; cd "$d" || exit 1
      else deck=$K/CLN65GP/DRC/ANTENNA_DRC/CN65S_9M.ANT.23a; sx=${QB36_ANT_SED:-}; fi
      sed -e "s#^\(LAYOUT PATH\) .*#\1 \"$gds\"#" -e "s#^\(LAYOUT PRIMARY\) .*#\1 \"$top\"#" \
          -e "s#^DRC MAXIMUM RESULTS ALL#DRC MAXIMUM RESULTS 1000#" $sx "$deck" > deck.$mode
+     cal_edits $mode $([ $mode = drc ] && echo QB36_DRC_SED || echo QB36_ANT_SED)
      /usr/bin/time -v "$C/bin/calibre" -drc -hier -turbo "$t" deck.$mode > cal_$mode.log 2> cal_$mode.time; rc=$?
      rep=$(sed -n 's/^DRC SUMMARY REPORT "\(.*\)".*/\1/p' deck.$mode | head -1)
      echo "CAL36 $mode $top rc $rc $(grep 'TOTAL DRC Results Generated' "$rep") wall $(grep Elapsed cal_$mode.time | awk '{print $NF}') rss_kb $(grep Maximum cal_$mode.time | awk '{print $NF}')"
      grep "RULECHECK .* TOTAL Result Count = [1-9]" "$rep" | awk '{print "CAL36_RULE", $2, $(NF-1)}' | head -60
      cal_result $mode "$top" . || res=1 ;;
 fill|odpo) d=$4; t=${5:-8}; mkdir -p "$d"; cd "$d" || exit 1
-     if [ $mode = fill ]; then deck=$K/CLN65GP/TN65CLDR001C3_V2.2C/Dummy_Metal_Calibre_65nm.22c; db=DM; sx=${QB55_FILL_SED:-}
-     else deck=$K/CLN65GP/autofill_OD_PO/Dummy_OD_PO_Calibre_65nm.22b; db=DODPO; sx=${QB77_ODPO_SED:-}; fi
+     if [ $mode = fill ]; then deck=$K/CLN65GP/TN65CLDR001C3_V2.2C/Dummy_Metal_Calibre_65nm.22c; db=DM; e=QB55_FILL_SED
+     else deck=$K/CLN65GP/autofill_OD_PO/Dummy_OD_PO_Calibre_65nm.22b; db=DODPO; e=QB77_ODPO_SED; fi
+     sx="${!e:-} ${QB55_WINDOW:+-f $QB55_WINDOW}"
      sed -e "s#^\(LAYOUT PATH\) .*#\1 \"$gds\"#" -e "s#^\(LAYOUT PRIMARY\) .*#\1 \"$top\"#" \
          -e "s#^DRC RESULTS DATABASE \"$db.gds\" GDSII .*#DRC RESULTS DATABASE \"$db.gds\" GDSII _$db#" $sx "$deck" > deck.$mode
+     cal_edits $mode $e QB55_WINDOW
      sum=$(sed -n 's/^DRC SUMMARY REPORT "\(.*\)".*/\1/p' deck.$mode | head -1)
      # the outputs of this run only (R104; hunt round 9 on 018af5e: a DM.gds of an earlier run stayed when Calibre
      # wrote none, and fill_def.py / the merge read it): removed first, then each must be there and newer than its input
@@ -176,6 +195,7 @@ lvs) src=$4; d=$5; t=${6:-8}; mkdir -p "$d"; cd "$d" || exit 1; L=$K/CRN65GP/TN6
          -e "s#^SOURCE PRIMARY .*#SOURCE PRIMARY \"$top\"#" -e "s#^SOURCE PATH .*#SOURCE PATH \"$src\"#" \
          -e "s#^INCLUDE ./DFM/dfm_device#INCLUDE $L/DFM/dfm_device#" ${QB36_LVS_SED:-} "$L/calibre.lvs" > deck.lvs
      [ -n "${QB36_LVS_EXTRA:-}" ] && cat "$QB36_LVS_EXTRA" >> deck.lvs
+     cal_edits lvs QB36_LVS_SED QB36_LVS_EXTRA QB36_HCELL
      hc=""; if [ -n "${QB36_HCELL:-}" ]; then hc="-hcell $QB36_HCELL"; fi
      /usr/bin/time -v "$C/bin/calibre" -lvs -hier $hc -turbo "$t" deck.lvs > cal_lvs.log 2> cal_lvs.time; rc=$?
      echo "CAL36 lvs $top rc $rc wall $(grep Elapsed cal_lvs.time | awk '{print $NF}') rss_kb $(grep Maximum cal_lvs.time | awk '{print $NF}')"

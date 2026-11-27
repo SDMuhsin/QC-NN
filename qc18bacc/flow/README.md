@@ -12,7 +12,7 @@ regression block `blocks/rgr`; the act / hub / top blocks are to be ported onto 
 | `synth/` | DC / top-netlist steps that produce the P&R input netlists |
 | `floorplan/` | `pg_grid.tcl` (chip PG strap grid), `abstract_pins.py` / `edge_pins.py` (floorplan pin DEF / pin-only abstract) |
 | `icc2/` | IC Compiler II steps (R54): `common.tcl` (kit + block config, `qb_open` / `qb_done` / `qb_qor`), `libs.tcl` (std-cell NDM, icc2_lm_shell), `init.tcl` (design library, TLU+, netlist, MCMM, SDC), `floorplan.tcl`, `place.tcl`, `cts.tcl`, `route.tcl` (`qb_route_setup` / `qb_fillers` / `qb_route_close` in common.tcl), `eco.tcl` (R56: sources the PrimeTime change list, legalise, route_eco, refill), `outputs.tcl` (label `QB_ICC2_LABEL`), `extract.tcl` (R68: Calibre fill read back as DEF FILLS, fill-aware SPEF per sign-off corner), `abstract.tcl` (abstract LEF + port antenna data + abutment check for the top); block facts in `blocks/<b>/icc2.cfg` |
-| `signoff/` | `pt/` PrimeTime (block sign-off `blk.tcl`, DMSA ECO `drv_eco.tcl`); `etm/` ETMs (`etm.tcl`, `etmcheck.py`); `calibre/` fill, LVS source, Calibre DRC / LVS (+ its ERC; `erc_allow.txt`: the ERC checks that may be NOT EXECUTED) / antenna; `portcheck.py`; `verdict.sh` the machine verdict of a block run |
+| `signoff/` | `pt/` PrimeTime (block sign-off `blk.tcl`, DMSA ECO `drv_eco.tcl`); `etm/` ETMs (`etm.tcl`, `etmcheck.py`); `calibre/` fill, LVS source, Calibre DRC / LVS (+ its ERC; `erc_allow.txt`: the ERC checks that may be NOT EXECUTED) / antenna (`drc_allow.txt`: the DRC / antenna rule checks that must be the NOT EXECUTED ones); `portcheck.py`; `verdict.sh` the machine verdict of a block run |
 | `blocks/<b>/` | per block on the driver: `<b>.env` (parameters), `icc2.cfg` (ICC2 block config), `io_budget.tcl`, `run.sh` (steps); `blocks/act/io_budget.tcl` is the act DC's IO budget (synth/run.sh act) |
 
 Every block is run from a host-local copy of the repository on the build server
@@ -44,7 +44,8 @@ qc18bacc/flow/blocks/col/run.sh calibre <tag>   # LVS source, Calibre LVS / DRC 
 The label of out/ (R96, common/block.sh blk_out): `out/label.txt` names the ICC2 label whose outputs, portcheck, fill and
 SPEFs out/ holds, written only once all of them passed; an unfinished label (`out/label.new`) is finished by the next fill
 or eco step, and post / calibre / views / the verdict refuse a run without a complete label.  A pnr step init .. route
-drops the label of out/ (R99: a partial re-run would leave out/ of the old layout under a label); views makes the abstract
+drops the label of out/ (R99: a partial re-run would leave out/ of the old layout under a label) and moves its ECO
+history out/eco aside to out/eco.pnr_<date_time> (R106); views makes the abstract
 of the label of out/ only (an inherited QB_ICC2_LABEL naming another label fails) and abstract.tcl records it, which the
 verdict's abstract_label gate compares with out/label.txt.  The floorplan pin DEF is the run's own `<run>/pins.def`
 (QB_PIN_DEF, written by the block's blk_pre_pnr before each floorplan step; R99, was one file per host).

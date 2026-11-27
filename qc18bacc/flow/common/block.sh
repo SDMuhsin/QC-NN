@@ -14,7 +14,8 @@
 #   BLK_INPUTS optional: the block's further inputs from outside the snapshot, "<key>=<file> ..." (blk_inputs records
 #   their md5 after the DC inputs; the column's reference abstract)
 # Steps:  pnr      ICC2 libs init floorplan place cts route outputs, then portcheck + fill; QC_PNR_FROM / QC_PNR_TO select
-#                  a range, an unknown step name fails; a step init .. route drops the label of out/ (blk_unlabel);
+#                  a range, an unknown step name fails; a step init .. route drops the label of out/ and moves the
+#                  ECO history out/eco aside (blk_unlabel);
 #                  init first records the md5 of its DC inputs in summary.txt (blk_inputs)
 #         eco      sign-off ECO loop, at most QC_ECO_ROUNDS (common/env.sh) rounds: PrimeTime DMSA -> ICC2 eco -> outputs -> portcheck
 #                  -> fill; ends when a round's pre-fix state is clean in every corner at zero margin; fails if it never
@@ -101,7 +102,14 @@ blk_pnr() {
 # is built from, so out/ is no longer the layout of its label: the label of out/ and an unfinished one are dropped before
 # the step (R99; [M] hunt on 44735f5: QC_PNR_TO=route kept out/label.txt = route over the old out/, and post / calibre
 # signed off the old layout).  A pnr range that ends with outputs writes the label of out/ again.
+# The ECO history of the old layout (out/eco: rounds.txt and the round records) goes with it, moved aside to
+# out/eco.pnr_<date_time> (R106; before, it stayed, so a stop of the old layout's loop stopped the new layout's eco).
 blk_unlabel() {
+    local a
+    if [ -e "$d/out/eco" ]; then
+        a=$d/out/eco.pnr_$(date +%Y%m%d_%H%M%S); [ ! -e "$a" ] || a=$a.$$
+        mv "$d/out/eco" "$a" && echo "BLK_LABEL pnr $1 rewrites the layout: its ECO history out/eco moved to $a" || return 1
+    fi
     [ -e "$d/out/label.txt" ] || [ -e "$d/out/label.new" ] || return 0
     echo "BLK_LABEL pnr $1 rewrites the layout: label of out/ $(cat "$d/out/label.txt" 2> /dev/null || echo none), unfinished $(cat "$d/out/label.new" 2> /dev/null || echo none): dropped"
     rm -f "$d/out/label.txt" "$d/out/label.new"
@@ -201,12 +209,12 @@ blk_fill_label() {
         printf "%s %s %s %s", x0, y0, x1, y1; exit }')
     set -- $w; [ $# = 4 ] || { echo "BLK_FAIL no DIEAREA in out/$BLK_TOP.def.gz"; return 1; }
     printf 's#^VARIABLE xLB .*#VARIABLE xLB %s#\ns#^VARIABLE yLB .*#VARIABLE yLB %s#\ns#^VARIABLE xRT .*#VARIABLE xRT %s#\ns#^VARIABLE yRT .*#VARIABLE yRT %s#\n' "$@" > "$o/die_window.sed"
-    QB55_FILL_SED="$BLK_FILL_SED -f $o/die_window.sed" bash "$C/cal.sh" fill "$d/out/$BLK_TOP.gds" "$BLK_TOP" "$o/fill" > "$o/fill.log" 2>&1 \
+    QB55_FILL_SED=$BLK_FILL_SED QB55_WINDOW=$o/die_window.sed bash "$C/cal.sh" fill "$d/out/$BLK_TOP.gds" "$BLK_TOP" "$o/fill" > "$o/fill.log" 2>&1 \
         || { cat "$o/fill.log"; return 1; }
     grep -v '^CAL55_fill' "$o/fill.log"
     # dummy OD / PO (R77) on the metal-filled GDS (signoff/calibre/odpo_blk.sed) -> odpo/<top>_fill.gds: the GDS of
     # Calibre LVS / DRC / antenna (calibre step).  FEOL dummies only: no effect on the metal SPEFs.
-    QB77_ODPO_SED="$BLK_ODPO_SED -f $o/die_window.sed" bash "$C/cal.sh" odpo "$o/fill/${BLK_TOP}_fill.gds" "$BLK_TOP" "$o/odpo" > "$o/odpo.log" 2>&1 \
+    QB77_ODPO_SED=$BLK_ODPO_SED QB55_WINDOW=$o/die_window.sed bash "$C/cal.sh" odpo "$o/fill/${BLK_TOP}_fill.gds" "$BLK_TOP" "$o/odpo" > "$o/odpo.log" 2>&1 \
         || { cat "$o/odpo.log"; return 1; }
     cat "$o/odpo.log"
     ( . "$C/kl.sh"; kl_run "$C/fill_def.py" -rd gds="$o/fill/DM.gds" -rd design="$BLK_TOP" -rd out="$d/out/${BLK_TOP}_fill.def" ) || return 1
@@ -346,5 +354,5 @@ blk_views() {
 blk_signoff() {
     local v=$QBF/signoff/verdict.sh
     [ -f "$v" ] || { echo "BLK_FAIL signoff: $v missing"; return 1; }
-    bash "$v" ${BLK_GATES:+-g "$BLK_GATES"} "$d" || return 1
+    bash "$v" ${BLK_GATES:+-g "$BLK_GATES"} -b "$BLK" "$d" || return 1
 }

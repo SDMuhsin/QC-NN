@@ -99,10 +99,10 @@ sed -n 's/^site_md5 /S /p' "$snap/VERSION"
 grep '^init inputs ' "$d/summary.txt" 2> /dev/null | tail -n 1 | sed 's/^init inputs /I /'
 sed 's/^/Q /' "$q/queue.state" || exit 1
 # the settings (R103): every step's BLK_KNOBS line (common/block.sh blk_knobs) as its queue output has it (K), the
-# snapshot's committed defaults = that line of run.sh knobs in an empty environment (D), the snapshot's flow root (F),
+# snapshot's committed defaults = common/env.sh qb_committed_knobs: run.sh knobs in an empty environment (D), the snapshot's flow root (F),
 # the VAR=val words of the queue spec's step lines (X: common/queue.sh puts them into the step's environment)
 while read -r n b s x; do echo "K $s $(grep -m 1 '^BLK_KNOBS ' "$q/q${n}_${b}_$s.out" 2> /dev/null || echo none)"; done < "$q/queue.state"
-echo "D $(env -i HOME="$HOME" USER="$USER" PATH="$PATH" "$snap/qc18bacc/flow/blocks/rgr/run.sh" knobs "$tag" 2>&1 | grep -m 1 '^BLK_KNOBS ' || echo none)"
+echo "D $(. "$snap/qc18bacc/flow/common/env.sh" && qb_committed_knobs rgr "$tag" || echo none)"
 echo "F $snap/qc18bacc/flow"
 echo "X $(grep -v '^[[:space:]]*\(#\|$\)' "$q/queue.spec" | awk '{ for (i = 2; i <= NF && $i ~ /^[A-Za-z_][A-Za-z0-9_]*=/; i++) printf " %s", $i }')"
 # (an unfinished chain has no signoff output yet: the checks report it)

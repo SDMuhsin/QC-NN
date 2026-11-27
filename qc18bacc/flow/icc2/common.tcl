@@ -579,7 +579,9 @@ proc qb_flatten {} {
 # exists; size_cell / insert_buffer / add_buffer_on_route lib cells = the cell's ref; and every new cell of the list against
 # PT's new-cell record (qb_eco_cells_file, signoff/pt/drv_eco.tcl): one record per new cell, the ICC2 cell of that name with
 # PT's lib cell and exactly PT's load pins (R90 [M]: a name match alone missed a buffer driving 1 of PT's 2 loads).  A line
-# of no known form is counted as unparsed.  Writes rpt/eco_names.rpt; returns {summary line, number of failures}.
+# of no known form is counted as unparsed.  The driver of an add_buffer_on_route net is a pin or an input port
+# (qb_eco_driver, as qb_eco_route_tree; R106: before, a pin only, so a port-driven line failed here as a missing pin).
+# Writes rpt/eco_names.rpt; returns {summary line, number of failures}.
 proc qb_eco_names {chg} {
     current_instance
     set rec [dict create]; set nrec -1; set rf [qb_eco_cells_file $chg]
@@ -589,7 +591,7 @@ proc qb_eco_names {chg} {
         close $fh
     }
     set sc ""; set bad {}; set nu 0
-    foreach k {cell net pin port abor ref} { set n($k) 0; set m($k) 0 }
+    foreach k {cell net pin port drv abor ref} { set n($k) 0; set m($k) 0 }
     foreach l [qb_eco_lines $chg] {
         lassign [qb_eco_parse $l $sc] k f
         set want {}
@@ -598,7 +600,7 @@ proc qb_eco_names {chg} {
             size     { lassign $f c r; lappend want cell $c ref [list $c $r] }
             loc      { lappend want cell [lindex $f 0] }
             ins      { lassign $f ty o r nn c; lappend want $ty $o net $nn cell $c ref [list $c $r] }
-            abor     { lappend want pin [lindex $f 0]; foreach {c r} [lrange $f 1 end] { lappend want abor $c ref [list $c $r] } }
+            abor     { lappend want drv [lindex $f 0]; foreach {c r} [lrange $f 1 end] { lappend want abor $c ref [list $c $r] } }
             unparsed { incr nu; lappend bad "unparsed: $l"; continue }
         }
         foreach {k o} $want {
@@ -608,6 +610,7 @@ proc qb_eco_names {chg} {
                 net  { set ok [sizeof_collection [get_nets -quiet $o]] }
                 pin  { set ok [sizeof_collection [get_pins -quiet $o]] }
                 port { set ok [sizeof_collection [get_ports -quiet $o]] }
+                drv  { set ok [sizeof_collection [qb_eco_driver $o]] }
                 ref  { lassign $o c r; set ok [expr {[get_attribute -quiet [get_cells -quiet $c] ref_name] eq $r}] }
             }
             if {!$ok} { incr m($k); lappend bad "$k missing/mismatch: $o" }
@@ -628,9 +631,15 @@ proc qb_eco_names {chg} {
     if {$nrec >= 0 && $nrec != $nn} { incr nr; lappend bad "new: PT record $nrec cells, change list $nn new cells" }
     redirect $::R/rpt/eco_names.rpt { puts [join $bad "\n"] }
     set t "eco names [file tail $chg]: cells $n(cell) missing $m(cell)"
-    foreach {k w} {net nets pin pins port ports abor abor_buffers ref lib_cells} { append t " $w $n($k) missing $m($k)" }
+    foreach {k w} {net nets pin pins port ports drv abor_drivers abor abor_buffers ref lib_cells} { append t " $w $n($k) missing $m($k)" }
     append t " new_cells $nn missing $nm load_mismatch $nld record_mismatch $nr unparsed $nu"
-    return [list $t [expr {$m(cell) + $m(net) + $m(pin) + $m(port) + $m(abor) + $m(ref) + $nm + $nld + $nr + $nu}]]
+    return [list $t [expr {$m(cell) + $m(net) + $m(pin) + $m(port) + $m(drv) + $m(abor) + $m(ref) + $nm + $nld + $nr + $nu}]]
+}
+# The driver of an add_buffer_on_route net as the change list names it: the pin of that name, else the input port
+proc qb_eco_driver {name} {
+    set d [get_pins -quiet $name]
+    if {[sizeof_collection $d]} { return $d }
+    return [get_ports -quiet -filter "direction==in" $name]
 }
 # ECO route nets (R105, eco.tcl route_eco -nets): the cells the change list touches (size_cell, set_cell_location, new
 # cells of insert_buffer / add_buffer_on_route) and the nets on their pins but PG.  Returns {cells nets}: the number of
@@ -740,7 +749,7 @@ proc qb_eco_route_resolve {chg out} {
 #   drv   items of <pin>       load  item -> name of a load (leaf input pin, output port)
 proc qb_eco_route_tree {pin ly} {
     set u $::QB_DBU
-    set dp [get_pins -quiet $pin]; if {![sizeof_collection $dp]} { set dp [get_ports -quiet $pin] }
+    set dp [qb_eco_driver $pin]
     set n [get_nets -quiet -of_objects $dp]
     if {![sizeof_collection $n]} { error "qb_eco_route_tree: $pin is on no net" }
     set it {}; set seg [dict create]; set lk {}; set drv {}; set load [dict create]
@@ -1047,8 +1056,11 @@ proc qb_legality {step} {
 # corner (the corner table's library set) and libs.tcl, the diode cell libs.tcl marks (site/pnr.tcl QC_PNR_DIODE) and
 # the ICC2 release that writes it (sh_product_version; R97) - so a changed input is another NDM: never a silent reuse
 # (the name was LEF + DBU only) and never an overwrite under a design library that references the old one.
+# The key is of the files' contents only (R106; before, the md5sum output lines, which name each file: libs.tcl is in
+# the flow snapshot, so every snapshot of one tree built its own NDM, [M] tau13 27 NDMs, 20 GB).
 proc qb_ndm {} {
     set src [list $::QC_PNR_LEF $::QC_TF {*}[lsort -unique [lmap c $::QC_SIGNOFF_CORNERS { qc_db $c }]] $::QBF/icc2/libs.tcl]
-    set key [string range [exec md5sum << "[exec md5sum {*}$src]\ndiode $::QC_PNR_DIODE\nicc2 $::sh_product_version"] 0 7]
+    set sums [join [lmap f $src { lindex [exec md5sum $f] 0 }] "\n"]
+    set key [string range [exec md5sum << "$sums\ndiode $::QC_PNR_DIODE\nicc2 $::sh_product_version"] 0 7]
     return $::QC_BUILD/icc2/ndm/[file rootname [file tail $::QC_PNR_LEF]]_dbu${::QB_DBU}_$key.ndm
 }
