@@ -77,6 +77,9 @@ set ::QB5_FT {BUFFD4 Z}
 # act feedthrough budget per column (fraction of P) and the columns upstream of the last one
 set ::QB5_ACT_FT 0.07
 set ::QB5_ACT_UPSTREAM 7
+# the act input -max shift of a column at period per (common/act_chain.tcl qb_act_in_max): the late clock arrival Ll at the
+# external registers + the upstream feedthroughs (qb_act_chain_check below, signoff/pt/col_blk.tcl feedthrough_delay)
+proc qb5_act_smax {per Ll} { expr {$Ll + $::QB5_ACT_UPSTREAM * $::QB5_ACT_FT * $per} }
 proc qb5_budget {} {
     # opt-in: a block that reuses these procs sets its own class table ::QB5_BUDGET before sourcing (blocks/rgr/io_budget.tcl)
     if {[info exists ::QB5_BUDGET]} { return $::QB5_BUDGET }
@@ -135,7 +138,7 @@ proc qb5_io_lines {per Ll Le Tq} {
     # chain's hold guarantee at this block's clock edge Le, R108)
     if {[lsearch -exact [qb5_budget] {act[*]}] >= 0} {
         lappend out "set_driving_cell -lib_cell [lindex $::QB5_FT 0] -pin [lindex $::QB5_FT 1] \[get_ports {act\[*\]}\]"
-        qb_act_chain_check col [join $out "\n"] $per [expr {$Ll + $::QB5_ACT_UPSTREAM * $::QB5_ACT_FT * $per}] $Le
+        qb_act_chain_check col [join $out "\n"] $per [qb5_act_smax $per $Ll] $Le
     }
     return [join $out "\n"]
 }

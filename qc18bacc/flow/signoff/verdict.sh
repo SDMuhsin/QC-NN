@@ -27,7 +27,8 @@
 # results in the deck copy, calibre/cal.sh check deck, R109) and
 # the layout read, the LVS source and the netlist it was built from (R106).  R115: Calibre's own exit status of the LVS /
 # DRC / antenna runs (cal_<mode>.time) in their gates, abstract_lef one signal PIN per signal port, and flow_snapshot:
-# every step's BLK_KNOBS line of summary.txt names this verdict's flow root and (R117) the block's committed knob values.  A gate whose evidence a run never produced
+# the BLK_KNOBS line of summary.txt of every step that produced a current artefact (R118; README "Sign-off scope") names
+# this verdict's flow root and (R117) the block's committed knob values, no recovery knob.  A gate whose evidence a run never produced
 # is MISSING (it fails too).
 # The step driver calls it last; the result table of the paper is made from its GATE lines.
 set -u

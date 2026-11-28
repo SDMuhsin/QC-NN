@@ -3,10 +3,12 @@
 block keeps the pin positions every neighbour was built against (the r5b_blk column that the hub / act pins were aligned
 to; R35 / R48 placed the same pins with OpenROAD place_pin, R72 writes them as the DEF that flow/icc2/floorplan.tcl reads).
 usage: abstract_pins.py <block.lef> <out.def>
-First RECT of each signal PIN (LEF coordinates = die coordinates, origin 0 0); POWER / GROUND pins are left out (the
-ICC2 floorplan makes its own PG pins).  DEF units = the LEF DATABASE MICRONS.  The LEF has no producer in this flow (it
+First RECT of each signal PIN (LEF coordinates = die coordinates, origin 0 0), with the pin's USE of the LEF (R118; was
+SIGNAL for every pin, the clock pin's USE CLOCK included; SIGNAL when the LEF has none); POWER / GROUND pins are left out
+(the ICC2 floorplan makes its own PG pins).  DEF units = the LEF DATABASE MICRONS.  The LEF has no producer in this flow (it
 is an input, blocks/col/col.env COL_REFLEF), so its md5 and pin counts go to the log of every run (R92)."""
 import hashlib
+from collections import Counter
 import sys
 src, dst = sys.argv[1], sys.argv[2]
 pins, cur, layer, use, dirn = {}, None, None, {}, {}
@@ -33,11 +35,12 @@ with open(dst, 'w') as o:
     o.write('DIEAREA ( 0 0 ) ( %d %d ) ;\nPINS %d ;\n' % (u(size[0]), u(size[1]), len(sig)))
     for p, (l, x0, y0, x1, y1) in sig:
         xc, yc = (u(x0) + u(x1)) // 2, (u(y0) + u(y1)) // 2
-        o.write('- %s + NET %s + DIRECTION %s + USE SIGNAL\n  + PORT\n    + LAYER %s ( %d %d ) ( %d %d )\n'
-                '    + FIXED ( %d %d ) N ;\n' % (p, p, dirn.get(p, 'INPUT'), l, u(x0) - xc, u(y0) - yc, u(x1) - xc,
-                                                u(y1) - yc, xc, yc))
+        o.write('- %s + NET %s + DIRECTION %s + USE %s\n  + PORT\n    + LAYER %s ( %d %d ) ( %d %d )\n'
+                '    + FIXED ( %d %d ) N ;\n' % (p, p, dirn.get(p, 'INPUT'), use.get(p, 'SIGNAL'), l, u(x0) - xc, u(y0) - yc,
+                                                u(x1) - xc, u(y1) - yc, xc, yc))
     o.write('END PINS\nEND DESIGN\n')
-sys.stderr.write('abstract_pins: %s %d signal pins, die %g x %g, layers %s -> %s\n'
-                 % (macro, len(sig), size[0], size[1], sorted({g[0] for _, g in sig}), dst))
+sys.stderr.write('abstract_pins: %s %d signal pins (USE %s), die %g x %g, layers %s -> %s\n'
+                 % (macro, len(sig), ' '.join('%s %d' % kn for kn in sorted(Counter(use.get(p, 'SIGNAL') for p, _ in sig).items())),
+                    size[0], size[1], sorted({g[0] for _, g in sig}), dst))
 sys.stderr.write('abstract_pins: source %s md5 %s, %d pins (%d signal, %d power / ground), %d database units / um\n'
                  % (src, hashlib.md5(open(src, 'rb').read()).hexdigest(), len(pins), len(sig), len(pins) - len(sig), dbu))

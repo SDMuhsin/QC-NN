@@ -21,10 +21,10 @@
 #   qb_lib_tcq <corner>       fastest clock -> Q (ns, no derate) of the corner's library flip-flops that are not dont_use
 #                             (common/lib_tcq.py on the liberty text QC_LIBDIR/QC_LIB(corner).lib; the period-independent
 #                             min input delay, blocks/col/io_budget.tcl), cached as $QC_BUILD/lib_tcq/<lib>.txt (kit-derived:
-#                             stays on the build host) together with its key = everything the value depends on (liberty
-#                             file size + mtime, the QC_DONT_USE list, the text of lib_tcq.py); a file with another key
-#                             (or the pre-R92 format, keyed by library name only: stale after a dont_use / lib_tcq.py
-#                             change) is recomputed; R77 [M] lt 0.033 ns, wc 0.079 ns (SDFQND1 CP -> QN)
+#                             stays on the build host) together with its key = everything the value depends on (md5 of
+#                             the liberty text, R118: was its size + mtime, which an edit in place within the same second
+#                             and size keeps; the QC_DONT_USE list, the text of lib_tcq.py); a file with another key
+#                             (or an older format) is recomputed; R77 [M] lt 0.033 ns, wc 0.079 ns (SDFQND1 CP -> QN)
 #   qb_dont_use_gate <tag> <lib>  dont_use gate (R77): no lib cell matching QC_DONT_USE is usable (lib 1: ICC2 dont_use
 #                             true and no valid_purposes; PrimeTime dont_use true, where the step optimises, the ECO) and
 #                             no design instance is one (every step); R84: a QC_HOLD_ONLY cell is ICC2 purpose hold only
@@ -65,7 +65,7 @@ set ::QB_LIB_CELLS_DIR [file normalize [file dirname [info script]]]
 proc qb_lib_tcq {corner} {
     set lib $::QC_LIB($corner); set src $::QC_LIBDIR/$lib.lib; set py $::QB_LIB_CELLS_DIR/lib_tcq.py
     set h [open $py]; set code [read $h]; close $h
-    set key [list [file size $src] [file mtime $src] $::QC_DONT_USE $code]
+    set key [list [lindex [exec md5sum $src] 0] $::QC_DONT_USE $code]
     set d $::env(QC_BUILD)/lib_tcq; set f $d/$lib.txt; set t ""
     if {[file exists $f]} {
         set h [open $f]; set c [read $h]; close $h

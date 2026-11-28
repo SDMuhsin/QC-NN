@@ -30,6 +30,10 @@ proc qb_act_hold {} { qb_limit QC_ACT_HOLD_HUB }
 proc qb_act_launch {} { qb_limit QB_ACT_LAUNCH }
 proc qb_act_earliest {E} { expr {$E + [qb_act_hold]} }
 proc qb_act_out_min {E} { expr {[qb_limit QC_UNC_HOLD] - [qb_act_earliest $E]} }
+#   qb_act_in_max <per> <smax>   a column's act input -max at period <per>: launch P + <smax> (the column's -max shift:
+#                  its clock arrival term + the upstream feedthroughs, blocks/col/io_budget.tcl qb5_act_smax); the contract
+#                  below and the column's feedthrough delay report (signoff/pt/col_blk.tcl, R118: was 0.55 P written there)
+proc qb_act_in_max {per smax} { expr {[qb_act_launch] * $per + $smax} }
 # qb_act_chain_check <end> <lines> <per> <smax> <E>: error unless the SDC <lines> of one end's budget at period <per>
 # have exactly one -max and one -min line on act[*] (end src: set_output_delay, end col: set_input_delay) and their
 # values are the contract's (to the lines' 0.1 ps), given the end's own -max shift <smax> (ns: clock arrival terms, the
@@ -40,7 +44,7 @@ proc qb_act_chain_check {end lines per smax E} {
     set U [qb_limit QC_UNC_SETUP]; set Uh [qb_limit QC_UNC_HOLD]; set H [qb_act_hold]; set a [qb_act_launch]
     switch $end {
         src { set cmd set_output_delay; set want [list [expr {(1.0 - $a) * $per - $U + $smax}] [expr {$Uh - ($E + $H)}]] }
-        col { set cmd set_input_delay;  set want [list [expr {$a * $per + $smax}] [expr {$E + $H}]] }
+        col { set cmd set_input_delay;  set want [list [qb_act_in_max $per $smax] [expr {$E + $H}]] }
         default { error "qb_act_chain_check: end '$end' is not src or col" }
     }
     set got {}

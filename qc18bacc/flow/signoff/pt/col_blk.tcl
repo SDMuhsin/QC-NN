@@ -51,9 +51,10 @@ proc qb_blk_hook {stage args} {
             set fh [lindex $args 0]
             set ft [get_timing_paths -delay_type max -max_paths 1 -from [get_ports {act[*]}] -to [get_ports {act_o[*]}]]
             set ftn [get_timing_paths -delay_type min -max_paths 1 -from [get_ports {act[*]}] -to [get_ports {act_o[*]}]]
-            set ain [expr {0.55 * $::per + $::L}]; set ainm [qb_act_earliest $::Le]
-            if {[sizeof_collection $ft]} { puts $fh [format "feedthrough_delay_ns max %.3f min %.3f (budget %.3f = 0.07 P)" \
-                [expr {[get_attribute $ft arrival] - $ain}] [expr {[get_attribute $ftn arrival] - $ainm}] [expr {0.07 * $::per}]] }
+            # (the act input -max / -min of the budget: common/act_chain.tcl qb_act_in_max / qb_act_earliest, R118)
+            set ain [qb_act_in_max $::per [qb5_act_smax $::per $::L]]; set ainm [qb_act_earliest $::Le]
+            if {[sizeof_collection $ft]} { puts $fh [format "feedthrough_delay_ns max %.3f min %.3f (budget %.3f = %g P)" \
+                [expr {[get_attribute $ft arrival] - $ain}] [expr {[get_attribute $ftn arrival] - $ainm}] [expr {$::QB5_ACT_FT * $::per}] $::QB5_ACT_FT] }
         }
         paths {
             lassign $args r pd

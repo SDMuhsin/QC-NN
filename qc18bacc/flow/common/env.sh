@@ -100,7 +100,7 @@ qb_pt() {
     while :; do case ${1:-} in -check) chk=1; shift ;; -nosignoff) nos=1; shift ;; *) break ;; esac; done
     log=$1; pl=${1%.log}_parasitics.log; b=$(basename "$pl")
     if [ $chk = 1 ]; then
-        rc=$(sed -n 's/^[[:space:]]*Exit status: //p' "$log.time" 2> /dev/null); rc=${rc:-NA}
+        rc=$(qb_time_rc "$log.time")
         t0=$(awk '/Elapsed/ {n = split($NF, a, ":"); for (i = 1; i <= n; i++) s = s * 60 + a[i]} END {printf "%d", s + 1}' "$log.time" 2> /dev/null)
         t1=$(( $(stat -c %Y "$log.time" 2> /dev/null || echo 0) + 1 )); t0=$(( t1 - 1 - ${t0:-0} ))
     else
@@ -172,6 +172,15 @@ qb_kit_files() {
     t="$t"$'\n'"cell_spice $(bash "$QBF/signoff/calibre/lvs_src.sh" kit)" || { echo "QB_FAIL qb_kit_files: lvs_src.sh kit" >&2; return 1; }
     LC_ALL=C sort -u <<< "$t"
 }
+# qb_time_rc <file>: the exit status a GNU "/usr/bin/time -v" record <file> holds (qc_tool's <log>.time, signoff/calibre/
+# cal.sh cal_<mode>.time): its one "Exit status" value; "signal<N>" when it has "Command terminated by signal <N>" (R118;
+# round-18 finding, [M] tau14 / tau04: a process killed by a signal has "Exit status: 0" in the record, time itself exits
+# 128 + N); NA without exactly one value (no record).  qb_pt / qb_icc2 -check, signoff/verdict.py cal_exit
+qb_time_rc() {
+    [ -f "$1" ] || { echo NA; return; }
+    awk '/^Command terminated by signal [0-9]+$/ { s = "signal" $NF } /^[[:space:]]*Exit status: / { n++; x = $NF }
+        END { print s != "" ? s : n == 1 ? x : "NA" }' "$1"
+}
 # qb_wait: wait for every background job of this shell; non-zero if any of them failed
 qb_wait() { local j r=0; for j in $(jobs -p); do wait "$j" || r=1; done; return $r; }
 # qb_icc2 <rundir> <step> [icc2_shell|icc2_lm_shell]: ICC2 step flow/icc2/<step>.tcl (Q-2019.12-SP2) in <rundir>, log
@@ -197,7 +206,7 @@ qb_icc2() {
     d=$1 s=$2 sh=${3:-icc2_shell}; log=$d/$s.log
     . "$ROOT/flow/tsmc65/common/tool.sh"
     if [ $chk = 1 ]; then
-        rc=$(sed -n 's/^[[:space:]]*Exit status: //p' "$log.time" 2> /dev/null); rc=${rc:-NA}
+        rc=$(qb_time_rc "$log.time")
     else
         mkdir -p "$d"; cd "$d" || return 1
         printf 'source %s\nputs "QB_ICC2_MSG %s errors [get_message_info -error_count]"\n' "$QBF/icc2/$s.tcl" "$s" > "$d/$s.run.tcl"

@@ -102,9 +102,18 @@ against the files as they are (views: the ETMs of the label of out/).  `outputs_
 netlist (R114) and the GDS (R115, common/gds_md5.py: without its time stamps; the fill step checks out/ against it
 first); the verdict's lvs_source_netlist holds out/ against it.  R115: a chain line is written only when its step
 passed (post: PT / ETM), calibre reads the filled GDS of the fill record (no file times), every step appends its
-BLK_KNOBS line to summary.txt and the verdict's flow_snapshot gate requires one flow root (its own) for all of them
-(R117: and the block's committed knob values on every line, QB_ICC2_BIN and QC_TOOLS included),
-and the Calibre gates require Calibre's exit status 0.  The file-time fresh_* gates stay as a second check
+BLK_KNOBS line to summary.txt and the verdict's flow_snapshot gate requires one flow root (its own) for the steps it
+judges (R117: and the block's committed knob values, QB_ICC2_BIN and QC_TOOLS included; which steps: below),
+and the Calibre gates require Calibre's exit status 0 (R118: and no signal termination, common/env.sh qb_time_rc, as the
+ICC2 / PrimeTime log checks).  Sign-off record policy (R118, PI decision): flow_snapshot judges the BLK_KNOBS lines of the
+steps that produced the current artefacts only, i.e. the step instance of the latest record of each artefact of out/'s
+label chain (the last `icc2_done` line of init .. route, each ECO round, outputs / extract / abstract of the label of
+out/; the last `chain` line of fill, extract, abstract, LVS / DRC / antenna, PT / ETM per corner); a failed or superseded
+step does not count.  Those steps must have the verdict's flow root and the committed knob values, and a recovery or
+control knob on any of them (QC_PNR_FROM / QC_PNR_TO, QC_ECO_OVERRIDE_STOP, QC_ECO_PT_ONLY) fails as "<knob> on <step>:
+not a sign-off record": a sign-off record is a from-scratch run with the committed settings; a run recovered with them is
+for diagnosis, and its sign-off is a new run.  The fill record has the chip window calibre/die_window.sed, whose values
+the verdict holds against the DIEAREA of the DEF of out/ (deck_fill / deck_odpo, R118).  The file-time fresh_* gates stay as a second check
 of the links no step records; a run dir copied without its times can only fail them.
 Out of scope by the project owner's decision: formal equivalence checking (LEC / Formality) of the P&R netlist against
 the synthesis netlist; the CAS papers the chip is compared with do not report it.  The netlist checks the flow does make

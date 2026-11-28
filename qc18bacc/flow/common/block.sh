@@ -18,6 +18,8 @@
 #                  a range, an unknown step name fails; a step init .. route drops the label of out/ and moves the
 #                  ECO history out/eco aside (blk_unlabel), and so does a range that starts at outputs, once the route
 #                  step's log passes (qb_icc2 -check, R111) and route completed after init .. cts (blk_done_order, R113);
+#                  every precondition of the range is checked before anything is dropped or moved (blk_pnr_pre, R118:
+#                  init on an existing design library fails with out/ intact);
 #                  init records the md5 of its DC inputs in summary.txt once it succeeded (blk_inputs)
 #         eco      sign-off ECO loop, at most QC_ECO_ROUNDS (common/env.sh) rounds: PrimeTime DMSA -> ICC2 eco -> outputs -> portcheck
 #                  -> fill; ends when a round's pre-fix state is clean in every corner at zero margin; fails if it never
@@ -104,26 +106,20 @@ blk_pnr() {
         case " $all " in *" $s "*) ;; *) echo "BLK_FAIL pnr: unknown step '$s' (QC_PNR_FROM / QC_PNR_TO: $all)"; return 1 ;; esac
     done
     case "$all " in *"$to "*"$from "*) echo "BLK_FAIL pnr: QC_PNR_TO=$to is before QC_PNR_FROM=$from"; return 1 ;; esac
+    # Every precondition of the range is checked before any step runs, i.e. before out/ is unlabelled or its ECO history
+    # moved (R118; round-18 finding: a pnr re-run on a finished run dir dropped the label of out/ and moved out/eco, and
+    # only then did init refuse the existing design library)
+    l=$(blk_pnr_pre "$from" "$to") || { echo "$l"; return 1; }
     for s in $all; do
         [ "$s" = "$from" ] && on=1; [ $on = 1 ] || continue
         if [ "$s" = outputs ]; then
-            # (R111; hunt round 13 on 1940fd4) a range that starts at outputs relabels out/ to route: the route step must have
-            # passed (qb_done saves the label before qb_icc2 judges the step, so a route step that failed on an error under
-            # redirect left a saved route label), and the ECO history of the old label of out/ goes aside as in blk_unlabel
-            # (R113; hunt round 14 on f9f2580: a partial re-run place .. cts followed by a range from outputs relabelled
-            # the route label of the layout before) and the route step completed after every earlier step of its chain
-            # (blk_done_order: the completion record of common/env.sh qb_icc2)
-            if [ "$from" = outputs ]; then
-                qb_icc2 -check "$d" route || { echo "BLK_FAIL pnr outputs: the route step did not pass (ICC2_STEP above): no outputs of label route"; return 1; }
-                blk_done_order init:init floorplan:floorplan place:place cts:cts route:route \
-                    || { echo "BLK_FAIL pnr outputs: route is not the last step of init .. route to complete (BLK_ORDER above): no outputs of label route"; return 1; }
-                blk_unlabel outputs || return 1
-            fi
+            # a range that starts at outputs relabels out/ to route (blk_pnr_pre: route passed and completed last); the ECO
+            # history of the old label of out/ goes aside as in blk_unlabel
+            if [ "$from" = outputs ]; then blk_unlabel outputs || return 1; fi
             blk_out route || return 1
         elif [ "$s" = libs ]; then blk_libs || return 1
         else
             blk_unlabel "$s" || return 1
-            if [ "$s" = init ]; then l=$(blk_inputs) || { echo "$l"; return 1; }; fi
             if [ "$s" = floorplan ]; then blk_pins || return 1; fi
             qb_icc2 "$d" "$s" || return 1
             if [ "$s" = init ]; then blk_inputs "$l" || return 1; fi
@@ -131,6 +127,40 @@ blk_pnr() {
         [ "$s" = "$to" ] && break
     done
     tail -n 40 "$d/summary.txt"
+}
+# blk_pnr_pre <from> <to>: the preconditions of the pnr range <from> .. <to>, read-only (R118); prints the inputs line of
+# blk_inputs when the range has init (blk_pnr records it once init passed), a BLK_FAIL line and status 1 otherwise:
+#   init in the range   no design library <run>/<top>.nlib (icc2/init.tcl writes a new one only, R109) and every DC /
+#                       BLK_INPUTS input there (blk_inputs)
+#   floorplan in it     the block has its pin DEF writer blk_pre_pnr (blk_pins)
+#   from floorplan .. route   the design library exists and the step before <from> passed (qb_icc2 -check)
+#   from outputs        (R111; hunt round 13 on 1940fd4) the route step passed (qb_done saves the label before qb_icc2
+#                       judges the step, so a route step that failed on an error under redirect left a saved route label)
+#                       and (R113; hunt round 14 on f9f2580: a partial re-run place .. cts followed by a range from outputs
+#                       relabelled the route label of the layout before) completed after every earlier step of its chain
+#                       (blk_done_order: the completion record of common/env.sh qb_icc2)
+blk_pnr_pre() {
+    local from=$1 to=$2 all="libs init floorplan place cts route outputs" r= s p= on=0 l=
+    for s in $all; do
+        [ "$s" = "$from" ] && on=1; [ $on = 1 ] && r="$r $s"; [ "$s" = "$to" ] && break; [ $on = 1 ] || p=$s
+    done
+    if [[ " $r " == *" init "* ]]; then
+        [ ! -e "$d/$BLK_TOP.nlib" ] || { echo "BLK_FAIL pnr init: design library $d/$BLK_TOP.nlib exists (init writes a new one only: a new run dir); nothing changed"; return 1; }
+        l=$(blk_inputs) || { echo "$l"; return 1; }
+    fi
+    if [[ " $r " == *" floorplan "* ]] && ! declare -F blk_pre_pnr > /dev/null; then
+        echo "BLK_FAIL pnr floorplan: the block has no blk_pre_pnr (pin DEF)"; return 1
+    fi
+    case $from in
+    floorplan|place|cts|route)
+        [ -e "$d/$BLK_TOP.nlib" ] || { echo "BLK_FAIL pnr $from: no design library $d/$BLK_TOP.nlib"; return 1; }
+        qb_icc2 -check "$d" "$p" > /dev/null || { echo "BLK_FAIL pnr $from: the step before it, $p, did not pass ($(qb_icc2 -check "$d" "$p"))"; return 1; } ;;
+    outputs)
+        qb_icc2 -check "$d" route > /dev/null || { echo "BLK_FAIL pnr outputs: the route step did not pass ($(qb_icc2 -check "$d" route)): no outputs of label route"; return 1; }
+        s=$(blk_done_order init:init floorplan:floorplan place:place cts:cts route:route) \
+            || { echo "BLK_FAIL pnr outputs: route is not the last step of init .. route to complete ($s): no outputs of label route"; return 1; } ;;
+    esac
+    echo "$l"
 }
 # A pnr step that writes a design label (init .. route) rewrites route, which every label of out/ (route, eco, eco2, ...)
 # is built from, so out/ is no longer the layout of its label: the label of out/ and an unfinished one are dropped before
@@ -187,8 +217,8 @@ blk_input() {
 # blk_pre_pnr right before each floorplan step, as <def>.part renamed into place (R99; before, $B/icc2/<blk>/pins*.def:
 # one file per host that every pnr rewrote in place, so concurrent runs raced and a later floorplan re-run read another
 # run's pins)
+# (the block has a blk_pre_pnr: blk_pnr_pre)
 blk_pins() {
-    declare -F blk_pre_pnr > /dev/null || { echo "BLK_FAIL pnr floorplan: the block has no blk_pre_pnr (pin DEF)"; return 1; }
     mkdir -p "$d" && rm -f "$QB_PIN_DEF.part" && blk_pre_pnr "$QB_PIN_DEF.part" && mv -f "$QB_PIN_DEF.part" "$QB_PIN_DEF" \
         && echo "BLK_PINS $QB_PIN_DEF md5 $(md5sum < "$QB_PIN_DEF" | cut -c1-12)"
 }
@@ -350,7 +380,8 @@ blk_fill_label() {
         || { cat "$o/odpo.log"; return 1; }
     cat "$o/odpo.log"
     ( . "$C/kl.sh"; kl_run "$C/fill_def.py" -rd gds="$o/fill/DM.gds" -rd design="$BLK_TOP" -rd out="$d/out/${BLK_TOP}_fill.def" ) || return 1
-    blk_chain fill - "$l" "$i" calibre/fill/DM.gds "calibre/fill/${BLK_TOP}_fill.gds" calibre/odpo/DODPO.gds "calibre/odpo/${BLK_TOP}_fill.gds" "${t}_fill.def" || return 1
+    # (+ the chip window both decks read, R118; round-18 finding: die_window.sed was in no record)
+    blk_chain fill - "$l" "$i" calibre/die_window.sed calibre/fill/DM.gds "calibre/fill/${BLK_TOP}_fill.gds" calibre/odpo/DODPO.gds "calibre/odpo/${BLK_TOP}_fill.gds" "${t}_fill.def" || return 1
     i=$(blk_md5 "$t.v" "${t}_fill.def") || return 1
     QB_ICC2_LABEL=$l qb_icc2 "$d" extract || return 1
     for c in $cs; do s="$s ${t}_${c}_pt.spef.gz"; done
@@ -443,7 +474,8 @@ blk_eco_judge() {
     # the sign-off's gates no ECO pass fixes (R103, drv_eco.tcl prefix_unfixable: non-zero ones end the loop; before, a
     # round with prefix_total 0 was "converged" and the post step failed on them)
     tns=$(awk '$1 == "prefix_tns" { print $2; exit }' "$e/eco_summary.txt")
-    [[ $tns =~ ^-?[0-9]+\.[0-9]+$ ]] || { echo "BLK_FAIL eco: no prefix_tns in out/eco/eco_summary.txt"; return 1; }
+    # (a number in any form Tcl prints, R118; round-18 finding: "0" or "-2" without a decimal point failed the round)
+    [[ $tns =~ ^[-+]?([0-9]+\.?[0-9]*|\.[0-9]+)([eE][-+]?[0-9]+)?$ ]] || { echo "BLK_FAIL eco: no numeric prefix_tns in out/eco/eco_summary.txt ('$tns')"; return 1; }
     un=$(awk '$1 == "prefix_unfixable" { print $2; exit }' "$e/eco_summary.txt")
     case $un in ''|*[!0-9]*) echo "BLK_FAIL eco: no prefix_unfixable in out/eco/eco_summary.txt"; return 1 ;; esac
     # opt-in QC_ECO_PT_ONLY=1: this round's PrimeTime half only (a check of the PT side, e.g. on a copy of a run): the
@@ -562,19 +594,35 @@ blk_calibre() {
     blk_chain_check fill - "$l" || { echo "BLK_FAIL the fill record of label $l does not hold (run.sh fill)"; return 1; }
     bash "$C/lvs_src.sh" "$d/out/${BLK_TOP}_pg.v" "$o/${BLK}_src.spi" > "$o/src.log" 2>&1; r=$?; tail -n 3 "$o/src.log"; [ $r = 0 ] || return 1
     i=$(blk_md5 "calibre/odpo/${BLK_TOP}_fill.gds" "calibre/${BLK}_src.spi") || return 1
-    QB36_LVS_SED=$BLK_LVS_SED bash "$C/cal.sh" lvs "$g" "$BLK_TOP" "$o/${BLK}_src.spi" "$o/lvs" > "$o/lvs.log" 2>&1 || r=1
-    QB36_DRC_SED=$BLK_DRC_SED bash "$C/cal.sh" drc "$g" "$BLK_TOP" "$o/drcb" > "$o/drcb.log" 2>&1 || r=1
-    QB36_ANT_SED=${BLK_ANT_SED:-} bash "$C/cal.sh" ant "$g" "$BLK_TOP" "$o/ant" > "$o/ant.log" 2>&1 || r=1
-    cat "$o/lvs.log" "$o/drcb.log" "$o/ant.log"
-    # the content chain (blk_chain): LVS from the GDS + source, DRC / antenna from the GDS (their summary report: the
-    # deck copy's DRC SUMMARY REPORT, relative to it)
-    blk_chain lvs - "$l" "$i" calibre/lvs/lvs.rep || r=1
-    for m in drcb:drc ant:ant; do
-        q=$(sed -n 's/^DRC SUMMARY REPORT *"\([^"/]*\)".*/\1/p' "$o/${m%:*}/deck.${m#*:}" 2> /dev/null | head -n 1)
-        [ -n "$q" ] && blk_chain "${m#*:}" - "$l" "${i%% *}" "calibre/${m%:*}/$q" \
+    # (R118; round-18 finding: a chain line was written over the reports of an earlier run when Calibre failed) the
+    # reports of the earlier run go first (blk_cal_reports of the deck copies there), and a mode's chain line is written
+    # only when its cal.sh passed
+    rm -f "$o/lvs/lvs.rep" $(blk_cal_reports lvs:lvs:ERC drcb:drc:DRC ant:ant:DRC) || return 1
+    for m in lvs:lvs drcb:drc ant:ant; do
+        case ${m#*:} in
+        lvs) QB36_LVS_SED=$BLK_LVS_SED bash "$C/cal.sh" lvs "$g" "$BLK_TOP" "$o/${BLK}_src.spi" "$o/lvs" ;;
+        drc) QB36_DRC_SED=$BLK_DRC_SED bash "$C/cal.sh" drc "$g" "$BLK_TOP" "$o/drcb" ;;
+        ant) QB36_ANT_SED=${BLK_ANT_SED:-} bash "$C/cal.sh" ant "$g" "$BLK_TOP" "$o/ant" ;;
+        esac > "$o/${m%:*}.log" 2>&1; q=$?
+        cat "$o/${m%:*}.log"
+        [ $q = 0 ] || { echo "BLK_FAIL calibre ${m#*:}: cal.sh exit status $q: no chain line"; r=1; continue; }
+        # the content chain (blk_chain): LVS from the GDS + source, DRC / antenna from the GDS (their summary report: the
+        # deck copy's DRC SUMMARY REPORT)
+        if [ "${m#*:}" = lvs ]; then blk_chain lvs - "$l" "$i" calibre/lvs/lvs.rep || r=1; continue; fi
+        q=$(blk_cal_reports "$m:DRC"); q=${q#"$d/"}
+        [ -n "$q" ] && blk_chain "${m#*:}" - "$l" "${i%% *}" "$q" \
             || { echo "BLK_FAIL chain ${m#*:}: no DRC SUMMARY REPORT file in the deck dir of calibre/${m%:*}/deck.${m#*:}"; r=1; }
     done
     return $r
+}
+# blk_cal_reports <dir>:<mode>:<DRC|ERC> ...: the summary report file the deck copy calibre/<dir>/deck.<mode> names (its
+# "<DRC|ERC> SUMMARY REPORT" line: a file in the deck dir), one path per deck copy that names one
+blk_cal_reports() {
+    local w q
+    for w; do
+        q=$(sed -n "s/^${w##*:} SUMMARY REPORT *\"\\([^\"/]*\\)\".*/\\1/p" "$d/calibre/${w%%:*}/deck.$(cut -d: -f2 <<< "$w")" 2> /dev/null | head -n 1)
+        [ -z "$q" ] || echo "$d/calibre/${w%%:*}/$q"
+    done
 }
 # PrimeTime in every sign-off corner on the ICC2 netlist + SPEF (fails on any setup / hold / DRV / noise / min pulse width
 # / min period violator, common/env.sh qb_pt), then the ETMs of every corner (R71; fails on MEXT-6 / MEXT-80 (R111) / MEXT-81 / MEXT-97)
@@ -601,13 +649,17 @@ blk_post() {
           e=out/etm/${BLK_TOP}_$c; rm -f "$e.lib" "${e}_lib.db" "${e}_ref.txt"
           i=$(blk_md5 "out/$BLK_TOP.v" "out/${BLK_TOP}_${c}_pt.spef.gz") || { r=1; continue; }
           q=0; QC_CORNER=$c qb_pt -nosignoff "etm_$c.log" pt_shell -f "$QBF/signoff/etm/etm.tcl" || q=1
-          ! grep -m 3 'MEXT-6)\|(MEXT-80)\|MEXT-81\|MEXT-97' "etm_$c.log" || { echo "ETM $c: table limit / port aggressor filter / driving cell / feedthrough warnings"; q=1; }
+          ! blk_etm_warnings "etm_$c.log" | head -n 3 | grep . || { echo "ETM $c: table limit / port aggressor filter / driving cell / feedthrough warnings"; q=1; }
           [ -s "$e.lib" ] && [ -s "${e}_lib.db" ] && [ -s "${e}_ref.txt" ] && ! [ "${e}_lib.db" -ot "$e.lib" ] && ! [ "${e}_ref.txt" -ot "${e}_lib.db" ] \
               || { echo "ETM $c: $e.lib / _lib.db / _ref.txt missing, empty or out of order"; q=1; }
           [ $q = 0 ] && blk_chain etm "$c" "$l" "$i" "$e.lib" "${e}_lib.db" "${e}_ref.txt" || r=1
           echo "ETM $c $(grep -c 'RC-011' "etm_$c.log") RC-011 lines"
       done; exit $r )
 }
+# blk_etm_warnings <log>: the lines of an ETM extraction log with a message the ETM must not have, by its exact ID
+# "(MEXT-6)" table limit, "(MEXT-80)" port aggressor filter (R111), "(MEXT-81)" driving cell, "(MEXT-97)" feedthrough
+# (R118; round-18 finding: the pattern matched longer IDs too, e.g. MEXT-61 / MEXT-810); signoff/verdict.py etm_log
+blk_etm_warnings() { grep -E '\(MEXT-(6|80|81|97)\)' "$1"; }
 # Views for the chip top: ICC2 abstract LEF with port antenna data + antenna / abutment / PG pin gates (flow/icc2/
 # abstract.tcl, on the label of out/, which it records in summary.txt for signoff/verdict.py) -> out/<top>.lef; ETM
 # gate (signoff/etm/etmcheck.py: against the netlist reference of the same session) of the post step's ETMs

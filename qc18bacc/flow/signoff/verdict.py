@@ -130,7 +130,7 @@ for c in corners:
     md5('pt', c)
     # ETM of the corner: extraction log evidence + its own markers, the model files, the scan of signoff/etm/etmcheck.py
     e = 'etm_%s.log' % c; et = text(e); ok, l = pt_log(e, '-nosignoff')
-    done = ('QB_ETM_DONE %s' % c) in et.splitlines(); bad = len(re.findall(r'MEXT-6\)|\(MEXT-80\)|MEXT-81|MEXT-97', et))
+    done = ('QB_ETM_DONE %s' % c) in et.splitlines(); bad = len(blk_sh('blk_etm_warnings %s 2> /dev/null' % e)[1].splitlines())
     gate('etm_log', c, ok and done and not bad if ok is not None else None, '%s; QB_ETM_DONE %d; MEXT-6/80/81/97 lines %d' % (l, done, bad))
     db = lib[:-4] + '_lib.db'
     rc, out = sh('%s -I %s/signoff/etm/etmcheck.py %s' % (sys.executable, flow, lib)) if have(lib) else (None, '')
@@ -232,20 +232,52 @@ else:
 # same flow root, this verdict's own; the steps whose outputs are judged here each have one (pnr, calibre, post, views;
 # eco unless the label of out/ is route); and (R117; round-17 finding: only the root was checked, so a column run with
 # knobs off their committed values, e.g. another QB_ICC2_BIN or QC_TOOLS, could pass) every line's knobs are the block's
-# committed defaults (-k: the same names, each the same value)
-kn = [l.split() for l in s.splitlines() if l.startswith('BLK_KNOBS ')]
-roots = sorted(set(os.path.realpath(w[5]) if len(w) > 5 and w[4] == 'flow' else '(no flow field)' for w in kn))
-steps = set(w[2] for w in kn if len(w) > 2)
+# committed defaults (-k: the same names, each the same value).
+# (R118, PI decision; round-18 finding: every BLK_KNOBS line ever written was judged, so a failed or superseded step with
+# a non-default knob failed the run for good) The lines judged are those of the steps that produced the CURRENT
+# artefacts: the step instance (its BLK_KNOBS line: every summary.txt line belongs to the last BLK_KNOBS line before it)
+# of the latest record of each artefact of out/'s label chain, i.e. the last "icc2_done <step> <label>" line of init ..
+# route, of the ICC2 eco of each ECO label and of outputs / extract / abstract of the label of out/, and the last "chain
+# <step> <corner>" line of fill, extract, abstract, LVS / DRC / antenna and PT / ETM of every corner.  A recovery or
+# control knob (CONTROL) set on such a step fails with its own message: a sign-off record is a from-scratch run with the
+# committed settings (README "Sign-off scope").
+CONTROL = ('QC_PNR_FROM', 'QC_PNR_TO', 'QC_ECO_OVERRIDE_STOP', 'QC_ECO_PT_ONLY')
+sl = s.splitlines(); own = []; cur = None
+for i, l in enumerate(sl):
+    if l.startswith('BLK_KNOBS '): cur = i
+    own.append(cur)
+def latest(head):   # the index of the last summary.txt line whose first words are head (None: no such line)
+    x = [i for i, l in enumerate(sl) if l.split()[:len(head)] == head]
+    return x[-1] if x else None
+recs = []
+if chain is not None:
+    recs = [('icc2_done %s %s' % sc, latest(['icc2_done', *sc])) for sc in [(x, x) for x in ('init', 'floorplan', 'place', 'cts', 'route')] +
+            [('eco', x) for x in chain] + [(x, label) for x in ('outputs', 'extract', 'abstract')]] + \
+           [('chain %s %s' % sc, latest(['chain', *sc])) for sc in [(x, '-') for x in ('fill', 'extract', 'abstract', 'lvs', 'drc', 'ant')] +
+            [(x, c) for c in corners for x in ('pt', 'etm')]]
+recs = [(n, i) for n, i in recs if i is not None]
+noown = [n for n, i in recs if own[i] is None]
+by = {}   # the BLK_KNOBS line index of a step instance -> the records it produced
+for n, i in recs:
+    if own[i] is not None: by.setdefault(own[i], []).append(n)
+kn = dict((o, sl[o].split()) for o in by)
+roots = sorted(set(os.path.realpath(w[5]) if len(w) > 5 and w[4] == 'flow' else '(no flow field)' for w in kn.values()))
+steps = set(w[2] for w in kn.values() if len(w) > 2)
 need = [x for x in ('pnr', 'eco', 'calibre', 'post', 'views') if x != 'eco' or label != 'route']
-off = []
-for w in kn:
+off, ctl = [], []
+for o, w in sorted(kn.items()):
+    st = '%s (summary.txt line %d)' % (w[2] if len(w) > 2 else '?', o + 1)
     got = dict(x.split('=', 1) if '=' in x else (x, '(no =)') for x in w[6:])
     d = sorted(k for k in set(got) | set(KNOBS) if got.get(k) != KNOBS.get(k))
-    if d: off.append('%s: %s' % (w[2] if len(w) > 2 else '?', ' '.join('%s=%s (committed %s)' % (k, got.get(k, 'missing'), KNOBS.get(k, 'none')) for k in d[:4])))
-gate('flow_snapshot', '-', roots == [os.path.realpath(flow)] and set(need) <= steps and not off if kn else None,
-     'steps %s ran from %s (this verdict: %s; needed: %s); knobs %s' % (' '.join(sorted(steps)), ' | '.join(roots), os.path.realpath(flow), ' '.join(need),
-     'not the committed defaults: ' + ' | '.join(off) if off else '= the committed defaults (%d) on all %d lines' % (len(KNOBS), len(kn)))
-     if kn else 'no BLK_KNOBS line in summary.txt')
+    ctl += ['%s=%s on %s: not a sign-off record (a from-scratch run with the committed settings)' % (k, got.get(k, 'missing'), st) for k in d if k in CONTROL]
+    d = [k for k in d if k not in CONTROL]
+    if d: off.append('%s: %s' % (st, ' '.join('%s=%s (committed %s)' % (k, got.get(k, 'missing'), KNOBS.get(k, 'none')) for k in d[:4])))
+gate('flow_snapshot', '-', roots == [os.path.realpath(flow)] and set(need) <= steps and not off and not ctl and not noown if recs else None,
+     ('%s%ssteps %s of the %d current records ran from %s (this verdict: %s; needed: %s); knobs %s' % (
+         ' | '.join(ctl) + '; ' if ctl else '', 'records before any BLK_KNOBS line: %s; ' % ' '.join(noown[:4]) if noown else '',
+         ' '.join('%s@%d' % (w[2] if len(w) > 2 else '?', o + 1) for o, w in sorted(kn.items())), len(recs), ' | '.join(roots), os.path.realpath(flow), ' '.join(need),
+         'not the committed defaults: ' + ' | '.join(off) if off else '= the committed defaults (%d) on all %d step lines' % (len(KNOBS), len(kn))))
+     if recs else 'no record of a current artefact (icc2_done / chain line of out/\'s label chain) in summary.txt')
 # the content chain (R113, md5 above) of the fill and extract of the label of out/, and (R114) its abstract
 md5('fill', '-'); md5('extract', '-'); md5('abstract', '-')
 # the label the abstract was made from (icc2/abstract.tcl, its last summary line) = the label of out/ (R99)
@@ -265,14 +297,15 @@ def named(deck, key):   # a file the deck copy names (summary report, LVS source
 g = ['out/%s.gds' % top, 'calibre/fill/DM.gds', 'calibre/fill/%s_fill.gds' % top, 'calibre/odpo/DODPO.gds', 'calibre/odpo/%s_fill.gds' % top]
 # (lvs_erc: the ERC of the LVS run, cal.sh check erc on its summary and signoff/calibre/erc_allow.txt)
 # and Calibre's own exit status of that run (R115; round-16 hunt: the reports alone were judged): the one "Exit status"
-# line of its /usr/bin/time -v record cal_<mode>.time (cal.sh), 0, the record not older than the deck copy
+# line of its /usr/bin/time -v record cal_<mode>.time (cal.sh), 0 and (R118) no signal termination (common/env.sh
+# qb_time_rc), the record not older than the deck copy
 def cal_exit(d, dm):
     t = 'calibre/%s/cal_%s.time' % (d, dm); dk = 'calibre/%s/deck.%s' % (d, dm)
     if not have(t): return False, 'no ' + t
-    x = re.findall(r'^\s*Exit status: (\S+)\s*$', text(t), re.M)
+    x = sh('. %s/common/env.sh; qb_time_rc %s' % (flow, t))[1].strip()
     old = os.path.getmtime(os.path.join(run, t)) < os.path.getmtime(os.path.join(run, dk))
     # (the evidence states the reason it fails: R115 follow-up, a stale record said only "exit status 0")
-    return x == ['0'] and not old, '%s exit status %s%s' % (t, ' '.join(x) or 'none', ', older than the deck copy %s (not this run\'s record)' % dk if old else '')
+    return x == '0' and not old, '%s exit status %s%s' % (t, x or 'none', ', older than the deck copy %s (not this run\'s record)' % dk if old else '')
 for name, mode, d, dm in (('lvs', 'lvs', 'lvs', 'lvs'), ('lvs_erc', 'erc', 'lvs', 'lvs'), ('drc', 'drc', 'drcb', 'drc'), ('antenna', 'ant', 'ant', 'ant')):
     deck = 'calibre/%s/deck.%s' % (d, dm)
     rc, out = sh('bash %s/cal.sh check %s %s %s/calibre/%s' % (cal, mode, top, run, d))
@@ -293,11 +326,17 @@ for x in ('lvs', 'drc', 'ant'): md5(x, '-')   # (the content chain of the Calibr
 def path_is(p, rel): return os.path.realpath(p) == os.path.realpath(os.path.join(run, rel))
 def deck_lines(deck, key): return re.findall(r'^%s\s+"(.*?)"' % key, text(deck), re.M)
 win = 'calibre/die_window.sed'
-WIN = re.compile(r'^s#\^VARIABLE (xLB|yLB|xRT|yRT) \.\*#VARIABLE \1 -?[0-9.]+#$')
+WIN = re.compile(r'^s#\^VARIABLE (xLB|yLB|xRT|yRT) \.\*#VARIABLE \1 (-?[0-9.]+)#$')
 # (its sed lines; R109: + one "#@expect" line of each result, which cal.sh check deck holds against the deck copy)
 wl = [l for l in text(win).splitlines() if not l.startswith('#@expect ')]
+# (R118; round-18 finding: the window was never compared with the layout) its values = the DIEAREA of the DEF of out/ now
+# (common/block.sh blk_die_window, as the fill step wrote it; and the fill record has the window file, md5_fill)
+wv = dict(m.groups() for m in map(WIN.match, wl) if m)
+wrc, wout = blk_sh('blk_die_window out/%s.def.gz' % top)
+die = dict(zip(('xLB', 'yLB', 'xRT', 'yRT'), wout.split())) if wrc == 0 and len(wout.split()) == 4 else 'no DIEAREA'
 win_ok = sorted(m.group(1) if m else '' for m in map(WIN.match, wl)) == ['xLB', 'xRT', 'yLB', 'yRT'] and \
-    len([l for l in text(win).splitlines() if l.startswith('#@expect ^VARIABLE ')]) == 4
+    len([l for l in text(win).splitlines() if l.startswith('#@expect ^VARIABLE ')]) == 4 and wv == die
+win_ev = '4 VARIABLE lines = the DEF DIEAREA %s: %s' % (die if isinstance(die, str) else ' '.join(die[k] for k in ('xLB', 'yLB', 'xRT', 'yRT')), win_ok)
 for mode, sub, layout, edits in (('fill', 'fill', g[0], {'QB55_FILL_SED': 'BLK_FILL_SED', 'QB55_WINDOW': win}),
                                  ('odpo', 'odpo', g[2], {'QB77_ODPO_SED': 'BLK_ODPO_SED', 'QB55_WINDOW': win}),
                                  ('lvs', 'lvs', g[4], {'QB36_LVS_SED': 'BLK_LVS_SED', 'QB36_LVS_EXTRA': 'QB36_LVS_EXTRA', 'QB36_HCELL': 'QB36_HCELL'}),
@@ -307,7 +346,7 @@ for mode, sub, layout, edits in (('fill', 'fill', g[0], {'QB55_FILL_SED': 'BLK_F
     w = text(rec).split(); got = dict(x.split('=', 1) for x in w[2:] if '=' in x)
     bad = ['%s %s (committed %s)' % (v, got.get(v, 'missing'), KNOBS.get(k, 'none')) for v, k in edits.items()
            if k != win and got.get(v) != KNOBS.get(k)]
-    if win in edits.values() and not (path_is(got.get('QB55_WINDOW', ''), win) and win_ok): bad.append('QB55_WINDOW %s (the run\'s %s, 4 VARIABLE lines: %s)' % (got.get('QB55_WINDOW', 'missing'), win, win_ok))
+    if win in edits.values() and not (path_is(got.get('QB55_WINDOW', ''), win) and win_ok): bad.append('QB55_WINDOW %s (the run\'s %s, %s)' % (got.get('QB55_WINDOW', 'missing'), win, win_ev))
     if w[:2] != ['deck_edits', mode] or set(got) != set(edits): bad.append('%s: %s' % (rec, ' '.join(w[:2] + sorted(got)) if w else 'none'))
     elif os.path.getmtime(os.path.join(run, rec)) < os.path.getmtime(os.path.join(run, deck)): bad.append('%s older than %s' % (rec, deck))
     lp, pr = deck_lines(deck, 'LAYOUT PATH'), deck_lines(deck, 'LAYOUT PRIMARY')
