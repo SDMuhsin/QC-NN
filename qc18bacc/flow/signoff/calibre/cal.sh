@@ -13,7 +13,8 @@
 #   qc18bacc/flow/signoff/calibre/cal.sh check deck <topcell> <rundir>   the deck edits of any run mode's dir took effect
 #        in its deck copy (cal_deck, R109)
 # env: QB36_DRC_SED / QB36_ANT_SED / QB36_LVS_SED / QB55_FILL_SED / QB77_ODPO_SED = extra sed arguments for the deck copy
-#      of that mode only (e.g. "-f drc_blk.sed"; common/block.sh sets each one explicitly per run), QB36_LVS_EXTRA,
+#      of that mode only, "-f <sed file>" pairs only (e.g. "-f drc_blk.sed"; common/block.sh sets each one explicitly
+#      per run; R111: no inline -e), QB36_LVS_EXTRA (a file appended to the LVS deck, with its own #@expect lines),
 #      QB36_HCELL (hcell file); QB55_WINDOW = a sed file of the chip window (fill / odpo: common/block.sh die_window.sed)
 # Record (R106): every run mode writes <rundir>/deck_edits.txt, one line "deck_edits <mode> <var>=<value> ..." of the
 # edits / add-ons it applied to the deck copy (the env variables of that mode above; common/env.sh qb_knob words, an
@@ -38,20 +39,23 @@ cal_edits() {   # cal_edits <mode> <var> ...: deck_edits.txt of the current (run
 # looked into the deck copy).  Every deck sed file (signoff/calibre/*_blk.sed, lvs_case.sed, the run's die_window.sed)
 # states the results of its edits as comment lines "#@expect <ERE>" (a line of the deck copy must match) and "#@absent
 # <ERE>" (no line may match); a sed file without one fails (its edits are unverifiable).
-# cal_deck <rundir>: one CAL_DECK line; non-zero unless deck_edits.txt is there and every sed file it records (the -f
-# files of the *_SED values, QB55_WINDOW) is readable and every one of its #@expect / #@absent lines holds in
-# deck.<mode> of <rundir>.  Run by every run mode right after the deck copy (before Calibre) and by check deck
-# (signoff/verdict.py deck_<mode>).
+# cal_deck <rundir>: one CAL_DECK line; non-zero unless deck_edits.txt is there, every *_SED value it records is "-f
+# <file>" pairs only (R111; hunt round 13 on 1940fd4: an inline "-e <expr>" was applied and checked by nothing), and
+# every sed file (the -f files, QB55_WINDOW) and the LVS add-on QB36_LVS_EXTRA (R111: appended to the deck unchecked;
+# its #@ lines are not appended) is readable and every one of its #@expect / #@absent lines holds in deck.<mode> of
+# <rundir>.  Run by every run mode right after the deck copy (before Calibre) and by check deck (signoff/verdict.py
+# deck_<mode>).
 cal_deck() {
     local d=$1 m w k v a=() i f n=0 bad=()
     read -ra w < "$d/deck_edits.txt" 2> /dev/null; m=${w[1]:-}
     [ "${w[0]:-}" = deck_edits ] && [ -s "$d/deck.$m" ] || { echo "CAL_DECK FAIL $d: no deck_edits.txt or no deck copy deck.${m:-?}"; return 1; }
     for k in "${w[@]:2}"; do
         v=${k#*=}; [ "$v" != "<unset>" ] || continue; v=${v//<flow>/$QBF}; v=${v//,/ }
-        case ${k%%=*} in QB55_WINDOW) a+=(-f "$v") ;; *_SED) a+=($v) ;; esac
+        case ${k%%=*} in QB55_WINDOW|QB36_LVS_EXTRA) a+=(-f "$v") ;; *_SED) a+=($v) ;; esac
     done
     for ((i = 0; i < ${#a[@]}; i++)); do
-        [ "${a[i]}" = -f ] || continue; f=${a[i + 1]:-}
+        [ "${a[i]}" = -f ] && [ -n "${a[i + 1]:-}" ] || { bad+=("not_-f_file:${a[i]}"); continue; }
+        i=$((i + 1)); f=${a[i]}
         [ -r "$f" ] || { bad+=("unreadable:$f"); continue; }
         grep -q '^#@\(expect\|absent\) ' "$f" || { bad+=("no_#@expect:${f##*/}"); continue; }
         while IFS= read -r v; do n=$((n + 1)); k=${v%% *}; v=${v#* }
@@ -233,7 +237,8 @@ lvs) src=$4; d=$5; t=${6:-8}; mkdir -p "$d"; cd "$d" || exit 1; L=$K/CRN65GP/TN6
      sed -e "s#^LAYOUT PRIMARY .*#LAYOUT PRIMARY \"$top\"#" -e "s#^LAYOUT PATH .*#LAYOUT PATH \"$gds\"#" \
          -e "s#^SOURCE PRIMARY .*#SOURCE PRIMARY \"$top\"#" -e "s#^SOURCE PATH .*#SOURCE PATH \"$src\"#" \
          -e "s#^INCLUDE ./DFM/dfm_device#INCLUDE $L/DFM/dfm_device#" ${QB36_LVS_SED:-} "$L/calibre.lvs" > deck.lvs
-     [ -n "${QB36_LVS_EXTRA:-}" ] && cat "$QB36_LVS_EXTRA" >> deck.lvs
+     # (its #@expect / #@absent lines are cal_deck's, not the deck's)
+     if [ -n "${QB36_LVS_EXTRA:-}" ]; then { grep -v '^#@\(expect\|absent\) ' "$QB36_LVS_EXTRA" >> deck.lvs; [ $? -le 1 ]; } || exit 1; fi
      cal_edits lvs QB36_LVS_SED QB36_LVS_EXTRA QB36_HCELL
      cal_deck . || exit 1
      hc=""; if [ -n "${QB36_HCELL:-}" ]; then hc="-hcell $QB36_HCELL"; fi

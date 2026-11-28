@@ -1,0 +1,9 @@
+# The pins of a block ETM that need not have the timing arcs of their direction (signoff/etm/etmcheck.py arcs, R111:
+# a data input setup and hold to a clock pin, an output a clock -> out edge from a clock pin), each with its reason.
+# One line per exception, "<kind> <port regexp> <related pin> -- <reason>":
+#   untimed      an input that needs no arc (<related pin> -)
+#   feedthrough  an output whose required arcs are the max and min combinational arcs from <related pin>, a template of
+#                the port regexp's groups (\1); clock -> out arcs are then not required
+# The port regexp matches the whole pin name (a bus bit as name[i]).  An exception no pin of a block matches is unused.
+untimed rst_n - -- synchronous quasi-static reset: false path from the port, untimed by design (common/constraints.sdc QB_UNTIMED_INPUTS)
+feedthrough act_o\[(\d+)\] act[\1] -- the column's act feedthrough act[b] -> act_o[b], one dont_touch lib cell (blocks/col/io_budget.tcl QB5_FT)

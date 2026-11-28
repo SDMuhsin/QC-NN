@@ -28,7 +28,8 @@
 #   qb_io_lat <step>    compute_clock_latency (I/O latency = median sink latency, derated per check: R77, below) + log
 #   qb_qor <step>       QoR lines (cells, utilization, DRV count, WNS / TNS / NVE per scenario) + rpt/<step>_{qor,drv}.rpt
 #   qb_line <text>      append a line to <run>/summary.txt (and the log)
-#   qb_antenna_rules    kit antenna rules (route / eco via qb_route_setup, abstract.tcl)
+#   qb_antenna_rules    kit antenna rules (cts / route / eco via qb_route_setup, abstract.tcl): defined once per design
+#                       library, then the stored ones checked against their record (R111)
 #   qb_route_setup      routing options of route.tcl / eco.tcl: kit antenna rules, antenna-aware detail routing with
 #                       ANTENNA diodes, port nets checked with a minimum outside gate (no ZRT-311), timing-driven
 #                       global / track / detail routing, redundant via insertion after every detail route (R71)
@@ -64,7 +65,8 @@
 #   qb_lef_grid         kit routing grid {layer {direction pitch offset}} of the LEF (site/pnr.tcl QC_PNR_LEF; R92)
 #   qb_track_check <step> <signal ports>  track gate (R92; floorplan.tcl): track phase against the rows = LEF OFFSET on
 #                       every LEF grid layer, every signal pin on a track of its layer; error otherwise, one summary line
-#   qb_legality <step>  placement legality gate (R92; place.tcl, cts.tcl, eco.tcl; route.tcl R107): check_legality TOTAL, cell overlaps and
+#   qb_legality <step>  placement legality gate (R92; place.tcl, cts.tcl, eco.tcl; route.tcl R107; eco.tcl after its
+#                       fillers too, R111): check_legality TOTAL, cell overlaps and
 #                       verdict parsed from its report; error on any violation or an unparsed report
 #   qb_ndm              the standard-cell NDM of the kit state it is built from (R92; libs.tcl, init.tcl): its name
 #                       carries a key of the LEF, the tech file, the corner .db set, libs.tcl, the diode cell and the
@@ -321,15 +323,32 @@ proc qb_done {step {as 0}} {
     puts "QB_ICC2_DONE $step"
 }
 # kit antenna rules (Milkyway clf antennaRule_n65_<n>lm.tcl): the file is ICC1 Tcl, so the Milkyway library argument and
-# its set_parameter / current_mw_lib / report lines are dropped; they are not stored with the block (R67 [M]: none in a
-# reopened library), so every step that needs them loads them (qb_route_setup, abstract.tcl)
+# its set_parameter / current_mw_lib / report lines are dropped.  They are stored in the design library (R111 [M]: the
+# comment said "not stored with the block (R67: none in a reopened library)", but every step after the first definition
+# re-defined them over themselves, rg5cf6581a route.log / eco.log / abstract.log 28 LMUI-037 "Multiple antenna layer
+# rules ... overwrite" each, cts.log 0; a copy of x109one_a's library: report_antenna_rules of the place, cts and route
+# blocks identical to rpt/antenna_rules.rpt of their definition in cts, place saved before cts, i.e. library-level).
+# So the first step that needs them (cts via qb_route_setup) defines them when the library has none and records their
+# report in rpt/antenna_rules.rpt; every later step (route, eco, abstract) uses the stored ones and fails unless their
+# report equals that record.
+proc qb_antenna_rule_rows {r} { regexp -all -line {^\s*\S+\s+(?:INTERCONNECT|VIA_CUT)\s} $r }   ;# layer rule rows of a report
 proc qb_antenna_rules {} {
-    set nm [regexp -inline {[0-9]+lm} [file tail $::QC_TF]]
-    set fh [open $::QC_MW/clf/antennaRule_n65_$nm.tcl]; set t [read $fh]; close $fh
-    regsub -all -line {^\s*(set_parameter|set lib|remove_antenna_rules|report_antenna_rules).*$} $t {} t
-    regsub -all {(define_antenna_(?:layer_)?rule)\s+\$lib} $t {\1} t
-    uplevel #0 $t
-    redirect $::R/rpt/antenna_rules.rpt { report_antenna_rules }
+    set f $::R/rpt/antenna_rules.rpt
+    redirect -variable r { report_antenna_rules }
+    if {![qb_antenna_rule_rows $r]} {
+        set nm [regexp -inline {[0-9]+lm} [file tail $::QC_TF]]
+        set fh [open $::QC_MW/clf/antennaRule_n65_$nm.tcl]; set t [read $fh]; close $fh
+        regsub -all -line {^\s*(set_parameter|set lib|remove_antenna_rules|report_antenna_rules).*$} $t {} t
+        regsub -all {(define_antenna_(?:layer_)?rule)\s+\$lib} $t {\1} t
+        uplevel #0 $t
+        redirect -variable r { report_antenna_rules }
+        set h [open $f w]; puts -nonewline $h $r; close $h
+        qb_line "antenna_rules defined from antennaRule_n65_$nm.tcl: [qb_antenna_rule_rows $r] layer rule rows (rpt/antenna_rules.rpt)"
+        return
+    }
+    set d [expr {[file exists $f] ? [exec cat $f] : ""}]
+    if {[string trim $r] ne [string trim $d]} { error "qb_antenna_rules: the library's stored antenna rules differ from rpt/antenna_rules.rpt of their definition (or it is missing)" }
+    qb_line "antenna_rules stored in the library: [qb_antenna_rule_rows $r] layer rule rows = rpt/antenna_rules.rpt"
 }
 # port nets (R67): Zroute skips the antenna check of a port net whose outside gate is unknown (route.detail.
 # default_port_external_gate_size -1: ZRT-311 on the cd / clk / rst_n port nets of r65), so the port's outside is one
@@ -399,7 +418,9 @@ proc qb_fillers {} {
 #            0 open nets, 0 floating routes.  Without -check_child_cells check_lvs does not compare the routes with the
 #            shapes inside cells (man: default false): r91b label route [M] 0 shorts without it, 2 with it (net n1803 x
 #            cell U2741 on M1, the short Calibre LVS found).  A count missing from a report (NA) fails the gate.
-#            On failure the block is saved as label <step>_fail (the evidence; no step reads it) and the step errors.
+#            On failure the block is saved as label <step>_fail (the evidence; no step reads it) and the step errors,
+#            without save_lib (R111 [M] scratch copy of x109one_a's library: save_block -as route_fail; save_lib also wrote
+#            the modified in-memory block over label route on disk, route_fail alone left route as it was).
 set ::QB_CLOSE_PASSES 3
 # qb_rpt_counts <text> {key regexp ...}: the last match of each one-capture regexp in a report text, NA if none
 proc qb_rpt_counts {t pats} {
@@ -444,7 +465,7 @@ proc qb_route_close {step {passes {}}} {
     foreach {n d} [list check_routes [apply $num $c] check_lvs $l] { dict for {key v} $d { if {$v ne "0"} { lappend bad "$n $key $v" } } }
     qb_line "$step gate: check_routes [apply $num $c]; check_lvs -check_child_cells true $l; $k closure pass(es): [expr {[llength $bad] ? "FAIL ([join $bad {, }])" : "PASS"}]"
     if {[llength $bad]} {
-        save_block -as $P(TOP)/${step}_fail; save_lib
+        save_block -as $P(TOP)/${step}_fail
         error "$step: route gate failed ([join $bad {, }]); block saved as label ${step}_fail (rpt/${step}_check_routes.rpt, rpt/${step}_check_lvs.rpt)"
     }
 }

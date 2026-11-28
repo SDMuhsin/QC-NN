@@ -4,7 +4,7 @@
 # written by regress.sh ref, a change is a deliberate reference update.  Repeatability: ICC2 on several cores is
 # not run-to-run repeatable (R109 [M]); on 1 core it is (QB_ICC2_CORES=1, the block default, R110), and then the
 # route label's netlist / DEF md5 (route_md5) is compared too; only the lines below are compared
-# run rg5cf6581a host engr-tau-14.usask.ca snapshot commit none tree 5cf65818a65b66d41b886d9e3d31a3dc093864d7
+# run rg4c2819aa host engr-tau-14.usask.ca snapshot commit none tree 4c2819aa2a56a7f8492fbe457b2578abd18e3051
 site_md5 50b51bb3d985181eb1ca5dd9aaabe024 flow/tsmc65/site/pnr.tcl
 site_md5 427a2e0002c1bc97682e2f4be2030d87 flow/tsmc65/site/site.csh
 site_md5 a992ad0a90ae60eae61911156b0a57b3 flow/tsmc65/site/site.sh
@@ -13,7 +13,7 @@ site_md5 26e030de154b0b70e1410bad6a50ad2c flow/tsmc65/site/sram.sh
 inputs syn rgr_lane_tt_p2.0_topo netlist 38196a34ec38a091c4d798319dae32f0 sdc 60a5165e14bb5077ae7dd899d6e4137c run_env cf3d99fa9278a87a5618bd2d3064442a ddc 88378dc1e07cb5fbacab548b5a18724a
 knobs QC_PNR_GUARD_HOLD=0.010 QC_PNR_GUARD_TRAN=0.05 QC_PNR_FROM=<unset> QC_PNR_TO=<unset> QC_ECO_ROUNDS=4 QC_ECO_HOLD_MARGIN=0.005 QC_ECO_DRV_MARGIN=0.02 QC_ECO_NOISE_MARGIN=0.02 QC_ECO_OVERRIDE_STOP=<unset> QC_ECO_PT_ONLY=<unset> QB_ICC2_CORES=1 QB_ECO_CORES=4 QB_ICC2_BIN=<unset> QB_ICC2_LABEL=<unset> QB36_LVS_EXTRA=<unset> QB36_HCELL=<unset> BLK_FILL_SED=-f,<flow>/signoff/calibre/fill_blk.sed BLK_ODPO_SED=-f,<flow>/signoff/calibre/odpo_blk.sed BLK_LVS_SED=-f,<flow>/signoff/calibre/lvs_case.sed BLK_DRC_SED=-f,<flow>/signoff/calibre/drc_blk.sed BLK_ANT_SED=<unset> QC_UNC_SETUP=<unset> QC_UNC_HOLD=<unset> QC_IO_PCT=<unset> QC_MAX_TRAN=<unset> QC_MAX_TRAN_PCT=<unset> QC_CLK_TRAN_MAX=<unset> QB5_SOUTH_IN=<unset> QC_ACT_HOLD_HUB=<unset> QB_ACT_LAUNCH=<unset> QC_ECO_SETUP_MARGIN=<unset> QC_TOOLS=/tmp/ckp908/tools QB_TOOLS_PYTHON=3.10.13 QB_TOOLS_KLAYOUT=0.30.13
 route_md5 netlist fd6e69c33460f5b33ebe45f301ea94ed def fd69c2962d8fdd4f0e6303caf6bd3f1b
-VERDICT qb_lane_n gates 305 pass 305 fail 0 missing 0; FAIL: none; MISSING: none; opt-in declared: none
+VERDICT qb_lane_n gates 314 pass 314 fail 0 missing 0; FAIL: none; MISSING: none; opt-in declared: none
 gate pt_log ss ss_rcw wcl wcl_rcw tt ff ff_rcb ml ml_rcb
 gate limits ss ss_rcw wcl wcl_rcw tt ff ff_rcb ml ml_rcb
 gate setup ss ss_rcw wcl wcl_rcw tt ff ff_rcb ml ml_rcb
@@ -52,6 +52,7 @@ gate pnr_legality_place -
 gate pnr_legality_cts -
 gate pnr_legality_route -
 gate pnr_legality_eco -
+gate pnr_legality_eco_filled -
 gate pnr_route_gate -
 gate pnr_eco_gate -
 gate pnr_pg_route -
@@ -59,7 +60,7 @@ gate pnr_pg_eco -
 gate abstract_lef -
 gate abstract_obs -
 gate abstract_pg_pins -
-gate abstract_log -
+gate icc2_log init floorplan place cts route eco outputs extract abstract
 gate abstract_label -
 gate fresh_abstract -
 gate lvs -

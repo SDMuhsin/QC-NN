@@ -5,7 +5,8 @@
 # location are placed (place_eco_cells), then every changed cell is legalised on free sites (filler / decap cells under
 # it removed), ECO-routed (route_eco, routing options of route.tcl), the emptied sites refilled (decap then FILL, as
 # route.tcl), hard route gate (common.tcl qb_route_close with 0 closure passes, R92: check_routes / check_lvs
-# -check_child_cells all 0 or the step fails; no closure pass inside a round until it is local, PI decision, [M] there).
+# -check_child_cells all 0 or the step fails; no closure pass inside a round until it is local, PI decision, [M] there),
+# legality gate on the refilled layout (common.tcl qb_legality, R111).
 # No optimisation here: the change list is the whole ECO.
 # ECO routing touches only what PT changed (R73, results/r73.md): PT's DMSA predicts every net outside its change list
 # unchanged, so route_eco must not rip those up.  Two router settings did, every round, anywhere in the block:
@@ -61,6 +62,10 @@ route_eco -nets $rn -utilize_dangling_wires true -reroute modified_nets_first_th
 qb_fillers
 qb_route_close $lab 0
 qb_pg_connect $lab
+# legality of the layout written out, after route_eco and the refill (R111; hunt round 13 on 1940fd4: the gate above ran
+# after place_eco_cells only, route.tcl's since R107 after its fillers); line "<label>_filled check_legality: ...", gated
+# for every ECO label of out/'s chain by signoff/verdict.py pnr_legality_eco_filled
+qb_legality ${lab}_filled
 qb_isolate_report $lab
 qb_qor $lab
 qb_done $lab

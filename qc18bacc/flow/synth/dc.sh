@@ -16,7 +16,8 @@ FL=${QB_FL:-$ROOT/qc18bacc/hw/rtl/qb.f}     # QB_FL: other filelist, e.g. hw/rtl
 cmd=${1:-}; shift || true
 case "$cmd" in
 syn) "$FLOW/syn/run_dc.sh" "$FL" "$1" "$2" "${3:-$1_${QC_CORNER}_p$2}" ;;
-pt)  t=$1; shift; "$FLOW/sta/run_pt.sh" "$t" "${@:-tt ss}" ;;
+pt)  t=$1; shift; [ $# -gt 0 ] || set -- tt ss   # (R111: "${@:-tt ss}" passed the default as the one word "tt ss")
+     "$FLOW/sta/run_pt.sh" "$t" "$@" ;;
 all) t=${3:-$1_${QC_CORNER}_p$2}
      "$FLOW/syn/run_dc.sh" "$FL" "$1" "$2" "$t" && "$FLOW/sta/run_pt.sh" "$t" tt ss ;;
 *)   sed -n '2,7p' "$0"; exit 1 ;;

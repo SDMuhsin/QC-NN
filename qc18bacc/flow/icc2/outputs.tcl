@@ -27,4 +27,5 @@ foreach l [get_object_name [get_layers M?]] { set n [expr {30 + [string range $l
 close $f
 write_gds -units $::QB_DBU -long_names -layer_map $::R/out/gds_text.map -merge_files [list $::QC_PNR_GDS] -output_pin all $o.gds
 qb_line "outputs [join [lmap x [glob $::R/out/*] { file tail $x }] { }]"
-puts "QB_ICC2_DONE outputs"
+# (the label in the marker, R111: signoff/verdict.py icc2_log requires the outputs log of the label of out/)
+puts "QB_ICC2_DONE outputs label $label"

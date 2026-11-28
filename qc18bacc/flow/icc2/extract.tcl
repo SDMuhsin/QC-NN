@@ -45,4 +45,5 @@ foreach c $::QC_SIGNOFF_CORNERS {
 }
 # No QoR line here (R92): the label's I/O latency, act_o -min and act loads are those of its last route / eco pass, not of
 # the filled layout (r91b [M] 821 "extract" hold violators against PrimeTime's 69 on the same data); PrimeTime times it.
-puts "QB_ICC2_DONE extract"
+# (the label in the marker, R111: signoff/verdict.py icc2_log requires the extract log of the label of out/)
+puts "QB_ICC2_DONE extract label $label"

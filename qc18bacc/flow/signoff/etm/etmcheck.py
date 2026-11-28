@@ -19,11 +19,19 @@ max_transition, each port's netlist capacitance).  Exit 1 on any of:
   max_transition  an input pin without it or with another value than the reference's (R63: the ETM context
              set_input_transition 0 gave 0 on all data inputs; it must be the context slew, signoff/pt/common.tcl
              qb_etm_context).
+  arcs       (R111; hunt round 13 on 1940fd4: an input that lost its setup / hold arc, or an output without a clock -> out
+             arc, passed) every input that is not a clock pin (clock : true) has a setup_* and a hold_* arc related to a
+             clock pin, every output a rising_edge / falling_edge arc related to a clock pin, a max and a min one
+             (min_delay_flag), unless signoff/etm/arc_except.txt declares it, with its reason: untimed inputs (rst_n),
+             feedthrough outputs (the column's act_o[b], whose required arcs are then the max and min combinational arcs
+             from its declared input act[b]).  [M] rgr rg5cf6581a ss:
+             100 data inputs setup + hold, 18 outputs clock -> out (max + min), rst_n untimed; column r100 ss: 6957 data inputs, 787
+             outputs, 4608 act_o feedthroughs, rst_n.
   no table values, or no reference.
 Not detected: a timing table copied from another pin with the same capacitance (a timing comparison against PrimeTime
 per port is not exact: R98 [M] 30 ps of 3.5 ns on s_rd[306], derate / slew handling of extract_model).
 usage: etmcheck.py <etm.lib>"""
-import math, re, sys
+import math, os, re, sys
 src = sys.argv[1]
 if not src.endswith('.lib'): sys.exit('etmcheck.py: not a .lib: ' + src)
 ref = src[:-4] + '_ref.txt'
@@ -37,11 +45,25 @@ except (OSError, ValueError, AttributeError) as e:
 t = open(src).read()
 def nums(s): return [float(x) for q in re.findall(r'"([^"]*)"', s) for x in q.split(',')]
 pins = list(re.finditer(r'\n\s*pin\s*\(\s*"?([^")]+)"?\s*\)\s*\{', t))
-bad = {'values': [], 'capacitance': [], 'max_transition': []}; n = 0; vmax = (0.0, ''); seen = set()
+bad = {'values': [], 'capacitance': [], 'max_transition': [], 'arcs': []}; n = 0; vmax = (0.0, ''); seen = set()
 def flag(k, what): bad[k].append(what)
+# the declared arc exceptions: (kind, port regexp, related pin template, reason)
+EXC = []
+with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'arc_except.txt')) as f:
+    for l in f:
+        if l.startswith('#') or not l.strip(): continue
+        x = re.fullmatch(r'(untimed|feedthrough) (\S+) (\S+) -- (\S.*)', l.strip())
+        if x: EXC.append(x.groups())
+        else: flag('arcs', 'arc_except.txt line not "<untimed|feedthrough> <port regexp> <related pin> -- <reason>": ' + l.strip())
+def arc(a):   # (timing_type, related_pin, min) of a timing group's text (min: a min_delay_flag arc, the early delays)
+    ty, rp = re.search(r'timing_type\s*:\s*(\w+)', a), re.search(r'related_pin\s*:\s*"([^"]*)"', a)
+    return ty.group(1) if ty else '', rp.group(1) if rp else '', bool(re.search(r'min_delay_flag\s*:\s*true\s*;', a))
+pin = {}   # pin -> (direction, clock pin, [(timing_type, related_pin, min)])
 for i, m in enumerate(pins):
     p = m.group(1); body = t[m.end():pins[i + 1].start() if i + 1 < len(pins) else len(t)]; seen.add(p)
     d = re.search(r'^\s*direction\s*:\s*"?(\w+)', body, re.M); c = re.search(r'^\s*capacitance\s*:\s*(\S+?)\s*;', body, re.M)
+    pin[p] = (d.group(1) if d else '', bool(re.search(r'^\s*clock\s*:\s*true\s*;', body, re.M)),
+              [arc(a) for a in re.findall(r'timing\s*\(\s*\)\s*\{(.*?)\}\s*/\* end of arc', body, re.S)])
     if p not in rcap: flag('capacitance', p + ' not in the reference')
     elif not c or not abs(float(c.group(1)) - rcap[p]) <= CAP_TOL:
         flag('capacitance', '%s %s vs netlist %.6f' % (p, c.group(1) if c else 'none', rcap[p]))
@@ -64,8 +86,33 @@ for i, m in enumerate(pins):
             vmax = max(vmax, (max(abs(y) for y in x), w), key=lambda z: z[0] if math.isfinite(z[0]) else math.inf)
 miss = sorted(set(rcap) - seen)
 if miss: flag('capacitance', '%d reference ports without a pin (%s)' % (len(miss), ' '.join(miss[:3])))
+# arcs per pin: data inputs setup + hold, outputs clock -> out, but the clock pins and the declared exceptions
+clocks = {p for p, (_, ck, _) in pin.items() if ck}; cnt = dict.fromkeys(('clock', 'data_in', 'untimed', 'clock_out', 'feedthrough'), 0)
+def exception(p, kind):   # (match, related pin template) of the first declared exception of <kind> matching pin p, or None
+    return next(((x, rel) for k, rx, rel, _ in EXC if k == kind for x in [re.fullmatch(rx, p)] if x), None)
+for p, (d, ck, arcs) in pin.items():
+    if d not in ('input', 'output', 'inout'): flag('arcs', '%s direction %s' % (p, d or 'none')); continue
+    if d != 'output':
+        if ck: cnt['clock'] += 1
+        elif exception(p, 'untimed'): cnt['untimed'] += 1
+        else:
+            m = [k for k in ('setup', 'hold') if not any(tt.startswith(k + '_') and rp in clocks for tt, rp, _ in arcs)]
+            if m: flag('arcs', '%s (input) no %s arc from a clock pin' % (p, ' / '.join(m)))
+            else: cnt['data_in'] += 1
+    if d != 'input':   # a max and a min (min_delay_flag) delay arc each
+        ft = exception(p, 'feedthrough')
+        if ft:
+            r = ft[0].expand(ft[1])
+            m = [k for k, mn in (('max', False), ('min', True)) if ('combinational', r, mn) not in arcs]
+            if m: flag('arcs', '%s (declared feedthrough) no %s combinational arc from %s' % (p, ' / '.join(m), r))
+            else: cnt['feedthrough'] += 1
+        else:
+            m = [k for k, mn in (('max', False), ('min', True)) if not any(tt in ('rising_edge', 'falling_edge') and rp in clocks and x == mn for tt, rp, x in arcs)]
+            if m: flag('arcs', '%s (output) no %s clock -> out arc' % (p, ' / '.join(m)))
+            else: cnt['clock_out'] += 1
 print('ETMCHECK %s reference %s: period %.3f ns, max_transition %.3f ns, %d ports' % (src, ref, P, MT, len(rcap)))
 print('ETMCHECK %d pins, %d table values, largest |value| %.3f ns (%s), limit |value| < period %.3f' % (len(pins), n, vmax[0], vmax[1], P))
+print('ETMCHECK arcs: %s (signoff/etm/arc_except.txt: %d exceptions)' % (', '.join('%s %d' % kv for kv in cnt.items()), len(EXC)))
 for k, l in bad.items(): print('ETMCHECK %-14s %d bad %s' % (k, len(l), '; '.join(l[:3])))
 fail = ['%s %d' % (k, len(l)) for k, l in bad.items() if l] + (['no table values'] if not n else [])
 print('ETMCHECK %s %s' % (src, 'FAIL ' + ', '.join(fail) if fail else 'PASS'))

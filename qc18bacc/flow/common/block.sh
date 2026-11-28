@@ -16,7 +16,8 @@
 #   (BLK_GATES / BLK_INPUTS, like BLK_*_SED, are unset when this file is sourced: only the block's run.sh sets them)
 # Steps:  pnr      ICC2 libs init floorplan place cts route outputs, then portcheck + fill; QC_PNR_FROM / QC_PNR_TO select
 #                  a range, an unknown step name fails; a step init .. route drops the label of out/ and moves the
-#                  ECO history out/eco aside (blk_unlabel);
+#                  ECO history out/eco aside (blk_unlabel), and so does a range that starts at outputs, once the route
+#                  step's log passes (qb_icc2 -check, R111);
 #                  init records the md5 of its DC inputs in summary.txt once it succeeded (blk_inputs)
 #         eco      sign-off ECO loop, at most QC_ECO_ROUNDS (common/env.sh) rounds: PrimeTime DMSA -> ICC2 eco -> outputs -> portcheck
 #                  -> fill; ends when a round's pre-fix state is clean in every corner at zero margin; fails if it never
@@ -38,7 +39,7 @@
 # (blk_out, written once outputs, portcheck, fill and SPEFs of the label passed): route, then eco, eco2, ... (one ICC2 label per ECO round, so every round's layout stays in the
 # design library).  ECO round files: out/eco/<label>/ = what that round produced and nothing else (PrimeTime log,
 # eco_summary.txt, change list + new-cell record [pt_eco.not_applied.* when the loop stopped before applying it],
-# unfixable reasons, ICC2 log; an earlier attempt of the same round is kept as <label>.try<n>), out/eco/rounds.txt (one
+# unfixable reasons, ICC2 log + its .time; an earlier attempt of the same round is kept as <label>.try<n>), out/eco/rounds.txt (one
 # line per round and per stop / override: the history).
 # Why a loop (R92, PI decision; r91b [M]): one zero-margin ECO pass predicted 0 violators in 9 corners and its own ECO
 # route left 2 hold endpoints at -0.04 / -0.09 ps and one net 1.7 ps over max_transition, all on nets the ECO had not
@@ -91,7 +92,15 @@ blk_pnr() {
     case "$all " in *"$to "*"$from "*) echo "BLK_FAIL pnr: QC_PNR_TO=$to is before QC_PNR_FROM=$from"; return 1 ;; esac
     for s in $all; do
         [ "$s" = "$from" ] && on=1; [ $on = 1 ] || continue
-        if [ "$s" = outputs ]; then blk_out route || return 1
+        if [ "$s" = outputs ]; then
+            # (R111; hunt round 13 on 1940fd4) a range that starts at outputs relabels out/ to route: the route step must have
+            # passed (qb_done saves the label before qb_icc2 judges the step, so a route step that failed on an error under
+            # redirect left a saved route label), and the ECO history of the old label of out/ goes aside as in blk_unlabel
+            if [ "$from" = outputs ]; then
+                qb_icc2 -check "$d" route || { echo "BLK_FAIL pnr outputs: the route step did not pass (ICC2_STEP above): no outputs of label route"; return 1; }
+                blk_unlabel outputs || return 1
+            fi
+            blk_out route || return 1
         elif [ "$s" = libs ]; then blk_libs || return 1
         else
             blk_unlabel "$s" || return 1
@@ -354,7 +363,9 @@ blk_eco() {
         echo "ECO round $k $(date +%F_%T) label $from prefix_total $tot: change list -> label $to prefix_tns $tns" | tee -a "$h"
         # ICC2: the change list on label $from -> $to (name / load / legality gates, ECO route, route gate), then out/ for
         # label $to (blk_out: outputs, portcheck, fill, extract; only then is $to the label of out/)
-        QB_ECO_FROM=$from QB_ECO_TO=$to qb_icc2 "$d" eco; r=$?; cp "$d/eco.log" "$a/"
+        # (the log with its .time: signoff/verdict.py icc2_log checks the ICC2 eco step of every ECO label of out/'s
+        # chain from the round record, qb_icc2 -check, R111)
+        QB_ECO_FROM=$from QB_ECO_TO=$to qb_icc2 "$d" eco; r=$?; cp "$d/eco.log" "$d/eco.log.time" "$a/"
         [ $r = 0 ] && blk_out "$to" \
             || { echo "ECO round $k $(date +%F_%T) label $from: failed after the change list (label of out/: $(cat "$d/out/label.txt" 2> /dev/null || echo none), unfinished: $(cat "$d/out/label.new" 2> /dev/null || echo none))" | tee -a "$h"; return 1; }
     done
@@ -373,7 +384,7 @@ blk_calibre() {
     cat "$o/lvs.log" "$o/drcb.log" "$o/ant.log"; return $r
 }
 # PrimeTime in every sign-off corner on the ICC2 netlist + SPEF (fails on any setup / hold / DRV / noise / min pulse width
-# / min period violator, common/env.sh qb_pt), then the ETMs of every corner (R71; fails on MEXT-6 / MEXT-81 / MEXT-97)
+# / min period violator, common/env.sh qb_pt), then the ETMs of every corner (R71; fails on MEXT-6 / MEXT-80 (R111) / MEXT-81 / MEXT-97)
 blk_post() {
     blk_label > /dev/null || return 1
     ( blk_pt_env || exit 1
@@ -388,7 +399,7 @@ blk_post() {
           # out/etm, so an older one passed): removed first, then each there and none older than the one before
           e=out/etm/${BLK_TOP}_$c; rm -f "$e.lib" "${e}_lib.db" "${e}_ref.txt"
           QC_CORNER=$c qb_pt "etm_$c.log" pt_shell -f "$QBF/signoff/etm/etm.tcl" || r=1
-          ! grep -m 3 'MEXT-6)\|MEXT-81\|MEXT-97' "etm_$c.log" || { echo "ETM $c: table limit / driving cell / feedthrough warnings"; r=1; }
+          ! grep -m 3 'MEXT-6)\|(MEXT-80)\|MEXT-81\|MEXT-97' "etm_$c.log" || { echo "ETM $c: table limit / port aggressor filter / driving cell / feedthrough warnings"; r=1; }
           [ -s "$e.lib" ] && [ -s "${e}_lib.db" ] && [ -s "${e}_ref.txt" ] && ! [ "${e}_lib.db" -ot "$e.lib" ] && ! [ "${e}_ref.txt" -ot "${e}_lib.db" ] \
               || { echo "ETM $c: $e.lib / _lib.db / _ref.txt missing, empty or out of order"; r=1; }
           echo "ETM $c $(grep -c 'RC-011' "etm_$c.log") RC-011 lines"

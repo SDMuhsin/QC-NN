@@ -15,6 +15,12 @@ qb_etm_context
 qb_pt_spef [qb_pt_spef_file $dir $top $corner]
 update_timing
 file mkdir $dir/out/etm
+# Crosstalk of the aggressors at the ports kept in the model (R111): with PrimeTime's default false extract_model warns
+# MEXT-80 and leaves them out.  [M] rgr rg5cf6581a ss, true vs default: every setup / hold table and every clock -> out
+# delay table changed, constraints by -0.10 .. +0.08 ps, clock -> out delays by -2.6 .. +7.1 ps; transitions and the
+# clock pulse width unchanged.  common/block.sh blk_post and signoff/verdict.py etm_log fail on that warning (they match
+# its message id in parentheses: PrimeTime echoes this comment into the log).
+set_app_var si_filter_keep_all_port_aggressors true
 extract_model -library_cell -output $dir/out/etm/${top}_$corner -format {lib db}
 qb_etm_ref $dir/out/etm/${top}_${corner}_ref.txt
 puts "QB_ETM_DONE $corner"

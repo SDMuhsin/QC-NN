@@ -144,8 +144,9 @@ qb_wait() { local j r=0; for j in $(jobs -p); do wait "$j" || r=1; done; return 
 # That count (R92): the errors of a command run under redirect go to the variable / report file, not the log ([M]
 # size_cell on a missing cell under redirect: 0 '^Error' log lines, get_message_info -error_count 2), so the step runs
 # through <rundir>/<step>.run.tcl = the step script, then one QB_ICC2_MSG line with get_message_info -error_count.
-# qb_icc2 -check <rundir> <step>: the same gate on the log of a finished step, no tool run (signoff/verdict.py; R106:
-# its abstract_log gate read only the done marker and the '^Error' lines): the exit status from qc_tool's <log>.time
+# qb_icc2 -check <rundir> <step>: the same gate on the log of a finished step, no tool run (signoff/verdict.py icc2_log:
+# every ICC2 step of out/'s label chain, R111; R106: its abstract_log gate read only the done marker and the '^Error'
+# lines; common/block.sh: the route step before a pnr range from outputs): the exit status from qc_tool's <log>.time
 # (rc NA without one, which fails).
 ICC2_BIN=${QB_ICC2_BIN:-/CMC/tools/synopsys/icc2_vQ-2019.12-SP2/icc2/Q-2019.12-SP2/bin}
 qb_icc2() {

@@ -42,10 +42,12 @@ def pt_log(log):         # common/env.sh qb_pt -check: completion line, exit sta
     if not have(log): return None, 'no ' + log
     l = last(sh('. %s/common/env.sh; qb_pt -check %s' % (flow, log))[1], 'PT_ERRORS ')
     return l.endswith(' evidence ok'), l
-def icc2_log(step):     # common/env.sh qb_icc2 -check: exit status, '^Error' lines, the tool's error count, done marker
-    if not have(step + '.log'): return None, 'no %s.log' % step
-    rc, out = sh('. %s/common/env.sh; qb_icc2 -check %s %s' % (flow, run, step))
-    return rc == 0 and bool(last(out, 'ICC2_STEP ')), last(out, 'ICC2_STEP ') or out.strip()[-160:]
+def icc2_log(step, done, sub=''):   # common/env.sh qb_icc2 -check of <sub>/<step>.log: exit status, '^Error' lines, the tool's
+    log = os.path.join(sub, step + '.log')   # error count, done marker; and the exact marker line <done> (the label it is of)
+    if not have(log): return None, 'no ' + log
+    rc, out = sh('. %s/common/env.sh; qb_icc2 -check %s %s' % (flow, os.path.join(run, sub), step))
+    l = last(out, 'ICC2_STEP '); d = done in text(log).splitlines()
+    return rc == 0 and bool(l) and d, '%s: %s; "%s" %d' % (log, l or out.strip()[-160:], done, d)
 def fresh(name, corner, chain):   # every file exists and none is older than the one it was made from
     gone = [p for p in chain if not have(p)]
     if gone: return gate('fresh_' + name, corner, None, 'no ' + ', '.join(gone))
@@ -115,8 +117,8 @@ for c in corners:
     fresh('pt', c, [spef, txt, log])
     # ETM of the corner: extraction log evidence + its own markers, the model files, the scan of signoff/etm/etmcheck.py
     e = 'etm_%s.log' % c; et = text(e); ok, l = pt_log(e)
-    done = ('QB_ETM_DONE %s' % c) in et.splitlines(); bad = len(re.findall(r'MEXT-6\)|MEXT-81|MEXT-97', et))
-    gate('etm_log', c, ok and done and not bad if ok is not None else None, '%s; QB_ETM_DONE %d; MEXT-6/81/97 lines %d' % (l, done, bad))
+    done = ('QB_ETM_DONE %s' % c) in et.splitlines(); bad = len(re.findall(r'MEXT-6\)|\(MEXT-80\)|MEXT-81|MEXT-97', et))
+    gate('etm_log', c, ok and done and not bad if ok is not None else None, '%s; QB_ETM_DONE %d; MEXT-6/80/81/97 lines %d' % (l, done, bad))
     db = lib[:-4] + '_lib.db'
     rc, out = sh('%s -I %s/signoff/etm/etmcheck.py %s' % (sys.executable, flow, lib)) if have(lib) else (None, '')
     gate('etmcheck', c, rc == 0 and have(db) if have(lib) else None, '%s; %s %d' % (last(out, 'ETMCHECK %s ' % lib) or out.strip()[-160:] or 'no ' + lib, db, have(db)))
@@ -157,10 +159,17 @@ def pnr(name, what, rx, ok):   # the last line in the gate's own format; an olde
 pnr('pnr_tracks', 'floorplan tracks ok|FAIL', r'^floorplan tracks (\S+) row_origin .*$', lambda m: m.group(1) == 'ok')
 # (route and the ECO label of out/, R107: hunt round 11 on d1978e1, nothing checked legality after route_opt / the fillers,
 # and the verdict read place / cts only; the ECO round's line is its legality after place_eco_cells, icc2/eco.tcl)
-for name, st in [(x, x) for x in ('place', 'cts', 'route')] + ([('eco', label or 'eco')] if label != 'route' else []):
-    pnr('pnr_legality_' + name, st + ' check_legality: total / cell overlaps / unplaced cells / verdict',
-        r'^%s check_legality: total (\S+) violations, cell overlaps (\S+), unplaced cells (\S+), verdict (\S+)$' % re.escape(st),
-        lambda m: m.groups() == ('0', '0', '0', 'succeeded'))
+# (R111; hunt round 13 on 1940fd4) every ECO label of out/'s chain, not only the label of out/: its line after
+# place_eco_cells (pnr_legality_eco) and its "<label>_filled" line after route_eco + the refill (pnr_legality_eco_filled)
+LEG = r'^%s check_legality: total (\S+) violations, cell overlaps (\S+), unplaced cells (\S+), verdict (\S+)$'
+def legal(m): return m.groups() == ('0', '0', '0', 'succeeded')
+for st in ('place', 'cts', 'route'):
+    pnr('pnr_legality_' + st, st + ' check_legality: total / cell overlaps / unplaced cells / verdict', LEG % st, legal)
+for name, suf in ((('eco', ''), ('eco_filled', '_filled')) if label != 'route' else ()):
+    ls = [(lab + suf, list(re.finditer(LEG % re.escape(lab + suf), s, re.M))) for lab in chain or []]
+    bad = ['%s: %s' % (st, m[-1].group(0) if m else 'no "%s check_legality" line' % st) for st, m in ls if not m or not legal(m[-1])]
+    gate('pnr_legality_' + name, '-', not bad if chain else None, '; '.join(bad) or ' | '.join(m[-1].group(0) for _, m in ls) if chain else
+         'label of out/ %s is not eco<n>' % (label or 'missing'))
 for name, lab in [('pnr_route_gate', 'route')] + ([('pnr_eco_gate', label or 'eco')] if label != 'route' else []):
     pnr(name, lab + ' gate: ... closure pass(es): PASS|FAIL', r'^%s gate: check_routes .*; check_lvs .* closure pass\(es\): (PASS|FAIL.*)$' % re.escape(lab),
         lambda m: m.group(1) == 'PASS')
@@ -172,7 +181,17 @@ for k in ('lef', 'obs', 'abutment', 'pg_pins'):
     if k == 'abutment' and not l and 'abstract_abutment' not in optin: continue   # opt-in (icc2/abstract.tcl P(ABUT_PAIR))
     n = re.findall(r'\b(?:bad|missing) (-?\d+)', l)
     gate('abstract_' + k, '-', set(n) == {'0'} if l else None, l or 'no "abstract %s" line in summary.txt' % k)
-gate('abstract_log', '-', *icc2_log('abstract'))
+# The ICC2 step logs of out/'s label chain (R111; hunt round 13 on 1940fd4: only the abstract's was checked, and an
+# ICC2 step saves its label (qb_done) before qb_icc2 judges the step, so a step that failed on an error under redirect,
+# seen only in its QB_ICC2_MSG count, left a label that the next steps built on): init .. route in the run dir, the ICC2
+# eco step of each ECO label of the chain from its round record out/eco/<label>/ (common/block.sh blk_eco), the outputs
+# and extract of the label of out/ (their done marker names it), the abstract (its label: abstract_label below).
+# Gate icc2_log, "corner" = the step or ECO label.
+for c, st, done, sub in ([(x, x, 'QB_ICC2_DONE ' + x, '') for x in ('init', 'floorplan', 'place', 'cts', 'route')] +
+                         [(x, 'eco', 'QB_ICC2_DONE ' + x, 'out/eco/' + x) for x in chain or []] +
+                         [(x, x, 'QB_ICC2_DONE %s label %s' % (x, label), '') for x in ('outputs', 'extract')] +
+                         [('abstract', 'abstract', 'QB_ICC2_DONE abstract', '')]):
+    gate('icc2_log', c, *icc2_log(st, done, sub))
 # the label the abstract was made from (icc2/abstract.tcl, its last summary line) = the label of out/ (R99)
 m = list(re.finditer(r'^abstract label (\S+) done\b.*$', s, re.M))
 gate('abstract_label', '-', m[-1].group(1) == label if m else None,
