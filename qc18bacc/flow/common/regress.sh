@@ -21,8 +21,10 @@
 #                                               settings) = the reference's knobs line, the queue spec has no VAR=val
 #                                               word, the signoff step's verdict (signoff/verdict.sh) is
 #                                               SIGNOFF PASS with no FAIL and no MISSING gate and its VERDICT line equals
-#                                               the reference's, and the gate set (gate name x corner) equals the
-#                                               reference's; prints the difference of the gate sets otherwise.  The
+#                                               the reference's, the gate set (gate name x corner) equals the
+#                                               reference's (prints the difference of the gate sets otherwise) and, when
+#                                               the reference has a route_md5 line (a 1-core run), the route label's
+#                                               netlist / DEF md5 (summary.txt outputs_md5, R110) equal it.  The
 #                                               reference is blocks/rgr/reference.txt of <commit | tree-ish> (git show;
 #                                               R104: before, the checkout's file)
 #   regress.sh ref <host> <run> [<commit | tree-ish>]
@@ -30,10 +32,11 @@
 #                                               pass every check but the reference comparison: a changed gate set is a
 #                                               deliberate, reviewed reference update (git diff), never a silent one; so
 #                                               is a new site manifest or new DC inputs (a re-synthesised netlist)
-# By design the regression compares gate sets and verdicts, never numbers (R109 [M], icc2/common.tcl): ICC2 runs on several
-# cores are not run-to-run repeatable (two rgr runs of one tree, knobs and inputs differ from place_opt's global route on,
-# also with every ICC2 repeatability option set; 1-core runs are identical at ~2x the ICC2 wall time); the cores are a
-# knob (QB_ICC2_CORES, BLK_KNOBS), so equal to the reference's.
+# Repeatability (R109 [M], icc2/common.tcl): ICC2 runs on several cores are not run-to-run repeatable (two rgr runs of one
+# tree, knobs and inputs differ from place_opt's global route on, also with every ICC2 repeatability option set); 1-core
+# runs are identical at ~2x the ICC2 wall time.  So the block runs ICC2 on 1 core (R110, PI decision: blocks/rgr/rgr.env
+# QB_ICC2_CORES=1, a knob, so equal to the reference's) and the regression compares the route layout's md5 as well as
+# gate sets and verdicts; a reference of a multi-core run has no route_md5 line, and then only gate sets and verdicts.
 # The run's own files are read (queue.state, summary.txt, the signoff step's output) and the verdict is re-run from the
 # snapshot on the run dir (blocks/rgr/run.sh signoff), which must equal the signoff step's output (check verdict_rerun);
 # the snapshot is found by its run name.
@@ -101,6 +104,8 @@ echo "V $(head -n 1 "$snap/VERSION")"
   echo "M files $(wc -l < MANIFEST.md5) md5_mismatch $b unlisted_or_missing $x" )
 sed -n 's/^site_md5 /S /p' "$snap/VERSION"
 grep '^init inputs ' "$d/summary.txt" 2> /dev/null | tail -n 1 | sed 's/^init inputs /I /'
+# the route label's layout identity (R110, common/block.sh blk_out_md5): md5 of its netlist and DEF
+grep '^outputs_md5 route ' "$d/summary.txt" 2> /dev/null | tail -n 1 | sed 's/^outputs_md5 route /L /'
 sed 's/^/Q /' "$q/queue.state" || exit 1
 # the settings (R103): every step's BLK_KNOBS line (common/block.sh blk_knobs) as its queue output has it (K), the
 # snapshot's committed defaults = common/env.sh qb_committed_knobs: run.sh knobs in an empty environment (D), the snapshot's flow root (F),
@@ -174,7 +179,7 @@ settings() {
 }
 # check <host> <run> <rev> [1] (1 = ref: everything but the comparison with the reference)
 check() {
-    local f bad=0 st v s g r o k m rt
+    local f bad=0 st v s g r o k m rt l
     f=$(facts "$1" "$2") || { echo "$f"; die "no facts of run $2 on $1"; }
     [[ $f != *REGRESS_FAIL* ]] || { echo "$f"; die "no facts of run $2 on $1"; }
     # the verdict re-run on the run dir must be the signoff step's saved one; the checks below read the re-run
@@ -204,14 +209,17 @@ check() {
     if [ "${4:-0}" = 1 ]; then
         [ $bad = 0 ] || die "run $2 does not pass: no reference from it"
         grep -q '^S ' <<< "$f" && grep -q '^I ' <<< "$f" || die "run $2 has no site manifest or no 'init inputs' line: no reference from it"
+        [[ " $k " != *" QB_ICC2_CORES=1 "* ]] || grep -q '^L ' <<< "$f" || die "1-core run $2 has no 'outputs_md5 route' line: no reference from it"
         { echo "# Regression reference (common/regress.sh check): the site manifest of the snapshot (site_md5), the DC inputs of"
           echo "# the run (inputs: md5 of netlist, DC SDC, run.env), the committed defaults of the flow knobs every step ran with"
           echo "# (knobs), the verdict line and the gate set (gate name: sign-off corners, '-' = block gate) of the run below;"
           echo "# written by regress.sh ref, a change is a deliberate reference update.  Repeatability: ICC2 on several cores is"
-          echo "# not run-to-run repeatable (R109 [M]), so a run's numbers differ from this run's; only the lines below are compared"
+          echo "# not run-to-run repeatable (R109 [M]); on 1 core it is (QB_ICC2_CORES=1, the block default, R110), and then the"
+          echo "# route label's netlist / DEF md5 (route_md5) is compared too; only the lines below are compared"
           echo "# run $2 host $1 snapshot $(sed -n 's/^V //p' <<< "$f")"
           sed -n 's/^S /site_md5 /p; s/^I /inputs /p' <<< "$f"
           echo "knobs $k"
+          [[ " $k " != *" QB_ICC2_CORES=1 "* ]] || sed -n 's/^L /route_md5 /p' <<< "$f"
           echo "$v"; grep '^GATE ' <<< "$f" | gates; } > "$ref"
         echo "REGRESS reference $ref from $2: $(grep -c '^gate ' "$ref") gate names"; return 0
     fi
@@ -223,6 +231,11 @@ check() {
     [ "knobs $k" = "$(grep '^knobs ' <<< "$rt")" ] && echo "CHECK knobs_ref PASS the committed knob defaults = reference" \
         || { echo "CHECK knobs_ref FAIL (< reference, > the snapshot's committed defaults; a deliberate change needs regress.sh ref + review):"
              diff <(grep '^knobs ' <<< "$rt" | cut -d' ' -f2- | tr ' ' '\n') <(tr ' ' '\n' <<< "$k") | grep '^[<>]' | head -n 20; bad=1; }
+    # the layout (R110): a reference of a 1-core run (repeatable ICC2) records the route label's netlist / DEF md5
+    if l=$(grep '^route_md5 ' <<< "$rt"); then
+        [ "$l" = "$(sed -n 's/^L /route_md5 /p' <<< "$f")" ] && echo "CHECK route_md5 PASS route netlist / DEF md5 = reference (1-core run)" \
+            || { echo "CHECK route_md5 FAIL run: $(sed -n 's/^L //p' <<< "$f" | grep . || echo 'no outputs_md5 route line'); reference: ${l#route_md5 }"; bad=1; }
+    else echo "CHECK route_md5 SKIP the reference is not of a 1-core run (no route_md5 line)"; fi
     [ "$v" = "$(grep '^VERDICT ' <<< "$rt")" ] && echo "CHECK verdict_line PASS = reference" \
         || { echo "CHECK verdict_line FAIL reference: $(grep '^VERDICT ' <<< "$rt")"; bad=1; }
     if g=$(diff <(grep '^gate ' <<< "$rt" | sort) <(grep '^GATE ' <<< "$f" | gates | sort)); then

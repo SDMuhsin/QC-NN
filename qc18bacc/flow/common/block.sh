@@ -189,9 +189,18 @@ blk_label() {   # prints the label of out/; fails when there is none
 blk_out() {   # blk_out <label> [outputs|fill]: out/ for <label> from that stage on, then <label> is the label of out/
     local l=$1 s=${2:-outputs} n=$d/out/label.new
     mkdir -p "$d/out" && rm -f "$d/out/label.txt" || return 1
-    if [ "$s" = outputs ]; then { echo "$l outputs" > "$n" && QB_ICC2_LABEL=$l qb_icc2 "$d" outputs; } || return 1; fi
+    if [ "$s" = outputs ]; then { echo "$l outputs" > "$n" && QB_ICC2_LABEL=$l qb_icc2 "$d" outputs && blk_out_md5 "$l"; } || return 1; fi
     { echo "$l fill" > "$n" && blk_portcheck && blk_fill_label "$l"; } || return 1
     echo "$l" > "$n.tmp" && mv -f "$n.tmp" "$d/out/label.txt" && rm -f "$n" && echo "BLK_LABEL $l is the label of out/"
+}
+# The layout identity of a label (R110): one summary.txt line "outputs_md5 <label> netlist <md5> def <md5>" per outputs
+# of the label, md5 of its out/ netlist and DEF without the writers' comment lines (date, user, the write command with
+# the run dir); common/regress.sh compares the route label's with the reference of a 1-core run (ICC2 repeatable)
+blk_out_md5() {
+    local o=$d/out/$BLK_TOP n f
+    n=$(set -o pipefail; grep -v '^//' "$o.v" | md5sum | cut -c1-32) \
+        && f=$(set -o pipefail; gzip -dc "$o.def.gz" | grep -v '^#' | md5sum | cut -c1-32) || { echo "BLK_FAIL outputs md5 of $o.v / .def.gz"; return 1; }
+    echo "outputs_md5 $1 netlist $n def $f" >> "$d/summary.txt" && echo "BLK_OUT_MD5 $1 netlist $n def $f"
 }
 blk_pending() {   # finishes the unfinished label of out/ (out/label.new), if there is one
     local l s

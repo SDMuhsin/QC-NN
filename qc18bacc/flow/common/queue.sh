@@ -18,8 +18,11 @@
 # cp failed, the queue started anyway and reported "QUEUE all done"): the spec is a readable file with at least one step
 # line, and every step line parses: each wait condition one of the forms above, then VAR=val words, then <blk> <step>
 # <run> with an executable blocks/<blk>/run.sh.  The detached queue checks its copy again.
+# A step's environment is the queue's own plus its VAR=val words: the queue does not source common/env.sh (R110; it did,
+# so its exported defaults, e.g. QB_ICC2_CORES=16, reached every step as an environment value and overrode a block's own
+# default, blocks/rgr/rgr.env); it needs only the flow root QBF.
 set -uf
-. "$(dirname "$0")/env.sh"
+QBF=$(cd "$(dirname "$0")/.." && pwd)
 qspec() {   # qspec <spec>: one QUEUE_FAIL line per problem, non-zero if there is any
     local f=$1 l c n=0 m=0 bad=0 C
     [ -f "$f" ] && [ -r "$f" ] || { echo "QUEUE_FAIL spec $f: missing or unreadable"; return 1; }

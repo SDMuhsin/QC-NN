@@ -8,7 +8,8 @@
 # Every step is regression-ready (README: pnr eco calibre post views signoff); PrimeTime: signoff/pt/rgr_blk.tcl (the
 # generic block sign-off signoff/pt/blk.tcl with this block's IO budget and path classes); no opt-in verdict gates.
 set -u
-here=$(cd "$(dirname "$0")" && pwd); . "$here/../../common/env.sh"; . "$here/rgr.env"; . "$QBF/common/block.sh"
+# (rgr.env before common/env.sh: its QB_ICC2_CORES default comes ahead of env.sh's; rgr.env reads nothing of env.sh)
+here=$(cd "$(dirname "$0")" && pwd); . "$here/rgr.env"; . "$here/../../common/env.sh"; . "$QBF/common/block.sh"
 C=$QBF/signoff/calibre
 BLK=rgr BLK_TOP=$RGR_TOP BLK_SYN=$RGR_SYN BLK_PERIOD=$RGR_PERIOD BLK_CFG=$here/icc2.cfg BLK_PT=$QBF/signoff/pt/rgr_blk.tcl
 BLK_FILL_SED="-f $C/fill_blk.sed" BLK_ODPO_SED="-f $C/odpo_blk.sed" BLK_LVS_SED="-f $C/lvs_case.sed" BLK_DRC_SED="-f $C/drc_blk.sed"

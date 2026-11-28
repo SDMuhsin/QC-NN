@@ -92,7 +92,8 @@ file mkdir $::R/rpt $::R/out
 # .flow.repeatability true and route.global.deterministic on (man: repeatable with the same thread count): x109det_a / b
 # (tau08) differ too (place.log 33651.32 vs .33 um, route DEF / netlist / QoR differ), runtime as the default; 1 core:
 # x109one_a (tau04) = x109one_b (tau14), route DEF, netlist and QoR identical, place / cts / route wall 8:28 vs 4:13 at 16
-# cores.  So the regression compares gate sets and verdicts, never numbers (common/regress.sh); cores = QB_ICC2_CORES, a knob.
+# cores.  Cores = QB_ICC2_CORES, a knob: the regression block runs on 1 (R110, blocks/rgr/rgr.env) and common/regress.sh
+# compares its route netlist / DEF md5 with the reference as well as gate sets and verdicts.
 if {[info commands set_host_options] ne ""} { set_host_options -max_cores $::env(QB_ICC2_CORES) }
 
 proc qb_line {t} {

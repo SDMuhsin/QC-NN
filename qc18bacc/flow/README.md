@@ -95,11 +95,15 @@ word; and its signoff step's verdict, which the snapshot's signoff
 step re-run on the run dir must reproduce line for line (R102, check verdict_rerun)
 (SIGNOFF PASS, no FAIL / MISSING gate, VERDICT line = the reference's) and compares its gate set (gate name x corner) with
 `blocks/rgr/reference.txt`, printing the difference: a checker that adds, drops or renames a gate fails the regression
-until the reference is rewritten with `ref` and the change is reviewed in the commit.  Gate sets and verdicts, never
-numbers, by design (R109 [M], icc2/common.tcl): ICC2 on several cores is not run-to-run repeatable, two rgr runs of one
-tree, knobs and inputs differ from place_opt's global route on, also with every ICC2 repeatability option set
-(place_opt / refine_opt / clock_opt `.flow.repeatability`, `route.global.deterministic`); 1-core runs are identical (two
-hosts) at about twice the ICC2 wall time; the cores are the knob QB_ICC2_CORES.  By hand, the chain is:
+until the reference is rewritten with `ref` and the change is reviewed in the commit.  Repeatability (R109 [M],
+icc2/common.tcl): ICC2 on several cores is not run-to-run repeatable, two rgr runs of one tree, knobs and inputs differ
+from place_opt's global route on, also with every ICC2 repeatability option set (place_opt / refine_opt / clock_opt
+`.flow.repeatability`, `route.global.deterministic`); 1-core runs are identical (two hosts) at about twice the ICC2 wall
+time.  So the block runs ICC2 on 1 core (R110, PI decision: `rgr.env` QB_ICC2_CORES=1, sourced before common/env.sh's
+default 16; an environment value fails the knobs check), and `check` also compares the route label's netlist / DEF md5
+(summary.txt `outputs_md5 route`, common/block.sh blk_out_md5: without the writers' comment lines) with the reference's
+`route_md5` line, which `ref` writes from a 1-core run.  common/queue.sh does not source env.sh (R110): a step's
+environment is the queue's plus its VAR=val words.  By hand, the chain is:
 ```
 qc18bacc/flow/common/deploy.sh <commit> <host>:<dir>    # git archive of qc18bacc/flow + flow/tsmc65 at <commit> + the host's untracked site files -> <dir>
 qc18bacc/flow/synth/run.sh rgr                          # once per build root: DC of one PPU lane -> $B/syn/rgr_lane_tt_p2.0_topo
@@ -115,7 +119,7 @@ inputs from outside the snapshot (summary.txt `init inputs`: md5 of netlist, DC 
 `BLK_INPUTS`, e.g. the column's reference abstract (R101), the regression block's DC database (R109); written by common/block.sh blk_inputs after each successful init step (R109; init.tcl refuses an existing design library); every later reader, the portcheck and the floorplan pin
 DEF, gets the file through blk_input, which fails unless its md5 is still the recorded one, R102)
 with the reference (R100): a new site file or a re-synthesised netlist needs a reviewed `ref`.  The block uses the shared driver like the column: `rgr.env` (netlist tag, period 2.5 ns, die 130 x 130 um, pins,
-the column's P&R guard-bands QC_PNR_GUARD_HOLD 0.010 ns / QC_PNR_GUARD_TRAN 0.05, as `col.env`; environment overrides them),
+the column's P&R guard-bands QC_PNR_GUARD_HOLD 0.010 ns / QC_PNR_GUARD_TRAN 0.05, as `col.env`, ICC2 cores 1; environment overrides them),
 `icc2.cfg` (the column's opt-ins HOLD_RESERVE / ISOLATE / VIRTUAL_FILL / PREROUTE_CAP_SCALE / PREROUTE_SETUP_MARGIN and, R109, its per-bit chain IO IO_LOAD / IO_TRAN, y_o -> x, on this design), `io_budget.tcl` (the column's budget procs with
 its own class table `::QB5_BUDGET`), pins: `floorplan/edge_pins.py` (pin-only abstract LEF: inputs west, outputs east on
 M3 tracks) -> `floorplan/abstract_pins.py` (floorplan DEF).  Block-config hooks of the shared ICC2 steps: `P(IO_SAMPLE)`

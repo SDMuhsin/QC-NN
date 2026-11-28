@@ -18,7 +18,8 @@ export QC_ECO_HOLD_MARGIN=${QC_ECO_HOLD_MARGIN:-0.005}
 export QC_ECO_DRV_MARGIN=${QC_ECO_DRV_MARGIN:-0.02}
 export QC_ECO_NOISE_MARGIN=${QC_ECO_NOISE_MARGIN:-0.02}
 # ECO loop rounds (common/block.sh blk_eco), ICC2 cores (icc2/common.tcl), PrimeTime DMSA ECO cores per scenario
-# (signoff/pt/drv_eco.tcl): their one default (R103; each was a default of its reader)
+# (signoff/pt/drv_eco.tcl): their one default (R103; each was a default of its reader); the regression block's .env
+# sets its own QB_ICC2_CORES default (1, R110) before this file
 export QC_ECO_ROUNDS=${QC_ECO_ROUNDS:-4} QB_ICC2_CORES=${QB_ICC2_CORES:-16} QB_ECO_CORES=${QB_ECO_CORES:-4}
 # Flow knobs (R103): every environment setting a block step reads that changes what it does (the P&R guard-bands of the
 # block .env, the ECO margins / rounds / modes above, pnr range, cores, ICC2 binary and label, LVS deck extras), the
