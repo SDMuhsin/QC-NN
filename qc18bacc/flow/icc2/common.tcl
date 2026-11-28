@@ -59,6 +59,8 @@
 #                       (eco.tcl: placed, then legalised; R108)
 #   qb_eco_nets <chg>   ECO route nets (R105, eco.tcl): the non-PG nets on the pins of every cell the change list sizes,
 #                       moves or creates -> {cells nets}
+#   qb_eco_noise_ndr <lst> <rec> <label>  spacing rule qb_noise on PrimeTime's unfixable noise victim nets (R116, eco.tcl),
+#                       their routes removed for route_eco; the nets ruled -> <rec>, one summary line
 #   qb_pg_check <step>  PG pin gate (R67; floorplan.tcl, abstract.tcl): the VDD / VSS terminals are exactly the straps of
 #                       the chip PG grid's pin layer (floorplan/pg_grid.tcl ::QB_PG_PIN): that layer only, strap width,
 #                       each across the whole die, low edges = qb_pg_expect of the core (VSS at core + offset, VDD at
@@ -711,7 +713,8 @@ proc qb_eco_driver {name} {
 }
 # ECO route nets (R105, eco.tcl route_eco -nets): the cells the change list touches (size_cell, set_cell_location, new
 # cells of insert_buffer / add_buffer_on_route) and the nets on their pins but PG.  Returns {cells nets}: the number of
-# those cells and the net collection; error if the list touches no cell (route_eco -nets would route nothing).
+# those cells and the net collection; error if the list has a change and touches no cell on a signal net (route_eco
+# -nets would route nothing); an empty list (no change command, R116: a round with only spacing-rule nets) gives {0 {}}.
 proc qb_eco_nets {chg} {
     current_instance
     set sc ""; set c {}
@@ -725,8 +728,33 @@ proc qb_eco_nets {chg} {
     foreach x [qb_eco_new_cells $chg] { lappend c [lindex $x 0] }
     set c [get_cells -quiet [lsort -unique $c]]
     set n [get_nets -quiet -of_objects [get_pins -quiet -of_objects $c] -filter "net_type!=power && net_type!=ground"]
-    if {![sizeof_collection $n]} { error "qb_eco_nets: [file tail $chg] touches no cell on a signal net" }
+    if {![sizeof_collection $n] && [qb_eco_change_count $chg]} { error "qb_eco_nets: [file tail $chg] touches no cell on a signal net" }
     return [list [sizeof_collection $c] $n]
+}
+# Spacing rule on noise victims (R116, PI decision; eco.tcl): the nets of <lst> (PrimeTime's pt_eco_ndr.txt, one net
+# per line: the victims its last noise pass could not fix, signoff/pt/drv_eco.tcl qb_eco_ndr_nets, with the [M] case)
+# get the routing rule qb_noise (spacing x 2, the form of qb_feedthru / qb_clk; created once in the design library) and
+# lose their routes, so route_eco -nets routes them again under it.  Excluded and reported: clock nets and nets that
+# already have a routing rule (a second rule would replace theirs).  The nets ruled -> <rec> (one per line: common/block.sh
+# blk_eco ends the loop when one is a victim again); a listed net missing in the block is an error.  Returns the nets ruled.
+proc qb_eco_noise_ndr {lst rec lab} {
+    current_instance
+    set names {}
+    if {[file exists $lst]} { set f [open $lst]; foreach l [split [read $f] "\n"] { if {[string trim $l] ne ""} { lappend names [string trim $l] } }; close $f }
+    set all [get_nets -quiet -exact $names]
+    if {[sizeof_collection $all] != [llength $names]} { error "qb_eco_noise_ndr: [sizeof_collection $all] of [llength $names] nets of [file tail $lst] in the block" }
+    set clk [filter_collection $all "net_type==clock"]
+    # (routing_rule "default" on every net without one, [M] r102 eco2: 239040 signal nets; qb_clk 512, qb_feedthru 4608)
+    set own [filter_collection [remove_from_collection $all $clk] "routing_rule!=default"]
+    set n [remove_from_collection [remove_from_collection $all $clk] $own]
+    if {[sizeof_collection $n]} {
+        if {![sizeof_collection [get_routing_rules -quiet qb_noise]]} { create_routing_rule qb_noise -default_reference_rule -multiplier_spacing 2 }
+        set_routing_rule $n -rule qb_noise
+        remove_routes -nets $n -global_route -detail_route
+    }
+    set f [open $rec w]; foreach x [get_object_name $n] { puts $f $x }; close $f
+    qb_line "$lab noise NDR qb_noise (spacing x 2) on [sizeof_collection $n] of [llength $names] nets; excluded: clock [sizeof_collection $clk] [lrange [get_object_name $clk] 0 4], own rule [sizeof_collection $own] [lrange [get_object_name $own] 0 4]"
+    return $n
 }
 # add_buffer_on_route points (eco.tcl): the change list as eco.tcl sources it.  PT writes each buffer {name lib_cell x y
 # layer}; ICC2 takes only that point and gives the buffer the loads of the route subtree downstream of it.  Two ways the

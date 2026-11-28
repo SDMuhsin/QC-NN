@@ -58,7 +58,11 @@ qb_legality $lab
 qb_eco_abor_report $lab $abor_placed
 set_app_options -name route.detail.eco_route_use_soft_spacing_for_timing_optimization -value false
 lassign [qb_eco_nets $chg] nc rn
-qb_line "$lab route_eco nets [sizeof_collection $rn] (pins of $nc changed cells)"
+# PrimeTime's unfixable noise victims (R116): spacing rule, routes removed, routed again below with the ECO's nets
+set ndr [qb_eco_noise_ndr $::R/out/eco/pt_eco_ndr.txt $::R/out/eco/$lab/pt_eco_ndr_set.txt $lab]
+set rn [add_to_collection -unique $rn $ndr]
+if {![sizeof_collection $rn]} { error "$lab: nothing to route (no changed cell, no noise victim net ruled)" }
+qb_line "$lab route_eco nets [sizeof_collection $rn] (pins of $nc changed cells, [sizeof_collection $ndr] noise NDR nets)"
 route_eco -nets $rn -utilize_dangling_wires true -reroute modified_nets_first_then_others
 qb_fillers
 qb_route_close $lab 0

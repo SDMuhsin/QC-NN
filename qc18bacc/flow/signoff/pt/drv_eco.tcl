@@ -62,8 +62,9 @@
 #   Writes <QC_PNR_OUT>/out/eco/pt_eco.tcl (icc2tcl, applied by flow/icc2/eco.tcl), pt_eco_cells.txt
 #   (its new cells, R90: qb_eco_cells_write), eco_summary.txt; with a change list also the lines "eco_changes n" (its
 #   change commands, common/eco_changes.tcl qb_eco_change_count) and "eco_residual" (R116: the end state's non-zero
-#   corner:check counts of prefix_total's checks); n = 0 with a non-zero prefix_total ends the loop before ICC2
-#   (common/block.sh blk_eco)
+#   corner:check counts of prefix_total's checks), and pt_eco_ndr.txt with the line "eco_ndr_nets m" (the nets of the
+#   noise victims the last noise pass could not fix, which ICC2 eco.tcl routes with a spacing rule: qb_eco_ndr_nets);
+#   n = m = 0 with a non-zero prefix_total ends the loop before ICC2 (common/block.sh blk_eco)
 #   (lines "<tag> <corner> <record>", in the log as QB_ECO_STATE lines: timing counts before / drc / setup / hold /
 #   post_noise_setup / post_noise_hold [the end state] = setup / hold / recovery / removal violators, max_tran / max_cap
 #   pins (of them in the clock network), hold / setup endpoints inside their fix margin [0, margin) (hold_band /
@@ -119,6 +120,10 @@ set ::QB_ECO_PMODE open_site
 # free sites stays a reported violator (unfixable reasons <pfx>drc_<type>[_clock]*, qb_eco_timing_count), not a change
 # without a location.  (R69 [M] had one port-driven noise victim, column s_rd[523], unfixable in occupied_site and fixed
 # only without physical constraints: such a case is now reported for the PI.)
+# -cell_type combinational (R116): PT Q-2019.12-SP2 man fix_eco_drc documents combinational | clock_network only, "Only
+# combinational logic cells are resized. Sequential cells are not resized" (no option); the former {combinational
+# sequential} was accepted silently and did the same ([M] r102 eco2 copy, ml_rcb: unfixable I Q and 0 commands both).
+# A noise victim the pass cannot fix gets the spacing rule instead (qb_eco_ndr_nets).
 # Clock-network DRV (cbufs given, DMSA master): physically aware too, with set_eco_options -physical_enable_clock_data
 # in every scenario (qb_eco_phys; PT man fix_eco_drc "Clock Network Fixing": physically aware clock fixing needs it),
 # so PT sees the clock cells' placement and never sizes a fixed clock cell into its neighbour; sizing restricted to
@@ -133,7 +138,7 @@ proc qb_eco_drc {pfx bufs {cbufs {}} {types {max_transition max_capacitance nois
             qb_eco_all ${tag}noise_guard_on {qb_eco_noise_guard on}
         } else { qb_eco_all ${tag}${ty}_guard_on "qb_eco_guard $ty on" }
         fix_eco_drc -type $ty -methods {size_cell insert_buffer} -buffer_list $bufs \
-            -cell_type {combinational sequential} -physical_mode $::QB_ECO_PMODE -verbose \
+            -cell_type combinational -physical_mode $::QB_ECO_PMODE -verbose \
             -unfixable_reasons_prefix ${pfx}drc_$ty -unfixable_reasons_format text
         if {[llength $cbufs] && $ty ne "noise"} {
             remote_execute { set eco_alternative_cell_attribute_restrictions qb_clock_cell }
@@ -260,6 +265,30 @@ proc qb_eco_noise_count {} {
     redirect -variable n { report_noise -all_violators -nosplit }
     return "noise [qb_pt_noise_viol $n]"
 }
+# qb_eco_noise_victims (inside the noise state): the violators of the same report, "victims {pin net ...}"
+proc qb_eco_noise_victims {} {
+    redirect -variable n { report_noise -all_violators -nosplit }
+    set v {}
+    foreach {- p net} [regexp -all -inline -line {^\s*(\S+)\s+\((\S+)\)\s+-?[0-9.]+\s+-?[0-9.]+\s+-?[0-9.]+\s*$} $n] { lappend v $p $net }
+    return [list victims $v]
+}
+# Noise victims for the spacing rule (R116, PI decision; ICC2 flow/icc2/common.tcl qb_eco_noise_ndr).  [M] tau08 col/r102
+# round 3: the one violator, ml_rcb U24/A2 on g_fin2_s2[16] (DFQD2 Q, 3 loads, 273 um, 265 um on M6), unfixable I Q: PT
+# does not size a flop (above) and its only buffer (BUFFD2 at Q, without physical constraints) left the bump at 0.40 V
+# against 0.39 V immunity (0.41 V before).  The net is coupling-bound: 55.6 of 64.6 fF wire cap is coupling, 43 fF of it
+# to two parallel M6 nets of another lane; PT what-if: coupling x 0.75 -> 0.35 V, x 0.5 -> 0.24 V (clear); DFQD4 0.28 V.
+# qb_eco_ndr_nets <unfixable reasons file of the last noise pass> <end_noise_victims records>: the victim nets of the end
+# state's violators whose pin that pass reports unfixable, de-duplicated over the corners (a violator the pass did not
+# see, e.g. one from the timing repair after it, is the next round's PT's)
+proc qb_eco_ndr_nets {uf recs} {
+    set up {}
+    if {[file exists $uf]} {
+        foreach l [split [exec cat $uf] "\n"] { if {[regexp {^\s*(\S+)\s+[A-Z]( [A-Z])*\s*$} $l -> p]} { dict set up $p 1 } }
+    }
+    set nets {}
+    foreach {c x} $recs { foreach {p n} [dict get $x victims] { if {[dict exists $up $p]} { lappend nets $n } } }
+    return [lsort -unique $nets]
+}
 # qb_eco_noise_enter on|off: the block's noise-only analysis state, ::QB_PT_NOISE_STATE of its PrimeTime script ("<command>
 # on" enters it, "<command> off" restores the timing state), then the timing and noise update every later count needs
 # (R92 [M] col: after off the constraints are exact again, act_o transitions within 0.00018 ns)
@@ -322,7 +351,7 @@ source [file join [file dirname [file normalize [info script]]] .. .. common lim
 source [file join [file dirname [file normalize [info script]]] .. .. common eco_changes.tcl]   ;# (qb_eco_change_count)
 set eco_report_unfixed_reason_max_endpoints 1000
 set dir $::env(QC_PNR_OUT); set o $dir/out/eco; file mkdir $o
-file delete -force $o/pt_eco.tcl $o/pt_eco_cells.txt   ;# (R90: never a change list or record of an earlier round)
+file delete -force $o/pt_eco.tcl $o/pt_eco_cells.txt $o/pt_eco_ndr.txt   ;# (R90: never a change list or record of an earlier round)
 set corners $::env(QB_ECO_CORNERS)
 set_host_options -num_processes [llength $corners] -max_cores $::env(QB_ECO_CORES)
 set multi_scenario_working_directory $o/work
@@ -426,6 +455,7 @@ set end [qb_eco_timing_fix post_noise_]
 qb_eco_noise_state on
 set en [qb_eco_all end_noise qb_eco_noise_count]
 set es [qb_eco_all end_signoff_noise qb_eco_signoff_noise_count]
+set ev [qb_eco_all end_noise_victims qb_eco_noise_victims]
 qb_eco_noise_state off
 current_scenario [lindex $corners 0]
 remote_execute "write_changes -format icc2tcl -output $o/pt_eco.tcl"
@@ -443,5 +473,8 @@ foreach {recs keys} [list $end {setup hold recovery removal max_tran max_cap} $e
     # (act_noise: a block hook's count, the column's; a block without it has none)
     foreach {c x} $recs { foreach k $keys { if {[dict exists $x $k] && [dict get $x $k] != 0} { lappend res "$c:$k=[dict get $x $k]" } } }
 }
+set ndr [qb_eco_ndr_nets $o/post_hold_drc_noise.txt $ev]
+set f [open $o/pt_eco_ndr.txt w]; foreach n $ndr { puts $f $n }; close $f
+qb_eco_note "eco_ndr_nets [llength $ndr] (pt_eco_ndr.txt: victim nets of the end state's noise violators the last noise pass left unfixable, for the spacing rule: [lrange $ndr 0 9])"
 qb_eco_note "eco_residual [expr {[llength $res] ? $res : "none"}] (non-zero corner:check counts of prefix_total's checks after the change list, PrimeTime's prediction)"
 qb_eco_end $o

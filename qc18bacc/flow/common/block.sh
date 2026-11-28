@@ -24,8 +24,9 @@
 #                  is, if a round makes no progress (blk_eco_progress, R108: the pre-fix violation total shrinks, or
 #                  stays and its setup + hold TNS improves), or at once if a sign-off check no ECO pass fixes
 #                  is not clean (drv_eco.tcl prefix_unfixable, R103), or before ICC2 if PrimeTime made no change for a
-#                  non-zero total (drv_eco.tcl eco_changes 0, R116: the history line names the residual corner:check
-#                  counts, eco_residual).  Fix guard-bands (env.sh): hold
+#                  non-zero total (drv_eco.tcl eco_changes 0 and eco_ndr_nets 0, R116: the history line names the
+#                  residual corner:check counts, eco_residual), or if a noise victim net a round routed with the
+#                  spacing rule (icc2/common.tcl qb_eco_noise_ndr, R116) is unfixable again.  Fix guard-bands (env.sh): hold
 #                  QC_ECO_HOLD_MARGIN, max_transition / max_capacitance QC_ECO_DRV_MARGIN, noise QC_ECO_NOISE_MARGIN;
 #                  setup margin QC_ECO_SETUP_MARGIN (common/limits.txt, R108).
 #                  The loop's history is out/eco/rounds.txt: a later eco step continues it (round number = position of
@@ -392,7 +393,14 @@ blk_eco_progress() {
 }
 # blk_eco_unapplied <round dir>: the round's change list is not applied (no next label): marked in its record, gone from out/eco
 blk_eco_unapplied() {
-    local f; for f in pt_eco.tcl pt_eco_cells.txt; do [ -f "$1/$f" ] && mv "$1/$f" "$1/${f%.*}.not_applied.${f##*.}"; rm -f "$d/out/eco/$f"; done
+    local f; for f in pt_eco.tcl pt_eco_cells.txt pt_eco_ndr.txt; do [ -f "$1/$f" ] && mv "$1/$f" "$1/${f%.*}.not_applied.${f##*.}"; rm -f "$d/out/eco/$f"; done
+}
+# blk_eco_ruled <label>: the nets the rounds that built <label> set the noise spacing rule on (R116; their ICC2 eco
+# records out/eco/<label>/pt_eco_ndr_set.txt, flow/icc2/common.tcl qb_eco_noise_ndr), one per line
+blk_eco_ruled() {
+    local i n; n=$(blk_eco_index "$1") || return 1
+    for ((i = 1; i <= n; i++)); do cat "$d/out/eco/$([ $i = 1 ] && echo eco || echo "eco$i")/pt_eco_ndr_set.txt" 2> /dev/null; done
+    return 0
 }
 # blk_eco_stop <history>: the stop line in force, nothing when there is none.  A stop (a ": FAIL " round line) stands until
 # a later round applied its change list (its applied line, R115; before, its change-list line, written before ICC2 eco
@@ -404,7 +412,7 @@ blk_eco_stop() {
     awk '/: FAIL / { s = $0 } $7 == "applied" && $8 == "->" { s = "" } END { print s }' "$1"
 }
 blk_eco() {
-    local max=$QC_ECO_ROUNDS e=$d/out/eco h k from to a tot tns un prev why r f cs n stop ch
+    local max=$QC_ECO_ROUNDS e=$d/out/eco h k from to a tot tns un prev why r f cs n stop ch nd rep
     cs=$(qb_corners) || return 1   # (assigned first: a command substitution in an assignment prefix hides the status)
     h=$e/rounds.txt; mkdir -p "$e"
     # The history decides (R92 review; before, a second eco step forgot the stop and the previous total): a recorded stop
@@ -471,10 +479,20 @@ blk_eco() {
             echo "ECO round $k $(date +%F_%T) label $from prefix_total $tot: FAIL not converged after $max rounds" | tee -a "$h"; return 1
         fi
         # PrimeTime made no change (R116; [M] tau08 col/r102 round 3: one ml_rcb noise victim, driver a flop, unfixable
-        # reasons I Q, an empty change list, and ICC2 eco failed in qb_eco_nets): nothing for ICC2, the loop stops here
+        # reasons I Q, an empty change list, and ICC2 eco failed in qb_eco_nets): nothing for ICC2, the loop stops here.
+        # Its unfixable noise victims' nets (pt_eco_ndr.txt) count as a change: ICC2 routes them with the spacing rule
+        # (flow/icc2/common.tcl qb_eco_noise_ndr); one that is a victim again after a round ruled it ends the loop
         ch=$(awk '$1 == "eco_changes" { print $2; exit }' "$e/eco_summary.txt")
         case $ch in ''|*[!0-9]*) echo "BLK_FAIL eco: no eco_changes in out/eco/eco_summary.txt"; return 1 ;; esac
-        if [ "$ch" = 0 ]; then
+        nd=$(awk '$1 == "eco_ndr_nets" { print $2; exit }' "$e/eco_summary.txt")
+        [[ $nd =~ ^[0-9]+$ ]] && [ "$(grep -c . "$e/pt_eco_ndr.txt" 2> /dev/null)" = "$nd" ] \
+            || { echo "BLK_FAIL eco: no eco_ndr_nets in out/eco/eco_summary.txt or not the nets of out/eco/pt_eco_ndr.txt"; return 1; }
+        rep=$(blk_eco_ruled "$from" | sort -u | comm -12 - <(sort -u "$e/pt_eco_ndr.txt"))
+        if [ -n "$rep" ]; then
+            echo "ECO round $k $(date +%F_%T) label $from prefix_total $tot: FAIL unfixable: $(echo $rep | wc -w) noise victim net(s) with the spacing rule already set: $(echo $rep | cut -c1-300) (see out/eco/$to/*drc_noise.txt)" | tee -a "$h"
+            blk_eco_unapplied "$a"; return 1
+        fi
+        if [ "$ch" = 0 ] && [ "$nd" = 0 ]; then
             echo "ECO round $k $(date +%F_%T) label $from prefix_total $tot: FAIL PrimeTime made no change; unfixable: $(sed -n 's/^eco_residual \([^(]*\) (.*/\1/p' "$e/eco_summary.txt" | head -n 1 | cut -c1-300) (see out/eco/$to/*drc_*.txt)" | tee -a "$h"
             blk_eco_unapplied "$a"; return 1
         fi

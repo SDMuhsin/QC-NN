@@ -62,7 +62,13 @@ and every knob a DC hook declares (flow/tsmc65 `common/knobs.tcl`), and QC_IO_PC
 also how the netlist was made (QC_CORNER, QC_FLIST, QC_PARAMS, QC_HOOK, QC_POST_HOOK, QC_COMPILE), and `synth/run.sh
 col|rgr` set the corner of their output name (tt) and fail on an environment QC_CORNER that differs.  ECO history
 (R115): a round counts (lifts a stop, gives the previous total) only by its "applied" line, written once its ICC2 eco
-and the outputs / fill of its label passed (common/block.sh blk_eco_applied).
+and the outputs / fill of its label passed (common/block.sh blk_eco_applied).  R116: a round whose PrimeTime makes no
+change for a non-zero total ends the loop before ICC2 (history line "FAIL PrimeTime made no change; unfixable:
+<corner:check=n ...>", drv_eco.tcl eco_changes / eco_residual).  Noise victims PrimeTime cannot fix (fix_eco_drc never
+resizes a flop; r102 [M]: a 265 um M6 run coupled to two parallel nets) are routed again with the spacing rule qb_noise
+(spacing x 2; drv_eco.tcl pt_eco_ndr.txt -> icc2/common.tcl qb_eco_noise_ndr, clock nets and nets with a rule of their
+own excluded and reported); such a list counts as the round's change, and a ruled net that is a victim again ends the
+loop as "FAIL unfixable".
 Corners (R68): one table, `flow/tsmc65/site/site.tcl` QC_SIGNOFF (kit release note RN_TCBN65GPLUS_140B NOTE I): setup
 {wc wcl} x {Cworst RCworst} (ss ss_rcw wcl wcl_rcw), hold {lt ml} x {Cbest RCbest} (ff ff_rcb ml ml_rcb), tc typical (tt);
 ICC2 MCMM, PT sign-off, the DMSA ECO, the block ETMs and the chip top use all of them (bash: common/env.sh `qb_corners`;
