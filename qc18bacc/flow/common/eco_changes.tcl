@@ -2,6 +2,8 @@
 # writes the record of its new cells (signoff/pt/drv_eco.tcl), ICC2 sources the list and checks it (flow/icc2/common.tcl
 # qb_eco_names).  Sourced by both; only commands both tools have.
 #   qb_eco_lines <chg>          the command lines of the list (blank and '#' lines dropped)
+#   qb_eco_change_count <chg>   the change commands of the list: its command lines but the current_instance scope lines
+#                               (0: PrimeTime made no change, R116)
 #   qb_eco_parse <line> <sc>    one line under current_instance <sc> ("" = top) -> {kind fields}, every name made full
 #                               (<sc>/<name>):  scope {sc} | size {cell ref} | loc {cell} | ins {pin|port obj ref net cell}
 #                               | abor {pin cell ref [cell ref ...]} (add_buffer_on_route: one cell / ref pair per buffer
@@ -21,6 +23,10 @@ proc qb_eco_lines {chg} {
     set r {}
     foreach l [split $t "\n"] { set l [string trim $l]; if {$l ne "" && [string index $l 0] ne "#"} { lappend r $l } }
     return $r
+}
+proc qb_eco_change_count {chg} {
+    set n 0; foreach l [qb_eco_lines $chg] { if {[lindex [qb_eco_parse $l ""] 0] ne "scope"} { incr n } }
+    return $n
 }
 proc qb_eco_full {sc x} { expr {$sc eq "" ? $x : "$sc/$x"} }
 proc qb_eco_parse {l sc} {

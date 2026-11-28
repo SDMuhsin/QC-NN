@@ -60,7 +60,10 @@
 #   block's PrimeTime script, the column's act ports with a holding driver) and with the constant drivers' holding model
 #   (signoff/pt/common.tcl qb_pt_const_hold), as the sign-off's noise check; timing counts and passes in the timing state.
 #   Writes <QC_PNR_OUT>/out/eco/pt_eco.tcl (icc2tcl, applied by flow/icc2/eco.tcl), pt_eco_cells.txt
-#   (its new cells, R90: qb_eco_cells_write), eco_summary.txt
+#   (its new cells, R90: qb_eco_cells_write), eco_summary.txt; with a change list also the lines "eco_changes n" (its
+#   change commands, common/eco_changes.tcl qb_eco_change_count) and "eco_residual" (R116: the end state's non-zero
+#   corner:check counts of prefix_total's checks); n = 0 with a non-zero prefix_total ends the loop before ICC2
+#   (common/block.sh blk_eco)
 #   (lines "<tag> <corner> <record>", in the log as QB_ECO_STATE lines: timing counts before / drc / setup / hold /
 #   post_noise_setup / post_noise_hold [the end state] = setup / hold / recovery / removal violators, max_tran / max_cap
 #   pins (of them in the clock network), hold / setup endpoints inside their fix margin [0, margin) (hold_band /
@@ -316,6 +319,7 @@ if {[info exists ::qb_eco_corner]} {
 }
 if {![info exists ::env(QB_ECO_CORNERS)]} { error "QB_PT_ECO: QB_ECO_CORNERS not set (the sign-off ECO loop, common/block.sh eco)" }
 source [file join [file dirname [file normalize [info script]]] .. .. common limits.tcl]   ;# (qb_limit in the master)
+source [file join [file dirname [file normalize [info script]]] .. .. common eco_changes.tcl]   ;# (qb_eco_change_count)
 set eco_report_unfixed_reason_max_endpoints 1000
 set dir $::env(QC_PNR_OUT); set o $dir/out/eco; file mkdir $o
 file delete -force $o/pt_eco.tcl $o/pt_eco_cells.txt   ;# (R90: never a change list or record of an earlier round)
@@ -400,7 +404,7 @@ set sopt [expr {$sm > 0 ? [list -setup_margin $sm -slack_lesser_than $sm] : {}}]
 qb_eco_note "setup margin $sm ns ($sopt)"
 # qb_eco_timing_fix <tag prefix>: setup to its fix margin (R67: residual setup violators of the sign-off timing; the
 # column's act feedthroughs are dont_touch, R68), then hold to its guard-band, in the timing state; one state record
-# after each
+# after each; returns the records of the last (qb_eco_all)
 proc qb_eco_timing_fix {px} {
     global o bufs hbufs hopt sopt
     fix_eco_timing -type setup -methods {size_cell insert_buffer} -buffer_list $bufs -physical_mode $::QB_ECO_PMODE {*}$sopt \
@@ -410,7 +414,7 @@ proc qb_eco_timing_fix {px} {
     fix_eco_timing -type hold -methods {size_cell insert_buffer} -buffer_list $hbufs -physical_mode $::QB_ECO_PMODE {*}$hopt \
         -verbose -unfixable_reasons_prefix $o/${px}hold_unfixable -unfixable_reasons_format text
     remote_execute { foreach p [qb_hold_only] { set c [get_lib_cells -quiet */$p]; if {[sizeof_collection $c]} { set_dont_use $c true } } }
-    qb_eco_all ${px}hold qb_eco_timing_count
+    return [qb_eco_all ${px}hold qb_eco_timing_count]
 }
 qb_eco_timing_fix ""
 # noise after hold (R85, PI decision 4): fix_eco_timing -type hold keeps setup and max_transition / max_capacitance but not
@@ -418,9 +422,10 @@ qb_eco_timing_fix ""
 # the one post-ECO noise violator (b2[21], ml_rcb).  So a noise pass runs on the hold-fixed design, in the noise state
 # without timing margins, and setup / hold are repaired after it in the timing state (header, 4. / 5.)
 qb_eco_drc $o/post_hold_ $bufs {} noise
-qb_eco_timing_fix post_noise_
+set end [qb_eco_timing_fix post_noise_]
 qb_eco_noise_state on
-qb_eco_all end_noise qb_eco_noise_count
+set en [qb_eco_all end_noise qb_eco_noise_count]
+set es [qb_eco_all end_signoff_noise qb_eco_signoff_noise_count]
 qb_eco_noise_state off
 current_scenario [lindex $corners 0]
 remote_execute "write_changes -format icc2tcl -output $o/pt_eco.tcl"
@@ -431,4 +436,12 @@ current_scenario -all
 if {![file exists $o/pt_eco.tcl]} { set f [open $o/pt_eco.tcl w]; puts $f "# no ECO changes"; close $f }
 set t [exec cat $o/pt_eco.tcl]
 qb_eco_note "eco size_cell [regexp -all -line {^\s*size_cell} $t] insert_buffer [regexp -all -line {^\s*(insert_buffer|add_buffer\S*)} $t] lines [llength [split $t "\n"]]"
+qb_eco_note "eco_changes [qb_eco_change_count $o/pt_eco.tcl] (change commands of pt_eco.tcl: its command lines but current_instance)"
+# the end state at the sign-off criterion as prefix_total counts it (R116: the record of a round PrimeTime cannot fix)
+set res {}
+foreach {recs keys} [list $end {setup hold recovery removal max_tran max_cap} $en noise $es act_noise] {
+    # (act_noise: a block hook's count, the column's; a block without it has none)
+    foreach {c x} $recs { foreach k $keys { if {[dict exists $x $k] && [dict get $x $k] != 0} { lappend res "$c:$k=[dict get $x $k]" } } }
+}
+qb_eco_note "eco_residual [expr {[llength $res] ? $res : "none"}] (non-zero corner:check counts of prefix_total's checks after the change list, PrimeTime's prediction)"
 qb_eco_end $o
