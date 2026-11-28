@@ -31,7 +31,7 @@ max_transition, each port's netlist capacitance).  Exit 1 on any of:
 Not detected: a timing table copied from another pin with the same capacitance (a timing comparison against PrimeTime
 per port is not exact: R98 [M] 30 ps of 3.5 ns on s_rd[306], derate / slew handling of extract_model).
 usage: etmcheck.py <etm.lib>"""
-import math, os, re, sys
+import bisect, math, os, re, sys
 src = sys.argv[1]
 if not src.endswith('.lib'): sys.exit('etmcheck.py: not a .lib: ' + src)
 ref = src[:-4] + '_ref.txt'
@@ -45,6 +45,12 @@ except (OSError, ValueError, AttributeError) as e:
 t = open(src).read()
 def nums(s): return [float(x) for q in re.findall(r'"([^"]*)"', s) for x in q.split(',')]
 pins = list(re.finditer(r'\n\s*pin\s*\(\s*"?([^")]+)"?\s*\)\s*\{', t))
+# a pin's body ends at the next pin or bus header (R117; round-17 finding: at the next pin only, so the last pin before a
+# bus took the bus's own attributes and arcs as its own)
+heads = sorted([m.start() for m in pins] + [m.start() for m in re.finditer(r'\n\s*bus\s*\(\s*"?[^")]+"?\s*\)\s*\{', t)])
+def body_end(i):   # the start of the first pin / bus header after pin i, or the end of the text
+    k = bisect.bisect_right(heads, pins[i].start())
+    return heads[k] if k < len(heads) else len(t)
 bad = {'values': [], 'capacitance': [], 'max_transition': [], 'arcs': []}; n = 0; vmax = (0.0, ''); seen = set()
 def flag(k, what): bad[k].append(what)
 # the declared arc exceptions: (kind, port regexp, related pin template, reason)
@@ -60,7 +66,7 @@ def arc(a):   # (timing_type, related_pin, min) of a timing group's text (min: a
     return ty.group(1) if ty else '', rp.group(1) if rp else '', bool(re.search(r'min_delay_flag\s*:\s*true\s*;', a))
 pin = {}   # pin -> (direction, clock pin, [(timing_type, related_pin, min)])
 for i, m in enumerate(pins):
-    p = m.group(1); body = t[m.end():pins[i + 1].start() if i + 1 < len(pins) else len(t)]; seen.add(p)
+    p = m.group(1); body = t[m.end():body_end(i)]; seen.add(p)
     d = re.search(r'^\s*direction\s*:\s*"?(\w+)', body, re.M); c = re.search(r'^\s*capacitance\s*:\s*(\S+?)\s*;', body, re.M)
     pin[p] = (d.group(1) if d else '', bool(re.search(r'^\s*clock\s*:\s*true\s*;', body, re.M)),
               [arc(a) for a in re.findall(r'timing\s*\(\s*\)\s*\{(.*?)\}\s*/\* end of arc', body, re.S)])

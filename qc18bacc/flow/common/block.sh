@@ -33,14 +33,17 @@
 #                  the label of out/ in the chain route, eco, eco2, ...) and a recorded stop stays a stop unless
 #                  QC_ECO_OVERRIDE_STOP=1, which is logged there and lets that one eco step run; the stop stands
 #                  again unless a round of it applied its change list (blk_eco_stop, R114; "applied": ICC2 eco and
-#                  outputs / portcheck / fill / extract of its label passed, the round's applied line, R115).
+#                  outputs / portcheck / fill / extract of its label passed, the round's applied line, R115); a history
+#                  with a round of out/'s chain without its applied line (written before R115) is refused (blk_eco_legacy,
+#                  R117).  Every end of the loop before ICC2 marks the round's change list not applied (R117).
 #                  Opt-in QC_ECO_PT_ONLY=1: the next round's PrimeTime
 #                  DMSA only (record + history line, nothing applied; refuses a run with an unfinished label of out/)
 #         fill     portcheck, Calibre dummy metal + OD / PO, fill-aware SPEFs of the label of out/ (first an unfinished
 #                  one)                                                 calibre  LVS, DRC, antenna (fails on cal.sh's status)
 #         post     PrimeTime sign-off + ETMs in every corner   views  abstract LEF + ETM scan   signoff  signoff/verdict.sh
 #
-# Details.  rundir <tag> (a further step) prints the run dir (common/queue.sh), knobs <tag> the BLK_KNOBS line
+# Details.  rundir <tag> (a further step) prints the run dir (common/queue.sh), verdict <tag> the signoff step's verdict
+# without its record (read-only: common/regress.sh check), knobs <tag> the BLK_KNOBS line
 # every step starts with (blk_knobs: flow root + flow knobs in force; also appended to the run's summary.txt, R115).  The label of out/ is out/label.txt
 # (blk_out, written once outputs, portcheck, fill and SPEFs of the label passed): route, then eco, eco2, ... (one ICC2 label per ECO round, so every round's layout stays in the
 # design library).  ECO round files: out/eco/<label>/ = what that round produced and nothing else (PrimeTime log + its .time,
@@ -59,6 +62,10 @@ blk_main() {
     case $step in
     rundir) echo "$d"; return 0 ;;
     knobs) blk_knobs "$step"; return 0 ;;
+    # (R117; round-17 finding: common/regress.sh check re-ran the verdict as the signoff step, which appended its
+    # BLK_KNOBS line to the run's summary.txt, so every check changed the record it checked) the verdict alone, read-only:
+    # no BLK_STEP / BLK_KNOBS line, nothing written to the run dir
+    verdict) blk_signoff; return ;;
     pnr|eco|fill|calibre|post|views|signoff) ;;
     *) sed '/^#$/,$d' "${BASH_SOURCE[0]}"; echo "BLK_FAIL $BLK: unknown step '$step'"; return 1 ;;
     esac
@@ -411,13 +418,91 @@ blk_eco_stop() {
     [ -f "$1" ] || return 0
     awk '/: FAIL / { s = $0 } $7 == "applied" && $8 == "->" { s = "" } END { print s }' "$1"
 }
+# blk_eco_judge: the PrimeTime half's verdict on the round (blk_eco's variables: e h k from to max prev; sets tot tns):
+# status 0 = apply the change list, 3 = the loop ends without failure (converged, or PrimeTime only), anything else = a
+# stop (its history line written here, or a BLK_FAIL line); blk_eco marks the round's change list not applied whenever
+# it is not 0 (R117)
+# blk_eco_legacy <history>: the ECO labels of out/'s finished chain (eco .. the label of out/; with an unfinished label,
+# up to the round before it) that have a change-list line in the history and no applied line (R117; round-17 finding:
+# a history written before R115 has no applied lines [tau08 col/r102], so blk_eco_prev gave no previous total and the
+# progress rule was silently off when such a run went on).  Every round of a later history that built a label of out/
+# has its applied line (blk_eco_applied right after blk_out), so any label printed means a history the loop cannot read.
+blk_eco_legacy() {
+    local l x n
+    if [ -f "$d/out/label.new" ]; then read -r l x < "$d/out/label.new"; n=$(( $(blk_eco_index "$l" || echo 1) - 1 ))
+    else l=$(cat "$d/out/label.txt" 2> /dev/null); n=$(blk_eco_index "$l" || echo 0); fi
+    [ -f "$1" ] || return 0
+    awk -v n="$n" '$9 == "change" && $10 == "list" && $11 == "->" { c[$13] = 1 } $7 == "applied" && $8 == "->" { a[$10] = 1 }
+        END { for (i = 1; i <= n; i++) { l = (i == 1 ? "eco" : "eco" i); if ((l in c) && !(l in a)) { printf "%s%s", s, l; s = " " } } }' "$1"
+}
+blk_eco_judge() {
+    local un ch nd rep why
+    cat "$e/eco_summary.txt"
+    tot=$(awk '$1 == "prefix_total" { print $2; exit }' "$e/eco_summary.txt")
+    case $tot in ''|*[!0-9]*) echo "BLK_FAIL eco: no prefix_total in out/eco/eco_summary.txt"; return 1 ;; esac
+    # the sign-off's gates no ECO pass fixes (R103, drv_eco.tcl prefix_unfixable: non-zero ones end the loop; before, a
+    # round with prefix_total 0 was "converged" and the post step failed on them)
+    tns=$(awk '$1 == "prefix_tns" { print $2; exit }' "$e/eco_summary.txt")
+    [[ $tns =~ ^-?[0-9]+\.[0-9]+$ ]] || { echo "BLK_FAIL eco: no prefix_tns in out/eco/eco_summary.txt"; return 1; }
+    un=$(awk '$1 == "prefix_unfixable" { print $2; exit }' "$e/eco_summary.txt")
+    case $un in ''|*[!0-9]*) echo "BLK_FAIL eco: no prefix_unfixable in out/eco/eco_summary.txt"; return 1 ;; esac
+    # opt-in QC_ECO_PT_ONLY=1: this round's PrimeTime half only (a check of the PT side, e.g. on a copy of a run): the
+    # record and a history line, no verdict on the loop, nothing applied
+    if [ "${QC_ECO_PT_ONLY:-}" = 1 ]; then
+        echo "ECO round $k $(date +%F_%T) label $from prefix_total $tot: PrimeTime only (QC_ECO_PT_ONLY=1), prefix_unfixable $un, change list not applied" | tee -a "$h"
+        return 3
+    fi
+    if [ "$un" != 0 ]; then
+        echo "ECO round $k $(date +%F_%T) label $from prefix_total $tot: FAIL $un sign-off check count(s) the ECO cannot fix: $(awk '$1 == "prefix_unfixable"' "$e/eco_summary.txt" | sed 's/^[^(]*(//; s/)$//' | cut -c1-300)" | tee -a "$h"
+        return 1
+    fi
+    if [ "$tot" = 0 ]; then
+        echo "ECO round $k $(date +%F_%T) label $from prefix_total 0: converged" | tee -a "$h"
+        grep '^eco' "$d/summary.txt" | tail -n 20; return 3
+    fi
+    if [ "$k" -gt "$max" ]; then
+        echo "ECO round $k $(date +%F_%T) label $from prefix_total $tot: FAIL not converged after $max rounds" | tee -a "$h"; return 1
+    fi
+    # PrimeTime made no change (R116; [M] tau08 col/r102 round 3: one ml_rcb noise victim, driver a flop, unfixable
+    # reasons I Q, an empty change list, and ICC2 eco failed in qb_eco_nets): nothing for ICC2, the loop stops here.
+    # Its unfixable noise victims' nets (pt_eco_ndr.txt) count as a change: ICC2 routes them with the spacing rule
+    # (flow/icc2/common.tcl qb_eco_noise_ndr); one that is a victim again after a round ruled it ends the loop
+    ch=$(awk '$1 == "eco_changes" { print $2; exit }' "$e/eco_summary.txt")
+    case $ch in ''|*[!0-9]*) echo "BLK_FAIL eco: no eco_changes in out/eco/eco_summary.txt"; return 1 ;; esac
+    nd=$(awk '$1 == "eco_ndr_nets" { print $2; exit }' "$e/eco_summary.txt")
+    [[ $nd =~ ^[0-9]+$ ]] && [ "$(grep -c . "$e/pt_eco_ndr.txt" 2> /dev/null)" = "$nd" ] \
+        || { echo "BLK_FAIL eco: no eco_ndr_nets in out/eco/eco_summary.txt or not the nets of out/eco/pt_eco_ndr.txt"; return 1; }
+    rep=$(blk_eco_ruled "$from" | sort -u | comm -12 - <(sort -u "$e/pt_eco_ndr.txt"))
+    if [ -n "$rep" ]; then
+        echo "ECO round $k $(date +%F_%T) label $from prefix_total $tot: FAIL unfixable: $(echo $rep | wc -w) noise victim net(s) with the spacing rule already set: $(echo $rep | cut -c1-300) (see out/eco/$to/*drc_noise.txt)" | tee -a "$h"
+        return 1
+    fi
+    if [ "$ch" = 0 ] && [ "$nd" = 0 ]; then
+        echo "ECO round $k $(date +%F_%T) label $from prefix_total $tot: FAIL PrimeTime made no change; unfixable: $(sed -n 's/^eco_residual \([^(]*\) (.*/\1/p' "$e/eco_summary.txt" | head -n 1 | cut -c1-300); noise nets ICC2 cannot rule: $(sed -n 's/^eco_ndr_excluded \([0-9]*\) (.*: \(.*\))$/\1 \2/p' "$e/eco_summary.txt" | head -n 1 | cut -c1-200) (see out/eco/$to/*drc_*.txt)" | tee -a "$h"
+        return 1
+    fi
+    if ! why=$(blk_eco_progress "$tot" "$tns" $prev); then
+        echo "ECO round $k $(date +%F_%T) label $from prefix_total $tot: FAIL $why" | tee -a "$h"
+        return 1
+    fi
+    return 0
+}
 blk_eco() {
-    local max=$QC_ECO_ROUNDS e=$d/out/eco h k from to a tot tns un prev why r f cs n stop ch nd rep
+    local max=$QC_ECO_ROUNDS e=$d/out/eco h k from to a tot tns prev r j f cs n stop
     cs=$(qb_corners) || return 1   # (assigned first: a command substitution in an assignment prefix hides the status)
     h=$e/rounds.txt; mkdir -p "$e"
     # The history decides (R92 review; before, a second eco step forgot the stop and the previous total): a recorded stop
     # ends every later eco step too, unless it is overridden explicitly, which the history then says (blk_eco_stop: an
     # override lasts until a round applies a change list)
+    # a history the loop cannot read (blk_eco_legacy, R117): refused, before anything runs; its run is continued by hand
+    # only after its rounds are checked (each round's ICC2 eco log and the outputs / fill of its label) and their applied
+    # lines appended, or the loop starts again from a new layout (pnr).  Not in the PrimeTime-only mode, which neither
+    # judges progress nor lifts a stop
+    stop=$(blk_eco_legacy "$h")
+    if [ -n "$stop" ] && [ "${QC_ECO_PT_ONLY:-}" != 1 ]; then
+        echo "BLK_FAIL eco: history $h has a change-list line but no applied line for label(s) $stop of out/'s chain (written before R115, or a round cut off between its label and its applied line): the loop cannot tell which rounds applied, refused"
+        return 1
+    fi
     stop=$(blk_eco_stop "$h")
     if [ -n "$stop" ]; then
         if [ "${QC_ECO_OVERRIDE_STOP:-}" != 1 ]; then
@@ -448,58 +533,14 @@ blk_eco() {
         # change list, unless that state is clean (converged) or this is the check after the last round (QB_ECO_CHECK)
         ( blk_pt_env || exit 1
           QB_ECO_CHECK=$(( k > max )) QB_PT_SCRIPT=$BLK_PT QB_ECO_CORNERS=$cs QB_ECO_NLIB=$d/$BLK_TOP.nlib \
-              QB_ECO_BLOCK=$BLK_TOP/$from qb_pt pt_eco.log pt_shell -multi_scenario -f "$QBF/signoff/pt/drv_eco.tcl" ); r=$?
+              QB_ECO_BLOCK=$BLK_TOP/$from qb_pt -nosignoff pt_eco.log pt_shell -multi_scenario -f "$QBF/signoff/pt/drv_eco.tcl" ); r=$?
         rm -f "$e"/work/.eco_ndm_*   # (the DMSA workers' NDM copies, ~0.42 GB each: disk, R71; their logs stay)
         for f in "$d/pt_eco.log" "$d/pt_eco.log.time" "$e"/*.txt "$e"/*.tcl "$e"/*.log; do [ -f "$f" ] && [ "$f" != "$h" ] && cp "$f" "$a/"; done
-        [ $r = 0 ] || return 1
-        cat "$e/eco_summary.txt"
-        tot=$(awk '$1 == "prefix_total" { print $2; exit }' "$e/eco_summary.txt")
-        case $tot in ''|*[!0-9]*) echo "BLK_FAIL eco: no prefix_total in out/eco/eco_summary.txt"; return 1 ;; esac
-        # the sign-off's gates no ECO pass fixes (R103, drv_eco.tcl prefix_unfixable: non-zero ones end the loop; before, a
-        # round with prefix_total 0 was "converged" and the post step failed on them)
-        tns=$(awk '$1 == "prefix_tns" { print $2; exit }' "$e/eco_summary.txt")
-        [[ $tns =~ ^-?[0-9]+\.[0-9]+$ ]] || { echo "BLK_FAIL eco: no prefix_tns in out/eco/eco_summary.txt"; return 1; }
-        un=$(awk '$1 == "prefix_unfixable" { print $2; exit }' "$e/eco_summary.txt")
-        case $un in ''|*[!0-9]*) echo "BLK_FAIL eco: no prefix_unfixable in out/eco/eco_summary.txt"; return 1 ;; esac
-        # opt-in QC_ECO_PT_ONLY=1: this round's PrimeTime half only (a check of the PT side, e.g. on a copy of a run): the
-        # record and a history line, no verdict on the loop, nothing applied
-        if [ "${QC_ECO_PT_ONLY:-}" = 1 ]; then
-            echo "ECO round $k $(date +%F_%T) label $from prefix_total $tot: PrimeTime only (QC_ECO_PT_ONLY=1), prefix_unfixable $un, change list not applied" | tee -a "$h"
-            return 0
-        fi
-        if [ "$un" != 0 ]; then
-            echo "ECO round $k $(date +%F_%T) label $from prefix_total $tot: FAIL $un sign-off check count(s) the ECO cannot fix: $(awk '$1 == "prefix_unfixable"' "$e/eco_summary.txt" | sed 's/^[^(]*(//; s/)$//' | cut -c1-300)" | tee -a "$h"
-            return 1
-        fi
-        if [ "$tot" = 0 ]; then
-            echo "ECO round $k $(date +%F_%T) label $from prefix_total 0: converged" | tee -a "$h"
-            grep '^eco' "$d/summary.txt" | tail -n 20; return 0
-        fi
-        if [ "$k" -gt "$max" ]; then
-            echo "ECO round $k $(date +%F_%T) label $from prefix_total $tot: FAIL not converged after $max rounds" | tee -a "$h"; return 1
-        fi
-        # PrimeTime made no change (R116; [M] tau08 col/r102 round 3: one ml_rcb noise victim, driver a flop, unfixable
-        # reasons I Q, an empty change list, and ICC2 eco failed in qb_eco_nets): nothing for ICC2, the loop stops here.
-        # Its unfixable noise victims' nets (pt_eco_ndr.txt) count as a change: ICC2 routes them with the spacing rule
-        # (flow/icc2/common.tcl qb_eco_noise_ndr); one that is a victim again after a round ruled it ends the loop
-        ch=$(awk '$1 == "eco_changes" { print $2; exit }' "$e/eco_summary.txt")
-        case $ch in ''|*[!0-9]*) echo "BLK_FAIL eco: no eco_changes in out/eco/eco_summary.txt"; return 1 ;; esac
-        nd=$(awk '$1 == "eco_ndr_nets" { print $2; exit }' "$e/eco_summary.txt")
-        [[ $nd =~ ^[0-9]+$ ]] && [ "$(grep -c . "$e/pt_eco_ndr.txt" 2> /dev/null)" = "$nd" ] \
-            || { echo "BLK_FAIL eco: no eco_ndr_nets in out/eco/eco_summary.txt or not the nets of out/eco/pt_eco_ndr.txt"; return 1; }
-        rep=$(blk_eco_ruled "$from" | sort -u | comm -12 - <(sort -u "$e/pt_eco_ndr.txt"))
-        if [ -n "$rep" ]; then
-            echo "ECO round $k $(date +%F_%T) label $from prefix_total $tot: FAIL unfixable: $(echo $rep | wc -w) noise victim net(s) with the spacing rule already set: $(echo $rep | cut -c1-300) (see out/eco/$to/*drc_noise.txt)" | tee -a "$h"
-            blk_eco_unapplied "$a"; return 1
-        fi
-        if [ "$ch" = 0 ] && [ "$nd" = 0 ]; then
-            echo "ECO round $k $(date +%F_%T) label $from prefix_total $tot: FAIL PrimeTime made no change; unfixable: $(sed -n 's/^eco_residual \([^(]*\) (.*/\1/p' "$e/eco_summary.txt" | head -n 1 | cut -c1-300) (see out/eco/$to/*drc_*.txt)" | tee -a "$h"
-            blk_eco_unapplied "$a"; return 1
-        fi
-        if ! why=$(blk_eco_progress "$tot" "$tns" $prev); then
-            echo "ECO round $k $(date +%F_%T) label $from prefix_total $tot: FAIL $why" | tee -a "$h"
-            blk_eco_unapplied "$a"; return 1
-        fi
+        # (R117; round-17 finding: the unfixable and not-converged stops left the round's change list as if to be applied)
+        # every end of the loop before ICC2 (a stop, PrimeTime only, converged) marks the round's change list not applied
+        # (blk_eco_unapplied; no list: nothing to mark)
+        j=1; [ $r = 0 ] && { blk_eco_judge; j=$?; }
+        if [ $j != 0 ]; then blk_eco_unapplied "$a"; [ $j = 3 ]; return; fi
         echo "ECO round $k $(date +%F_%T) label $from prefix_total $tot: change list -> label $to prefix_tns $tns" | tee -a "$h"
         # ICC2: the change list on label $from -> $to (name / load / legality gates, ECO route, route gate), then out/ for
         # label $to (blk_out: outputs, portcheck, fill, extract; only then is $to the label of out/ and the round applied)
@@ -559,7 +600,7 @@ blk_post() {
           # when the session and these checks passed (R115)
           e=out/etm/${BLK_TOP}_$c; rm -f "$e.lib" "${e}_lib.db" "${e}_ref.txt"
           i=$(blk_md5 "out/$BLK_TOP.v" "out/${BLK_TOP}_${c}_pt.spef.gz") || { r=1; continue; }
-          q=0; QC_CORNER=$c qb_pt "etm_$c.log" pt_shell -f "$QBF/signoff/etm/etm.tcl" || q=1
+          q=0; QC_CORNER=$c qb_pt -nosignoff "etm_$c.log" pt_shell -f "$QBF/signoff/etm/etm.tcl" || q=1
           ! grep -m 3 'MEXT-6)\|(MEXT-80)\|MEXT-81\|MEXT-97' "etm_$c.log" || { echo "ETM $c: table limit / port aggressor filter / driving cell / feedthrough warnings"; q=1; }
           [ -s "$e.lib" ] && [ -s "${e}_lib.db" ] && [ -s "${e}_ref.txt" ] && ! [ "${e}_lib.db" -ot "$e.lib" ] && ! [ "${e}_ref.txt" -ot "${e}_lib.db" ] \
               || { echo "ETM $c: $e.lib / _lib.db / _ref.txt missing, empty or out of order"; q=1; }

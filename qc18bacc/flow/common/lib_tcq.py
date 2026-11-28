@@ -6,14 +6,17 @@ Flops = cells with an ff group (latches, clock gates: no ff group) whose name ma
 QC_DONT_USE: an upstream block cannot use them either).  Arcs = timing groups of an output pin with timing_type
 rising_edge / falling_edge (clock -> Q; clear / preset arcs excluded).  Value = the smallest entry of their cell_rise /
 cell_fall tables: the lowest input slew and load the library characterises, a lower bound on any instance's delay.
-Prints "<tcq_ns> <cell> <pin> <related_pin> <timing_type> <flops>" (time_unit converted to ns); error if no flop arc."""
+Prints "<tcq_ns> <cell> <pin> <related_pin> <timing_type> <flops>" (time_unit converted to ns); error if no flop arc.
+The liberty is read as tokens, not lines (R117; round-17 finding: a statement and a closing brace on one line, e.g.
+"values (...); }", left the group open): comments and line continuations removed, then group headers "name (args) {",
+complex attributes "name (args) ;", simple attributes "name : value ;" and braces, in text order."""
 import fnmatch
 import re
 import sys
 
 lib, globs = sys.argv[1], sys.argv[2:]
-GRP = re.compile(r'^\s*(\w+)\s*\(\s*"?([^")]*)"?\s*\)\s*\{')
-ATT = re.compile(r'^\s*(\w+)\s*:\s*"?([^";]*)"?\s*;')
+text = re.sub(r'/\*.*?\*/', ' ', open(lib, errors='replace').read(), flags=re.S).replace('\\\n', ' ')
+TOK = re.compile(r'(\w+)\s*\(([^()]*)\)\s*([{;])|(\w+)\s*:\s*([^;{}\n]*?)\s*;|([{}])')
 NUM = re.compile(r'-?[0-9]*\.?[0-9]+(?:[eE][+-]?\d+)?')
 scale = 1.0
 stack = []                      # open groups: (name, arg)
@@ -23,16 +26,10 @@ tim = {}                        # current timing group: related_pin, timing_type
 arcs = []                       # (value, pin, related_pin, timing_type) of the current cell
 best = None
 nflop = 0
-invals = False
-for s in open(lib, errors='replace'):
-    if invals:                  # continuation lines of a values ( ... ) statement of cell_rise / cell_fall
-        for v in NUM.findall(s.replace('\\', ' ')):
-            tim['vmin'] = min(tim.get('vmin', 1e30), float(v))
-        invals = ');' not in s
-        continue
-    m = GRP.match(s)
-    if m:
-        g, a = m.group(1), m.group(2).strip()
+for m in TOK.finditer(text):
+    g, a, end, k, v, brace = m.groups()
+    if g and end == '{':        # group header
+        a = a.strip().strip('"')
         stack.append((g, a))
         if g == 'cell':
             cell, is_ff, arcs = a, False, []
@@ -42,17 +39,12 @@ for s in open(lib, errors='replace'):
             pin, out = a, False
         elif g == 'timing':
             tim = {}
-        if s.count('}') >= s.count('{'):   # one-line group "name (a) { ... }"
-            stack.pop()
-        continue
-    if stack and stack[-1][0] in ('cell_rise', 'cell_fall') and s.lstrip().startswith('values'):
-        for v in NUM.findall(s.split('(', 1)[1].replace('\\', ' ')):
-            tim['vmin'] = min(tim.get('vmin', 1e30), float(v))
-        invals = ');' not in s
-        continue
-    m = ATT.match(s)
-    if m:
-        k, v = m.group(1), m.group(2).strip()
+    elif g:                     # complex attribute: the values of a cell_rise / cell_fall table
+        if g == 'values' and stack and stack[-1][0] in ('cell_rise', 'cell_fall'):
+            for x in NUM.findall(a):
+                tim['vmin'] = min(tim.get('vmin', 1e30), float(x))
+    elif k:                     # simple attribute
+        v = v.strip().strip('"')
         if k == 'time_unit' and not stack[1:]:
             u = re.match(r'([0-9.]+)\s*(ns|ps)', v)
             scale = float(u.group(1)) * (1e-3 if u.group(2) == 'ps' else 1.0)
@@ -60,10 +52,9 @@ for s in open(lib, errors='replace'):
             out = v == 'output'
         elif k in ('related_pin', 'timing_type') and stack and stack[-1][0] == 'timing':
             tim[k] = v
-        continue
-    for _ in range(s.count('}')):
-        if not stack:
-            break
+    elif brace == '{':          # a brace without a header of the forms above: kept balanced
+        stack.append(('?', ''))
+    elif stack:                 # '}'
         g, a = stack.pop()
         if g == 'timing' and out and tim.get('timing_type') in ('rising_edge', 'falling_edge') and 'vmin' in tim:
             arcs.append((tim['vmin'] * scale, pin, tim.get('related_pin', '?'), tim['timing_type']))

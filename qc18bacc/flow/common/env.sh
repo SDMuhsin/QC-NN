@@ -7,7 +7,8 @@
 #   qb_corners  the sign-off corner names of the one corner table, flow/tsmc65/site/site.tcl (R68)
 #   qb_knobs    the flow knobs in force (QB_KNOBS, R103; below) and the Python tools' identity (qb_tools_id, R109)
 QBF=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd); ROOT=$(cd "$QBF/../.." && pwd)
-export QC_BUILD=${QC_BUILD:-/tmp/$USER/qc18bacc/build}; B=$QC_BUILD
+# (absolute, R117; round-17 finding: a relative QC_BUILD broke every path after qb_icc2's cd into the run dir)
+export QC_BUILD=${QC_BUILD:-/tmp/$USER/qc18bacc/build}; [[ $QC_BUILD == /* ]] || QC_BUILD=$PWD/$QC_BUILD; B=$QC_BUILD
 TOOLS=${QC_TOOLS:-/tmp/$USER/tools}; PY=$TOOLS/env/bin/python3
 export QC_PY=$PY   # (the tools' Tcl runs flow Python through it: common/lib_cells.tcl qb_lib_tcq)
 # (The act chain hold budget QC_ACT_HOLD_HUB, R81, is a sign-off limit of common/limits.txt since R107, read by both
@@ -86,13 +87,17 @@ qb_kit() {
 # -error_count; [M] R104 tau14, a seeded report_timing -from <no such pin> + report_constraint without a design, both
 # under redirect + catch: 0 '^Error' log lines, 2 in the redirect variables, error_count 2, "Diagnostics summary: 2
 # errors" -> diagnostics_errors 1, evidence bad (the same script without them: diagnostics_errors 0).
-# The PT_ERRORS line ends "signoff_fails N evidence ok|bad": evidence = everything but the QB_PT_SIGNOFF counts.
+# The PT_ERRORS line ends "signoff_fails N evidence ok|bad": evidence = everything but the QB_PT_SIGNOFF counts (and their
+# presence, R117: below).
 # qb_pt -check <log>: the same gate on the logs of a finished run, no tool run (signoff/verdict.py, which reads the
 # evidence word; run it in the dir the run ran in): exit status, start and end time from qc_tool's <log>.time (rc NA
 # without one, which fails).
+# Sign-off evidence (R117; round-17 finding: a session that printed no QB_PT_SIGNOFF line had signoff_fails 0 and passed):
+# "signoff_lines N" = its QB_PT_SIGNOFF lines, and the evidence is bad without one, unless the session is no sign-off
+# session (-nosignoff: the DMSA ECO, the ETM extraction, which print none).  Options -check / -nosignoff in any order.
 qb_pt() {
-    local log rc e p=0 x c k v t0 t1 F W wd pl b we dn de chk=0 ev=bad
-    if [ "$1" = -check ]; then chk=1; shift; fi
+    local log rc e p=0 x c k v sl t0 t1 F W wd pl b we dn de chk=0 nos=0 ev=bad
+    while :; do case ${1:-} in -check) chk=1; shift ;; -nosignoff) nos=1; shift ;; *) break ;; esac; done
     log=$1; pl=${1%.log}_parasitics.log; b=$(basename "$pl")
     if [ $chk = 1 ]; then
         rc=$(sed -n 's/^[[:space:]]*Exit status: //p' "$log.time" 2> /dev/null); rc=${rc:-NA}
@@ -114,10 +119,10 @@ qb_pt() {
     x=$(cat "$log" $F /dev/null | grep -c 'XTALK-011')
     c=$(cat $F /dev/null | grep -h 'Reduced coupling capacitances' | awk '{s += $NF; n++} END {printf "%d (%d lines)", s, n}')
     k=$(cat $F /dev/null | grep -h 'Annotated coupling capacitances' | awk '{s += $NF; n++} END {printf "%d (%d reads)", s, n}')
-    v=$(grep -h '^QB_PT_SIGNOFF' "$log" | qb_pt_signoff_fails)
+    v=$(grep -h '^QB_PT_SIGNOFF' "$log" | qb_pt_signoff_fails); sl=$(grep -c '^QB_PT_SIGNOFF' "$log")
     [ "$rc" = 0 ] && [ "$e" = 0 ] && [ "$p" = 0 ] && [ "$we" = 0 ] && [ "$x" = 0 ] && [ "${c%% *}" = 0 ] && [ "${k%% *}" -gt 0 ] \
-        && [ "$dn" = 1 ] && [ "$de" = 0 ] && ev=ok
-    echo "PT_ERRORS $(basename "$log") rc $rc errors ${e:-NA} parasitics_errors $p worker_errors $we xtalk011 $x reduced_coupling $c coupling_annotated $k completed $dn diagnostics_errors $de signoff_fails $v evidence $ev"
+        && [ "$dn" = 1 ] && [ "$de" = 0 ] && { [ $nos = 1 ] || [ "${sl:-0}" -gt 0 ]; } && ev=ok
+    echo "PT_ERRORS $(basename "$log") rc $rc errors ${e:-NA} parasitics_errors $p worker_errors $we xtalk011 $x reduced_coupling $c coupling_annotated $k completed $dn diagnostics_errors $de signoff_lines ${sl:-0}$([ $nos = 1 ] && echo ' (no sign-off session)') signoff_fails $v evidence $ev"
     [ $ev = ok ] && [ "$v" = 0 ]
 }
 # qb_pt_signoff_fails: QB_PT_SIGNOFF lines on stdin ("QB_PT_SIGNOFF <key> <count> ..."); prints how many counts fail: a
@@ -150,14 +155,16 @@ qb_corners() {
 #   <mode>_deck      Calibre deck of each run mode drc ant fill odpo lvs, lvs_dfm the LVS deck's DFM include
 #                    (signoff/calibre/cal.sh kit <key>)
 #   cell_spice       cell spice of the LVS source (signoff/calibre/lvs_src.sh kit)
+#   antenna_rule     Milkyway antenna rule file ICC2 reads (common/kit.tcl qb_antenna_rule_file, R117)
 # Needs QC_KIT (qb_kit).  Non-zero with a QB_FAIL line on stderr when a lookup fails.
 qb_kit_files() {
     local t k
-    t=$(tclsh <<< "if {[catch {source $ROOT/flow/tsmc65/common/lib.tcl; source $ROOT/flow/tsmc65/site/pnr.tcl} e]} { puts stderr \$e; exit 1 }
+    t=$(tclsh <<< "if {[catch {source $ROOT/flow/tsmc65/common/lib.tcl; source $ROOT/flow/tsmc65/site/pnr.tcl; source $QBF/common/kit.tcl
+                                 puts \"antenna_rule [qb_antenna_rule_file]\"} e]} { puts stderr \$e; exit 1 }
         puts \"tf \$::QC_TF\"; puts \"cell_lef \$::QC_PNR_LEF\"; puts \"cell_gds \$::QC_PNR_GDS\"; puts \"tlup_map \$::QC_TLU_MAP\"
         foreach c \$::QC_SIGNOFF_CORNERS {
             puts \"tlup_\$c \$::QC_TLU/\$::QC_TLU_FILE(\$c)\"; puts \"lib_db_\$c [qc_db \$c]\"; puts \"liberty_\$c \$::QC_LIBDIR/\$::QC_LIB(\$c).lib\"
-        }") || { echo "QB_FAIL qb_kit_files: site.tcl / site/pnr.tcl" >&2; return 1; }
+        }") || { echo "QB_FAIL qb_kit_files: site.tcl / site/pnr.tcl / common/kit.tcl" >&2; return 1; }
     for k in drc ant fill odpo lvs lvs_dfm; do
         t="$t"$'\n'"$([ $k = lvs_dfm ] && echo $k || echo ${k}_deck) $(bash "$QBF/signoff/calibre/cal.sh" kit $k)" \
             || { echo "QB_FAIL qb_kit_files: cal.sh kit $k" >&2; return 1; }

@@ -18,7 +18,7 @@
 # freshness chain netlist -> fill DEF -> SPEF -> PT -> ETM (file times, fresh_*; and by content, md5_pt / md5_etm: the md5
 # each step recorded of what it read and wrote, common/block.sh blk_chain, R113); for the block the ICC2 gate lines of summary.txt (dont_use: the
 # latest line of each label out/ was built through, R109; PG connectivity of route and the ECO label of out/, R109;
-# floorplan tracks, place / cts / route legality and that of the ECO round of the label of out/ (R107), route gate, last ECO round's gate, ECO names and loads of the round that built
+# floorplan tracks, place / cts / route legality and that of the ECO round of the label of out/ (R107), route gate, last ECO round's gate, ECO names and loads of every round of out/'s chain (R117) up to
 # the label of out/, which must be complete [no unfinished label], abstract and its label [= the label of out/]; opt-in: the column's act / act_o abutment),
 # Calibre LVS + its ERC (calibre/erc_allow.txt) / DRC (with the block deck's QB_ gate rules) / antenna (calibre/cal.sh check) and
 # the chain GDS -> fill -> Calibre reports (file times; by content md5_fill / md5_extract / md5_lvs / md5_drc / md5_ant,
@@ -27,7 +27,7 @@
 # results in the deck copy, calibre/cal.sh check deck, R109) and
 # the layout read, the LVS source and the netlist it was built from (R106).  R115: Calibre's own exit status of the LVS /
 # DRC / antenna runs (cal_<mode>.time) in their gates, abstract_lef one signal PIN per signal port, and flow_snapshot:
-# every step's BLK_KNOBS line of summary.txt names this verdict's flow root.  A gate whose evidence a run never produced
+# every step's BLK_KNOBS line of summary.txt names this verdict's flow root and (R117) the block's committed knob values.  A gate whose evidence a run never produced
 # is MISSING (it fails too).
 # The step driver calls it last; the result table of the paper is made from its GATE lines.
 set -u

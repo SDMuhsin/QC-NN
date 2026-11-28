@@ -38,9 +38,9 @@ def last(out, key):      # the last line starting with key ('' if none)
     return l[-1] if l else ''
 def zeros(line, keys):   # None without the line, else: every '<key> N' is there and 0
     return None if not line else all(set(re.findall(r'\b%s (-?\d+)' % k, line)) == {'0'} for k in keys)
-def pt_log(log):         # common/env.sh qb_pt -check: completion line, exit status, errors (workers too), coupling annotated
-    if not have(log): return None, 'no ' + log
-    l = last(sh('. %s/common/env.sh; qb_pt -check %s' % (flow, log))[1], 'PT_ERRORS ')
+def pt_log(log, opt=''):   # common/env.sh qb_pt -check: completion line, exit status, errors (workers too), coupling annotated,
+    if not have(log): return None, 'no ' + log   # QB_PT_SIGNOFF lines (but opt -nosignoff: the ETM session, R117)
+    l = last(sh('. %s/common/env.sh; qb_pt -check %s %s' % (flow, opt, log))[1], 'PT_ERRORS ')
     return l.endswith(' evidence ok'), l
 def icc2_log(step, done, sub=''):   # common/env.sh qb_icc2 -check of <sub>/<step>.log: exit status, '^Error' lines, the tool's
     log = os.path.join(sub, step + '.log')   # error count, done marker; and the exact marker line <done> (the label it is of)
@@ -129,7 +129,7 @@ for c in corners:
     fresh('pt', c, [spef, txt, log])
     md5('pt', c)
     # ETM of the corner: extraction log evidence + its own markers, the model files, the scan of signoff/etm/etmcheck.py
-    e = 'etm_%s.log' % c; et = text(e); ok, l = pt_log(e)
+    e = 'etm_%s.log' % c; et = text(e); ok, l = pt_log(e, '-nosignoff')
     done = ('QB_ETM_DONE %s' % c) in et.splitlines(); bad = len(re.findall(r'MEXT-6\)|\(MEXT-80\)|MEXT-81|MEXT-97', et))
     gate('etm_log', c, ok and done and not bad if ok is not None else None, '%s; QB_ETM_DONE %d; MEXT-6/80/81/97 lines %d' % (l, done, bad))
     db = lib[:-4] + '_lib.db'
@@ -157,12 +157,18 @@ gate('dont_use_icc2', '-', not du_bad if chain is not None else None,
      ('labels %s, latest line each; %s' % (' '.join(want), ' | '.join(du_bad) or du['route'])) if chain is not None else
      'label of out/ %s is not route / eco<n>' % (label or 'missing'))
 gate('out_label', '-', bool(label) and not pend, 'out/label.txt %s, out/label.new %s' % (label or 'missing', pend or 'none'))
-# the name / load gate of the ECO round that built the label of out/ (icc2/eco.tcl "<label> eco names ..."): its latest
-# line only (a failed earlier attempt of that round, or an earlier round, is not the layout of out/)
-en = [l for l in s.splitlines() if label and l.startswith('%s eco names ' % label)]
+# the name / load gate of every ECO round of out/'s chain (icc2/eco.tcl "<label> eco names ..."): the latest line of each
+# label (a failed earlier attempt of a round is not the layout); R117 (round-17 finding: only the round that built the
+# label of out/ was gated, so an earlier round's missing / mismatched objects passed under a later round)
+EN = ('missing', 'load_mismatch', 'record_mismatch', 'unparsed')
+en = [(lab, [l for l in s.splitlines() if l.startswith('%s eco names ' % lab)]) for lab in chain or []]
 if label == 'route': gate('eco_names', '-', True, 'label of out/ = route (no ECO round)')
-else: gate('eco_names', '-', zeros(en[-1], ('missing', 'load_mismatch', 'record_mismatch', 'unparsed')) if en else None,
-           en[-1] if en else 'no "%s eco names" line in summary.txt (label of out/ = %s)' % (label, label or 'missing'))
+elif chain is None: gate('eco_names', '-', None, 'label of out/ %s is not route / eco<n>' % (label or 'missing'))
+else:
+    bad = ['%s: %s' % (lab, ls[-1] if ls else 'no "%s eco names" line in summary.txt' % lab) for lab, ls in en if ls and not zeros(ls[-1], EN)]
+    gone = [lab for lab, ls in en if not ls]
+    gate('eco_names', '-', False if bad else None if gone else True,
+         ' | '.join(bad + ['no "%s eco names" line in summary.txt' % lab for lab in gone]) or ' | '.join(ls[-1] for _, ls in en))
 # place-and-route gates (icc2/common.tcl qb_track_check, qb_legality, qb_route_close; the last ECO round's route gate under
 # the label of out/): a database made before a gate existed has no line, which is MISSING
 def pnr(name, what, rx, ok):   # the last line in the gate's own format; an older record of the same step is not the gate
@@ -222,15 +228,23 @@ else:
                                                   'outputs:%s abstract:%s' % (label, label))]
     gate('step_order', '-', all(rc == 0 for rc, _ in rs), ' | '.join(last(out, 'BLK_ORDER ') or out.strip()[-160:] for _, out in rs))
 # One flow snapshot (R115; round-16 hunt: nothing tied the steps of a run to one flow): every step's BLK_KNOBS line in
-# summary.txt (common/block.sh blk_main: "BLK_KNOBS <blk> <step> <tag> flow <flow root> ...") names the same flow root,
-# this verdict's own; the steps whose outputs are judged here each have one (pnr, calibre, post, views; eco unless the
-# label of out/ is route)
+# summary.txt (common/block.sh blk_main: "BLK_KNOBS <blk> <step> <tag> flow <flow root> <name>=<value> ...") names the
+# same flow root, this verdict's own; the steps whose outputs are judged here each have one (pnr, calibre, post, views;
+# eco unless the label of out/ is route); and (R117; round-17 finding: only the root was checked, so a column run with
+# knobs off their committed values, e.g. another QB_ICC2_BIN or QC_TOOLS, could pass) every line's knobs are the block's
+# committed defaults (-k: the same names, each the same value)
 kn = [l.split() for l in s.splitlines() if l.startswith('BLK_KNOBS ')]
 roots = sorted(set(os.path.realpath(w[5]) if len(w) > 5 and w[4] == 'flow' else '(no flow field)' for w in kn))
 steps = set(w[2] for w in kn if len(w) > 2)
 need = [x for x in ('pnr', 'eco', 'calibre', 'post', 'views') if x != 'eco' or label != 'route']
-gate('flow_snapshot', '-', roots == [os.path.realpath(flow)] and set(need) <= steps if kn else None,
-     'steps %s ran from %s (this verdict: %s; needed: %s)' % (' '.join(sorted(steps)), ' | '.join(roots), os.path.realpath(flow), ' '.join(need))
+off = []
+for w in kn:
+    got = dict(x.split('=', 1) if '=' in x else (x, '(no =)') for x in w[6:])
+    d = sorted(k for k in set(got) | set(KNOBS) if got.get(k) != KNOBS.get(k))
+    if d: off.append('%s: %s' % (w[2] if len(w) > 2 else '?', ' '.join('%s=%s (committed %s)' % (k, got.get(k, 'missing'), KNOBS.get(k, 'none')) for k in d[:4])))
+gate('flow_snapshot', '-', roots == [os.path.realpath(flow)] and set(need) <= steps and not off if kn else None,
+     'steps %s ran from %s (this verdict: %s; needed: %s); knobs %s' % (' '.join(sorted(steps)), ' | '.join(roots), os.path.realpath(flow), ' '.join(need),
+     'not the committed defaults: ' + ' | '.join(off) if off else '= the committed defaults (%d) on all %d lines' % (len(KNOBS), len(kn)))
      if kn else 'no BLK_KNOBS line in summary.txt')
 # the content chain (R113, md5 above) of the fill and extract of the label of out/, and (R114) its abstract
 md5('fill', '-'); md5('extract', '-'); md5('abstract', '-')

@@ -23,7 +23,8 @@ for f in $QC_EXTRA_DB_SS $QC_EXTRA_DB_TT $QC_EXTRA_DB_FF; do [ -f "$f" ] || { ec
 cmd=${1:-}; shift || true
 case "$cmd" in
 syn) "$FLOW/syn/run_dc.sh" "$FL" "$1" "$2" "${3:-$1_${QC_CORNER}_p$2$([ "$QC_TOPO" = 1 ] && echo _topo)}" ;;
-pt)  t=$1; shift; "$FLOW/sta/run_pt.sh" "$t" "${@:-tt ss}" ;;
+pt)  t=$1; shift; [ $# -gt 0 ] || set -- tt ss   # (R117, as synth/dc.sh R111: "${@:-tt ss}" is the one word "tt ss")
+     "$FLOW/sta/run_pt.sh" "$t" "$@" ;;
 *)   sed -n '2,7p' "$0"; exit 1 ;;
 esac || { echo "QB_R4 FAIL $cmd $*"; exit 1; }
 echo "QB_R4_DONE $cmd $*"

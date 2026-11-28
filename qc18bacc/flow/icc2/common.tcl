@@ -81,6 +81,7 @@ set ::QC_BUILD $::env(QC_BUILD)
 source $::env(QC_FLOW)/common/lib.tcl
 source $::env(QC_FLOW)/site/pnr.tcl
 source $::QBF/common/lib_cells.tcl
+source $::QBF/common/kit.tcl
 source $::QBF/common/limits.tcl
 source $::QBF/common/eco_changes.tcl
 source $::env(QB_ICC2_CFG)
@@ -332,7 +333,7 @@ proc qb_done {step {as 0}} {
     qb_line "$step done [clock format [clock seconds] -format %T -gmt 1]"
     puts "QB_ICC2_DONE $step"
 }
-# kit antenna rules (Milkyway clf antennaRule_n65_<n>lm.tcl): the file is ICC1 Tcl, so the Milkyway library argument and
+# kit antenna rules (Milkyway clf antennaRule_n65_<n>lm.tcl, common/kit.tcl qb_antenna_rule_file: kit role antenna_rule): the file is ICC1 Tcl, so the Milkyway library argument and
 # its set_parameter / current_mw_lib / report lines are dropped.  They are stored in the design library (R111 [M]: the
 # comment said "not stored with the block (R67: none in a reopened library)", but every step after the first definition
 # re-defined them over themselves, rg5cf6581a route.log / eco.log / abstract.log 28 LMUI-037 "Multiple antenna layer
@@ -346,14 +347,14 @@ proc qb_antenna_rules {} {
     set f $::R/rpt/antenna_rules.rpt
     redirect -variable r { report_antenna_rules }
     if {![qb_antenna_rule_rows $r]} {
-        set nm [regexp -inline {[0-9]+lm} [file tail $::QC_TF]]
-        set fh [open $::QC_MW/clf/antennaRule_n65_$nm.tcl]; set t [read $fh]; close $fh
+        set af [qb_antenna_rule_file]
+        set fh [open $af]; set t [read $fh]; close $fh
         regsub -all -line {^\s*(set_parameter|set lib|remove_antenna_rules|report_antenna_rules).*$} $t {} t
         regsub -all {(define_antenna_(?:layer_)?rule)\s+\$lib} $t {\1} t
         uplevel #0 $t
         redirect -variable r { report_antenna_rules }
         set h [open $f w]; puts -nonewline $h $r; close $h
-        qb_line "antenna_rules defined from antennaRule_n65_$nm.tcl: [qb_antenna_rule_rows $r] layer rule rows (rpt/antenna_rules.rpt)"
+        qb_line "antenna_rules defined from [file tail $af]: [qb_antenna_rule_rows $r] layer rule rows (rpt/antenna_rules.rpt)"
         return
     }
     set d [expr {[file exists $f] ? [exec cat $f] : ""}]
@@ -734,9 +735,12 @@ proc qb_eco_nets {chg} {
 # Spacing rule on noise victims (R116, PI decision; eco.tcl): the nets of <lst> (PrimeTime's pt_eco_ndr.txt, one net
 # per line: the victims its last noise pass could not fix, signoff/pt/drv_eco.tcl qb_eco_ndr_nets, with the [M] case)
 # get the routing rule qb_noise (spacing x 2, the form of qb_feedthru / qb_clk; created once in the design library) and
-# lose their routes, so route_eco -nets routes them again under it.  Excluded and reported: clock nets and nets that
-# already have a routing rule (a second rule would replace theirs).  The nets ruled -> <rec> (one per line: common/block.sh
-# blk_eco ends the loop when one is a victim again); a listed net missing in the block is an error.  Returns the nets ruled.
+# lose their routes, so route_eco -nets routes them again under it.  A clock net or a net that already has a routing rule
+# (a second rule would replace theirs) in the list is an error (R117; before, they were excluded here, and a list of only
+# them ended the round as "nothing to route"): PrimeTime lists only the nets it finds eligible and records the others as
+# unfixable (signoff/pt/drv_eco.tcl qb_eco_ndr_exclusion), so a net here that is not eligible is a disagreement of the two
+# halves.  The nets ruled -> <rec> (one per line: common/block.sh blk_eco ends the loop when one is a victim again); a
+# listed net missing in the block is an error.  Returns the nets ruled.
 proc qb_eco_noise_ndr {lst rec lab} {
     current_instance
     set names {}
@@ -746,14 +750,17 @@ proc qb_eco_noise_ndr {lst rec lab} {
     set clk [filter_collection $all "net_type==clock"]
     # (routing_rule "default" on every net without one, [M] r102 eco2: 239040 signal nets; qb_clk 512, qb_feedthru 4608)
     set own [filter_collection [remove_from_collection $all $clk] "routing_rule!=default"]
-    set n [remove_from_collection [remove_from_collection $all $clk] $own]
+    if {[sizeof_collection $clk] || [sizeof_collection $own]} {
+        error "qb_eco_noise_ndr: [file tail $lst] lists nets ICC2 cannot rule (PrimeTime's qb_eco_ndr_exclusion disagrees): clock [sizeof_collection $clk] [lrange [get_object_name $clk] 0 4], own rule [sizeof_collection $own] [lrange [get_object_name $own] 0 4]"
+    }
+    set n $all
     if {[sizeof_collection $n]} {
         if {![sizeof_collection [get_routing_rules -quiet qb_noise]]} { create_routing_rule qb_noise -default_reference_rule -multiplier_spacing 2 }
         set_routing_rule $n -rule qb_noise
         remove_routes -nets $n -global_route -detail_route
     }
     set f [open $rec w]; foreach x [get_object_name $n] { puts $f $x }; close $f
-    qb_line "$lab noise NDR qb_noise (spacing x 2) on [sizeof_collection $n] of [llength $names] nets; excluded: clock [sizeof_collection $clk] [lrange [get_object_name $clk] 0 4], own rule [sizeof_collection $own] [lrange [get_object_name $own] 0 4]"
+    qb_line "$lab noise NDR qb_noise (spacing x 2) on [sizeof_collection $n] of [llength $names] nets"
     return $n
 }
 # add_buffer_on_route points (eco.tcl): the change list as eco.tcl sources it.  PT writes each buffer {name lib_cell x y

@@ -5,13 +5,14 @@
 # written by regress.sh ref, a change is a deliberate reference update.  Repeatability: ICC2 on several cores is
 # not run-to-run repeatable (R109 [M]); on 1 core it is (QB_ICC2_CORES=1, the block default, R110), and then the
 # route label's netlist / DEF md5 (route_md5) is compared too; only the lines below are compared
-# run rg98bd952a host engr-tau-14.usask.ca snapshot commit none tree 98bd952cb8fea3261f89a10d6b1054b5b56d28db
+# run rgff01cdba host engr-tau-14.usask.ca snapshot commit none tree ff01cdb43da92eeeb3b5a5a4be09b2d953acf7f2
 site_md5 50b51bb3d985181eb1ca5dd9aaabe024 flow/tsmc65/site/pnr.tcl
 site_md5 427a2e0002c1bc97682e2f4be2030d87 flow/tsmc65/site/site.csh
 site_md5 a992ad0a90ae60eae61911156b0a57b3 flow/tsmc65/site/site.sh
 site_md5 9c3c1428b4359d3a83f30d23f408822f flow/tsmc65/site/site.tcl
 site_md5 26e030de154b0b70e1410bad6a50ad2c flow/tsmc65/site/sram.sh
 kit_md5 ant_deck 49a18a0b78f5cf4b373486726fb72484
+kit_md5 antenna_rule d7aaae82e8b2666fce5b993d22becd72
 kit_md5 cell_gds 26d87dd04b23ce92e2c30975639fdda6
 kit_md5 cell_lef 029b212ec31beadf17d507ea5362afff
 kit_md5 cell_spice 0f2bb1f1d6e278e934c0bdaf472841d1

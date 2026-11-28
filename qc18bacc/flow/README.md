@@ -8,7 +8,7 @@ regression block `blocks/rgr`; the act / hub / top blocks are to be ported onto 
 
 | dir | contents |
 |---|---|
-| `common/` | `env.sh` (bash: `QBF`, `ROOT`, `B`, `TOOLS`, `PY`, `qb_kit`, `qb_pt`, `qb_icc2`, `qb_corners`), `block.sh` (shared ICC2 hard-block driver), `block_sdc.tcl` (netlist + P&R SDC of a hard block from its DC run), `act_chain.tcl` (the act chain contract of the act source and the column budgets, R107), `constraints.sdc` (DC / PT SDC), `limits.tcl` / `limits.txt` (sign-off limits), `derate.tcl`, `lib_cells.tcl` / `lib_tcq.py`, `eco_changes.tcl`, `queue.sh` (detached step queue per host), `status.sh` (run status digest), `deploy.sh` (immutable flow snapshot of one commit on a build host), `regress.sh` (the flow regression) |
+| `common/` | `env.sh` (bash: `QBF`, `ROOT`, `B`, `TOOLS`, `PY`, `qb_kit`, `qb_pt`, `qb_icc2`, `qb_corners`), `block.sh` (shared ICC2 hard-block driver), `block_sdc.tcl` (netlist + P&R SDC of a hard block from its DC run), `act_chain.tcl` (the act chain contract of the act source and the column budgets, R107), `constraints.sdc` (DC / PT SDC), `limits.tcl` / `limits.txt` (sign-off limits), `derate.tcl`, `lib_cells.tcl` / `lib_tcq.py`, `kit.tcl` (kit file paths the flow derives: the ICC2 antenna rule file, R117), `eco_changes.tcl`, `queue.sh` (detached step queue per host), `status.sh` (run status digest), `deploy.sh` (immutable flow snapshot of one commit on a build host), `regress.sh` (the flow regression) |
 | `synth/` | DC / top-netlist steps that produce the P&R input netlists |
 | `floorplan/` | `pg_grid.tcl` (chip PG strap grid), `abstract_pins.py` / `edge_pins.py` (floorplan pin DEF / pin-only abstract) |
 | `icc2/` | IC Compiler II steps (R54): `common.tcl` (kit + block config, `qb_open` / `qb_done` / `qb_qor`), `libs.tcl` (std-cell NDM, icc2_lm_shell), `init.tcl` (design library, TLU+, netlist, MCMM, SDC), `floorplan.tcl`, `place.tcl`, `cts.tcl`, `route.tcl` (`qb_route_setup` / `qb_fillers` / `qb_route_close` in common.tcl), `eco.tcl` (R56: sources the PrimeTime change list, legalise, route_eco, refill), `outputs.tcl` (label `QB_ICC2_LABEL`), `extract.tcl` (R68: Calibre fill read back as DEF FILLS, fill-aware SPEF per sign-off corner), `abstract.tcl` (abstract LEF + port antenna data + abutment check for the top); block facts in `blocks/<b>/icc2.cfg` |
@@ -60,15 +60,18 @@ limits gate fails every corner where they differ from limits.txt.  DC's run.env 
 (R100, common/block.sh blk_pt_env: its QC_IO_PCT acted as such an override); since R107 it records the limits DC used
 and every knob a DC hook declares (flow/tsmc65 `common/knobs.tcl`), and QC_IO_PCT only without a design SDC; since R115
 also how the netlist was made (QC_CORNER, QC_FLIST, QC_PARAMS, QC_HOOK, QC_POST_HOOK, QC_COMPILE), and `synth/run.sh
-col|rgr` set the corner of their output name (tt) and fail on an environment QC_CORNER that differs.  ECO history
+col|rgr|act` (act: R117) set the corner of their output name (tt) and fail on an environment QC_CORNER that differs.  ECO history
 (R115): a round counts (lifts a stop, gives the previous total) only by its "applied" line, written once its ICC2 eco
-and the outputs / fill of its label passed (common/block.sh blk_eco_applied).  R116: a round whose PrimeTime makes no
+and the outputs / fill of its label passed (common/block.sh blk_eco_applied); R117: a history with a round of out/'s
+chain without its applied line (written before R115, e.g. tau08 col/r102) is refused (blk_eco_legacy; not by the
+PrimeTime-only mode), and every end of the loop before ICC2 marks the round's change list not applied.  R116: a round whose PrimeTime makes no
 change for a non-zero total ends the loop before ICC2 (history line "FAIL PrimeTime made no change; unfixable:
 <corner:check=n ...>", drv_eco.tcl eco_changes / eco_residual).  Noise victims PrimeTime cannot fix (fix_eco_drc never
 resizes a flop; r102 [M]: a 265 um M6 run coupled to two parallel nets) are routed again with the spacing rule qb_noise
-(spacing x 2; drv_eco.tcl pt_eco_ndr.txt -> icc2/common.tcl qb_eco_noise_ndr, clock nets and nets with a rule of their
-own excluded and reported); such a list counts as the round's change, and a ruled net that is a victim again ends the
-loop as "FAIL unfixable".
+(spacing x 2; drv_eco.tcl pt_eco_ndr.txt -> icc2/common.tcl qb_eco_noise_ndr); R117: PrimeTime lists only the nets ICC2
+can rule (drv_eco.tcl qb_eco_ndr_exclusion: clock-network and dont_touch nets excluded, the line eco_ndr_excluded, unfixable;
+ICC2 fails on a listed net it cannot rule); such a list counts as the round's change, and a ruled net that is a victim
+again ends the loop as "FAIL unfixable".
 Corners (R68): one table, `flow/tsmc65/site/site.tcl` QC_SIGNOFF (kit release note RN_TCBN65GPLUS_140B NOTE I): setup
 {wc wcl} x {Cworst RCworst} (ss ss_rcw wcl wcl_rcw), hold {lt ml} x {Cbest RCbest} (ff ff_rcb ml ml_rcb), tc typical (tt);
 ICC2 MCMM, PT sign-off, the DMSA ECO, the block ETMs and the chip top use all of them (bash: common/env.sh `qb_corners`;
@@ -99,7 +102,8 @@ against the files as they are (views: the ETMs of the label of out/).  `outputs_
 netlist (R114) and the GDS (R115, common/gds_md5.py: without its time stamps; the fill step checks out/ against it
 first); the verdict's lvs_source_netlist holds out/ against it.  R115: a chain line is written only when its step
 passed (post: PT / ETM), calibre reads the filled GDS of the fill record (no file times), every step appends its
-BLK_KNOBS line to summary.txt and the verdict's flow_snapshot gate requires one flow root (its own) for all of them,
+BLK_KNOBS line to summary.txt and the verdict's flow_snapshot gate requires one flow root (its own) for all of them
+(R117: and the block's committed knob values on every line, QB_ICC2_BIN and QC_TOOLS included),
 and the Calibre gates require Calibre's exit status 0.  The file-time fresh_* gates stay as a second check
 of the links no step records; a run dir copied without its times can only fail them.
 Out of scope by the project owner's decision: formal equivalence checking (LEC / Formality) of the P&R netlist against
@@ -126,8 +130,8 @@ the settings (R103): every step's `BLK_KNOBS` line (common/block.sh blk_knobs: t
 every flow knob in force, common/env.sh qb_knobs: P&R guard-bands, ECO margins / rounds / modes, pnr range, cores, ICC2
 binary / label, LVS deck extras, the Calibre deck edits of every mode BLK_*_SED (R104: ant has its own, BLK_ANT_SED), the sign-off limits) must name the snapshot and equal the snapshot's committed defaults
 (`run.sh knobs` in an empty environment), which equal the reference's `knobs` line, and the queue spec has no VAR=val
-word; and its signoff step's verdict, which the snapshot's signoff
-step re-run on the run dir must reproduce line for line (R102, check verdict_rerun)
+word; and its signoff step's verdict, which the snapshot's verdict re-run on the run dir must reproduce line for line
+(R102, check verdict_rerun; R117: `run.sh verdict`, the signoff step's verdict read-only, so a check writes nothing)
 (SIGNOFF PASS, no FAIL / MISSING gate, VERDICT line = the reference's) and compares its gate set (gate name x corner) with
 `blocks/rgr/reference.txt`, printing the difference: a checker that adds, drops or renames a gate fails the regression
 until the reference is rewritten with `ref` and the change is reviewed in the commit.  Repeatability (R109 [M],
@@ -151,7 +155,8 @@ host's whole flow/ including tracked lib.tcl / tool.sh).  It writes VERSION (com
 = one `site_md5 <md5> <path>` line per site file, deploy time) and MANIFEST.md5 (every other file), verifies both on the
 host, makes the snapshot read-only and refuses an existing <dir>.  The site manifest also has (R115) one `kit_md5 <role>
 <md5>` line per kit file the flow reads by path, keyed by role (common/env.sh qb_kit_files, the one role table: tech file,
-cell LEF / GDS, TLU+ per corner and map, timing .db and liberty per corner, Calibre decks, LVS cell spice; the paths are
+cell LEF / GDS, TLU+ per corner and map, timing .db and liberty per corner, Calibre decks, LVS cell spice, R117 the ICC2
+antenna rule file: common/kit.tcl, site.tcl QC_MW; the paths are
 resolved on the host only, so neither VERSION nor the reference names a kit file), and `check` re-checks every manifest
 line on the host (site_now).  `check` also compares the site manifest and the run's
 inputs from outside the snapshot (summary.txt `init inputs`: md5 of netlist, DC SDC, run.env, then the block's own

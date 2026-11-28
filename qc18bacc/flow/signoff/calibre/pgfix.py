@@ -8,9 +8,13 @@
 import re, sys, collections
 vin, spi, vout = sys.argv[1:4]
 ports = {}
-for line in open(spi):
-    if line[:7].lower() == '.subckt':
-        t = line.split(); ports[t[1]] = set(t[2:])
+sub = None   # the .subckt header being read: its words, continued by '+' lines (R117; round-17 finding: ports on a
+for line in open(spi):   # continuation line were dropped, so such a cell's VDD / VSS was never patched)
+    if sub is not None and line[:1] == '+':
+        sub += line[1:].split(); continue
+    if sub: ports[sub[1]] = set(sub[2:])
+    sub = line.split() if line[:7].lower() == '.subckt' else None
+if sub: ports[sub[1]] = set(sub[2:])
 drop = collections.Counter(); patch = collections.Counter(); n = 0
 inst = re.compile(r'^\s*([A-Za-z_][A-Za-z0-9_]*)\s+(\\\S+|[A-Za-z_][A-Za-z0-9_\[\]]*)\s*\((.*)\)\s*;\s*$', re.S)
 KW = {'module', 'input', 'output', 'inout', 'wire', 'assign', 'endmodule', 'reg', 'supply0', 'supply1'}

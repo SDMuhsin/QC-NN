@@ -36,10 +36,12 @@ foreach c $::QC_SIGNOFF_CORNERS {
     if {![info exists spef($c)] || ![file exists $spef($c)]} { error "QB extract: no SPEF for corner $c in $o.spef_scenario" }
     incr users($spef($c))
 }
-# one <o>_<c>_pt.spef.gz per corner (a file shared by corners is compressed for each, then deleted after its last one)
+# one <o>_<c>_pt.spef.gz per corner (a file shared by corners is compressed for each, then deleted after its last one);
+# pigz -n: no file name / time stamp in the gzip header, so the same SPEF gives the same .gz md5 (R117; round-17 finding:
+# every re-extract changed the md5 of the content chain, common/block.sh blk_chain extract)
 foreach c $::QC_SIGNOFF_CORNERS {
     set f $spef($c)
-    exec pigz -p [qc_env QB_ICC2_CORES 16] -c $f > ${o}_${c}_pt.spef.gz
+    exec pigz -n -p [qc_env QB_ICC2_CORES 16] -c $f > ${o}_${c}_pt.spef.gz
     if {![incr users($f) -1]} { file delete $f }
     qb_line "extract spef $c [file tail $f] [file size ${o}_${c}_pt.spef.gz] (gz)"
 }

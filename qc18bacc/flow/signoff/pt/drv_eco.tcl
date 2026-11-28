@@ -63,7 +63,8 @@
 #   (its new cells, R90: qb_eco_cells_write), eco_summary.txt; with a change list also the lines "eco_changes n" (its
 #   change commands, common/eco_changes.tcl qb_eco_change_count) and "eco_residual" (R116: the end state's non-zero
 #   corner:check counts of prefix_total's checks), and pt_eco_ndr.txt with the line "eco_ndr_nets m" (the nets of the
-#   noise victims the last noise pass could not fix, which ICC2 eco.tcl routes with a spacing rule: qb_eco_ndr_nets);
+#   noise victims the last noise pass could not fix, which ICC2 eco.tcl routes with a spacing rule: qb_eco_ndr_nets;
+#   R117: only nets ICC2 can rule, the others, clock and dont_touch nets, are the line "eco_ndr_excluded k": unfixable);
 #   n = m = 0 with a non-zero prefix_total ends the loop before ICC2 (common/block.sh blk_eco)
 #   (lines "<tag> <corner> <record>", in the log as QB_ECO_STATE lines: timing counts before / drc / setup / hold /
 #   post_noise_setup / post_noise_hold [the end state] = setup / hold / recovery / removal violators, max_tran / max_cap
@@ -265,29 +266,54 @@ proc qb_eco_noise_count {} {
     redirect -variable n { report_noise -all_violators -nosplit }
     return "noise [qb_pt_noise_viol $n]"
 }
-# qb_eco_noise_victims (inside the noise state): the violators of the same report, "victims {pin net ...}"
+# qb_eco_noise_victims (inside the noise state): the violators of the same report, "victims {pin net ...} excluded {net
+# reason ...}" (excluded: the victim nets ICC2 cannot give the spacing rule, qb_eco_ndr_exclusion)
 proc qb_eco_noise_victims {} {
     redirect -variable n { report_noise -all_violators -nosplit }
-    set v {}
-    foreach {- p net} [regexp -all -inline -line {^\s*(\S+)\s+\((\S+)\)\s+-?[0-9.]+\s+-?[0-9.]+\s+-?[0-9.]+\s*$} $n] { lappend v $p $net }
-    return [list victims $v]
+    set v {}; set x {}
+    foreach {- p net} [regexp -all -inline -line {^\s*(\S+)\s+\((\S+)\)\s+-?[0-9.]+\s+-?[0-9.]+\s+-?[0-9.]+\s*$} $n] {
+        lappend v $p $net
+        set why [qb_eco_ndr_exclusion $net]
+        if {$why ne ""} { dict set x $net $why }
+    }
+    return [list victims $v excluded $x]
+}
+# qb_eco_ndr_exclusion <net>: why ICC2 cannot route the net with the noise spacing rule (R117; round-17 finding: ICC2
+# excluded such nets itself, so a list of only them ended as "nothing to route", a failed round): "clock" = a pin of it is
+# in the clock network (ICC2 net_type clock, rule qb_clk of the clock tree, flow/icc2/place.tcl), "own_rule" = dont_touch
+# (the feedthrough port nets, dont_touch in ICC2 init and here, ICC2 rule qb_feedthru: flow/icc2/common.tcl
+# qb_feedthru_ndr), "" = eligible.  ICC2 (flow/icc2/common.tcl qb_eco_noise_ndr) fails on a listed net it finds with a
+# clock type or a rule of its own: the two halves must agree.
+proc qb_eco_ndr_exclusion {net} {
+    set n [get_nets -quiet $net]
+    if {![sizeof_collection $n]} { error "qb_eco_ndr_exclusion: no net $net" }
+    if {[sizeof_collection [filter_collection [get_pins -quiet -leaf -of_objects $n] "is_clock_network==true"]]} { return clock }
+    if {[get_attribute -quiet $n dont_touch] eq "true"} { return own_rule }
+    return ""
 }
 # Noise victims for the spacing rule (R116, PI decision; ICC2 flow/icc2/common.tcl qb_eco_noise_ndr).  [M] tau08 col/r102
 # round 3: the one violator, ml_rcb U24/A2 on g_fin2_s2[16] (DFQD2 Q, 3 loads, 273 um, 265 um on M6), unfixable I Q: PT
 # does not size a flop (above) and its only buffer (BUFFD2 at Q, without physical constraints) left the bump at 0.40 V
 # against 0.39 V immunity (0.41 V before).  The net is coupling-bound: 55.6 of 64.6 fF wire cap is coupling, 43 fF of it
 # to two parallel M6 nets of another lane; PT what-if: coupling x 0.75 -> 0.35 V, x 0.5 -> 0.24 V (clear); DFQD4 0.28 V.
-# qb_eco_ndr_nets <unfixable reasons file of the last noise pass> <end_noise_victims records>: the victim nets of the end
-# state's violators whose pin that pass reports unfixable, de-duplicated over the corners (a violator the pass did not
-# see, e.g. one from the timing repair after it, is the next round's PT's)
+# qb_eco_ndr_nets <unfixable reasons file of the last noise pass> <end_noise_victims records>: {eligible excluded}: the
+# victim nets of the end state's violators whose pin that pass reports unfixable, de-duplicated over the corners (a
+# violator the pass did not see, e.g. one from the timing repair after it, is the next round's PT's), split into the
+# nets ICC2 may rule (a sorted list) and the excluded ones (a dict net -> reason; excluded in any corner = excluded)
 proc qb_eco_ndr_nets {uf recs} {
     set up {}
     if {[file exists $uf]} {
         foreach l [split [exec cat $uf] "\n"] { if {[regexp {^\s*(\S+)\s+[A-Z]( [A-Z])*\s*$} $l -> p]} { dict set up $p 1 } }
     }
-    set nets {}
-    foreach {c x} $recs { foreach {p n} [dict get $x victims] { if {[dict exists $up $p]} { lappend nets $n } } }
-    return [lsort -unique $nets]
+    set nets {}; set exc {}
+    foreach {c x} $recs {
+        foreach {p n} [dict get $x victims] {
+            if {![dict exists $up $p]} continue
+            if {[dict exists $x excluded $n]} { dict set exc $n [dict get $x excluded $n] } else { lappend nets $n }
+        }
+    }
+    set ok {}; foreach n [lsort -unique $nets] { if {![dict exists $exc $n]} { lappend ok $n } }
+    return [list $ok $exc]
 }
 # qb_eco_noise_enter on|off: the block's noise-only analysis state, ::QB_PT_NOISE_STATE of its PrimeTime script ("<command>
 # on" enters it, "<command> off" restores the timing state), then the timing and noise update every later count needs
@@ -473,8 +499,9 @@ foreach {recs keys} [list $end {setup hold recovery removal max_tran max_cap} $e
     # (act_noise: a block hook's count, the column's; a block without it has none)
     foreach {c x} $recs { foreach k $keys { if {[dict exists $x $k] && [dict get $x $k] != 0} { lappend res "$c:$k=[dict get $x $k]" } } }
 }
-set ndr [qb_eco_ndr_nets $o/post_hold_drc_noise.txt $ev]
+lassign [qb_eco_ndr_nets $o/post_hold_drc_noise.txt $ev] ndr exc
 set f [open $o/pt_eco_ndr.txt w]; foreach n $ndr { puts $f $n }; close $f
 qb_eco_note "eco_ndr_nets [llength $ndr] (pt_eco_ndr.txt: victim nets of the end state's noise violators the last noise pass left unfixable, for the spacing rule: [lrange $ndr 0 9])"
+qb_eco_note "eco_ndr_excluded [dict size $exc] (such nets ICC2 cannot rule, unfixable: [expr {[dict size $exc] ? [lrange $exc 0 9] : "none"}])"
 qb_eco_note "eco_residual [expr {[llength $res] ? $res : "none"}] (non-zero corner:check counts of prefix_total's checks after the change list, PrimeTime's prediction)"
 qb_eco_end $o

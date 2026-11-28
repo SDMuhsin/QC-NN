@@ -10,6 +10,9 @@ set ::QC_LIBDIR <STDCELL_DB_DIR>
 set ::QC_WLM_GROUP <WLM_SELECTION_GROUP>
 
 # ---- physical data for DC topographical mode (QC_TOPO=1)
+# QC_MW: the kit's Milkyway / ICC directory; ICC2 reads its antenna rules from $::QC_MW/clf/antennaRule_n65_<n>lm.tcl
+# (qc18bacc/flow/common/kit.tcl qb_antenna_rule_file; <n>lm = the metal stack in the tech file's name)
+set ::QC_MW      <MILKYWAY_KIT_DIR>
 set ::QC_TF      <TECHFILE>
 set ::QC_MW_REF  <MILKYWAY_REFERENCE_LIB>
 set ::QC_TLU     <TLUPLUS_DIR>

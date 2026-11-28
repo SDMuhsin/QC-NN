@@ -40,7 +40,8 @@
 # QB_ICC2_CORES=1, a knob, so equal to the reference's) and the regression compares the route layout's md5 as well as
 # gate sets and verdicts; a reference of a multi-core run has no route_md5 line, and then only gate sets and verdicts.
 # The run's own files are read (queue.state, summary.txt, the signoff step's output) and the verdict is re-run from the
-# snapshot on the run dir (blocks/rgr/run.sh signoff), which must equal the signoff step's output (check verdict_rerun);
+# snapshot on the run dir (blocks/rgr/run.sh verdict: the signoff step's verdict, read-only, R117), which must equal the
+# signoff step's output (check verdict_rerun); nothing of the run dir is written;
 # the snapshot is found by its run name.
 set -uo pipefail
 die() { echo "REGRESS_FAIL $*" >&2; exit 1; }
@@ -128,7 +129,8 @@ echo "X $(grep -v '^[[:space:]]*\(#\|$\)' "$q/queue.spec" | awk '{ for (i = 2; i
 # (an unfinished chain has no signoff output yet: the checks report it)
 n=$(awk '$3 == "signoff" { print $1 }' "$q/queue.state")
 [ -z "$n" ] || grep -h '^GATE \|^VERDICT \|^SIGNOFF ' "$q/q${n}_rgr_signoff.out" 2> /dev/null
-"$snap/qc18bacc/flow/blocks/rgr/run.sh" signoff "$tag" 2>&1 | grep '^GATE \|^VERDICT \|^SIGNOFF ' | sed 's/^/R /'
+# (the read-only verdict step, R117: the signoff step re-run appended its BLK_KNOBS line to the run's summary.txt)
+"$snap/qc18bacc/flow/blocks/rgr/run.sh" verdict "$tag" 2>&1 | grep '^GATE \|^VERDICT \|^SIGNOFF ' | sed 's/^/R /'
 exit 0
 EOF
 }
