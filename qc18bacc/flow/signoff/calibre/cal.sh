@@ -17,8 +17,8 @@
 #      per run; R111: no inline -e), QB36_LVS_EXTRA (a file appended to the LVS deck, with its own #@expect lines),
 #      QB36_HCELL (hcell file); QB55_WINDOW = a sed file of the chip window (fill / odpo: common/block.sh die_window.sed)
 # Record (R106): every run mode writes <rundir>/deck_edits.txt, one line "deck_edits <mode> <var>=<value> ..." of the
-# edits / add-ons it applied to the deck copy (the env variables of that mode above; common/env.sh qb_knob words, an
-# empty value as <unset>), which signoff/verdict.py compares with the block's committed defaults (before, they were only
+# edits / add-ons it applied to the deck copy (the env variables of that mode above; common/env.sh qb_knob words: an
+# empty value as <unset>, as in BLK_KNOBS, R113), which signoff/verdict.py compares with the block's committed defaults (before, they were only
 # in the step's BLK_KNOBS line, which only common/regress.sh read: an experiment's deck edit could sign off).
 # Summary: grep of the TOTAL counts and the rule checks with results (CAL36 lines), then cal_result's CAL36_RESULT line.
 # Exit status (R92; before, Calibre's alone: r91b LVS INCORRECT + 4 DRC results ended "ok"): Calibre's if non-zero, else
@@ -33,7 +33,7 @@ AD=${A%/*}/drc_allow.txt
 . "${A%/*}/../../common/env.sh"   # (qb_knob: the deck edit record)
 cal_edits() {   # cal_edits <mode> <var> ...: deck_edits.txt of the current (run) dir
     local m=$1 v; shift
-    { printf 'deck_edits %s' "$m"; for v; do if [ -n "${!v:-}" ]; then printf ' %s' "$(qb_knob "$v")"; else printf ' %s=<unset>' "$v"; fi; done; echo; } > deck_edits.txt
+    { printf 'deck_edits %s' "$m"; for v; do printf ' %s' "$(qb_knob "$v")"; done; echo; } > deck_edits.txt
 }
 # The deck edits took effect (R109; hunt round 12: a sed expression that matches nothing is a silent no-op, and nothing
 # looked into the deck copy).  Every deck sed file (signoff/calibre/*_blk.sed, lvs_case.sed, the run's die_window.sed)
@@ -71,7 +71,8 @@ cal_deck() {
 #             <topcell> is CORRECT and no cell is INCORRECT / NOT COMPARED, and the extraction report lvs.rep.ext of
 #             this run has no line after its header (no extraction / soft-connection finding, R99), and the ports pass
 #             lvs_ports (R103)
-#   drc, ant  the summary report the deck copy names is this run's and of <topcell>, has its TOTAL line with 0 results,
+#   drc, ant  the deck copy keeps every result (one line DRC MAXIMUM RESULTS ALL, R113), the summary report it names is
+#             this run's and of <topcell>, has its TOTAL line with 0 results,
 #             and every QB_* rule check of the deck copy (a gate a deck sed adds, R82 drc_blk.sed) has one RULECHECK
 #             line, executed with 0 results (R84: a gate that did not run fails; R97: NOT EXECUTED fails too); the set of
 #             NOT EXECUTED rule checks is exactly the mode's rules of drc_allow.txt (R106; before, only QB_* rules had to
@@ -124,7 +125,7 @@ cal_named() {
     case $r in '') ;; /*) echo "$r" ;; *) echo "${1%/*}/$r" ;; esac
 }
 cal_result() {
-    local mode=$1 top=$2 d=$3 rep f=0 o n b c r v q x s="no report of this run"
+    local mode=$1 top=$2 d=$3 rep f=0 o n b c r v q x lim s="no report of this run"
     case $mode in
     lvs) rep=$d/lvs.rep
          if [ ! -s "$d/deck.lvs" ] || [ ! -s "$rep" ]; then echo "CAL36_FAIL lvs $top: no deck copy $d/deck.lvs or no report $rep"; f=1
@@ -156,6 +157,9 @@ cal_result() {
              s="results ${n:-NA} rules_with_results $v rule_checks $r qb_gate_rules $(echo $q | wc -w) not_executed $(grep -c . <<< "$x") ($(echo $x))"
              [ -s "$AD" ] && [ "$x" = "$o" ] || { echo "CAL36_FAIL $mode $top: NOT EXECUTED rule checks ($(echo $x)) are not the allowed ones of $AD ($(echo $o))"; f=1; }
              [ "$c" = "$top" ] || { echo "CAL36_FAIL $mode $top: $rep is of cell '$c'"; f=1; }
+             # exact counts (R113): the deck copy keeps every result, one DRC MAXIMUM RESULTS line, ALL
+             lim=$(grep '^DRC MAXIMUM RESULTS' "$d/deck.$mode" | tr -s ' \t' ' ' | sed 's/ *$//' | tr '\n' '|')
+             [ "$lim" = "DRC MAXIMUM RESULTS ALL|" ] || { echo "CAL36_FAIL $mode $top: deck.$mode result limit '${lim:-none}' (needs one line DRC MAXIMUM RESULTS ALL: counts capped otherwise)"; f=1; }
              [ "$n" = 0 ] && [ "$v" = 0 ] && [ "$r" -gt 0 ] || { echo "CAL36_FAIL $mode $top: $s (needs the TOTAL line with 0 results and at least one rule check)"; f=1; }
              # our own deck gates (QB_* rule checks added by a deck sed, e.g. drc_blk.sed QB_BLK.M8M9.0): each passes only
              # with its RULECHECK line executed at 0 results (R97: "RULECHECK <rule> .... NOT EXECUTED" passed before)
@@ -204,8 +208,9 @@ drc|ant) d=$4; t=${5:-8}; mkdir -p "$d"; cd "$d" || exit 1
      # edits, or any value inherited from the environment, reached the antenna deck)
      if [ $mode = drc ]; then deck=$K/CLN65GP/DRC/MAIN_DRC_TopMz/CLN65S_9M_6X2Z.23a; sx=${QB36_DRC_SED:-}
      else deck=$K/CLN65GP/DRC/ANTENNA_DRC/CN65S_9M.ANT.23a; sx=${QB36_ANT_SED:-}; fi
-     sed -e "s#^\(LAYOUT PATH\) .*#\1 \"$gds\"#" -e "s#^\(LAYOUT PRIMARY\) .*#\1 \"$top\"#" \
-         -e "s#^DRC MAXIMUM RESULTS ALL#DRC MAXIMUM RESULTS 1000#" $sx "$deck" > deck.$mode
+     # (R113; hunt round 14 on f9f2580: this base edit capped both kit decks' DRC MAXIMUM RESULTS ALL at 1000 and only
+     # drc_blk.sed restored ALL, so the antenna counts were capped at 1000 per rule; both decks keep ALL, cal_result gates it)
+     sed -e "s#^\(LAYOUT PATH\) .*#\1 \"$gds\"#" -e "s#^\(LAYOUT PRIMARY\) .*#\1 \"$top\"#" $sx "$deck" > deck.$mode
      cal_edits $mode $([ $mode = drc ] && echo QB36_DRC_SED || echo QB36_ANT_SED)
      cal_deck . || exit 1
      /usr/bin/time -v "$C/bin/calibre" -drc -hier -turbo "$t" deck.$mode > cal_$mode.log 2> cal_$mode.time; rc=$?

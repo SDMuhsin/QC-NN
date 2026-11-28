@@ -17,7 +17,7 @@
 # Steps:  pnr      ICC2 libs init floorplan place cts route outputs, then portcheck + fill; QC_PNR_FROM / QC_PNR_TO select
 #                  a range, an unknown step name fails; a step init .. route drops the label of out/ and moves the
 #                  ECO history out/eco aside (blk_unlabel), and so does a range that starts at outputs, once the route
-#                  step's log passes (qb_icc2 -check, R111);
+#                  step's log passes (qb_icc2 -check, R111) and route completed after init .. cts (blk_done_order, R113);
 #                  init records the md5 of its DC inputs in summary.txt once it succeeded (blk_inputs)
 #         eco      sign-off ECO loop, at most QC_ECO_ROUNDS (common/env.sh) rounds: PrimeTime DMSA -> ICC2 eco -> outputs -> portcheck
 #                  -> fill; ends when a round's pre-fix state is clean in every corner at zero margin; fails if it never
@@ -29,7 +29,7 @@
 #                  The loop's history is out/eco/rounds.txt: a later eco step continues it (round number = position of
 #                  the label of out/ in the chain route, eco, eco2, ...) and a recorded stop stays a stop unless
 #                  QC_ECO_OVERRIDE_STOP=1, which is logged there.  Opt-in QC_ECO_PT_ONLY=1: the next round's PrimeTime
-#                  DMSA only (record + history line, nothing applied)
+#                  DMSA only (record + history line, nothing applied; refuses a run with an unfinished label of out/)
 #         fill     portcheck, Calibre dummy metal + OD / PO, fill-aware SPEFs of the label of out/ (first an unfinished
 #                  one)                                                 calibre  LVS, DRC, antenna (fails on cal.sh's status)
 #         post     PrimeTime sign-off + ETMs in every corner   views  abstract LEF + ETM scan   signoff  signoff/verdict.sh
@@ -37,7 +37,7 @@
 # Details.  rundir <tag> (a further step) prints the run dir (common/queue.sh), knobs <tag> the BLK_KNOBS line
 # every step starts with (blk_knobs: flow root + flow knobs in force).  The label of out/ is out/label.txt
 # (blk_out, written once outputs, portcheck, fill and SPEFs of the label passed): route, then eco, eco2, ... (one ICC2 label per ECO round, so every round's layout stays in the
-# design library).  ECO round files: out/eco/<label>/ = what that round produced and nothing else (PrimeTime log,
+# design library).  ECO round files: out/eco/<label>/ = what that round produced and nothing else (PrimeTime log + its .time,
 # eco_summary.txt, change list + new-cell record [pt_eco.not_applied.* when the loop stopped before applying it],
 # unfixable reasons, ICC2 log + its .time; an earlier attempt of the same round is kept as <label>.try<n>), out/eco/rounds.txt (one
 # line per round and per stop / override: the history).
@@ -96,8 +96,13 @@ blk_pnr() {
             # (R111; hunt round 13 on 1940fd4) a range that starts at outputs relabels out/ to route: the route step must have
             # passed (qb_done saves the label before qb_icc2 judges the step, so a route step that failed on an error under
             # redirect left a saved route label), and the ECO history of the old label of out/ goes aside as in blk_unlabel
+            # (R113; hunt round 14 on f9f2580: a partial re-run place .. cts followed by a range from outputs relabelled
+            # the route label of the layout before) and the route step completed after every earlier step of its chain
+            # (blk_done_order: the completion record of common/env.sh qb_icc2)
             if [ "$from" = outputs ]; then
                 qb_icc2 -check "$d" route || { echo "BLK_FAIL pnr outputs: the route step did not pass (ICC2_STEP above): no outputs of label route"; return 1; }
+                blk_done_order init:init floorplan:floorplan place:place cts:cts route:route \
+                    || { echo "BLK_FAIL pnr outputs: route is not the last step of init .. route to complete (BLK_ORDER above): no outputs of label route"; return 1; }
                 blk_unlabel outputs || return 1
             fi
             blk_out route || return 1
@@ -211,6 +216,50 @@ blk_out_md5() {
         && f=$(set -o pipefail; gzip -dc "$o.def.gz" | grep -v '^#' | md5sum | cut -c1-32) || { echo "BLK_FAIL outputs md5 of $o.v / .def.gz"; return 1; }
     echo "outputs_md5 $1 netlist $n def $f" >> "$d/summary.txt" && echo "BLK_OUT_MD5 $1 netlist $n def $f"
 }
+# The completion order of ICC2 steps (R113): blk_done_order <step>:<label> ...: one BLK_ORDER line; status 0 when each
+# has an "icc2_done <step> <label>" line in summary.txt (common/env.sh qb_icc2: written when the step passed) and the last
+# such line of each comes after the last one of the one before it (line order of the append-only summary.txt = order of
+# completion; content, not file times).  common/block.sh blk_pnr (a range from outputs), signoff/verdict.py step_order.
+blk_done_order() {
+    awk -v want="$*" 'BEGIN { n = split(want, w, " ") } $1 == "icc2_done" { p[$2 ":" $3] = NR }
+        END { for (i = 1; i <= n; i++) { x = (w[i] in p) ? p[w[i]] : 0; s = s " " w[i] "@" (x ? x : "none"); if (!x || x <= y) b = 1; y = x }
+              printf "BLK_ORDER %s summary.txt line of the last icc2_done of each, increasing:%s\n", b ? "FAIL" : "ok", s; exit b }' "$d/summary.txt" 2> /dev/null \
+        || { [ -f "$d/summary.txt" ] || echo "BLK_ORDER FAIL no $d/summary.txt"; return 1; }
+}
+# The content chain of the sign-off files (R113; hunt round 14 on f9f2580: the freshness gates compared file times only,
+# which a run dir copied without its times does not keep): each consumer step records the md5 of the files it read and
+# of the files it wrote, as one summary.txt line "chain <step> <corner|-> label <label> <file>=<md5> ..." (files relative
+# to the run dir):  fill  out GDS -> dummy metal, filled GDS, dummy OD / PO, LVS / DRC GDS, fill DEF;  extract  netlist +
+# fill DEF -> SPEF of every corner;  pt <corner>  netlist + SPEF -> its report and log;  etm <corner>  netlist + SPEF ->
+# ETM .lib / .db / ref;  lvs  LVS / DRC GDS + LVS source -> lvs.rep;  drc, ant  the GDS -> summary report.  The inputs'
+# md5 are taken before the step and must be the same after it.  blk_chain_check (views: the ETMs; signoff/verdict.py
+# md5_<step>) holds a record against the files as they are now.
+blk_md5() {   # blk_md5 <file> ...: "<file>=<md5> ..." of those files of the run dir; fails on a missing one
+    local f l=
+    for f; do
+        [ -f "$d/$f" ] || { echo "BLK_FAIL chain: no $d/$f" >&2; return 1; }
+        l="$l $f=$(md5sum < "$d/$f" | cut -c1-32)"
+    done
+    echo "${l# }"
+}
+blk_chain() {   # blk_chain <step> <corner|-> <label> <blk_md5 of the inputs before the step> <output file> ...
+    local s=$1 c=$2 l=$3 i=$4 n o w; shift 4
+    n=$(blk_md5 $(for w in $i; do echo "${w%=*}"; done)) && [ -n "$i" ] && [ "$n" = "$i" ] \
+        || { echo "BLK_FAIL chain $s $c: the inputs changed during the step (before: ${i:-none}; now: ${n:-missing}): nothing recorded"; return 1; }
+    o=$(blk_md5 "$@") || return 1
+    echo "chain $s $c label $l $i $o" >> "$d/summary.txt"
+}
+# blk_chain_check <step> <corner|-> <label>: one CHAIN line; status 0 when the last "chain <step> <corner>" line is of
+# <label> and every file it names has its recorded md5 now, 2 without such a line, 1 otherwise
+blk_chain_check() {
+    local s=$1 c=$2 l=$3 r w f m bad=
+    r=$(awk -v s="$s" -v c="$c" '$1 == "chain" && $2 == s && $3 == c { r = $0 } END { print r }' "$d/summary.txt" 2> /dev/null)
+    [ -n "$r" ] || { echo "CHAIN $s $c MISSING no 'chain $s $c' line in summary.txt"; return 2; }
+    set -- $r; [ "$4 $5" = "label $l" ] || bad=" label:${5:-none}(want:$l)"; shift 5
+    for w; do f=${w%=*}; m=$([ -f "$d/$f" ] && md5sum < "$d/$f" | cut -c1-32); [ "${m:-none}" = "${w##*=}" ] || bad="$bad $f"; done
+    [ -z "$bad" ] && [ $# -gt 0 ] && { echo "CHAIN $s $c PASS label $l: $# files = the md5 the step recorded"; return 0; }
+    echo "CHAIN $s $c FAIL label / md5 changed since the step:${bad:- no file}"; return 1
+}
 blk_pending() {   # finishes the unfinished label of out/ (out/label.new), if there is one
     local l s
     [ -f "$d/out/label.new" ] || return 0
@@ -245,7 +294,8 @@ blk_die_window() {
         END { exit !ok }'
 }
 blk_fill_label() {
-    local l=$1 o=$d/calibre C=$QBF/signoff/calibre w; mkdir -p "$o"
+    local l=$1 o=$d/calibre C=$QBF/signoff/calibre w i t=out/$BLK_TOP c cs s=; mkdir -p "$o"
+    cs=$(qb_corners) && i=$(blk_md5 "$t.gds" "$t.def.gz") || return 1
     # chip window of both fill decks = the DEF DIEAREA (blk_die_window) -> calibre/die_window.sed.  Metal too since R99
     # (signoff/calibre/fill_blk.sed ChipWindowUsed; [M] rgr rg44735f5a: without a window the metal fill took the drawn
     # extent, y 4.76 .. 124.04 of the 130-um die, and stopped 7.3 / 8.5 um short of the bottom / top edge, the OD / PO
@@ -265,7 +315,11 @@ blk_fill_label() {
         || { cat "$o/odpo.log"; return 1; }
     cat "$o/odpo.log"
     ( . "$C/kl.sh"; kl_run "$C/fill_def.py" -rd gds="$o/fill/DM.gds" -rd design="$BLK_TOP" -rd out="$d/out/${BLK_TOP}_fill.def" ) || return 1
+    blk_chain fill - "$l" "$i" calibre/fill/DM.gds "calibre/fill/${BLK_TOP}_fill.gds" calibre/odpo/DODPO.gds "calibre/odpo/${BLK_TOP}_fill.gds" "${t}_fill.def" || return 1
+    i=$(blk_md5 "$t.v" "${t}_fill.def") || return 1
     QB_ICC2_LABEL=$l qb_icc2 "$d" extract || return 1
+    for c in $cs; do s="$s ${t}_${c}_pt.spef.gz"; done
+    blk_chain extract - "$l" "$i" $s || return 1
     grep '^extract' "$d/summary.txt" | tail -n 4
 }
 # ICC2 label of the ECO round that starts from label $1 / number of rounds that built label $1
@@ -307,7 +361,12 @@ blk_eco() {
         fi
         echo "ECO override $(date +%F_%T) of the stop above (QC_ECO_OVERRIDE_STOP=1)" | tee -a "$h" ;;
     esac
-    # an unfinished label of out/ (a round that failed after its ICC2 eco) is finished before any PrimeTime round
+    # an unfinished label of out/ (a round that failed after its ICC2 eco) is finished before any PrimeTime round; not in
+    # the PrimeTime-only mode, which changes nothing of out/ (R113; hunt round 14 on f9f2580: it ran outputs / fill /
+    # extract here first): it refuses such a run
+    if [ "${QC_ECO_PT_ONLY:-}" = 1 ] && [ -e "$d/out/label.new" ]; then
+        echo "BLK_FAIL eco: QC_ECO_PT_ONLY=1 on an unfinished label of out/ ($(cat "$d/out/label.new")): run.sh fill or eco finishes it first"; return 1
+    fi
     blk_pending || { echo "ECO $(date +%F_%T) the unfinished label of out/ ($(cat "$d/out/label.new")) failed again" | tee -a "$h"; return 1; }
     while :; do
         from=$(blk_label) || return 1
@@ -326,7 +385,7 @@ blk_eco() {
           QB_ECO_CHECK=$(( k > max )) QB_PT_SCRIPT=$BLK_PT QB_ECO_CORNERS=$cs QB_ECO_NLIB=$d/$BLK_TOP.nlib \
               QB_ECO_BLOCK=$BLK_TOP/$from qb_pt pt_eco.log pt_shell -multi_scenario -f "$QBF/signoff/pt/drv_eco.tcl" ); r=$?
         rm -f "$e"/work/.eco_ndm_*   # (the DMSA workers' NDM copies, ~0.42 GB each: disk, R71; their logs stay)
-        for f in "$d/pt_eco.log" "$e"/*.txt "$e"/*.tcl "$e"/*.log; do [ -f "$f" ] && [ "$f" != "$h" ] && cp "$f" "$a/"; done
+        for f in "$d/pt_eco.log" "$d/pt_eco.log.time" "$e"/*.txt "$e"/*.tcl "$e"/*.log; do [ -f "$f" ] && [ "$f" != "$h" ] && cp "$f" "$a/"; done
         [ $r = 0 ] || return 1
         cat "$e/eco_summary.txt"
         tot=$(awk '$1 == "prefix_total" { print $2; exit }' "$e/eco_summary.txt")
@@ -374,31 +433,47 @@ blk_eco() {
 # antenna -> <run>/calibre.  All three run; the step fails on any cal.sh exit status (LVS not CORRECT, an LVS ERC result
 # or a NOT EXECUTED ERC check signoff/calibre/erc_allow.txt does not allow, any DRC / antenna result: signoff/calibre/cal.sh).
 blk_calibre() {
-    local o=$d/calibre C=$QBF/signoff/calibre g r=0; g=$o/odpo/${BLK_TOP}_fill.gds
-    blk_label > /dev/null || return 1
+    local o=$d/calibre C=$QBF/signoff/calibre g r=0 l i s m q; g=$o/odpo/${BLK_TOP}_fill.gds
+    l=$(blk_label) || return 1
     [ "$g" -nt "$d/out/$BLK_TOP.gds" ] || { echo "BLK_FAIL $g missing or older than out/$BLK_TOP.gds (run.sh fill)"; return 1; }
     bash "$C/lvs_src.sh" "$d/out/${BLK_TOP}_pg.v" "$o/${BLK}_src.spi" > "$o/src.log" 2>&1; r=$?; tail -n 3 "$o/src.log"; [ $r = 0 ] || return 1
+    i=$(blk_md5 "calibre/odpo/${BLK_TOP}_fill.gds" "calibre/${BLK}_src.spi") || return 1
     QB36_LVS_SED=$BLK_LVS_SED bash "$C/cal.sh" lvs "$g" "$BLK_TOP" "$o/${BLK}_src.spi" "$o/lvs" > "$o/lvs.log" 2>&1 || r=1
     QB36_DRC_SED=$BLK_DRC_SED bash "$C/cal.sh" drc "$g" "$BLK_TOP" "$o/drcb" > "$o/drcb.log" 2>&1 || r=1
     QB36_ANT_SED=${BLK_ANT_SED:-} bash "$C/cal.sh" ant "$g" "$BLK_TOP" "$o/ant" > "$o/ant.log" 2>&1 || r=1
-    cat "$o/lvs.log" "$o/drcb.log" "$o/ant.log"; return $r
+    cat "$o/lvs.log" "$o/drcb.log" "$o/ant.log"
+    # the content chain (blk_chain): LVS from the GDS + source, DRC / antenna from the GDS (their summary report: the
+    # deck copy's DRC SUMMARY REPORT, relative to it)
+    blk_chain lvs - "$l" "$i" calibre/lvs/lvs.rep || r=1
+    for m in drcb:drc ant:ant; do
+        q=$(sed -n 's/^DRC SUMMARY REPORT *"\([^"/]*\)".*/\1/p' "$o/${m%:*}/deck.${m#*:}" 2> /dev/null | head -n 1)
+        [ -n "$q" ] && blk_chain "${m#*:}" - "$l" "${i%% *}" "calibre/${m%:*}/$q" \
+            || { echo "BLK_FAIL chain ${m#*:}: no DRC SUMMARY REPORT file in the deck dir of calibre/${m%:*}/deck.${m#*:}"; r=1; }
+    done
+    return $r
 }
 # PrimeTime in every sign-off corner on the ICC2 netlist + SPEF (fails on any setup / hold / DRV / noise / min pulse width
 # / min period violator, common/env.sh qb_pt), then the ETMs of every corner (R71; fails on MEXT-6 / MEXT-80 (R111) / MEXT-81 / MEXT-97)
 blk_post() {
-    blk_label > /dev/null || return 1
+    local l; l=$(blk_label) || return 1
     ( blk_pt_env || exit 1
       cs=$(qb_corners) || exit 1; r=0
       for c in $cs; do   # every corner is reported before a failure stops the step (R67)
+          # (the content chain, blk_chain: netlist + SPEF of the corner -> its report and log)
+          i=$(blk_md5 "out/$BLK_TOP.v" "out/${BLK_TOP}_${c}_pt.spef.gz") || { r=1; continue; }
           QC_CORNER=$c qb_pt "pt_blk_$c.log" pt_shell -f "$BLK_PT" || r=1
           cat "pt_blk_$c.txt"
+          blk_chain pt "$c" "$l" "$i" "pt_blk_$c.txt" "pt_blk_$c.log" || r=1
       done
       [ $r = 0 ] || exit 1
       for c in $cs; do
           # the corner's ETM files are this session's (R104; hunt round 9 on 018af5e: the .db was only counted over
-          # out/etm, so an older one passed): removed first, then each there and none older than the one before
+          # out/etm, so an older one passed): removed first, then each there and none older than the one before; their
+          # content chain: netlist + SPEF of the corner -> .lib / .db / ref (blk_chain; views checks it)
           e=out/etm/${BLK_TOP}_$c; rm -f "$e.lib" "${e}_lib.db" "${e}_ref.txt"
+          i=$(blk_md5 "out/$BLK_TOP.v" "out/${BLK_TOP}_${c}_pt.spef.gz") || { r=1; continue; }
           QC_CORNER=$c qb_pt "etm_$c.log" pt_shell -f "$QBF/signoff/etm/etm.tcl" || r=1
+          blk_chain etm "$c" "$l" "$i" "$e.lib" "${e}_lib.db" "${e}_ref.txt" || r=1
           ! grep -m 3 'MEXT-6)\|(MEXT-80)\|MEXT-81\|MEXT-97' "etm_$c.log" || { echo "ETM $c: table limit / port aggressor filter / driving cell / feedthrough warnings"; r=1; }
           [ -s "$e.lib" ] && [ -s "${e}_lib.db" ] && [ -s "${e}_ref.txt" ] && ! [ "${e}_lib.db" -ot "$e.lib" ] && ! [ "${e}_ref.txt" -ot "${e}_lib.db" ] \
               || { echo "ETM $c: $e.lib / _lib.db / _ref.txt missing, empty or out of order"; r=1; }
@@ -420,12 +495,17 @@ blk_views() {
     echo "BLK_VIEWS abstract of label $own = the label of out/"
     QB_ICC2_LABEL=$own QB_PY=$PY qb_icc2 "$d" abstract || return 1
     grep '^abstract' "$d/summary.txt" | tail -n 3
-    for c in $cs; do "$PY" -I "$QBF/signoff/etm/etmcheck.py" "$d/out/etm/${BLK_TOP}_$c.lib" || return 1; done
+    # (R113; hunt round 14 on f9f2580: the ETMs of out/etm were scanned whatever layout they were of) each corner's ETMs
+    # are the post step's of the label of out/, unchanged since (blk_chain_check etm)
+    for c in $cs; do
+        blk_chain_check etm "$c" "$own" || return 1
+        "$PY" -I "$QBF/signoff/etm/etmcheck.py" "$d/out/etm/${BLK_TOP}_$c.lib" || return 1
+    done
 }
 # The machine verdict of the run dir (signoff/verdict.sh: every sign-off gate re-read from the run's files; one GATE line
 # per gate, last line SIGNOFF <top> PASS|FAIL): its exit status is the step's
 blk_signoff() {
     local v=$QBF/signoff/verdict.sh
     [ -f "$v" ] || { echo "BLK_FAIL signoff: $v missing"; return 1; }
-    bash "$v" ${BLK_GATES:+-g "$BLK_GATES"} -b "$BLK" "$d" || return 1
+    bash "$v" ${BLK_GATES:+-g "$BLK_GATES"} -b "$BLK" "$d" "$BLK_TOP" || return 1
 }

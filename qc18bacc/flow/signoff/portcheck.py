@@ -13,7 +13,8 @@ instead of 12356 ports, ETM MEXT-97).  Prints one PORTCHECK line, then one PORTC
 import re
 import sys
 
-DECL = re.compile(r'^\s*(input|output|inout)\s*(?:\[\s*(-?\d+)\s*:\s*(-?\d+)\s*\])?\s*(.*)$', re.S)
+# (the keyword a whole word, R113; hunt round 14: 'output_buf ...' parsed as an output port 'buf ...')
+DECL = re.compile(r'^\s*(input|output|inout)\b\s*(?:\[\s*(-?\d+)\s*:\s*(-?\d+)\s*\])?\s*(.*)$', re.S)
 ASSIGN = re.compile(r'^\s*assign\s+(.+?)\s*=\s*(.+?)\s*$', re.S)
 
 

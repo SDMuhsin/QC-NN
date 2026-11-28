@@ -46,7 +46,7 @@ SPEFs out/ holds, written only once all of them passed; an unfinished label (`ou
 or eco step, and post / calibre / views / the verdict refuse a run without a complete label.  A pnr step init .. route
 drops the label of out/ (R99: a partial re-run would leave out/ of the old layout under a label) and moves its ECO
 history out/eco aside to out/eco.pnr_<date_time> (R106), and so does a pnr range from outputs, which first requires the
-route step's log to pass (`qb_icc2 -check`, R111); the verdict checks the log of every ICC2 step of the label chain of
+route step's log to pass (`qb_icc2 -check`, R111) and route to have completed after init .. cts (R113, "Sign-off scope"); the verdict checks the log of every ICC2 step of the label chain of
 out/ (gate icc2_log: init .. route, each ECO round's out/eco/<label>/eco.log, outputs / extract of the label, abstract;
 R111) and the legality of every ECO label after place_eco_cells and after its refill (R111); views makes the abstract
 of the label of out/ only (an inherited QB_ICC2_LABEL naming another label fails) and abstract.tcl records it, which the
@@ -74,6 +74,22 @@ Inputs: netlist + SDC `$B/syn/qb_col_blk_r5d_s20_tt_p1.65_topo` (P&R SDC: common
 at 5.0 ns), pin positions of the reference abstract `$B/r5b_blk/qb_col_blk_ring.lef` (the ones r48 placed; its md5 in the run's
 `init inputs` line, R101), written as the
 floorplan DEF `<run>/pins.def` by floorplan/abstract_pins.py in the pnr step (R72). Parameters: `col.env`, `icc2.cfg`.
+
+## Sign-off scope
+
+The block sign-off is the machine verdict `signoff/verdict.sh` (run.sh signoff): PrimeTime timing / DRV / noise in every
+sign-off corner, the ICC2 step logs and P&R gates, Calibre LVS (+ ERC), DRC and antenna, ETMs and the abstract.  Provenance
+(R113): every ICC2 step that passes appends `icc2_done <step> <label> <epoch>` to summary.txt (common/env.sh qb_icc2), and
+the verdict's step_order gate requires the label chain of out/ to have completed in order (init < floorplan < place < cts
+< route < ECO rounds < outputs < extract; summary.txt line order, not file times), as does a pnr range from outputs for
+init .. route; each consumer step records the md5 of the files it read and wrote (`chain` lines, common/block.sh
+blk_chain: fill, extract, PT and ETM per corner, LVS / DRC / antenna), and the verdict's md5_<step> gates hold them
+against the files as they are (views: the ETMs of the label of out/).  The file-time fresh_* gates stay as a second check
+of the links no step records; a run dir copied without its times can only fail them.
+Out of scope by the project owner's decision: formal equivalence checking (LEC / Formality) of the P&R netlist against
+the synthesis netlist; the CAS papers the chip is compared with do not report it.  The netlist checks the flow does make
+are the port gate (signoff/portcheck.py), the ECO change-list gates (icc2/common.tcl qb_eco_names) and LVS against the
+P&R netlist.  Also out of scope (paper-only): fabrication, IR drop / EM sign-off (no licence; a labelled PG estimate only).
 
 ## Regression block qb_lane_n (`blocks/rgr`) and flow snapshots (`common/deploy.sh`)
 

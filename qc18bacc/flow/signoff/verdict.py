@@ -48,6 +48,18 @@ def icc2_log(step, done, sub=''):   # common/env.sh qb_icc2 -check of <sub>/<ste
     rc, out = sh('. %s/common/env.sh; qb_icc2 -check %s %s' % (flow, os.path.join(run, sub), step))
     l = last(out, 'ICC2_STEP '); d = done in text(log).splitlines()
     return rc == 0 and bool(l) and d, '%s: %s; "%s" %d' % (log, l or out.strip()[-160:], done, d)
+# the label of out/ (common/block.sh blk_out): out/label.txt, and no unfinished label (out/label.new)
+label = text('out/label.txt').strip(); pend = text('out/label.new').strip()
+def blk_sh(cmd):   # a common/block.sh function on the run dir (its d)
+    return sh('. %s/common/env.sh; . %s/common/block.sh; d=%s; %s' % (flow, flow, run, cmd))
+# Freshness, two kinds (R113).  md5_<step>: the content chain, authoritative (common/block.sh blk_chain_check: the step's
+# record of the md5 of what it read and wrote, of the label of out/, = the files now; holds for a run dir copied without
+# its file times, which can make a stale file look fresh to an mtime gate).  fresh_*: file times, kept as a second check
+# of the links no step records (deck copy -> report, DEF -> abstract LEF, the LVS source chain) and of the order within
+# a step's outputs; a copy without times can only fail them, never pass a stale file the md5 chain would catch.
+def md5(step, corner):
+    rc, out = blk_sh('blk_chain_check %s %s %s' % (step, corner, label or 'none'))
+    gate('md5_' + step, corner, None if rc == 2 else rc == 0, last(out, 'CHAIN ') or out.strip()[-160:])
 def fresh(name, corner, chain):   # every file exists and none is older than the one it was made from
     gone = [p for p in chain if not have(p)]
     if gone: return gate('fresh_' + name, corner, None, 'no ' + ', '.join(gone))
@@ -115,6 +127,7 @@ for c in corners:
     gate('dont_use', c, zeros(l, ('usable', 'design_cells')), l or 'no dont_use post_%s line in %s' % (c, txt))
     fresh('spef', c, ['out/%s.v' % top, 'out/%s_fill.def' % top, spef])
     fresh('pt', c, [spef, txt, log])
+    md5('pt', c)
     # ETM of the corner: extraction log evidence + its own markers, the model files, the scan of signoff/etm/etmcheck.py
     e = 'etm_%s.log' % c; et = text(e); ok, l = pt_log(e)
     done = ('QB_ETM_DONE %s' % c) in et.splitlines(); bad = len(re.findall(r'MEXT-6\)|\(MEXT-80\)|MEXT-81|MEXT-97', et))
@@ -125,11 +138,10 @@ for c in corners:
     # (the .db in the chain, R104: extract_model writes .lib, then .db, then qb_etm_ref the _ref.txt; before, the .db
     # was only required to exist, so one of an earlier session passed)
     fresh('etm', c, [log, lib, db, lib[:-4] + '_ref.txt'])
+    md5('etm', c)
 
 # ICC2 gates recorded in summary.txt: dont_use of every step, the name / load gate of every ECO round, the abstract
 s = text('summary.txt')
-# the label of out/ (common/block.sh blk_out): out/label.txt, and no unfinished label (out/label.new)
-label = text('out/label.txt').strip(); pend = text('out/label.new').strip()
 # dont_use of the labels out/ was built through (icc2/common.tcl qb_done: "dont_use <label> ..."): init .. route, then the
 # ECO labels eco, eco2, ... up to the label of out/; the latest line of each, which must be there (R109; hunt round 12:
 # the latest line of every tag counted, so a later round's attempt that never became the label of out/, or a label of an
@@ -192,6 +204,18 @@ for c, st, done, sub in ([(x, x, 'QB_ICC2_DONE ' + x, '') for x in ('init', 'flo
                          [(x, x, 'QB_ICC2_DONE %s label %s' % (x, label), '') for x in ('outputs', 'extract')] +
                          [('abstract', 'abstract', 'QB_ICC2_DONE abstract', '')]):
     gate('icc2_log', c, *icc2_log(st, done, sub))
+# (R113; hunt round 14 on f9f2580: a partial re-run place .. cts, then a pnr range from outputs, signed off the route
+# label of the layout before, and nothing here saw the order) the steps of that chain completed in chain order: init <
+# floorplan < place < cts < route < each ECO round < outputs < extract of the label of out/, by the completion record
+# (common/env.sh qb_icc2 "icc2_done" lines, in summary.txt line order: content, not file times; common/block.sh
+# blk_done_order)
+if chain is None: gate('step_order', '-', None, 'label of out/ %s is not route / eco<n>' % (label or 'missing'))
+else:
+    rc, out = blk_sh('blk_done_order %s' % ' '.join(['%s:%s' % (x, x) for x in ('init', 'floorplan', 'place', 'cts', 'route')] +
+                                                  ['eco:' + x for x in chain] + ['outputs:' + label, 'extract:' + label]))
+    gate('step_order', '-', rc == 0, last(out, 'BLK_ORDER ') or out.strip()[-160:])
+# the content chain (R113, md5 above) of the fill and extract of the label of out/
+md5('fill', '-'); md5('extract', '-')
 # the label the abstract was made from (icc2/abstract.tcl, its last summary line) = the label of out/ (R99)
 m = list(re.finditer(r'^abstract label (\S+) done\b.*$', s, re.M))
 gate('abstract_label', '-', m[-1].group(1) == label if m else None,
@@ -220,6 +244,7 @@ qb = lambda t: set(re.findall(r'^(QB_[A-Za-z0-9_.]*) *\{', t, re.M))
 want = qb(open('%s/drc_blk.sed' % cal).read()); got = qb(text('calibre/drcb/deck.drc'))
 gate('drc_qb_rules', '-', bool(want) and want <= got if have('calibre/drcb/deck.drc') else None, 'block deck gate rules %s, in the deck copy %s' % (sorted(want), sorted(got)))
 fresh('gds_fill_def', '-', g[:2] + ['out/%s_fill.def' % top])
+for x in ('lvs', 'drc', 'ant'): md5(x, '-')   # (the content chain of the Calibre runs, R113)
 # the deck copies (R106): per mode the edits / add-ons cal.sh applied (its deck_edits.txt, not older than the deck copy) =
 # the block's committed defaults (-k; fill / odpo: and the run's chip window calibre/die_window.sed, four VARIABLE lines),
 # and the layout the deck reads (every LAYOUT PATH / LAYOUT PRIMARY line) = the input of that mode in the chain above

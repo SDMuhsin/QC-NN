@@ -29,11 +29,13 @@ export QC_ECO_ROUNDS=${QC_ECO_ROUNDS:-4} QB_ICC2_CORES=${QB_ICC2_CORES:-16} QB_E
 # the reference's.  (Hunt round 8 on 5fdd167: these came from the environment and nothing checked them; a queue
 # VAR=val word or a login-shell export changed the regression run unseen.)
 # qb_knobs <name> ...: the caller's further knobs too (common/block.sh: the Calibre deck edits BLK_*_SED).  A value is
-# printed as one word (qb_knob): the flow root as <flow>, blanks as ',' (R104: a run's line is compared across snapshots)
+# printed as one word (qb_knob): the flow root as <flow>, blanks as ',' (R104: a run's line is compared across snapshots),
+# an empty value as <unset> (R113; hunt round 14: an empty value was "<name>=" here and <unset> in signoff/calibre/cal.sh's
+# deck edit record, so a block's empty BLK_*_SED failed the verdict's deck gate against its own committed defaults)
 QB_KNOBS="QC_PNR_GUARD_HOLD QC_PNR_GUARD_TRAN QC_PNR_FROM QC_PNR_TO QC_ECO_ROUNDS QC_ECO_HOLD_MARGIN QC_ECO_DRV_MARGIN
     QC_ECO_NOISE_MARGIN QC_ECO_OVERRIDE_STOP QC_ECO_PT_ONLY QB_ICC2_CORES QB_ECO_CORES QB_ICC2_BIN QB_ICC2_LABEL
     QB36_LVS_EXTRA QB36_HCELL"
-qb_knob() { local v=${!1-<unset>}; v=${v//"$QBF"/<flow>}; printf '%s=%s' "$1" "${v//[[:space:]]/,}"; }   # qb_knob <name>: "<name>=<word>"
+qb_knob() { local v=${!1:-<unset>}; v=${v//"$QBF"/<flow>}; printf '%s=%s' "$1" "${v//[[:space:]]/,}"; }   # qb_knob <name>: "<name>=<word>"
 qb_knobs() {
     local k
     for k in $QB_KNOBS "$@" $(awk '{ sub(/#.*/, "") } NF { print $1 }' "$QBF/common/limits.txt") $(compgen -v QC_EXTRA_DB_); do
@@ -148,6 +150,12 @@ qb_wait() { local j r=0; for j in $(jobs -p); do wait "$j" || r=1; done; return 
 # every ICC2 step of out/'s label chain, R111; R106: its abstract_log gate read only the done marker and the '^Error'
 # lines; common/block.sh: the route step before a pnr range from outputs): the exit status from qc_tool's <log>.time
 # (rc NA without one, which fails).
+# The completion record (R113; hunt round 14 on f9f2580: nothing recorded the order the steps finished in, so a partial
+# re-run place .. cts followed by a pnr range from outputs signed off the route label of the layout before): a step that
+# passes appends "icc2_done <step> <label> <epoch>" to <rundir>/summary.txt, <label> from the log's last QB_ICC2_DONE
+# marker ("QB_ICC2_DONE <label>" or "QB_ICC2_DONE <step> label <label>").  summary.txt is append-only, so the line order
+# is the order of completion, read from the content alone (a copied run dir keeps it, its mtimes need not):
+# common/block.sh blk_done_order (the pnr range from outputs; signoff/verdict.py step_order).
 ICC2_BIN=${QB_ICC2_BIN:-/CMC/tools/synopsys/icc2_vQ-2019.12-SP2/icc2/Q-2019.12-SP2/bin}
 qb_icc2() {
     local d s sh log rc e m n chk=0
@@ -164,5 +172,7 @@ qb_icc2() {
     e=$(grep -c '^Error' "$log" 2> /dev/null); m=$(sed -n "s/^QB_ICC2_MSG $s errors //p" "$log" 2> /dev/null | tail -n 1)
     n=$(grep -c "^QB_ICC2_DONE $s" "$log" 2> /dev/null)
     echo "ICC2_STEP $s rc $rc errors ${e:-NA} tool_errors ${m:-NA} done ${n:-0} $(qc_time "$log")"
-    [ "$rc" = 0 ] && [ "$e" = 0 ] && [ "$m" = 0 ] && [ "${n:-0}" -gt 0 ]
+    [ "$rc" = 0 ] && [ "$e" = 0 ] && [ "$m" = 0 ] && [ "${n:-0}" -gt 0 ] || return 1
+    [ $chk = 1 ] || awk -v s="$s" -v t="$(date +%s)" '$1 == "QB_ICC2_DONE" { l = ($3 == "label" ? $4 : $2) }
+        END { if (l == "") exit 1; print "icc2_done", s, l, t }' "$log" >> "$d/summary.txt"
 }
