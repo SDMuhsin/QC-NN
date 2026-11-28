@@ -15,11 +15,18 @@ set -u
 here=$(cd "$(dirname "$0")" && pwd); . "$here/../common/env.sh"
 COMPILE="compile_ultra -no_autoungroup -gate_clock -spg"
 R10W='+define+QB_HPW=144+QB_TOP_RSH=2+QB_HEAD_PCOL=1+QB_HEAD_IREG=2+QB_TOP_WBQ=2+QB_ACT_CTXR+QB_ACT_LDR+QB_ACT_CNT+QB_ACT_SRA+QB_SEQ_LPS+QB_SEQ_CMH+QB_SEQ_TKS+QB_PRM_BAR+QB_SEQ_DSP+QB_SEQ_TGO+QB_PRM_NUR+QB_SEQ_NXW+QB_SEQ_RAL+QB_ACT_S1M=1+QB_TOP_FPR=1+QB_TOP_WBK=1+QB_TOP_FFT=1+QB_SEQ_DEP+QB_ACT_S2M+QB_PRM_COL=1+QB_WB_COL=1'
+# corner <c>: the DC corner an output name states (..._<c>_p...), set explicitly (R115; round-16 hunt: dc.sh took
+# QC_CORNER from the environment, so an exported QC_CORNER=ss wrote an ss netlist under a _tt_ name); an environment
+# QC_CORNER that differs fails
+corner() {
+    [ -z "${QC_CORNER:-}" ] || [ "$QC_CORNER" = "$1" ] || { echo "SYNTH_FAIL $step: QC_CORNER=$QC_CORNER in the environment, the output name says $1"; return 1; }
+    export QC_CORNER=$1
+}
 step=${1:?step}
 case $step in
-col) QC_TOPO=1 QC_HOOK=$here/col_dc_hook.tcl QC_COMPILE="$COMPILE" QB_FL=$here/col_blk.f \
+col) corner tt && QC_TOPO=1 QC_HOOK=$here/col_dc_hook.tcl QC_COMPILE="$COMPILE" QB_FL=$here/col_blk.f \
        "$here/dc.sh" all qb_col_blk 1.65 qb_col_blk_r5d_s20_tt_p1.65_topo || exit 1 ;;
-rgr) QC_TOPO=1 QC_COMPILE="$COMPILE" QB_FL=$here/rgr.f "$here/dc.sh" all qb_lane_n 2.0 rgr_lane_tt_p2.0_topo || exit 1 ;;
+rgr) corner tt && QC_TOPO=1 QC_COMPILE="$COMPILE" QB_FL=$here/rgr.f "$here/dc.sh" all qb_lane_n 2.0 rgr_lane_tt_p2.0_topo || exit 1 ;;
 act) s=${2:-r35_act}
      QC_TOPO=1 QC_HOOK=$here/act_dc_hook.tcl QC_COMPILE="$COMPILE" QB_FL=$here/act_blk.f "$here/dc.sh" syn qb_act2_blk 1.65 $s &&
      QC_SDC=$QBF/common/constraints.sdc QC_PT_HOOK=$here/act_pt_classes.tcl QC_CLK=clk QC_CORES=8 "$ROOT/flow/tsmc65/sta/run_pt.sh" $s tt ss || exit 1

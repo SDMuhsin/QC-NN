@@ -24,12 +24,22 @@ tag=${4:-${top}_${corner}_p${period}$([ "$topo" = 1 ] && echo _topo)}
 out=$BUILD/syn/$tag
 rm -rf "$out"; mkdir -p "$out/rpt"
 export QC_FLIST=$flist QC_TOP=$top QC_PERIOD=$period QC_CORNER=$corner QC_TOPO=$topo QC_OUT=$out
+export QC_COMPILE=${QC_COMPILE:-compile_ultra -no_autoungroup -gate_clock}   # (its one default; syn/dc.tcl runs it)
 # run.env: the settings of this run; QC_IO_PCT only for the generated constraints (with a design SDC QC_SDC the SDC's own
 # IO delay is in force: qc18bacc R107, run.env recorded the environment's value DC never used).  syn/dc.tcl appends the
-# hook's declared knobs and the design's registered records in force (common/knobs.tcl).
+# hook's declared knobs and the design's registered records in force (common/knobs.tcl).  How the netlist was made
+# (qc18bacc R115; round-16 hunt: none of these was recorded): corner, file list, parameters, hooks, compile command,
+# each as a shell word (printf %q; sta/run_pt.sh and pnr/run_pt_post.sh source run.env and set QC_CORNER per corner).
+q() { printf '%s=%q\n' "$1" "${!1:-}"; }
 cat > "$out/run.env" <<EOT
 QC_TOP=$top
 QC_PERIOD=$period
+$(q QC_CORNER)
+$(q QC_FLIST)
+$(q QC_PARAMS)
+$(q QC_HOOK)
+$(q QC_POST_HOOK)
+$(q QC_COMPILE)
 QC_CLK=${QC_CLK:-clk}
 QC_SDC=${QC_SDC:-}
 $([ -z "${QC_SDC:-}" ] && echo "QC_IO_PCT=${QC_IO_PCT:-20}")

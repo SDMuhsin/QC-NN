@@ -1,19 +1,58 @@
-# Regression reference (common/regress.sh check): the site manifest of the snapshot (site_md5), the DC inputs of
+# Regression reference (common/regress.sh check): the site manifest of the snapshot (site_md5: the site files;
+# kit_md5: the kit files by role, common/env.sh qb_kit_files, no kit path or file name), the DC inputs of
 # the run (inputs: md5 of netlist, DC SDC, run.env), the committed defaults of the flow knobs every step ran with
 # (knobs), the verdict line and the gate set (gate name: sign-off corners, '-' = block gate) of the run below;
 # written by regress.sh ref, a change is a deliberate reference update.  Repeatability: ICC2 on several cores is
 # not run-to-run repeatable (R109 [M]); on 1 core it is (QB_ICC2_CORES=1, the block default, R110), and then the
 # route label's netlist / DEF md5 (route_md5) is compared too; only the lines below are compared
-# run rgd1ab8e9a host engr-tau-04.usask.ca snapshot commit none tree d1ab8e9d140d24494305e79c5e74be8906bf6843
+# run rg98bd952a host engr-tau-14.usask.ca snapshot commit none tree 98bd952cb8fea3261f89a10d6b1054b5b56d28db
 site_md5 50b51bb3d985181eb1ca5dd9aaabe024 flow/tsmc65/site/pnr.tcl
 site_md5 427a2e0002c1bc97682e2f4be2030d87 flow/tsmc65/site/site.csh
 site_md5 a992ad0a90ae60eae61911156b0a57b3 flow/tsmc65/site/site.sh
 site_md5 9c3c1428b4359d3a83f30d23f408822f flow/tsmc65/site/site.tcl
 site_md5 26e030de154b0b70e1410bad6a50ad2c flow/tsmc65/site/sram.sh
+kit_md5 ant_deck 49a18a0b78f5cf4b373486726fb72484
+kit_md5 cell_gds 26d87dd04b23ce92e2c30975639fdda6
+kit_md5 cell_lef 029b212ec31beadf17d507ea5362afff
+kit_md5 cell_spice 0f2bb1f1d6e278e934c0bdaf472841d1
+kit_md5 drc_deck de2486fa63708f1dac49c1ac16633c42
+kit_md5 fill_deck f6c5fd837c995fc87dfa88871f1fdae4
+kit_md5 lib_db_ff 5ea87a4bb4e1bd7a414049c562814966
+kit_md5 lib_db_ff_rcb 5ea87a4bb4e1bd7a414049c562814966
+kit_md5 lib_db_ml 241272a40055501ff64c92539fbdf31a
+kit_md5 lib_db_ml_rcb 241272a40055501ff64c92539fbdf31a
+kit_md5 lib_db_ss 10f2e29252c25293ba54aa4076a0d80b
+kit_md5 lib_db_ss_rcw 10f2e29252c25293ba54aa4076a0d80b
+kit_md5 lib_db_tt b0d0a4f929c64bd701c8697f0bbd162b
+kit_md5 lib_db_wcl 4eb853cf4ed9d590d6ac1e9f30deee3e
+kit_md5 lib_db_wcl_rcw 4eb853cf4ed9d590d6ac1e9f30deee3e
+kit_md5 liberty_ff 9dc20dd331a2607e1faf00137f5d9203
+kit_md5 liberty_ff_rcb 9dc20dd331a2607e1faf00137f5d9203
+kit_md5 liberty_ml ddb18c7ece490ea69773fe6b2d1db3da
+kit_md5 liberty_ml_rcb ddb18c7ece490ea69773fe6b2d1db3da
+kit_md5 liberty_ss 9d1b5bcacadf66a931549b2b7a0ac802
+kit_md5 liberty_ss_rcw 9d1b5bcacadf66a931549b2b7a0ac802
+kit_md5 liberty_tt f29fab4734ad1d23509cc31730ad8f58
+kit_md5 liberty_wcl 751d7b8a41ff38575f7fa84953ced79c
+kit_md5 liberty_wcl_rcw 751d7b8a41ff38575f7fa84953ced79c
+kit_md5 lvs_deck 703498cdc3c9dd5b2b0baf062623ce6b
+kit_md5 lvs_dfm 50f63d44ee747da26e3e77958749b308
+kit_md5 odpo_deck da95cf4a2bdc9795d057f25d4bbd1a6c
+kit_md5 tf 1120ca049af6ab2c2eec121bff885878
+kit_md5 tlup_ff 00146ae2dbeebe68c28a14d48708d67a
+kit_md5 tlup_ff_rcb 1b7534c8a87290d34f03258d26867c01
+kit_md5 tlup_map 84f5b9d64dc0eaf4a7b81b15b916f030
+kit_md5 tlup_ml 00146ae2dbeebe68c28a14d48708d67a
+kit_md5 tlup_ml_rcb 1b7534c8a87290d34f03258d26867c01
+kit_md5 tlup_ss 04b2943c9a03c873f357d27ce87f4c5c
+kit_md5 tlup_ss_rcw 14cae3efcea60b9168adca221ff9d470
+kit_md5 tlup_tt 862b24957a7a4c056f9823412e1ffb22
+kit_md5 tlup_wcl 04b2943c9a03c873f357d27ce87f4c5c
+kit_md5 tlup_wcl_rcw 14cae3efcea60b9168adca221ff9d470
 inputs syn rgr_lane_tt_p2.0_topo netlist 38196a34ec38a091c4d798319dae32f0 sdc 60a5165e14bb5077ae7dd899d6e4137c run_env cf3d99fa9278a87a5618bd2d3064442a ddc 88378dc1e07cb5fbacab548b5a18724a
 knobs QC_PNR_GUARD_HOLD=0.010 QC_PNR_GUARD_TRAN=0.05 QC_PNR_FROM=<unset> QC_PNR_TO=<unset> QC_ECO_ROUNDS=4 QC_ECO_HOLD_MARGIN=0.005 QC_ECO_DRV_MARGIN=0.02 QC_ECO_NOISE_MARGIN=0.02 QC_ECO_OVERRIDE_STOP=<unset> QC_ECO_PT_ONLY=<unset> QB_ICC2_CORES=1 QB_ECO_CORES=4 QB_ICC2_BIN=<unset> QB_ICC2_LABEL=<unset> QB36_LVS_EXTRA=<unset> QB36_HCELL=<unset> BLK_FILL_SED=-f,<flow>/signoff/calibre/fill_blk.sed BLK_ODPO_SED=-f,<flow>/signoff/calibre/odpo_blk.sed BLK_LVS_SED=-f,<flow>/signoff/calibre/lvs_case.sed BLK_DRC_SED=-f,<flow>/signoff/calibre/drc_blk.sed BLK_ANT_SED=<unset> QC_UNC_SETUP=<unset> QC_UNC_HOLD=<unset> QC_IO_PCT=<unset> QC_MAX_TRAN=<unset> QC_MAX_TRAN_PCT=<unset> QC_CLK_TRAN_MAX=<unset> QB5_SOUTH_IN=<unset> QC_ACT_HOLD_HUB=<unset> QB_ACT_LAUNCH=<unset> QC_ECO_SETUP_MARGIN=<unset> QC_TOOLS=/tmp/ckp908/tools QB_TOOLS_PYTHON=3.10.13 QB_TOOLS_KLAYOUT=0.30.13
-route_md5 netlist fd6e69c33460f5b33ebe45f301ea94ed def fd69c2962d8fdd4f0e6303caf6bd3f1b pg 1ff94e0e3af3b909c2af6c57e4f0a252
-VERDICT qb_lane_n gates 339 pass 339 fail 0 missing 0; FAIL: none; MISSING: none; opt-in declared: none
+route_md5 netlist fd6e69c33460f5b33ebe45f301ea94ed def fd69c2962d8fdd4f0e6303caf6bd3f1b pg 1ff94e0e3af3b909c2af6c57e4f0a252 gds ebf369325637f6587d764c6bdcf2ef8b
+VERDICT qb_lane_n gates 340 pass 340 fail 0 missing 0; FAIL: none; MISSING: none; opt-in declared: none
 gate pt_log ss ss_rcw wcl wcl_rcw tt ff ff_rcb ml ml_rcb
 gate limits ss ss_rcw wcl wcl_rcw tt ff ff_rcb ml ml_rcb
 gate setup ss ss_rcw wcl wcl_rcw tt ff ff_rcb ml ml_rcb
@@ -64,6 +103,7 @@ gate abstract_obs -
 gate abstract_pg_pins -
 gate icc2_log init floorplan place cts route eco outputs extract abstract
 gate step_order -
+gate flow_snapshot -
 gate md5_fill -
 gate md5_extract -
 gate md5_abstract -

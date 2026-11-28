@@ -60,7 +60,7 @@ if {$hook ne ""} { source $hook }
 qc_knobs_record $out/run.env
 
 # ---- compile
-eval [qc_env QC_COMPILE "compile_ultra -no_autoungroup -gate_clock"]
+eval $::env(QC_COMPILE)   ;# (default and record: syn/run_dc.sh)
 
 # ---- outputs
 change_names -rules verilog -hierarchy

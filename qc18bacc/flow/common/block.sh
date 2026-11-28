@@ -29,14 +29,16 @@
 #                  The loop's history is out/eco/rounds.txt: a later eco step continues it (round number = position of
 #                  the label of out/ in the chain route, eco, eco2, ...) and a recorded stop stays a stop unless
 #                  QC_ECO_OVERRIDE_STOP=1, which is logged there and lets that one eco step run; the stop stands
-#                  again unless a round of it applied a change list (blk_eco_stop, R114).  Opt-in QC_ECO_PT_ONLY=1: the next round's PrimeTime
+#                  again unless a round of it applied its change list (blk_eco_stop, R114; "applied": ICC2 eco and
+#                  outputs / portcheck / fill / extract of its label passed, the round's applied line, R115).
+#                  Opt-in QC_ECO_PT_ONLY=1: the next round's PrimeTime
 #                  DMSA only (record + history line, nothing applied; refuses a run with an unfinished label of out/)
 #         fill     portcheck, Calibre dummy metal + OD / PO, fill-aware SPEFs of the label of out/ (first an unfinished
 #                  one)                                                 calibre  LVS, DRC, antenna (fails on cal.sh's status)
 #         post     PrimeTime sign-off + ETMs in every corner   views  abstract LEF + ETM scan   signoff  signoff/verdict.sh
 #
 # Details.  rundir <tag> (a further step) prints the run dir (common/queue.sh), knobs <tag> the BLK_KNOBS line
-# every step starts with (blk_knobs: flow root + flow knobs in force).  The label of out/ is out/label.txt
+# every step starts with (blk_knobs: flow root + flow knobs in force; also appended to the run's summary.txt, R115).  The label of out/ is out/label.txt
 # (blk_out, written once outputs, portcheck, fill and SPEFs of the label passed): route, then eco, eco2, ... (one ICC2 label per ECO round, so every round's layout stays in the
 # design library).  ECO round files: out/eco/<label>/ = what that round produced and nothing else (PrimeTime log + its .time,
 # eco_summary.txt, change list + new-cell record [pt_eco.not_applied.* when the loop stopped before applying it],
@@ -58,7 +60,8 @@ blk_main() {
     *) sed '/^#$/,$d' "${BASH_SOURCE[0]}"; echo "BLK_FAIL $BLK: unknown step '$step'"; return 1 ;;
     esac
     echo "BLK_STEP $BLK $step $tag $(date +%T)"
-    blk_knobs "$step"
+    # (also in the run's summary.txt, R115: signoff/verdict.py flow_snapshot, every step of the run from one flow)
+    mkdir -p "$d" && blk_knobs "$step" | tee -a "$d/summary.txt" || return 1
     "blk_$step" || { echo "BLK_FAIL $BLK $step $tag $(date +%T)"; return 1; }
     echo "BLK_DONE $BLK $step $tag $(date +%T)"
 }
@@ -208,16 +211,18 @@ blk_out() {   # blk_out <label> [outputs|fill]: out/ for <label> from that stage
     { echo "$l fill" > "$n" && blk_portcheck && blk_fill_label "$l"; } || return 1
     echo "$l" > "$n.tmp" && mv -f "$n.tmp" "$d/out/label.txt" && rm -f "$n" && echo "BLK_LABEL $l is the label of out/"
 }
-# The layout identity of a label (R110): one summary.txt line "outputs_md5 <label> netlist <md5> def <md5> pg <md5>" per
-# outputs of the label, md5 of its out/ netlist, DEF and PG netlist (the LVS source's input; R114, hunt round 15: it was in
-# no record) without the writers' comment lines (date, user, the write command with the run dir); common/regress.sh
-# compares the route label's with the reference of a 1-core run (ICC2 repeatable)
-blk_out_sums() {   # "netlist <md5> def <md5> pg <md5>" of out/ as it is now
-    local o=$d/out/$BLK_TOP n f p
+# The layout identity of a label (R110): one summary.txt line "outputs_md5 <label> netlist <md5> def <md5> pg <md5> gds
+# <md5>" per outputs of the label, md5 of its out/ netlist, DEF, PG netlist (the LVS source's input; R114, hunt round 15:
+# it was in no record) and GDS (the fill's input; R115, round-16 hunt: in no record either; blk_fill_label checks out/
+# against it) without the writers' comment lines (date, user, the write command with the run dir) and GDS time stamps
+# (common/gds_md5.py); common/regress.sh compares the route label's with the reference of a 1-core run (ICC2 repeatable)
+blk_out_sums() {   # "netlist <md5> def <md5> pg <md5> gds <md5>" of out/ as it is now
+    local o=$d/out/$BLK_TOP n f p g
     n=$(set -o pipefail; grep -v '^//' "$o.v" | md5sum | cut -c1-32) \
         && f=$(set -o pipefail; gzip -dc "$o.def.gz" | grep -v '^#' | md5sum | cut -c1-32) \
-        && p=$(set -o pipefail; grep -v '^//' "${o}_pg.v" | md5sum | cut -c1-32) || { echo "BLK_FAIL outputs md5 of $o.v / .def.gz / _pg.v" >&2; return 1; }
-    echo "netlist $n def $f pg $p"
+        && p=$(set -o pipefail; grep -v '^//' "${o}_pg.v" | md5sum | cut -c1-32) \
+        && g=$("$PY" -I "$QBF/common/gds_md5.py" "$o.gds") || { echo "BLK_FAIL outputs md5 of $o.v / .def.gz / _pg.v / .gds" >&2; return 1; }
+    echo "netlist $n def $f pg $p gds $g"
 }
 blk_out_md5() {
     local s; s=$(blk_out_sums) || return 1
@@ -277,13 +282,13 @@ blk_chain_check() {
     [ -z "$bad" ] && [ $# -gt 0 ] && { echo "CHAIN $s $c PASS label $l: $# files = the md5 the step recorded"; return 0; }
     echo "CHAIN $s $c FAIL label / md5 changed since the step:${bad:- no file}"; return 1
 }
-blk_pending() {   # finishes the unfinished label of out/ (out/label.new), if there is one
+blk_pending() {   # finishes the unfinished label of out/ (out/label.new), if there is one (an ECO label: its round applied)
     local l s
     [ -f "$d/out/label.new" ] || return 0
     read -r l s < "$d/out/label.new"
     case $s in outputs|fill) ;; *) echo "BLK_FAIL out/label.new '$l $s' is not '<label> outputs|fill'"; return 1 ;; esac
     echo "BLK_LABEL finishing the unfinished label $l of out/ from its $s stage"
-    blk_out "$l" "$s"
+    blk_out "$l" "$s" && blk_eco_applied "$l"
 }
 # fill step: the unfinished label of out/ if there is one, else the label of out/ again (portcheck, fill, extract)
 blk_fill() {
@@ -312,6 +317,9 @@ blk_die_window() {
 }
 blk_fill_label() {
     local l=$1 o=$d/calibre C=$QBF/signoff/calibre w i t=out/$BLK_TOP c cs s=; mkdir -p "$o"
+    # out/ is the outputs of label $l (blk_out_check: its outputs record, GDS included, R115), so the fill record's input
+    # GDS / DEF md5 are of that label's outputs
+    blk_out_check "$l" || return 1
     cs=$(qb_corners) && i=$(blk_md5 "$t.gds" "$t.def.gz") || return 1
     # chip window of both fill decks = the DEF DIEAREA (blk_die_window) -> calibre/die_window.sed.  Metal too since R99
     # (signoff/calibre/fill_blk.sed ChipWindowUsed; [M] rgr rg44735f5a: without a window the metal fill took the drawn
@@ -342,13 +350,28 @@ blk_fill_label() {
 # ICC2 label of the ECO round that starts from label $1 / number of rounds that built label $1
 blk_eco_label() { case $1 in route) echo eco ;; eco) echo eco2 ;; eco[1-9]*) echo "eco$(( ${1#eco} + 1 ))" ;; *) return 1 ;; esac; }
 blk_eco_index() { case $1 in route) echo 0 ;; eco) echo 1 ;; eco[1-9]*) echo "${1#eco}" ;; *) return 1 ;; esac; }
+# The loop's history out/eco/rounds.txt (R115; round-16 finding [M] tau11 col/r101: a round's change-list line was
+# written before ICC2 eco ran, and a round whose ICC2 eco then failed (rc 1, "failed after the change list") lifted the
+# stop and set the previous total all the same).  Per round "ECO round <k> <date> label <from> prefix_total <n>: change
+# list -> label <to> prefix_tns <t>" (the PrimeTime half: the fixes chosen, nothing applied yet), then, only once ICC2
+# eco AND blk_out of <to> passed (in that round, or when blk_pending finishes the label later), "ECO round <k> <date>
+# label <from> applied -> label <to>" (blk_eco_applied).  Only an applied line makes a round count.
+blk_eco_applied() {   # blk_eco_applied <label>: the applied line of the round whose change list built <label> (none: nothing)
+    local h=$d/out/eco/rounds.txt w
+    w=$(awk -v l="$1" '$9 == "change" && $10 == "list" && $11 == "->" && $13 == l { w = $3 " " $6 } END { print w }' "$h" 2> /dev/null)
+    [ -n "$w" ] || return 0
+    set -- "$1" $w
+    echo "ECO round $2 $(date +%F_%T) label $3 applied -> label $1" | tee -a "$h"
+}
 # The loop's stop rule (R108).  blk_eco_prev <history> <label>: "<prefix_total> [<prefix_tns>]" of the round that built
-# <label> (its line "ECO round <k> <date> label <from> prefix_total <n>: change list -> label <label> [prefix_tns <t>]"),
-# nothing for route or after an override line (a stop overridden since).  The TNS field is appended to the line, so the
-# fields up to the label keep their places; a history line written before R108 has none.
+# <label> (its change-list line), once that round applied (R115: its applied line); nothing for route, for a round that
+# never applied, or after an override line (a stop overridden since).  The TNS field is appended to the change-list
+# line, so the fields up to the label keep their places; a history line written before R108 has none.
 blk_eco_prev() {
     [ -f "$1" ] || return 0
-    awk -v l="$2" '$2 == "override" { p = "" } $9 == "change" && $13 == l { p = $8; sub(":", "", p); if ($14 == "prefix_tns") p = p " " $15 }
+    awk -v l="$2" '$2 == "override" { p = "" }
+        $9 == "change" && $10 == "list" && $11 == "->" { c[$13] = $8; sub(":", "", c[$13]); if ($14 == "prefix_tns") c[$13] = c[$13] " " $15 }
+        $7 == "applied" && $8 == "->" && $10 == l && ($10 in c) { p = c[$10] }
         END { print p }' "$1"
 }
 # blk_eco_progress <total> <tns> [<previous total> [<previous tns>]]: status 0 when this round's pre-fix state is progress
@@ -366,12 +389,13 @@ blk_eco_progress() {
     return 1
 }
 # blk_eco_stop <history>: the stop line in force, nothing when there is none.  A stop (a ": FAIL " round line) stands until
-# a later round applied a change list ("change list -> label" line); an override line does not end it (R114; hunt round
-# 15 on f8f6eee: the override line was written before PrimeTime ran and ended the stop for good, so after a failed or a
-# PrimeTime-only overridden round a plain eco step resumed past the stop)
+# a later round applied its change list (its applied line, R115; before, its change-list line, written before ICC2 eco
+# ran); an override line does not end it (R114; hunt round 15 on f8f6eee: the override line was written before
+# PrimeTime ran and ended the stop for good, so after a failed or a PrimeTime-only overridden round a plain eco step
+# resumed past the stop)
 blk_eco_stop() {
     [ -f "$1" ] || return 0
-    awk '/: FAIL / { s = $0 } $9 == "change" && $10 == "list" && $11 == "->" { s = "" } END { print s }' "$1"
+    awk '/: FAIL / { s = $0 } $7 == "applied" && $8 == "->" { s = "" } END { print s }' "$1"
 }
 blk_eco() {
     local max=$QC_ECO_ROUNDS e=$d/out/eco h k from to a tot tns un prev why r f cs n stop
@@ -386,7 +410,7 @@ blk_eco() {
             echo "BLK_FAIL eco: the loop of this run has stopped ($h):"; echo "$stop"
             echo "  QC_ECO_OVERRIDE_STOP=1 continues from label $(cat "$d/out/label.txt" 2> /dev/null) and is logged there"; return 1
         fi
-        echo "ECO override $(date +%F_%T) of the stop above (QC_ECO_OVERRIDE_STOP=1; this eco step, the stop stands again unless a round of it applies a change list)" | tee -a "$h"
+        echo "ECO override $(date +%F_%T) of the stop above (QC_ECO_OVERRIDE_STOP=1; this eco step, the stop stands again unless a round of it applies its change list)" | tee -a "$h"
     fi
     # an unfinished label of out/ (a round that failed after its ICC2 eco) is finished before any PrimeTime round; not in
     # the PrimeTime-only mode, which changes nothing of out/ (R113; hunt round 14 on f9f2580: it ran outputs / fill /
@@ -448,11 +472,11 @@ blk_eco() {
         fi
         echo "ECO round $k $(date +%F_%T) label $from prefix_total $tot: change list -> label $to prefix_tns $tns" | tee -a "$h"
         # ICC2: the change list on label $from -> $to (name / load / legality gates, ECO route, route gate), then out/ for
-        # label $to (blk_out: outputs, portcheck, fill, extract; only then is $to the label of out/)
+        # label $to (blk_out: outputs, portcheck, fill, extract; only then is $to the label of out/ and the round applied)
         # (the log with its .time: signoff/verdict.py icc2_log checks the ICC2 eco step of every ECO label of out/'s
         # chain from the round record, qb_icc2 -check, R111)
         QB_ECO_FROM=$from QB_ECO_TO=$to qb_icc2 "$d" eco; r=$?; cp "$d/eco.log" "$d/eco.log.time" "$a/"
-        [ $r = 0 ] && blk_out "$to" \
+        [ $r = 0 ] && blk_out "$to" && blk_eco_applied "$to" \
             || { echo "ECO round $k $(date +%F_%T) label $from: failed after the change list (label of out/: $(cat "$d/out/label.txt" 2> /dev/null || echo none), unfinished: $(cat "$d/out/label.new" 2> /dev/null || echo none))" | tee -a "$h"; return 1; }
     done
 }
@@ -460,9 +484,11 @@ blk_eco() {
 # antenna -> <run>/calibre.  All three run; the step fails on any cal.sh exit status (LVS not CORRECT, an LVS ERC result
 # or a NOT EXECUTED ERC check signoff/calibre/erc_allow.txt does not allow, any DRC / antenna result: signoff/calibre/cal.sh).
 blk_calibre() {
-    local o=$d/calibre C=$QBF/signoff/calibre g r=0 l i s m q; g=$o/odpo/${BLK_TOP}_fill.gds
+    local o=$d/calibre C=$QBF/signoff/calibre g r=0 l i m q; g=$o/odpo/${BLK_TOP}_fill.gds
     l=$(blk_label) || return 1
-    [ "$g" -nt "$d/out/$BLK_TOP.gds" ] || { echo "BLK_FAIL $g missing or older than out/$BLK_TOP.gds (run.sh fill)"; return 1; }
+    # the filled GDS is the fill step's of the label of out/, from out/<top>.gds as it is now: the fill record (blk_chain_check
+    # fill: out GDS + DEF -> the filled GDS ..., R115; before, file times: $g newer than out/<top>.gds)
+    blk_chain_check fill - "$l" || { echo "BLK_FAIL the fill record of label $l does not hold (run.sh fill)"; return 1; }
     bash "$C/lvs_src.sh" "$d/out/${BLK_TOP}_pg.v" "$o/${BLK}_src.spi" > "$o/src.log" 2>&1; r=$?; tail -n 3 "$o/src.log"; [ $r = 0 ] || return 1
     i=$(blk_md5 "calibre/odpo/${BLK_TOP}_fill.gds" "calibre/${BLK}_src.spi") || return 1
     QB36_LVS_SED=$BLK_LVS_SED bash "$C/cal.sh" lvs "$g" "$BLK_TOP" "$o/${BLK}_src.spi" "$o/lvs" > "$o/lvs.log" 2>&1 || r=1
@@ -486,24 +512,28 @@ blk_post() {
     ( blk_pt_env || exit 1
       cs=$(qb_corners) || exit 1; r=0
       for c in $cs; do   # every corner is reported before a failure stops the step (R67)
-          # (the content chain, blk_chain: netlist + SPEF of the corner -> its report and log)
+          # (the content chain, blk_chain: netlist + SPEF of the corner -> its report and log, recorded only when the
+          # session passed; R115, round-16 hunt: a failed session got its chain line, over a report of an earlier
+          # session it had not removed)
+          rm -f "pt_blk_$c.txt" "pt_blk_$c.log" "pt_blk_$c.log.time"
           i=$(blk_md5 "out/$BLK_TOP.v" "out/${BLK_TOP}_${c}_pt.spef.gz") || { r=1; continue; }
-          QC_CORNER=$c qb_pt "pt_blk_$c.log" pt_shell -f "$BLK_PT" || r=1
-          cat "pt_blk_$c.txt"
-          blk_chain pt "$c" "$l" "$i" "pt_blk_$c.txt" "pt_blk_$c.log" || r=1
+          if QC_CORNER=$c qb_pt "pt_blk_$c.log" pt_shell -f "$BLK_PT"; then
+              cat "pt_blk_$c.txt"; blk_chain pt "$c" "$l" "$i" "pt_blk_$c.txt" "pt_blk_$c.log" || r=1
+          else cat "pt_blk_$c.txt" 2> /dev/null; r=1; fi
       done
       [ $r = 0 ] || exit 1
       for c in $cs; do
           # the corner's ETM files are this session's (R104; hunt round 9 on 018af5e: the .db was only counted over
           # out/etm, so an older one passed): removed first, then each there and none older than the one before; their
-          # content chain: netlist + SPEF of the corner -> .lib / .db / ref (blk_chain; views checks it)
+          # content chain: netlist + SPEF of the corner -> .lib / .db / ref (blk_chain; views checks it), recorded only
+          # when the session and these checks passed (R115)
           e=out/etm/${BLK_TOP}_$c; rm -f "$e.lib" "${e}_lib.db" "${e}_ref.txt"
           i=$(blk_md5 "out/$BLK_TOP.v" "out/${BLK_TOP}_${c}_pt.spef.gz") || { r=1; continue; }
-          QC_CORNER=$c qb_pt "etm_$c.log" pt_shell -f "$QBF/signoff/etm/etm.tcl" || r=1
-          blk_chain etm "$c" "$l" "$i" "$e.lib" "${e}_lib.db" "${e}_ref.txt" || r=1
-          ! grep -m 3 'MEXT-6)\|(MEXT-80)\|MEXT-81\|MEXT-97' "etm_$c.log" || { echo "ETM $c: table limit / port aggressor filter / driving cell / feedthrough warnings"; r=1; }
+          q=0; QC_CORNER=$c qb_pt "etm_$c.log" pt_shell -f "$QBF/signoff/etm/etm.tcl" || q=1
+          ! grep -m 3 'MEXT-6)\|(MEXT-80)\|MEXT-81\|MEXT-97' "etm_$c.log" || { echo "ETM $c: table limit / port aggressor filter / driving cell / feedthrough warnings"; q=1; }
           [ -s "$e.lib" ] && [ -s "${e}_lib.db" ] && [ -s "${e}_ref.txt" ] && ! [ "${e}_lib.db" -ot "$e.lib" ] && ! [ "${e}_ref.txt" -ot "${e}_lib.db" ] \
-              || { echo "ETM $c: $e.lib / _lib.db / _ref.txt missing, empty or out of order"; r=1; }
+              || { echo "ETM $c: $e.lib / _lib.db / _ref.txt missing, empty or out of order"; q=1; }
+          [ $q = 0 ] && blk_chain etm "$c" "$l" "$i" "$e.lib" "${e}_lib.db" "${e}_ref.txt" || r=1
           echo "ETM $c $(grep -c 'RC-011' "etm_$c.log") RC-011 lines"
       done; exit $r )
 }

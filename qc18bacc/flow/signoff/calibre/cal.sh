@@ -12,6 +12,8 @@
 #        ERC of an lvs run dir)
 #   qc18bacc/flow/signoff/calibre/cal.sh check deck <topcell> <rundir>   the deck edits of any run mode's dir took effect
 #        in its deck copy (cal_deck, R109)
+#   qc18bacc/flow/signoff/calibre/cal.sh kit <drc|ant|fill|odpo|lvs|lvs_dfm>   the kit deck file of that run mode (lvs_dfm:
+#                                               the LVS deck's DFM include; R115, common/env.sh qb_kit_files)
 # env: QB36_DRC_SED / QB36_ANT_SED / QB36_LVS_SED / QB55_FILL_SED / QB77_ODPO_SED = extra sed arguments for the deck copy
 #      of that mode only, "-f <sed file>" pairs only (e.g. "-f drc_blk.sed"; common/block.sh sets each one explicitly
 #      per run; R111: no inline -e), QB36_LVS_EXTRA (a file appended to the LVS deck, with its own #@expect lines),
@@ -28,6 +30,12 @@ set -u
 C=/CMC/tools/siemens/calibre/aok_cal_2026.1_26.19/aok_cal_2026.1_26.19
 export CALIBRE_HOME=$C MGC_HOME=$C MGLS_LICENSE_FILE=${MGLS_LICENSE_FILE:-6056@engrcmc2.usask.ca}
 K=/CMC/kits/tsmc_65nm
+# the kit decks of the run modes (and the LVS deck's DFM include); "cal.sh kit <key>" prints one (common/env.sh
+# qb_kit_files: their md5 by role in a snapshot's site manifest, R115)
+declare -A DECK=([drc]=$K/CLN65GP/DRC/MAIN_DRC_TopMz/CLN65S_9M_6X2Z.23a [ant]=$K/CLN65GP/DRC/ANTENNA_DRC/CN65S_9M.ANT.23a
+    [fill]=$K/CLN65GP/TN65CLDR001C3_V2.2C/Dummy_Metal_Calibre_65nm.22c [odpo]=$K/CLN65GP/autofill_OD_PO/Dummy_OD_PO_Calibre_65nm.22b
+    [lvs]=$K/CRN65GP/TN65CMSP018K1_V1.0C/Calibre/lvs/calibre.lvs)
+LVS_DFM=${DECK[lvs]%/*}/DFM/dfm_device
 A=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/erc_allow.txt   # (resolved before the run modes cd into their dirs)
 AD=${A%/*}/drc_allow.txt
 . "${A%/*}/../../common/env.sh"   # (qb_knob: the deck edit record)
@@ -201,13 +209,16 @@ cal_result() {
     echo "CAL36_RESULT $mode $top $([ $f = 0 ] && echo PASS || echo FAIL) $s"
     return $f
 }
-mode=${1:?drc|ant|lvs|fill|odpo|check}; gds=${2:?}; top=${3:?}; res=0
+if [ "${1:-}" = kit ]; then
+    case ${2:-} in lvs_dfm) echo "$LVS_DFM" ;; drc|ant|fill|odpo|lvs) echo "${DECK[$2]}" ;; *) echo "CAL36_FAIL kit '${2:-}'" >&2; exit 1 ;; esac
+    exit 0
+fi
+mode=${1:?drc|ant|lvs|fill|odpo|check|kit}; gds=${2:?}; top=${3:?}; res=0
 case $mode in
 drc|ant) d=$4; t=${5:-8}; mkdir -p "$d"; cd "$d" || exit 1
      # each mode its own deck edits (R104; hunt round 9 on 018af5e: ant read QB36_DRC_SED too, so the DRC deck's
      # edits, or any value inherited from the environment, reached the antenna deck)
-     if [ $mode = drc ]; then deck=$K/CLN65GP/DRC/MAIN_DRC_TopMz/CLN65S_9M_6X2Z.23a; sx=${QB36_DRC_SED:-}
-     else deck=$K/CLN65GP/DRC/ANTENNA_DRC/CN65S_9M.ANT.23a; sx=${QB36_ANT_SED:-}; fi
+     deck=${DECK[$mode]}; if [ $mode = drc ]; then sx=${QB36_DRC_SED:-}; else sx=${QB36_ANT_SED:-}; fi
      # (R113; hunt round 14 on f9f2580: this base edit capped both kit decks' DRC MAXIMUM RESULTS ALL at 1000 and only
      # drc_blk.sed restored ALL, so the antenna counts were capped at 1000 per rule; both decks keep ALL, cal_result gates it)
      sed -e "s#^\(LAYOUT PATH\) .*#\1 \"$gds\"#" -e "s#^\(LAYOUT PRIMARY\) .*#\1 \"$top\"#" $sx "$deck" > deck.$mode
@@ -219,8 +230,7 @@ drc|ant) d=$4; t=${5:-8}; mkdir -p "$d"; cd "$d" || exit 1
      grep "RULECHECK .* TOTAL Result Count = [1-9]" "$rep" | awk '{print "CAL36_RULE", $2, $(NF-1)}' | head -60
      cal_result $mode "$top" . || res=1 ;;
 fill|odpo) d=$4; t=${5:-8}; mkdir -p "$d"; cd "$d" || exit 1
-     if [ $mode = fill ]; then deck=$K/CLN65GP/TN65CLDR001C3_V2.2C/Dummy_Metal_Calibre_65nm.22c; db=DM; e=QB55_FILL_SED
-     else deck=$K/CLN65GP/autofill_OD_PO/Dummy_OD_PO_Calibre_65nm.22b; db=DODPO; e=QB77_ODPO_SED; fi
+     deck=${DECK[$mode]}; if [ $mode = fill ]; then db=DM; e=QB55_FILL_SED; else db=DODPO; e=QB77_ODPO_SED; fi
      sx="${!e:-} ${QB55_WINDOW:+-f $QB55_WINDOW}"
      sed -e "s#^\(LAYOUT PATH\) .*#\1 \"$gds\"#" -e "s#^\(LAYOUT PRIMARY\) .*#\1 \"$top\"#" \
          -e "s#^DRC RESULTS DATABASE \"$db.gds\" GDSII .*#DRC RESULTS DATABASE \"$db.gds\" GDSII _$db#" $sx "$deck" > deck.$mode
@@ -238,10 +248,10 @@ fill|odpo) d=$4; t=${5:-8}; mkdir -p "$d"; cd "$d" || exit 1
      done
      echo "CAL55 $mode $top rc $rc $(grep 'TOTAL DRC Results Generated' "$sum") wall $(grep Elapsed cal_$mode.time | awk '{print $NF}') out $(ls -s "${top}_fill.gds" 2>/dev/null)"
      grep "RULECHECK .* TOTAL Result Count = [1-9]" "$sum" | awk -v m=$mode '{print "CAL55_" m, $2, $(NF-1)}' | head -40 ;;
-lvs) src=$4; d=$5; t=${6:-8}; mkdir -p "$d"; cd "$d" || exit 1; L=$K/CRN65GP/TN65CMSP018K1_V1.0C/Calibre/lvs
+lvs) src=$4; d=$5; t=${6:-8}; mkdir -p "$d"; cd "$d" || exit 1
      sed -e "s#^LAYOUT PRIMARY .*#LAYOUT PRIMARY \"$top\"#" -e "s#^LAYOUT PATH .*#LAYOUT PATH \"$gds\"#" \
          -e "s#^SOURCE PRIMARY .*#SOURCE PRIMARY \"$top\"#" -e "s#^SOURCE PATH .*#SOURCE PATH \"$src\"#" \
-         -e "s#^INCLUDE ./DFM/dfm_device#INCLUDE $L/DFM/dfm_device#" ${QB36_LVS_SED:-} "$L/calibre.lvs" > deck.lvs
+         -e "s#^INCLUDE ./DFM/dfm_device#INCLUDE $LVS_DFM#" ${QB36_LVS_SED:-} "${DECK[lvs]}" > deck.lvs
      # (its #@expect / #@absent lines are cal_deck's, not the deck's)
      if [ -n "${QB36_LVS_EXTRA:-}" ]; then { grep -v '^#@\(expect\|absent\) ' "$QB36_LVS_EXTRA" >> deck.lvs; [ $? -le 1 ]; } || exit 1; fi
      cal_edits lvs QB36_LVS_SED QB36_LVS_EXTRA QB36_HCELL
@@ -252,7 +262,7 @@ lvs) src=$4; d=$5; t=${6:-8}; mkdir -p "$d"; cd "$d" || exit 1; L=$K/CRN65GP/TN6
      grep -m4 "CORRECT\|INCORRECT\|NOT COMPARED" lvs.rep; awk '/CELL  SUMMARY/{f=1} f && /INCORRECT|NOT COMPARED/ {print "CAL36_CELL", $0} /LVS PARAMETERS/{f=0}' lvs.rep | head -40
      cal_result lvs "$top" . || res=1; cal_result erc "$top" . || res=1 ;;
 check) if [ "$2" = deck ]; then cal_deck "${4:?rundir}"; else cal_result "$2" "$3" "${4:?rundir}"; fi; exit ;;
-*) sed -n '2,13p' "$0"; exit 1 ;;
+*) sed -n '2,15p' "$0"; exit 1 ;;
 esac
 [ $rc = 0 ] || exit $rc     # Calibre's own failure first
 exit $res

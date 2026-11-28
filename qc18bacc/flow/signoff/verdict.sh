@@ -25,7 +25,9 @@
 # R113; the abstract LEF from the DEF of the label of out/: md5_abstract, R114), the completion order of the ICC2 steps
 # of the label chain of out/ (step_order, R113; + outputs < abstract, R114); per Calibre mode the deck edits applied (= the block's committed defaults; their
 # results in the deck copy, calibre/cal.sh check deck, R109) and
-# the layout read, the LVS source and the netlist it was built from (R106).  A gate whose evidence a run never produced
+# the layout read, the LVS source and the netlist it was built from (R106).  R115: Calibre's own exit status of the LVS /
+# DRC / antenna runs (cal_<mode>.time) in their gates, abstract_lef one signal PIN per signal port, and flow_snapshot:
+# every step's BLK_KNOBS line of summary.txt names this verdict's flow root.  A gate whose evidence a run never produced
 # is MISSING (it fails too).
 # The step driver calls it last; the result table of the paper is made from its GATE lines.
 set -u

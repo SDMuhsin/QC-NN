@@ -193,8 +193,11 @@ for k in ('lef', 'obs', 'abutment', 'pg_pins'):
     if k == 'abutment' and not l and 'abstract_abutment' not in optin: continue   # opt-in (icc2/abstract.tcl P(ABUT_PAIR))
     n = re.findall(r'\b(?:bad|missing) (-?\d+)', l)
     # (abutment, R114; hunt round 15 on f8f6eee: "ok 0 bad 0" of a P(ABUT_PAIR) that matched no port passed) at least one pair
-    pairs = k != 'abutment' or int((re.findall(r'\bpairs ok (\d+)', l) or ['0'])[0]) > 0
-    gate('abstract_' + k, '-', set(n) == {'0'} and pairs if l else None, l or 'no "abstract %s" line in summary.txt' % k)
+    more = k != 'abutment' or int((re.findall(r'\bpairs ok (\d+)', l) or ['0'])[0]) > 0
+    # (lef, R115; round-16 hunt: abstract.tcl failed on it, the verdict did not check it) one signal PIN per signal port
+    pins = re.findall(r'\bsignal PIN (\d+) \(ports (\d+)\)', l)
+    more = more and (k != 'lef' or (len(pins) == 1 and pins[0][0] == pins[0][1]))
+    gate('abstract_' + k, '-', set(n) == {'0'} and more if l else None, l or 'no "abstract %s" line in summary.txt' % k)
 # The ICC2 step logs of out/'s label chain (R111; hunt round 13 on 1940fd4: only the abstract's was checked, and an
 # ICC2 step saves its label (qb_done) before qb_icc2 judges the step, so a step that failed on an error under redirect,
 # seen only in its QB_ICC2_MSG count, left a label that the next steps built on): init .. route in the run dir, the ICC2
@@ -218,6 +221,17 @@ else:
                                                            ['eco:' + x for x in chain] + ['outputs:' + label, 'extract:' + label]),
                                                   'outputs:%s abstract:%s' % (label, label))]
     gate('step_order', '-', all(rc == 0 for rc, _ in rs), ' | '.join(last(out, 'BLK_ORDER ') or out.strip()[-160:] for _, out in rs))
+# One flow snapshot (R115; round-16 hunt: nothing tied the steps of a run to one flow): every step's BLK_KNOBS line in
+# summary.txt (common/block.sh blk_main: "BLK_KNOBS <blk> <step> <tag> flow <flow root> ...") names the same flow root,
+# this verdict's own; the steps whose outputs are judged here each have one (pnr, calibre, post, views; eco unless the
+# label of out/ is route)
+kn = [l.split() for l in s.splitlines() if l.startswith('BLK_KNOBS ')]
+roots = sorted(set(os.path.realpath(w[5]) if len(w) > 5 and w[4] == 'flow' else '(no flow field)' for w in kn))
+steps = set(w[2] for w in kn if len(w) > 2)
+need = [x for x in ('pnr', 'eco', 'calibre', 'post', 'views') if x != 'eco' or label != 'route']
+gate('flow_snapshot', '-', roots == [os.path.realpath(flow)] and set(need) <= steps if kn else None,
+     'steps %s ran from %s (this verdict: %s; needed: %s)' % (' '.join(sorted(steps)), ' | '.join(roots), os.path.realpath(flow), ' '.join(need))
+     if kn else 'no BLK_KNOBS line in summary.txt')
 # the content chain (R113, md5 above) of the fill and extract of the label of out/, and (R114) its abstract
 md5('fill', '-'); md5('extract', '-'); md5('abstract', '-')
 # the label the abstract was made from (icc2/abstract.tcl, its last summary line) = the label of out/ (R99)
@@ -236,11 +250,21 @@ def named(deck, key):   # a file the deck copy names (summary report, LVS source
 # merged GDS of LVS / DRC / antenna; before, DM.gds, which fill_def.py reads, was in no chain)
 g = ['out/%s.gds' % top, 'calibre/fill/DM.gds', 'calibre/fill/%s_fill.gds' % top, 'calibre/odpo/DODPO.gds', 'calibre/odpo/%s_fill.gds' % top]
 # (lvs_erc: the ERC of the LVS run, cal.sh check erc on its summary and signoff/calibre/erc_allow.txt)
+# and Calibre's own exit status of that run (R115; round-16 hunt: the reports alone were judged): the one "Exit status"
+# line of its /usr/bin/time -v record cal_<mode>.time (cal.sh), 0, the record not older than the deck copy
+def cal_exit(d, dm):
+    t = 'calibre/%s/cal_%s.time' % (d, dm); dk = 'calibre/%s/deck.%s' % (d, dm)
+    if not have(t): return False, 'no ' + t
+    x = re.findall(r'^\s*Exit status: (\S+)\s*$', text(t), re.M)
+    old = os.path.getmtime(os.path.join(run, t)) < os.path.getmtime(os.path.join(run, dk))
+    # (the evidence states the reason it fails: R115 follow-up, a stale record said only "exit status 0")
+    return x == ['0'] and not old, '%s exit status %s%s' % (t, ' '.join(x) or 'none', ', older than the deck copy %s (not this run\'s record)' % dk if old else '')
 for name, mode, d, dm in (('lvs', 'lvs', 'lvs', 'lvs'), ('lvs_erc', 'erc', 'lvs', 'lvs'), ('drc', 'drc', 'drcb', 'drc'), ('antenna', 'ant', 'ant', 'ant')):
     deck = 'calibre/%s/deck.%s' % (d, dm)
     rc, out = sh('bash %s/cal.sh check %s %s %s/calibre/%s' % (cal, mode, top, run, d))
     res = last(out, 'CAL36_RESULT '); fails = [x for x in out.splitlines() if x.startswith('CAL36_FAIL')]
-    gate(name, '-', rc == 0 and ' PASS ' in res if have(deck) else None, ' | '.join([res] + fails))
+    xok, xev = cal_exit(d, dm) if have(deck) else (False, '')
+    gate(name, '-', rc == 0 and ' PASS ' in res and xok if have(deck) else None, ' | '.join([res, xev] + fails))
     # (lvs: the extracted layout netlist svdb/<top>.sp, which cal.sh lvs_ports reads, between the deck copy and the report, R104)
     fresh('gds_fill_' + name, '-', g + [deck] + (['calibre/lvs/svdb/%s.sp' % top, 'calibre/lvs/lvs.rep'] if mode == 'lvs' else
                                         [named(deck, 'ERC SUMMARY REPORT' if mode == 'erc' else 'DRC SUMMARY REPORT')]))

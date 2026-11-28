@@ -138,6 +138,33 @@ qb_corners() {
     echo "QB_FAIL qb_corners: no sign-off corner from $ROOT/flow/tsmc65/site/site.tcl (tclsh / site.tcl error or empty QC_SIGNOFF_CORNERS)" >&2
     return 1
 }
+# qb_kit_files: the kit files the flow reads by path (R115; round-16 hunt: only the site files were in a record), one
+# "<role> <absolute path>" line each, sorted by role.  The one role table: a role is the provenance key of a kit file
+# (common/deploy.sh VERSION kit_md5 lines, blocks/rgr/reference.txt, common/regress.sh check output); the path is resolved
+# here, on the host, and recorded nowhere, so the repository carries no kit path or kit file name.  Roles:
+#   tf               tech file (site.tcl QC_TF)           cell_lef    cell LEF (site/pnr.tcl QC_PNR_LEF)
+#   cell_gds         cell GDS outputs.tcl merges (QC_PNR_GDS)   tlup_map    TLU+ layer map (QC_TLU_MAP)
+#   tlup_<corner>    TLU+ file of each sign-off corner (QC_TLU / QC_TLU_FILE)
+#   lib_db_<corner>  timing library .db of each sign-off corner (flow/tsmc65/common/lib.tcl qc_db)
+#   liberty_<corner> its liberty text (QC_LIBDIR/QC_LIB(corner).lib: common/lib_cells.tcl, signoff/pt/common.tcl)
+#   <mode>_deck      Calibre deck of each run mode drc ant fill odpo lvs, lvs_dfm the LVS deck's DFM include
+#                    (signoff/calibre/cal.sh kit <key>)
+#   cell_spice       cell spice of the LVS source (signoff/calibre/lvs_src.sh kit)
+# Needs QC_KIT (qb_kit).  Non-zero with a QB_FAIL line on stderr when a lookup fails.
+qb_kit_files() {
+    local t k
+    t=$(tclsh <<< "if {[catch {source $ROOT/flow/tsmc65/common/lib.tcl; source $ROOT/flow/tsmc65/site/pnr.tcl} e]} { puts stderr \$e; exit 1 }
+        puts \"tf \$::QC_TF\"; puts \"cell_lef \$::QC_PNR_LEF\"; puts \"cell_gds \$::QC_PNR_GDS\"; puts \"tlup_map \$::QC_TLU_MAP\"
+        foreach c \$::QC_SIGNOFF_CORNERS {
+            puts \"tlup_\$c \$::QC_TLU/\$::QC_TLU_FILE(\$c)\"; puts \"lib_db_\$c [qc_db \$c]\"; puts \"liberty_\$c \$::QC_LIBDIR/\$::QC_LIB(\$c).lib\"
+        }") || { echo "QB_FAIL qb_kit_files: site.tcl / site/pnr.tcl" >&2; return 1; }
+    for k in drc ant fill odpo lvs lvs_dfm; do
+        t="$t"$'\n'"$([ $k = lvs_dfm ] && echo $k || echo ${k}_deck) $(bash "$QBF/signoff/calibre/cal.sh" kit $k)" \
+            || { echo "QB_FAIL qb_kit_files: cal.sh kit $k" >&2; return 1; }
+    done
+    t="$t"$'\n'"cell_spice $(bash "$QBF/signoff/calibre/lvs_src.sh" kit)" || { echo "QB_FAIL qb_kit_files: lvs_src.sh kit" >&2; return 1; }
+    LC_ALL=C sort -u <<< "$t"
+}
 # qb_wait: wait for every background job of this shell; non-zero if any of them failed
 qb_wait() { local j r=0; for j in $(jobs -p); do wait "$j" || r=1; done; return $r; }
 # qb_icc2 <rundir> <step> [icc2_shell|icc2_lm_shell]: ICC2 step flow/icc2/<step>.tcl (Q-2019.12-SP2) in <rundir>, log

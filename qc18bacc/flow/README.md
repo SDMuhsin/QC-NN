@@ -58,7 +58,11 @@ QC_MAX_TRAN / QC_MAX_TRAN_PCT / QC_CLK_TRAN_MAX / QB5_SOUTH_IN and the act chain
 environment value overrides it for an experiment, PrimeTime logs the values in force (QB_PT_LIMITS) and the verdict's
 limits gate fails every corner where they differ from limits.txt.  DC's run.env is not read by the block PrimeTime
 (R100, common/block.sh blk_pt_env: its QC_IO_PCT acted as such an override); since R107 it records the limits DC used
-and every knob a DC hook declares (flow/tsmc65 `common/knobs.tcl`), and QC_IO_PCT only without a design SDC.
+and every knob a DC hook declares (flow/tsmc65 `common/knobs.tcl`), and QC_IO_PCT only without a design SDC; since R115
+also how the netlist was made (QC_CORNER, QC_FLIST, QC_PARAMS, QC_HOOK, QC_POST_HOOK, QC_COMPILE), and `synth/run.sh
+col|rgr` set the corner of their output name (tt) and fail on an environment QC_CORNER that differs.  ECO history
+(R115): a round counts (lifts a stop, gives the previous total) only by its "applied" line, written once its ICC2 eco
+and the outputs / fill of its label passed (common/block.sh blk_eco_applied).
 Corners (R68): one table, `flow/tsmc65/site/site.tcl` QC_SIGNOFF (kit release note RN_TCBN65GPLUS_140B NOTE I): setup
 {wc wcl} x {Cworst RCworst} (ss ss_rcw wcl wcl_rcw), hold {lt ml} x {Cbest RCbest} (ff ff_rcb ml ml_rcb), tc typical (tt);
 ICC2 MCMM, PT sign-off, the DMSA ECO, the block ETMs and the chip top use all of them (bash: common/env.sh `qb_corners`;
@@ -86,7 +90,11 @@ init .. route; each consumer step records the md5 of the files it read and wrote
 blk_chain: fill, extract, PT and ETM per corner, LVS / DRC / antenna, and (R114) the abstract: DEF of the label -> LEF,
 after views checked out/ against the label's `outputs_md5` line, blk_out_check), and the verdict's md5_<step> gates hold them
 against the files as they are (views: the ETMs of the label of out/).  `outputs_md5` covers the netlist, DEF and PG
-netlist (R114); the verdict's lvs_source_netlist holds out/ against it.  The file-time fresh_* gates stay as a second check
+netlist (R114) and the GDS (R115, common/gds_md5.py: without its time stamps; the fill step checks out/ against it
+first); the verdict's lvs_source_netlist holds out/ against it.  R115: a chain line is written only when its step
+passed (post: PT / ETM), calibre reads the filled GDS of the fill record (no file times), every step appends its
+BLK_KNOBS line to summary.txt and the verdict's flow_snapshot gate requires one flow root (its own) for all of them,
+and the Calibre gates require Calibre's exit status 0.  The file-time fresh_* gates stay as a second check
 of the links no step records; a run dir copied without its times can only fail them.
 Out of scope by the project owner's decision: formal equivalence checking (LEC / Formality) of the P&R netlist against
 the synthesis netlist; the CAS papers the chip is compared with do not report it.  The netlist checks the flow does make
@@ -135,7 +143,11 @@ deploy.sh archives a commit (or tree) id, never the working tree: every tracked 
 (`deploy.sh --paths`); from the host only the untracked kit-derived site files of flow/tsmc65/site (R100: before, the
 host's whole flow/ including tracked lib.tcl / tool.sh).  It writes VERSION (commit, tree, site source, the site manifest
 = one `site_md5 <md5> <path>` line per site file, deploy time) and MANIFEST.md5 (every other file), verifies both on the
-host, makes the snapshot read-only and refuses an existing <dir>.  `check` also compares the site manifest and the run's
+host, makes the snapshot read-only and refuses an existing <dir>.  The site manifest also has (R115) one `kit_md5 <role>
+<md5>` line per kit file the flow reads by path, keyed by role (common/env.sh qb_kit_files, the one role table: tech file,
+cell LEF / GDS, TLU+ per corner and map, timing .db and liberty per corner, Calibre decks, LVS cell spice; the paths are
+resolved on the host only, so neither VERSION nor the reference names a kit file), and `check` re-checks every manifest
+line on the host (site_now).  `check` also compares the site manifest and the run's
 inputs from outside the snapshot (summary.txt `init inputs`: md5 of netlist, DC SDC, run.env, then the block's own
 `BLK_INPUTS`, e.g. the column's reference abstract (R101), the regression block's DC database (R109); written by common/block.sh blk_inputs after each successful init step (R109; init.tcl refuses an existing design library); every later reader, the portcheck and the floorplan pin
 DEF, gets the file through blk_input, which fails unless its md5 is still the recorded one, R102)

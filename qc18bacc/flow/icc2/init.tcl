@@ -170,7 +170,10 @@ qb_line "init corners [get_object_name [get_corners *]] modes [get_object_name [
 redirect $::R/rpt/init_ptech.rpt { report_parasitic_parameters }
 redirect $::R/rpt/init_check_timing.rpt { check_timing }
 # IO delays as loaded, read back per scenario (R114; the per-scenario note above): max / min external delay of one port
-# per budget class, the ports P(IO_SAMPLE) of the block config, one line per scenario
+# per budget class, the ports P(IO_SAMPLE) of the block config, one line per scenario; an active delay type without a
+# value (NA: no external delay read back) fails init after every scenario is logged (R115; round-16 hunt: NA was logged
+# and passed)
+set na {}
 foreach_in_collection s [all_scenarios] {
     current_scenario $s; set l {}
     foreach p [expr {[info exists P(IO_SAMPLE)] ? $P(IO_SAMPLE) : {}}] {
@@ -181,11 +184,14 @@ foreach_in_collection s [all_scenarios] {
         foreach dt {max min} ck {setup hold} {
             if {[get_attribute $s $ck] ne "true"} { lappend l $dt inactive; continue }
             redirect -variable r { report_timing -nosplit -significant_digits 4 -delay_type $dt -scenarios $s [expr {$dir eq "in" ? "-from" : "-to"}] [get_ports $p] }
-            lappend l $dt [expr {[regexp -line "$k external delay\\s+(-?\[0-9.\]+)" $r -> v] ? $v : "NA"}]
+            set v [expr {[regexp -line "$k external delay\\s+(-?\[0-9.\]+)" $r -> v] ? $v : "NA"}]
+            lappend l $dt $v
+            if {$v eq "NA"} { lappend na "[get_object_name $s]:$p:$dt" }
         }
     }
     if {[llength $l]} { qb_line "init io_delay [get_object_name $s] $l" }
 }
+if {[llength $na]} { error "init io_delay: no external delay read back for [llength $na] active scenario / port / delay type(s): [lrange $na 0 5]" }
 current_scenario func_ss
 qb_qor init
 qb_done init 1

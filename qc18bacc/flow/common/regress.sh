@@ -13,7 +13,9 @@
 #                                               tree-ish>, default HEAD, apart from blocks/rgr/reference.txt), the
 #                                               snapshot's files still match its MANIFEST.md5 (md5sum -c on the host, no
 #                                               unlisted file; R104), its site
-#                                               manifest (VERSION site_md5 lines) and its inputs (the run's summary.txt
+#                                               manifest (VERSION site_md5 lines of the site files and, R115, kit_md5
+#                                               lines of the kit files the flow reads by path, keyed by role: common/env.sh
+#                                               qb_kit_files; each still that md5 on the host: site_now) and its inputs (the run's summary.txt
 #                                               "init inputs" line: md5 of netlist, DC SDC, run.env, the block's
 #                                               BLK_INPUTS; common/block.sh blk_inputs) are the reference's, the queue ran exactly the chain and
 #                                               every step is ok, every step ran from the run's snapshot with the
@@ -24,7 +26,7 @@
 #                                               the reference's, the gate set (gate name x corner) equals the
 #                                               reference's (prints the difference of the gate sets otherwise) and, when
 #                                               the reference has a route_md5 line (a 1-core run), the route label's
-#                                               netlist / DEF md5 (summary.txt outputs_md5, R110) equal it.  The
+#                                               netlist / DEF / PG netlist / GDS md5 (summary.txt outputs_md5, R110) equal it.  The
 #                                               reference is blocks/rgr/reference.txt of <commit | tree-ish> (git show;
 #                                               R104: before, the checkout's file)
 #   regress.sh ref <host> <run> [<commit | tree-ish>]
@@ -102,7 +104,16 @@ echo "V $(head -n 1 "$snap/VERSION")"
   b=$(grep -c ': FAILED' <<< "$o"); [ $r = 0 ] || [ "$b" != 0 ] || b=NA   # md5sum fails without one, e.g. a bad line)
   x=$(LC_ALL=C comm -3 <(find . -type f ! -path ./MANIFEST.md5 -printf '%P\n' | LC_ALL=C sort) <(sed 's/^[0-9a-f]*  //' MANIFEST.md5 | LC_ALL=C sort) | grep -c .)
   echo "M files $(wc -l < MANIFEST.md5) md5_mismatch $b unlisted_or_missing $x" )
-sed -n 's/^site_md5 /S /p' "$snap/VERSION"
+sed -n 's/^site_md5 /S /p; s/^kit_md5 /T /p' "$snap/VERSION"
+# the site manifest's files now (R115): md5sum -c of the site_md5 lines, and the kit roles resolved again from the
+# snapshot (common/env.sh qb_kit_files), each file's md5 now = its kit_md5 line; the roles that differ (or are missing
+# on either side) are listed, never their paths
+( cd "$snap" || exit 0
+  a=$(sed -n 's/^site_md5 \([0-9a-f]*\) \(.*\)$/\1  \2/p' VERSION | md5sum -c 2>&1 | grep -vc ': OK$')
+  k=$(bash -c '. "$1/qc18bacc/flow/common/env.sh" && qb_kit && qb_kit_files' _ "$snap" 2> /dev/null) || k=
+  b=$(while read -r r p; do [ -n "$r" ] || continue; echo "kit_md5 $r $({ [ -f "$p" ] && md5sum < "$p" || echo unreadable; } | cut -c1-32)"; done <<< "$k" \
+      | LC_ALL=C sort | LC_ALL=C comm -3 - <(grep '^kit_md5 ' VERSION | LC_ALL=C sort) | awk '{ print $2 }' | LC_ALL=C sort -u | tr '\n' ' ')
+  echo "N site_files $(grep -c '^site_md5 ' VERSION) not_ok $a kit_roles $(grep -c '^kit_md5 ' VERSION) not_ok ${b:-none}" )
 grep '^init inputs ' "$d/summary.txt" 2> /dev/null | tail -n 1 | sed 's/^init inputs /I /'
 # the route label's layout identity (R110, common/block.sh blk_out_md5): md5 of its netlist and DEF
 grep '^outputs_md5 route ' "$d/summary.txt" 2> /dev/null | tail -n 1 | sed 's/^outputs_md5 route /L /'
@@ -142,7 +153,7 @@ version() {   # version <VERSION line> <rev>
     fi
 }
 # provenance outside the commit (R100), each equal to the reference's: the site manifest of the snapshot (VERSION
-# site_md5 lines, common/deploy.sh) and the DC inputs of the run (summary.txt "init inputs" line, common/block.sh
+# site_md5 lines; R115 kit_md5 lines by role, common/deploy.sh) and the DC inputs of the run (summary.txt "init inputs" line, common/block.sh
 # blk_inputs).  provenance <facts> <name> <fact key> <reference key> <reference text>
 provenance() {
     local a b
@@ -196,6 +207,10 @@ check() {
     m=$(sed -n 's/^M //p' <<< "$f")
     [[ $m == "files "[1-9]*" md5_mismatch 0 unlisted_or_missing 0" ]] && echo "CHECK manifest PASS snapshot $m (md5sum -c MANIFEST.md5 on $1)" \
         || { echo "CHECK manifest FAIL snapshot ${m:-no MANIFEST.md5 result}"; bad=1; }
+    m=$(sed -n 's/^N //p' <<< "$f")
+    [[ $m =~ ^site_files\ [1-9][0-9]*\ not_ok\ 0\ kit_roles\ [1-9][0-9]*\ not_ok\ none\ ?$ ]] \
+        && echo "CHECK site_now PASS $m (the VERSION site_md5 / kit_md5 lines = the files on $1 now)" \
+        || { echo "CHECK site_now FAIL ${m:-no site manifest result} (site: files not as deployed; kit: the roles listed changed since the deploy)"; bad=1; }
     st=$(awk '$1 == "Q" { printf "%s:%s:%s ", $4, $6, $9 }' <<< "$f")
     [ "$st" = "$(for s in $CHAIN; do printf '%s:ok:0 ' "$s"; done)" ] \
         && echo "CHECK chain PASS $CHAIN all ok" || { echo "CHECK chain FAIL steps (step:status:rc) $st"; bad=1; }
@@ -208,16 +223,18 @@ check() {
     grep '^GATE .* \(FAIL\|MISSING\) ' <<< "$f" | cut -c1-160 | head -n 20
     if [ "${4:-0}" = 1 ]; then
         [ $bad = 0 ] || die "run $2 does not pass: no reference from it"
-        grep -q '^S ' <<< "$f" && grep -q '^I ' <<< "$f" || die "run $2 has no site manifest or no 'init inputs' line: no reference from it"
+        grep -q '^S ' <<< "$f" && grep -q '^T ' <<< "$f" && grep -q '^I ' <<< "$f" \
+            || die "run $2 has no site / kit manifest or no 'init inputs' line: no reference from it"
         [[ " $k " != *" QB_ICC2_CORES=1 "* ]] || grep -q '^L ' <<< "$f" || die "1-core run $2 has no 'outputs_md5 route' line: no reference from it"
-        { echo "# Regression reference (common/regress.sh check): the site manifest of the snapshot (site_md5), the DC inputs of"
+        { echo "# Regression reference (common/regress.sh check): the site manifest of the snapshot (site_md5: the site files;"
+          echo "# kit_md5: the kit files by role, common/env.sh qb_kit_files, no kit path or file name), the DC inputs of"
           echo "# the run (inputs: md5 of netlist, DC SDC, run.env), the committed defaults of the flow knobs every step ran with"
           echo "# (knobs), the verdict line and the gate set (gate name: sign-off corners, '-' = block gate) of the run below;"
           echo "# written by regress.sh ref, a change is a deliberate reference update.  Repeatability: ICC2 on several cores is"
           echo "# not run-to-run repeatable (R109 [M]); on 1 core it is (QB_ICC2_CORES=1, the block default, R110), and then the"
           echo "# route label's netlist / DEF md5 (route_md5) is compared too; only the lines below are compared"
           echo "# run $2 host $1 snapshot $(sed -n 's/^V //p' <<< "$f")"
-          sed -n 's/^S /site_md5 /p; s/^I /inputs /p' <<< "$f"
+          sed -n 's/^S /site_md5 /p; s/^T /kit_md5 /p; s/^I /inputs /p' <<< "$f"
           echo "knobs $k"
           [[ " $k " != *" QB_ICC2_CORES=1 "* ]] || sed -n 's/^L /route_md5 /p' <<< "$f"
           echo "$v"; grep '^GATE ' <<< "$f" | gates; } > "$ref"
@@ -227,6 +244,7 @@ check() {
     rt=$(git -C "$here" show "$3:$REFP" 2> /dev/null) && [ -n "$rt" ] || die "no reference $REFP at '$3' (regress.sh ref, then commit / git add it)"
     echo "CHECK reference = $3:$REFP ($(grep -c '^gate ' <<< "$rt") gate names)"
     provenance "$f" site S site_md5 "$rt" || bad=1
+    provenance "$f" kit T kit_md5 "$rt" || bad=1
     provenance "$f" inputs I inputs "$rt" || bad=1
     [ "knobs $k" = "$(grep '^knobs ' <<< "$rt")" ] && echo "CHECK knobs_ref PASS the committed knob defaults = reference" \
         || { echo "CHECK knobs_ref FAIL (< reference, > the snapshot's committed defaults; a deliberate change needs regress.sh ref + review):"

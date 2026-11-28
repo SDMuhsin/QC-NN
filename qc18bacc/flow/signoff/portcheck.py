@@ -10,15 +10,17 @@ buffer, and the layout then merges the two ports into one net (R59: 4608 act -> 
 instead of 12356 ports, ETM MEXT-97).  Concatenations count bit by bit (R114; hunt round 15 on f8f6eee:
 'assign {a, b} = {c, d}' passed): both sides are expanded to bits (ports and declared wires by their ranges, part /
 bit selects, sized constants), paired from the LSB, and any port bit assigned from a port bit fails; an assign whose
-sides cannot be expanded to equal widths fails when each side names a port.  Prints one PORTCHECK line, then one
-PORTCHECK_DIFF line per differing port (at most 10).
+sides cannot be expanded to equal widths joins every bit it names.  Chains count too (R115): two port bits joined
+through wires by several assigns ('assign w = a; assign b = w;') fail, and so does each assignment of a statement that
+lists several ('assign a = b, c = d;').  Prints one PORTCHECK line (port_to_port_assigns = the groups of port bits the
+assigns join), then one PORTCHECK_DIFF line per differing port (at most 10).
 """
 import re
 import sys
 
 # (the keyword a whole word, R113; hunt round 14: 'output_buf ...' parsed as an output port 'buf ...')
 DECL = re.compile(r'^\s*(input|output|inout)\b\s*(?:\[\s*(-?\d+)\s*:\s*(-?\d+)\s*\])?\s*(.*)$', re.S)
-ASSIGN = re.compile(r'^\s*assign\s+(.+?)\s*=\s*(.+?)\s*$', re.S)
+ASSIGN = re.compile(r'^\s*assign\b(.*)$', re.S)
 WIRE = re.compile(r'^\s*wire\b\s*(?:\[\s*(-?\d+)\s*:\s*(-?\d+)\s*\])?\s*(.*)$', re.S)
 ELEM = re.compile(r"^\\?([^\s\[\]{}]+)\s*(?:\[\s*(-?\d+)\s*(?::\s*(-?\d+)\s*)?\])?$")
 CONST = re.compile(r"^(\d+)\s*'\s*[sS]?[bBoOdDhH]\s*[0-9a-fA-FxXzZ_?]+$")
@@ -90,13 +92,63 @@ def expand(side, ranges):
     return out
 
 
-def port_to_port(lhs, rhs, pp, ranges):
-    """True when the assign connects a port bit to a port bit"""
-    a, b = expand(lhs, ranges), expand(rhs, ranges)
-    if a is None or b is None or len(a) != len(b):   # (the identifiers of each side; not the base letter of a constant)
-        names = lambda s: set(re.findall(r"(?<!['\w$\\])\\?([A-Za-z_][\w$]*)", s))
-        return bool(names(lhs) & set(pp)) and bool(names(rhs) & set(pp))
-    return any(x[0] in pp and y[0] in pp for x, y in zip(a, b))
+def top_split(s, sep):
+    """s split at the character sep outside (), [], {} and escaped identifiers (backslash up to white space)"""
+    out, cur, depth, esc = [], [], 0, False
+    for ch in s:
+        if esc:
+            esc = not ch.isspace()
+        elif ch == '\\':
+            esc = True
+        elif ch in '([{':
+            depth += 1
+        elif ch in ')]}':
+            depth -= 1
+        elif ch == sep and depth == 0:
+            out.append(''.join(cur)); cur = []
+            continue
+        cur.append(ch)
+    return out + [''.join(cur)]
+
+
+def assignments(body):
+    """(lhs, rhs, text) of every assignment of the module's assign statements ('assign a = b, c = d;' is two, R115);
+    rhs None when the text is not one '<lhs> = <rhs>'"""
+    for st in body.split(';'):
+        a = ASSIGN.match(st)
+        for x in top_split(a.group(1), ',') if a else []:
+            lr = top_split(x, '=')
+            yield (lr[0], lr[1], x.strip()) if len(lr) == 2 else (x, None, x.strip())
+
+
+def port_groups(body, pp, ranges):
+    """the groups of two or more port bits the assigns connect, also through wires (R115; round-16 hunt: 'assign w = a;
+    assign b = w;' passed): bits joined bit by bit where both sides expand to equal widths (constant bits join nothing),
+    else every bit of every identifier of the assignment joined (unparsed: conservative)"""
+    up = {}
+
+    def find(x):
+        while up.setdefault(x, x) != x:
+            up[x] = up[up[x]]; x = up[x]
+        return x
+
+    def join(xs):
+        for x in xs[1:]:
+            up[find(x)] = find(xs[0])
+    names = lambda s: sorted(set(re.findall(r"(?<!['\w$\\])\\?([A-Za-z_][\w$]*)", s)))   # (not the base letter of a constant)
+    for lhs, rhs, _ in assignments(body):
+        a, b = expand(lhs, ranges), (None if rhs is None else expand(rhs, ranges))
+        if a is None or b is None or len(a) != len(b):
+            join([x for n in names(lhs + ' ' + (rhs or '')) for x in expand(n, ranges)])
+        else:
+            for x, y in zip(a, b):
+                if x[0] is not None and y[0] is not None:
+                    join([x, y])
+    g = {}
+    for x in list(up):
+        if x[0] in pp:
+            g.setdefault(find(x), []).append(x)
+    return [sorted(v, key=str) for v in g.values() if len(v) > 1]
 
 
 def bits(decl):
@@ -107,17 +159,12 @@ def show(d):
     return 'none' if d is None else d[0] + ('' if d[1] is None else f' [{d[1]}:{d[2]}]')
 
 
-def base(sig):
-    return re.sub(r'\s*\[[^\]]*\]$', '', sig.strip()).lstrip('\\')
-
-
 def main():
     syn, pnr, top = sys.argv[1:4]
     body = top_module(pnr, top)
     ps, pp = ports(top_module(syn, top), syn), ports(body, pnr)
     ranges = dict(wires(body), **{n: (m, l) for n, (_, m, l) in pp.items()})
-    p2p = [a.group(0).strip() for a in (ASSIGN.match(s) for s in body.split(';'))
-           if a and port_to_port(a.group(1), a.group(2), pp, ranges)]
+    p2p = [' = '.join(n if i is None else f'{n}[{i}]' for n, i in g) for g in port_groups(body, pp, ranges)]
     diff = [f'PORTCHECK_DIFF {n}: syn {show(ps.get(n))} pnr {show(pp.get(n))}'
             for n in sorted(set(ps) | set(pp)) if ps.get(n) != pp.get(n)]
     ok = bool(ps) and not diff and not p2p

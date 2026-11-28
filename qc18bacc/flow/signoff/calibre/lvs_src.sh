@@ -10,6 +10,8 @@ here=$(cd "$(dirname "$0")" && pwd)
 C=/CMC/tools/siemens/calibre/aok_cal_2026.1_26.19/aok_cal_2026.1_26.19
 export CALIBRE_HOME=$C MGC_HOME=$C MGLS_LICENSE_FILE=${MGLS_LICENSE_FILE:-6056@engrcmc2.usask.ca}
 SP=/CMC/kits/tsmc_65nm_libs/tcbn65gplus_200a/TSMCHOME/digital/Back_End/spice/tcbn65gplus_200a/tcbn65gplus_200a.spi
+# lvs_src.sh kit: the kit file it reads (the cell spice; common/env.sh qb_kit_files, R115)
+if [ "${1:-}" = kit ]; then echo "$SP"; exit 0; fi
 PY=${QC_TOOLS:-/tmp/$USER/tools}/env/bin/python3
 vin=$1; out=$2; shift 2
 d=$(dirname "$out"); b=$(basename "$out" .spi); rec=$d/$b.inputs.txt
