@@ -49,7 +49,9 @@
 #   qb_eco_route_resolve <chg> <out>  the change list as eco.tcl sources it: every add_buffer_on_route buffer PT left
 #                       on layer 0 put on the nearest routed wire of its net (R95), and every point where ICC2 would give
 #                       the buffer other loads than PT's record moved onto the route edge that isolates PT's loads (R101,
-#                       qb_eco_route_tree / _cut / _edge: geometric route tree of the input label), and PT's follow-on
+#                       qb_eco_route_tree / _cut / _edge: geometric route tree of the input label; several buffers on
+#                       one net in change-list order, each on the tree the ones before it left, R112; no such edge:
+#                       insert_buffer on PT's load pins at PT's location, R112 fallback), and PT's follow-on
 #                       set_cell_location of every add_buffer_on_route buffer dropped (R108: the buffer stays on its
 #                       route point); returns <out>
 #   qb_eco_abor_where / qb_eco_abor_report <step> <where>  each add_buffer_on_route buffer's centre vs its route point
@@ -716,8 +718,25 @@ proc qb_eco_nets {chg} {
 #   reproduced ICC2's load set on all 51 lines: qb_eco_route_tree / qb_eco_route_cut below.  Rule: where the model's load
 #   set at PT's point differs from PT's new-cell record (qb_eco_cells_file), the point moves to the middle of the route
 #   edge whose downstream subtree is exactly PT's set (nearest to PT's point; ties to the lower LEF layer, x, y); if no edge
-#   isolates that set, error: the list cannot be applied as PT timed it (the gate stays).  A line of several buffers is
-#   left to the qb_eco_names gate (PT's set of the upper buffer holds the lower buffer's input, which is no route pin).
+#   isolates that set, error: the list cannot be applied as PT timed it (the gate stays).
+# * several buffers on one net (R112).  r101 round 1 [M]: line 54 has two buffers on one net (-user_specified_buffers
+#   {U_PTECO_DRC_BUF24 ... U_PTECO_DRC_BUF42 ...}); the resolver checked a buffer of a one-buffer line only, on the
+#   original tree, and ICC2 gave BUF24 the subtree at its point, BUF42's input and U166/B1 with it, where PT timed U160/B1
+#   alone (qb_eco_names load_mismatch 1).  PT writes both forms: several buffers on one line, and one line per buffer
+#   naming the net by its original driver pin each time (r87 HOLD_BUF16 / 19, r88 DRC_BUF1 / 5).  Rule: the buffers of the
+#   list are resolved one by one in change-list order on one tree model per net; each inserted buffer splits the model
+#   as ICC2 does (qb_eco_route_split: its input a load on the driver side, its output the source of the downstream part).
+#   A buffer is resolved on the net its line names: the driver's net as the earlier buffers left it, or the net of a new
+#   buffer's output pin named as the driver; a line of several buffers on the whole route of that net as it was at the
+#   line (ICC2 cuts it at every point of the line).  Its load set to reproduce is PT's record with the input pin of every
+#   new buffer of the list not yet inserted replaced by that buffer's record (it sits below the point until inserted).
+#   Where no route edge isolates that set (r101 BUF24 [M]: U160/B1 hangs on a via stack at the junction of the M3 wires
+#   to BUF42's 22 loads, so no wire edge has U160/B1 alone downstream), the buffer is applied as insert_buffer on exactly
+#   PT's load pins instead (PI decision): same lib cell and cell name, PT's set_cell_location of it re-applied, written
+#   after its add_buffer_on_route line (whose other buffers cut the route intact), logged and counted as a fallback;
+#   the model takes those loads off the route as the buffer's input (qb_eco_route_rewire).  Error, not fallback, for an
+#   inconsistent record: a load pin in two new cells' records, PT's loads not all on one net of the line's route, or a
+#   record that drives a new buffer not inserted yet.
 # * the follow-on move (R108).  PT writes a set_cell_location after most add_buffer_on_route lines, which moves the new
 #   buffer off its route point (rgr rg039bd31a [M]: U_PTECO_SETUP_BUF4 2.6 um).  PT times the buffer as the original
 #   route split at the point; route_eco instead rerouted both new nets to the moved cell at 1.97x PT's estimated
@@ -727,10 +746,12 @@ proc qb_eco_nets {chg} {
 #   rg039bd31a, round-1 list): BUF4 legalised 0.4 um from its point, its 13 y2_reg paths -30 -> -25 ps against PT; the
 #   rest is PT's split estimate itself (output net 10.2 fF routed, PT 5.2; both new nets 33.8 um vs the 29.6-um route).
 # qb_eco_route_resolve <chg> <out>: <out> = <chg> with those points and without those set_cell_location lines; every
-# other line byte-identical, <chg> untouched; one summary line per resolved layer-0 buffer, per moved buffer and per
-# dropped move + a total.  ::QB_ECO_ABOR_POINTS = {full buffer name {x y} ...}, the route point of every buffer (um).
-# Error if a net has no routed wire, an add_buffer_on_route line does not parse, a buffer has no single PT record or names
-# no LEF routing layer.  Returns <out>.
+# other line byte-identical, <chg> untouched (but fallback buffers: off their line, as insert_buffer + set_cell_location
+# after it); one summary line per resolved layer-0 buffer, per moved buffer, per buffer on a net with another buffer of
+# the list, per fallback and per dropped move + a total.  ::QB_ECO_ABOR_POINTS = {full buffer name {x y} ...}, the route
+# point of every buffer applied on its route (um).  Error if a net has no routed wire, an add_buffer_on_route line does
+# not parse or names a new buffer's output before that buffer's line, a buffer has no single PT record, names no LEF
+# routing layer, or a record is inconsistent (above).  Returns <out>.
 proc qb_eco_route_resolve {chg out} {
     current_instance
     set ly [dict keys [qb_lef_grid]]
@@ -741,19 +762,37 @@ proc qb_eco_route_resolve {chg out} {
         close $fh
     }
     set fh [open $chg]; set t [read $fh]; close $fh
-    # the add_buffer_on_route buffers of the list, wherever their set_cell_location stands
-    set abor {}; set sc ""
+    # the add_buffer_on_route buffers of the list, wherever their set_cell_location stands: bp = full name -> {input
+    # output} full pin names; ins / outs = input / output pin -> buffer
+    set bp [dict create]; set ins [dict create]; set outs [dict create]; set locs [dict create]; set sc ""
     foreach l [qb_eco_lines $chg] {
         lassign [qb_eco_parse $l $sc] k f
-        if {$k eq "scope"} { set sc [lindex $f 0] } elseif {$k eq "abor"} { foreach {c -} [lrange $f 1 end] { lappend abor $c } }
+        if {$k eq "scope"} { set sc [lindex $f 0] } elseif {$k eq "abor"} {
+            foreach {c lc} [lrange $f 1 end] {
+                lassign [qb_eco_buf_pins $lc] pi po
+                dict set bp $c [list $c/$pi $c/$po]; dict set ins $c/$pi $c; dict set outs $c/$po $c
+            }
+        } elseif {$k eq "loc"} { dict set locs [lindex $f 0] $l }
+    }
+    # a load pin in the records of two new cells: inconsistent (a pin is on one net)
+    set own [dict create]
+    dict for {c ls} $rec {
+        foreach q [lindex $ls 0] {
+            if {[dict exists $own $q]} { error "qb_eco_route_resolve: [file tail $chg] load $q is in the PT records of both [dict get $own $q] and $c ([file tail [qb_eco_cells_file $chg]])" }
+            dict set own $q $c
+        }
     }
     set ::QB_ECO_ABOR_POINTS [dict create]
-    set sc ""; set r {}; set i 0; set nb 0; set nr 0; set nt 0; set nc 0; set nm 0; set nk 0; set trees [dict create]
+    # trees = one route tree model per net, keyed by the driver pin of its first line; home = source pin -> that key;
+    # done = the buffers inserted in the models; fb = the buffers applied as insert_buffer (fallback)
+    set sc ""; set r {}; set i 0; set nb 0; set nr 0; set nt 0; set nm 0; set nk 0; set ns 0; set nf 0
+    set trees [dict create]; set home [dict create]; set done {}; set fb {}
     foreach l [split $t "\n"] {
         incr i
         lassign [qb_eco_parse [string trim $l] $sc] k f
         if {$k eq "scope"} { set sc [lindex $f 0] }
-        if {$k eq "loc" && [lindex $f 0] in $abor} {
+        if {$k eq "loc" && [dict exists $bp [lindex $f 0]]} {
+            if {[lindex $f 0] in $fb} { continue }   ;# (written right after its insert_buffer)
             qb_line "eco route [file tail $chg] line $i [lindex $f 0]: set_cell_location of an add_buffer_on_route buffer not applied (stays on its route point)"
             incr nk; continue
         }
@@ -763,43 +802,97 @@ proc qb_eco_route_resolve {chg out} {
         }
         lassign [qb_eco_abor [string trim $l]] p b
         set pin [lindex $f 0]
-        if {![dict exists $trees $pin]} { dict set trees $pin [qb_eco_route_tree $pin $ly] }
-        set tr [dict get $trees $pin]
-        set v {}; set m 0; set one [expr {[llength $b] == 5}]
+        if {![dict exists $home $pin]} {
+            if {[dict exists $outs $pin]} { error "qb_eco_route_resolve: [file tail $chg] line $i names the output $pin of [dict get $outs $pin] before that buffer's add_buffer_on_route line" }
+            dict set trees $pin [qb_eco_route_tree $pin $ly]; dict set home $pin $pin
+        }
+        # the line's net (from its source pin) and the nets its earlier buffers split off: the route the line cuts
+        set key [dict get $home $pin]; set names [list $pin]
+        set v {}; set m 0; set multi [expr {[llength $b] > 5}]; set post {}
         foreach {c lc x y lay} $b {
             incr nb
+            set fc [qb_eco_full $sc $c]; set tr [dict get $trees $key]
+            set prior {}
+            foreach q [dict keys [dict get $tr src]] { if {[dict exists $outs $q]} { lappend prior [dict get $outs $q] } }
+            set tv [qb_eco_route_view $tr $names]
             if {$lay eq "0"} {
-                lassign [qb_eco_route_point $tr $x $y $ly] lay qx qy d tie s
+                lassign [qb_eco_route_point $tv $x $y $ly] lay qx qy d tie s
                 qb_line "eco layer [file tail $chg] line $i $c: ($x $y) 0 -> $lay ($qx $qy) distance $d tie $tie"
                 set x $qx; set y $qy; incr nr; incr m; if {$tie eq "yes"} { incr nt }
             }
             if {$lay ni $ly} { error "qb_eco_route_resolve: [file tail $chg] line $i buffer $c names no routing layer: '$lay'" }
-            if {$one} {
-                set fc [qb_eco_full $sc $c]
-                if {![dict exists $rec $fc] || [llength [dict get $rec $fc]] != 1} { error "qb_eco_route_resolve: [file tail $chg] line $i buffer $fc: no single PT record in [file tail [qb_eco_cells_file $chg]]" }
-                set want [lindex [dict get $rec $fc] 0]
-                lassign [qb_eco_route_point $tr $x $y $ly $lay] lay qx qy d tie s
-                set got [qb_eco_route_cut $tr $s [qb_eco_route_pos $tr $s $qx $qy]]
-                incr nc
-                if {$got ne $want} {
-                    set e [qb_eco_route_edge $tr $want $x $y $ly]
-                    if {![llength $e]} {
-                        error "qb_eco_route_resolve: [file tail $chg] line $i buffer $fc: ICC2 gives it [llength $got] loads at ($x $y $lay), PT timed [llength $want], and no route edge of net [dict get $tr net] has exactly PT's loads downstream: the change list cannot be applied as PT timed it"
+            set want [qb_eco_route_want $chg $rec $ins $done $fc]
+            lassign [qb_eco_route_point $tv $x $y $ly $lay] lay qx qy d tie s
+            set pos [qb_eco_route_pos $tv $s $qx $qy]
+            set got [qb_eco_route_cut $tv $s $pos]
+            set how "at PT's point"
+            lassign [dict get $bp $fc] bi bo
+            if {$got ne $want} {
+                set e [qb_eco_route_edge $tv $want $x $y $ly]
+                if {![llength $e]} {
+                    # fallback (R112, PI decision): insert_buffer on exactly PT's load pins, PT's location re-applied
+                    set sp [expr {[llength $prior] ? " as split by the buffers before it ([join $prior {, }])" : ""}]
+                    if {$want ne [lindex [dict get $rec $fc] 0]} {
+                        error "qb_eco_route_resolve: [file tail $chg] line $i buffer $fc: no route edge of net [dict get $tr net]$sp has PT's loads downstream, and its PT record drives a new buffer not inserted yet: no insert_buffer fallback"
                     }
-                    qb_line "eco route [file tail $chg] line $i $c: ($x $y $lay) loads [llength $got] of PT's [llength $want] -> ([lrange $e 1 2] [lindex $e 0]) loads = PT's, moved [lindex $e 3] um"
-                    lassign $e lay x y; incr nm; incr m
+                    set e [qb_eco_route_rewire $tr $names $want $bi]
+                    if {[llength $e] != 1} {
+                        error "qb_eco_route_resolve: [file tail $chg] line $i buffer $fc: PT's [llength $want] loads are not all on one net of [dict get $tr net]$sp (inconsistent record, no insert_buffer fallback): [lindex $e 1]"
+                    }
+                    set rel [string length [qb_eco_full $sc ""]]
+                    lappend post "insert_buffer \[get_pins {[lmap q $want { string range $q $rel end }]}\] $lc -new_cell_names {$c}"
+                    if {[dict exists $locs $fc]} { lappend post [dict get $locs $fc] }
+                    qb_line "eco route [file tail $chg] line $i $c: fallback: ICC2 gives it [llength $got] loads at ($x $y $lay), no route edge of net [dict get $tr net]$sp has PT's [llength $want] -> insert_buffer on PT's load pins, PT's set_cell_location [expr {[dict exists $locs $fc] ? "re-applied" : "none (placed by place_eco_cells)"}]"
+                    dict set trees $key [lindex $e 0]; lappend done $fc; lappend fb $fc; incr nf; incr m
+                    continue
                 }
+                qb_line "eco route [file tail $chg] line $i $c: ($x $y $lay) loads [llength $got] of PT's [llength $want] -> ([lrange $e 1 2] [lindex $e 0]) loads = PT's, moved [lindex $e 3] um"
+                lassign $e lay x y d s; set pos [qb_eco_route_pos $tv $s $x $y]; incr nm; incr m
+                set how "moved $d um"
             }
+            if {$multi || [llength $prior]} {
+                qb_line "eco route [file tail $chg] line $i $c: net of $pin after [llength $prior] buffers {$prior}: loads [llength $want] = PT's at ($x $y $lay), $how"
+                incr ns
+            }
+            dict set trees $key [qb_eco_route_split $tr $s $pos $bi $bo]
+            dict set home $bo $key; lappend names $bo; lappend done $fc
             lappend v $c $lc $x $y $lay
-            dict set ::QB_ECO_ABOR_POINTS [qb_eco_full $sc $c] [list $x $y]
+            dict set ::QB_ECO_ABOR_POINTS $fc [list $x $y]
         }
         if {$m} { set l [string map [list "\{$b\}" "\{ $v\}"] $l] }
-        lappend r $l
+        # the fallback buffers after the line's own (ICC2 cuts the line's route intact, then moves PT's loads)
+        if {[llength $v]} { lappend r $l }
+        lappend r {*}$post
     }
     file mkdir [file dirname $out]
     set fh [open $out w]; puts -nonewline $fh [join $r "\n"]; close $fh
-    qb_line "eco route [file tail $chg]: add_buffer_on_route buffers $nb, layer 0 resolved $nr (ties $nt), load set checked $nc, moved $nm, set_cell_location not applied $nk -> $out"
+    qb_line "eco route [file tail $chg]: add_buffer_on_route buffers $nb, layer 0 resolved $nr (ties $nt), load set checked $nb, moved $nm, on a shared net $ns, insert_buffer fallback $nf, set_cell_location not applied $nk -> $out"
     return $out
+}
+# input and output pin of the buffer lib cell <ref>: {in out}, one signal pin each, error otherwise
+proc qb_eco_buf_pins {ref} {
+    set lc [index_collection [get_lib_cells -quiet */$ref] 0]
+    if {![sizeof_collection $lc]} { error "qb_eco_buf_pins: no lib cell $ref" }
+    foreach d {in out} {
+        set q($d) [get_attribute -quiet [get_lib_pins -quiet -of_objects $lc -filter "direction==$d && port_type==signal"] name]
+        if {[llength $q($d)] != 1} { error "qb_eco_buf_pins: $ref has signal $d pins {$q($d)}, not one" }
+    }
+    return [list $q(in) $q(out)]
+}
+# PT's load set of new buffer <c> (full name) on the route as modelled now: its single record of <rec>, each input pin
+# of <ins> (pin -> new buffer) whose buffer is not in <done> (not inserted yet) replaced by that buffer's set, recursively;
+# error on a buffer without a single record or buffers driving each other
+proc qb_eco_route_want {chg rec ins done c {above {}}} {
+    set rf [file tail [qb_eco_cells_file $chg]]
+    if {$c in $above} { error "qb_eco_route_resolve: [file tail $chg] buffers [join $above { -> }] -> $c drive each other in $rf" }
+    if {![dict exists $rec $c] || [llength [dict get $rec $c]] != 1} { error "qb_eco_route_resolve: [file tail $chg] buffer $c: no single PT record in $rf" }
+    set w {}
+    foreach l [lindex [dict get $rec $c] 0] {
+        if {[dict exists $ins $l] && [dict get $ins $l] ni $done} {
+            lappend w {*}[qb_eco_route_want $chg $rec $ins $done [dict get $ins $l] [concat $above $c]]
+        } else { lappend w $l }
+    }
+    return [lsort -unique $w]
 }
 # add_buffer_on_route buffers vs their route points (R108; eco.tcl): qb_eco_abor_where = {cell {cx cy} ...}, the bbox centre
 # (um) of each buffer of ::QB_ECO_ABOR_POINTS now; qb_eco_abor_report <step> <where>: one line per buffer (route point,
@@ -825,7 +918,8 @@ proc qb_eco_abor_report {step w0} {
 #   net   net name             it    items {layer x0 y0 x1 y1}: wire segments, via layers, pin / terminal shapes, other shapes
 #   adj   per item the items it touches (same layer, closed rectangles; a via's two layers; the shapes of one pin)
 #   seg   wire segment item -> {axis(h|v) centre c0 c1 layer index}: path segments on a LEF routing layer of <ly>
-#   drv   items of <pin>       load  item -> name of a load (leaf input pin, output port)
+#   src   source name -> its items: <pin> -> the items of <pin> (qb_eco_route_split adds each new buffer's output pin)
+#   load  item -> name of a load (leaf input pin, output port; qb_eco_route_split adds each new buffer's input pin)
 proc qb_eco_route_tree {pin ly} {
     set u $::QB_DBU
     set dp [qb_eco_driver $pin]
@@ -881,7 +975,7 @@ proc qb_eco_route_tree {pin ly} {
             }
         }
     }
-    return [dict create net [get_object_name $n] it $it adj $adj seg $seg drv $drv load $load]
+    return [dict create net [get_object_name $n] it $it adj $adj seg $seg src [dict create $pin $drv] load $load]
 }
 proc qb_eco_route_touch {a b} {
     lassign $a ax0 ay0 ax1 ay1; lassign $b bx0 by0 bx1 by1
@@ -913,28 +1007,86 @@ proc qb_eco_route_point {t x y ly {only ""}} {
 proc qb_eco_route_pos {t s x y} {   # position (database units) of the point (x, y) um along segment s
     expr {round(([lindex [dict get $t seg $s] 0] eq "h" ? $x : $y) * $::QB_DBU)}
 }
-# sorted loads downstream of a cut of wire segment <s> at position <p> (database units along it): the segment split into
-# its two parts at p (each touching what it overlaps, not each other); the loads of the part the driver does not reach,
-# none if the driver reaches both (another shape bridges the cut, e.g. a via on it)
-proc qb_eco_route_cut {t s p} {
+# wire segment <s> cut at position <p> (database units along it): {ra na rb nb down}, its two parts A (low side) and B as
+# rectangles and the neighbours of s each touches (each part touches what it overlaps, not the other part), down = the
+# part no driver of the tree reaches (A or B), "" if a driver reaches both (another shape bridges the cut, e.g. a via on
+# it) or neither
+proc qb_eco_route_parts {t s p} {
     set it [dict get $t it]; set adj [dict get $t adj]
     lassign [lrange [lindex $it $s] 1 4] x0 y0 x1 y1
     lassign [expr {[lindex [dict get $t seg $s] 0] eq "h" ? [list [list $x0 $y0 $p $y1] [list $p $y0 $x1 $y1]] \
         : [list [list $x0 $y0 $x1 $p] [list $x0 $p $x1 $y1]]}] ra rb
-    # parts as nodes A, B: the neighbours of s each part touches
     set na {}; set nb {}
     foreach k [dict get $adj $s] {
         set r [lrange [lindex $it $k] 1 4]
         if {[qb_eco_route_touch $ra $r]} { lappend na $k }
         if {[qb_eco_route_touch $rb $r]} { lappend nb $k }
     }
-    set reach [qb_eco_route_reach $adj $s $na $nb [dict get $t drv]]
+    set reach [qb_eco_route_reach $adj $s $na $nb [concat {*}[dict values [dict get $t src]]]]
     set ia [dict exists $reach A]; set ib [dict exists $reach B]
-    if {$ia == $ib} { return {} }
-    set reach [qb_eco_route_reach $adj $s $na $nb [expr {$ia ? "B" : "A"}]]
+    return [list $ra $na $rb $nb [expr {$ia == $ib ? "" : ($ia ? "B" : "A")}]]
+}
+# sorted loads downstream of a cut of wire segment <s> at position <p>: the loads of the part no driver reaches (new
+# buffers' input pins of qb_eco_route_split included), none if a driver reaches both
+proc qb_eco_route_cut {t s p} {
+    lassign [qb_eco_route_parts $t $s $p] ra na rb nb dn
+    if {$dn eq ""} { return {} }
     set l {}
-    foreach k [dict keys $reach] { if {[dict exists $t load $k]} { lappend l [dict get $t load $k] } }
+    foreach k [dict keys [qb_eco_route_reach [dict get $t adj] $s $na $nb $dn]] {
+        if {[dict exists $t load $k]} { lappend l [dict get $t load $k] }
+    }
     return [lsort -unique $l]
+}
+# the tree after a buffer is inserted at the cut of segment <s> at <p>, as add_buffer_on_route does it: the driver-side
+# part keeps item s and gets the buffer's input pin <in> as a load, the downstream part (a new item) is driven by its
+# output pin <out> (a new source); the two parts no longer touch.  Both pins are point items at the cut.  Error if the
+# cut does not split the route.
+proc qb_eco_route_split {t s p in out} {
+    lassign [qb_eco_route_parts $t $s $p] ra na rb nb dn
+    if {$dn eq ""} { error "qb_eco_route_split: net [dict get $t net]: a buffer at $p on segment $s does not split the route" }
+    lassign [expr {$dn eq "B" ? [list $ra $na $rb $nb] : [list $rb $nb $ra $na]}] ru nu rd nd
+    set it [dict get $t it]; set adj [dict get $t adj]
+    lassign [dict get $t seg $s] ax cc c0 c1 li
+    lassign [expr {$ax eq "h" ? [list $p $cc] : [list $cc $p]}] qx qy
+    set lay [lindex $it $s 0]; set d [llength $it]; set bi [expr {$d + 1}]; set bo [expr {$d + 2}]
+    lset it $s [list $lay {*}$ru]
+    lappend it [list $lay {*}$rd] [list $lay $qx $qy $qx $qy] [list $lay $qx $qy $qx $qy]
+    lassign [expr {$dn eq "B" ? [list [list $c0 $p] [list $p $c1]] : [list [list $p $c1] [list $c0 $p]]}] cu cd
+    dict set t seg $s [list $ax $cc {*}$cu $li]
+    dict set t seg $d [list $ax $cc {*}$cd $li]
+    foreach k [dict get $adj $s] { dict set adj $k [lsearch -all -inline -not -exact [dict get $adj $k] $s] }
+    foreach k $nu { dict lappend adj $k $s }
+    foreach k $nd { dict lappend adj $k $d }
+    dict set adj $s [concat $nu $bi]; dict set adj $d [concat $nd $bo]; dict set adj $bi $s; dict set adj $bo $d
+    dict set t it $it; dict set t adj $adj
+    dict set t load $bi $in; dict set t src $out $bo
+    return $t
+}
+# the tree after buffer input <in> took the loads <want> off the route (insert_buffer fallback of qb_eco_route_resolve):
+# <want> all on the net of one source of <names>, their items renamed <in>: {tree}; else {{} reason}
+proc qb_eco_route_rewire {t names want in} {
+    set adj [dict get $t adj]; set all {}
+    foreach n $names {
+        set hit [dict create]
+        foreach k [dict keys [qb_eco_route_reach $adj -1 {} {} [dict get $t src $n]]] {
+            if {![dict exists $t load $k]} continue
+            set q [dict get $t load $k]; lappend all $q
+            if {$q in $want} { dict lappend hit $q $k }
+        }
+        if {[dict size $hit] != [llength $want]} continue
+        dict for {q ks} $hit { foreach k $ks { dict set t load $k $in } }
+        return [list $t]
+    }
+    set miss [lmap q $want { expr {$q in $all ? [continue] : $q} }]
+    return [list {} [expr {[llength $miss] ? "not on it: $miss" : "split over the nets of [join $names {, }]"}]]
+}
+# the tree with its wire segments restricted to the nets of the sources <names> (the route items reached from them)
+proc qb_eco_route_view {t names} {
+    set from {}
+    foreach n $names { lappend from {*}[dict get $t src $n] }
+    set reach [qb_eco_route_reach [dict get $t adj] -1 {} {} $from]
+    dict set t seg [dict filter [dict get $t seg] script {k g} { dict exists $reach $k }]
+    return $t
 }
 proc qb_eco_route_reach {adj s na nb from} {   # items reached from <from> with segment s replaced by its parts A, B
     set seen [dict create]; set q $from
@@ -953,9 +1105,9 @@ proc qb_eco_route_reach {adj s na nb from} {   # items reached from <from> with 
     }
     return $seen
 }
-# the route edge whose downstream loads are exactly <want>: {layer x y distance} of the middle of the gap between two
-# neighbours along a wire segment (strictly inside the segment, touching nothing else) nearest to (x, y) um; ties to the
-# lower LEF layer, x, y; {} if no edge has that load set
+# the route edge whose downstream loads are exactly <want>: {layer x y distance segment} of the middle of the gap between
+# two neighbours along a wire segment (strictly inside the segment, touching nothing else) nearest to (x, y) um; ties to
+# the lower LEF layer, x, y; {} if no edge has that load set
 proc qb_eco_route_edge {t want x y ly} {
     set u $::QB_DBU; set px [expr {round($x * $u)}]; set py [expr {round($y * $u)}]
     set it [dict get $t it]; set c {}
@@ -975,7 +1127,7 @@ proc qb_eco_route_edge {t want x y ly} {
                 set p [expr {round(($hi + $a) / 2.0)}]
                 if {$p > $hi && $p < $a && $p >= $c0 && $p <= $c1 && [qb_eco_route_cut $t $s $p] eq $want} {
                     lassign [expr {$ax eq "h" ? [list $p $cc] : [list $cc $p]}] qx qy
-                    lappend c [list [expr {($qx - $px) ** 2 + ($qy - $py) ** 2}] $li $qx $qy]
+                    lappend c [list [expr {($qx - $px) ** 2 + ($qy - $py) ** 2}] $li $qx $qy $s]
                 }
             }
             if {$hi eq "" || $b > $hi} { set hi $b }
@@ -983,9 +1135,9 @@ proc qb_eco_route_edge {t want x y ly} {
     }
     if {![llength $c]} { return {} }
     foreach k {3 2 1 0} { set c [lsort -integer -index $k $c] }
-    lassign [lindex $c 0] d2 li qx qy
+    lassign [lindex $c 0] d2 li qx qy s
     return [list [lindex $ly $li] [format %.3f [expr {$qx / double($u)}]] [format %.3f [expr {$qy / double($u)}]] \
-        [format %.3f [expr {sqrt($d2) / $u}]]]
+        [format %.3f [expr {sqrt($d2) / $u}]] $s]
 }
 # leaf cells driven directly by the input ports <globs> that are registers or drive a register input:
 # {cells n_ports n_register n_combinational}

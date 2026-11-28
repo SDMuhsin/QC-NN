@@ -33,7 +33,8 @@ qb_route_setup
 set chg $::R/out/eco/pt_eco.tcl
 set n0 [sizeof_collection [get_flat_cells]]
 # sourced as resolved (common.tcl qb_eco_route_resolve): PT's layer-0 add_buffer_on_route buffers on their routes (R95),
-# each buffer's point where ICC2 gives it exactly PT's loads (R101), each buffer left on that point (R108: PT's
+# each buffer's point where ICC2 gives it exactly PT's loads (R101; several buffers on one net one after the other,
+# R112; where no point does, insert_buffer on PT's load pins at PT's location), each buffer left on that point (R108: PT's
 # set_cell_location of it not applied); where the buffers are placed, for the report after legalisation
 source [qb_eco_route_resolve $chg $::R/out/eco/$lab/pt_eco_resolved.tcl]
 set abor_placed [qb_eco_abor_where]
