@@ -133,6 +133,12 @@ foreach c $::QC_SIGNOFF_CORNERS {
 # default corner" on every extraction, 40 in route, 872 in place) is not a sign-off corner (R71)
 set dc [get_corners -quiet default]
 if {[sizeof_collection $dc]} { remove_corners $dc }
+# Per-scenario IO delays (a recurring hunt suspicion, "the per-scenario IO delays may collapse into one in ICC2's single
+# mode"): they do not.  set_input_delay / set_output_delay in current_scenario func_<c> are scenario-specific constraints;
+# MEASURED R103 / hunt round 8: rgr x[0] min input delay per scenario ff 0.0313, ml 0.0351, tt 0.0465, ss 0.0754, wcl
+# 0.0810 ns (each corner's library clock -> Q), column act_o -min per hold scenario (common.tcl qb_io_lat, io_min) ff
+# 0.0458, ff_rcb 0.0484, ml 0.0399, ml_rcb 0.0447.  Kept evidenced: the "init io_delay <scenario> ..." read-back below
+# (R114), every scenario.
 foreach c $::QC_SIGNOFF_CORNERS {
     current_scenario func_$c
     set_operating_conditions $::QC_OC($c)
@@ -163,14 +169,23 @@ redirect -tee $::R/rpt/init_scen.rpt { report_scenarios; report_pvt }
 qb_line "init corners [get_object_name [get_corners *]] modes [get_object_name [get_modes *]]"
 redirect $::R/rpt/init_ptech.rpt { report_parasitic_parameters }
 redirect $::R/rpt/init_check_timing.rpt { check_timing }
-# IO delays as loaded (func_ss): external delay of one port per budget class, the ports P(IO_SAMPLE) of the block config
-current_scenario func_ss
-foreach p [expr {[info exists P(IO_SAMPLE)] ? $P(IO_SAMPLE) : {}}] {
-    set dir [get_attribute [get_ports $p] direction]
-    redirect -variable r { report_timing -nosplit -significant_digits 4 [expr {$dir eq "in" ? "-from" : "-to"}] [get_ports $p] }
-    set k [expr {$dir eq "in" ? "input" : "output"}]
-    regexp -line "$k external delay\\s+(-?\[0-9.\]+)" $r -> v
-    qb_line "init io_delay $p $k [expr {[info exists v] ? $v : "NA"}]"; unset -nocomplain v
+# IO delays as loaded, read back per scenario (R114; the per-scenario note above): max / min external delay of one port
+# per budget class, the ports P(IO_SAMPLE) of the block config, one line per scenario
+foreach_in_collection s [all_scenarios] {
+    current_scenario $s; set l {}
+    foreach p [expr {[info exists P(IO_SAMPLE)] ? $P(IO_SAMPLE) : {}}] {
+        set dir [get_attribute [get_ports $p] direction]
+        set k [expr {$dir eq "in" ? "input" : "output"}]
+        lappend l $p $k
+        # (each delay type where its check is active: max in the setup scenarios; report_timing errors elsewhere)
+        foreach dt {max min} ck {setup hold} {
+            if {[get_attribute $s $ck] ne "true"} { lappend l $dt inactive; continue }
+            redirect -variable r { report_timing -nosplit -significant_digits 4 -delay_type $dt -scenarios $s [expr {$dir eq "in" ? "-from" : "-to"}] [get_ports $p] }
+            lappend l $dt [expr {[regexp -line "$k external delay\\s+(-?\[0-9.\]+)" $r -> v] ? $v : "NA"}]
+        }
+    }
+    if {[llength $l]} { qb_line "init io_delay [get_object_name $s] $l" }
 }
+current_scenario func_ss
 qb_qor init
 qb_done init 1

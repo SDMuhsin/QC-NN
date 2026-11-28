@@ -41,7 +41,8 @@
 #   qb_hold_reserve     netlist-targeted hold-cell reservation (R87, P(HOLD_RESERVE); place.tcl)
 #   qb_isolate_ports    input-port isolation buffers by ICC2 set_isolate_ports (R88, P(ISOLATE); place.tcl before place_opt)
 #   qb_isolate_magnet   isolation buffers pulled to their port terminals (magnet_placement, legalize_only; place.tcl)
-#   qb_isolate_report <step>  isolation gate (each loaded P(ISOLATE) port drives exactly one buffer) + count / area / stub
+#   qb_isolate_report <step>  isolation gate (each loaded P(ISOLATE) port drives exactly one buffer, no unloaded one but
+#                       the declared P(ISOLATE_UNLOADED), R114) + count / area / stub
 #   qb_flatten          logical hierarchy flattened at init (R91, ungroup_cells -all -flatten; init.tcl) + gate
 #   qb_eco_names <chg>  PT change-list gate (R89 / R91, eco.tcl): every cell / net / pin / port the change list names
 #                       exists, lib cells applied, every new cell = PT's new-cell record (lib cell, load pins); counts +
@@ -272,6 +273,11 @@ proc qb_io_load {} {
 # (column: blocks/col/io_budget.tcl qb5_act_o_lat_icc2 / qb5_act_o_min_icc2, R78): every hold scenario func_<c> measured,
 # then each applied: output -min constraints measured on this latency (column: act_o -min = capture latency - (early
 # latency + H - U_hold), the act chain's guarantee common/act_chain.tcl qb_act_out_min, R108).
+# The values stay per scenario (a recurring hunt suspicion, "per-scenario IO delays may collapse in ICC2's one mode"):
+# MEASURED R103 / hunt round 8, column act_o -min per hold scenario ff 0.0458, ff_rcb 0.0484, ml 0.0399, ml_rcb 0.0447;
+# rgr x[0] min input delay ff 0.0313, ml 0.0351, tt 0.0465, ss 0.0754, wcl 0.0810 (init.tcl, where the delays are
+# applied; its "init io_delay <scenario>" lines read them back per scenario, R114).  The io_min lines below are this
+# step's per-scenario evidence.
 proc qb_io_lat {step} {
     global P
     # (R85, PI decision 2) the register set and value per corner logged: "io pair regs" is the one IO latency definition,
@@ -510,7 +516,26 @@ proc qb_lib_cell_min {cells} {
 # buffers; driver = the narrowest data buffer of the library minus QC_DONT_USE (common/lib_cells.tcl qb_data_buffers),
 # i.e. the least load on the external driver, without -force so optimisation sizes it like any internal cell.  The IO
 # budget is untouched: the driving cell / transition and the input delays model the external driver at the port, the
-# isolation buffer is internal logic.  Ports whose net has no leaf load are left out (nothing to isolate).
+# isolation buffer is internal logic.  A port whose net has no leaf load fails (R114; hunt round 15 on f8f6eee: it was
+# counted "unloaded" and passed, so a P(ISOLATE) glob that lost its loads went unseen) unless P(ISOLATE_UNLOADED)
+# (optional globs, each matching P(ISOLATE) ports) declares it: qb_isolate_unloaded; [M] col r100 .. r102 and rgr
+# rgd625742a: unloaded 0, so neither block declares any.
+proc qb_isolate_unloaded {ports} {   # the unloaded ports of <ports> that P(ISOLATE_UNLOADED) does not declare, as names
+    global P
+    set decl {}
+    if {[info exists P(ISOLATE_UNLOADED)]} {
+        set decl [get_ports -quiet $P(ISOLATE_UNLOADED)]
+        set out [remove_from_collection $decl $ports]
+        if {![sizeof_collection $decl] || [sizeof_collection $out]} { error "qb_isolate: P(ISOLATE_UNLOADED) $P(ISOLATE_UNLOADED) matches [sizeof_collection $decl] ports, [sizeof_collection $out] of them not in P(ISOLATE)" }
+    }
+    set bad {}
+    foreach_in_collection p $ports {
+        if {[sizeof_collection [get_pins -quiet -leaf -of_objects [get_nets -quiet -of_objects $p] -filter "direction==in"]]} continue
+        if {[sizeof_collection $decl] && [sizeof_collection [remove_from_collection -intersect $decl $p]]} continue
+        lappend bad [get_object_name $p]
+    }
+    return $bad
+}
 proc qb_isolate_port_set {} {
     global P
     set ports [get_ports $P(ISOLATE) -filter "direction==in"]
@@ -532,8 +557,10 @@ proc qb_port_families {ports} {
 proc qb_isolate_ports {} {
     global P
     if {![info exists P(ISOLATE)]} { return 0 }
-    set ports {}; set nu 0
-    foreach_in_collection p [qb_isolate_port_set] {
+    set ports {}; set nu 0; set all [qb_isolate_port_set]
+    set ud [qb_isolate_unloaded $all]
+    if {[llength $ud]} { error "qb_isolate_ports: [llength $ud] P(ISOLATE) ports without a load, not declared in P(ISOLATE_UNLOADED): [lrange $ud 0 4]" }
+    foreach_in_collection p $all {
         if {[sizeof_collection [get_pins -quiet -leaf -of_objects [get_nets -quiet -of_objects $p] -filter "direction==in"]]} { lappend ports $p } else { incr nu }
     }
     set ports [get_ports $ports]
@@ -570,8 +597,9 @@ proc qb_isolate_report {step} {
     global P
     if {![info exists P(ISOLATE)]} return
     set ok [lsort -unique [concat [qb_data_buffers] [qb_hold_cells]]]
-    set ni 0; set nu 0; set bad {}; set area 0.0; set mm {0 -}; set mr {0 -}
-    foreach_in_collection p [qb_isolate_port_set] {
+    set ni 0; set nu 0; set bad {}; set area 0.0; set mm {0 -}; set mr {0 -}; set all [qb_isolate_port_set]
+    set ud [qb_isolate_unloaded $all]
+    foreach_in_collection p $all {
         set n [get_nets -quiet -of_objects $p]
         set ld [get_pins -quiet -leaf -of_objects $n -filter "direction==in"]
         if {![sizeof_collection $ld]} { incr nu; continue }
@@ -594,6 +622,7 @@ proc qb_isolate_report {step} {
         $step $ni [join [lmap k [lsort [array names rc]] { string cat $k : $rc($k) }]] $area [expr {100.0 * $area / $ca}] \
         {*}$mm {*}$mr $nu [llength $bad] [lrange $bad 0 4]]
     if {[llength $bad]} { error "qb_isolate_report $step: [llength $bad] P(ISOLATE) ports not isolated, e.g. [lrange $bad 0 4]" }
+    if {[llength $ud]} { error "qb_isolate_report $step: [llength $ud] P(ISOLATE) ports without a load, not declared in P(ISOLATE_UNLOADED): [lrange $ud 0 4]" }
 }
 # Logical hierarchy flattened at init (R91, PI decision on R89 / R90; init.tcl right after link_block, before any
 # constraint or optimisation): ICC2 ungroup_cells -all -flatten.  Why [M]: ICC2 add_buffer_on_route builds a buffer in the

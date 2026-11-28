@@ -31,7 +31,27 @@ foreach {n t} {VDD power VSS ground} {
 }
 connect_pg_net -automatic
 
-# signal pins from the DEF (its VDD / VSS pin shapes are replaced by the PDN's own)
+# signal pins from the DEF (its VDD / VSS pin shapes are replaced by the PDN's own).  Every DEF pin is a port of the
+# netlist (R114; hunt round 15 on f8f6eee: read_def -include ports drops a pin without a port silently, so a stale pin
+# of the reference abstract, e.g. the column's COL_REFLEF, went unseen): its PINS section is read here first, error on
+# an unparsed section (pin count = its PINS N) or on any pin name that is no port
+proc qb_def_pins {def} {   ;# (line by line: a regexp over the whole PINS section took minutes on the column's 1.7 MB DEF)
+    set f [open $def]; set n -1; set in 0; set pins {}
+    while {[gets $f l] >= 0} {
+        if {!$in} { if {[regexp {^\s*PINS\s+(\d+)\s*;} $l -> n]} { set in 1 }; continue }
+        if {[regexp {^\s*END\s+PINS\s*$} $l]} { set in 2; break }
+        if {[regexp {^\s*-\s+(\S+)} $l -> p]} { lappend pins $p }
+    }
+    close $f
+    if {$in != 2} { error "floorplan: no complete PINS section in $def" }
+    if {[llength $pins] != $n} { error "floorplan: $def PINS $n, [llength $pins] pin lines parsed" }
+    return $pins
+}
+foreach p [get_object_name [get_ports]] { set _port($p) 1 }
+set _dp [qb_def_pins $P(PIN_DEF)]
+set _stale [lmap p $_dp { if {[info exists _port($p)]} continue; set p }]
+if {[llength $_stale]} { error "floorplan: [llength $_stale] of [llength $_dp] pins of $P(PIN_DEF) are no netlist port: [lrange $_stale 0 19]" }
+qb_line "floorplan pin_def pins [llength $_dp], each a netlist port"
 read_def -include {ports} $P(PIN_DEF)
 set pgt [get_terminals -quiet -of_objects [get_ports {VDD VSS}]]
 if {[sizeof_collection $pgt]} { remove_terminals $pgt }

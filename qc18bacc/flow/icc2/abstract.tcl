@@ -13,7 +13,8 @@
 #     antenna   every signal PIN of the LEF has ANTENNAPARTIALMETALAREA and ANTENNAPARTIALCUTAREA
 #     blockage  OBS on every metal layer up to P(LAYERS)'s top layer, none above (R71)
 #     abutment  opt-in P(ABUT_PAIR) {<in> <out>} (the column: {act act_o}): every <in>[b] / <out>[b] pair on the same
-#               layer and y, <in> on the west and <out> on the east die edge; no line without it (signoff/verdict.py)
+#               layer and y, <in> on the west and <out> on the east die edge, the same bits b on both, at least one
+#               pair (R114); no line without it (signoff/verdict.py)
 #     pg_pins   qb_pg_check: VDD / VSS pins = the chip PG grid's pin-layer straps (floorplan/pg_grid.tcl)
 #   summary line "abstract label <label> done" last (R99): the label the abstract is of (common/block.sh blk_views passes
 #   the label of out/; signoff/verdict.py abstract_label)
@@ -78,19 +79,26 @@ proc qb_term {name} {
     set t [get_terminals -of_objects [get_ports $name]]
     list [get_attribute $t bbox] [get_attribute $t layer.name]
 }
+# (R114; hunt round 15 on f8f6eee: a P(ABUT_PAIR) that matched no port logged "ok 0 bad 0" and passed) the bits of both
+# names are one set (missing: a bit of one without the other), and at least one pair: an empty match fails
+proc qb_bits {name} { lmap n [get_object_name [get_ports -quiet "$name\[*\]"]] { regsub {^.*\[(\d+)\]$} $n {\1} } }
 if {[info exists P(ABUT_PAIR)]} {
     lassign $P(ABUT_PAIR) pi po
     set ok 0; set bad {}
-    foreach_in_collection p [get_ports "$pi\[*\]"] {
-        regexp {\[(\d+)\]} [get_object_name $p] -> b
+    set bi [lsort -integer [qb_bits $pi]]; set bo [lsort -integer [qb_bits $po]]
+    foreach b $bi { set hi($b) 1 }; foreach b $bo { set ho($b) 1 }
+    set miss [concat [lmap b $bi { if {[info exists ho($b)]} continue; string cat $po\[$b\] }] [lmap b $bo { if {[info exists hi($b)]} continue; string cat $pi\[$b\] }]]
+    foreach b $bi {
+        if {![info exists ho($b)]} continue
         lassign [qb_term "$pi\[$b\]"] a la; lassign [qb_term "$po\[$b\]"] y ly
         if {$la ne "" && $la eq $ly && [lindex $a 0 1] == [lindex $y 0 1] && [lindex $a 1 1] == [lindex $y 1 1]
             && [lindex $a 0 0] == $x0 && [lindex $y 1 0] == $x1} { incr ok } else { lappend bad $b }
     }
-    qb_line "abstract abutment $pi pairs ok $ok bad [llength $bad] [lrange $bad 0 4] die $die"
-    if {[llength $bad]} { error "QB abstract abutment: [llength $bad] $pi / $po pairs off ([lrange $bad 0 4])" }
+    qb_line "abstract abutment $pi pairs ok $ok bad [llength $bad] missing [llength $miss] [lrange [concat $bad $miss] 0 4] die $die"
+    if {[llength $bad] || [llength $miss] || !$ok} { error "QB abstract abutment: P(ABUT_PAIR) $pi / $po: pairs ok $ok, off [llength $bad], without a partner [llength $miss] ([lrange [concat $bad $miss] 0 4])" }
 }
 qb_pg_check abstract
 # the label the abstract was made from, after every gate passed (R99; signoff/verdict.py abstract_label: = out/label.txt)
 qb_line "abstract label $label done, gates passed"
-puts "QB_ICC2_DONE abstract"
+# (the label in the marker, R114: common/env.sh qb_icc2 records "icc2_done abstract <label>", signoff/verdict.py step_order)
+puts "QB_ICC2_DONE abstract label $label"

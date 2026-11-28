@@ -22,7 +22,8 @@
 # the label of out/, which must be complete [no unfinished label], abstract and its label [= the label of out/]; opt-in: the column's act / act_o abutment),
 # Calibre LVS + its ERC (calibre/erc_allow.txt) / DRC (with the block deck's QB_ gate rules) / antenna (calibre/cal.sh check) and
 # the chain GDS -> fill -> Calibre reports (file times; by content md5_fill / md5_extract / md5_lvs / md5_drc / md5_ant,
-# R113), the completion order of the ICC2 steps of the label chain of out/ (step_order, R113); per Calibre mode the deck edits applied (= the block's committed defaults; their
+# R113; the abstract LEF from the DEF of the label of out/: md5_abstract, R114), the completion order of the ICC2 steps
+# of the label chain of out/ (step_order, R113; + outputs < abstract, R114); per Calibre mode the deck edits applied (= the block's committed defaults; their
 # results in the deck copy, calibre/cal.sh check deck, R109) and
 # the layout read, the LVS source and the netlist it was built from (R106).  A gate whose evidence a run never produced
 # is MISSING (it fails too).

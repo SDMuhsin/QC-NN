@@ -50,8 +50,8 @@ def icc2_log(step, done, sub=''):   # common/env.sh qb_icc2 -check of <sub>/<ste
     return rc == 0 and bool(l) and d, '%s: %s; "%s" %d' % (log, l or out.strip()[-160:], done, d)
 # the label of out/ (common/block.sh blk_out): out/label.txt, and no unfinished label (out/label.new)
 label = text('out/label.txt').strip(); pend = text('out/label.new').strip()
-def blk_sh(cmd):   # a common/block.sh function on the run dir (its d)
-    return sh('. %s/common/env.sh; . %s/common/block.sh; d=%s; %s' % (flow, flow, run, cmd))
+def blk_sh(cmd):   # a common/block.sh function on the run dir (its d, BLK_TOP)
+    return sh('. %s/common/env.sh; . %s/common/block.sh; d=%s; BLK_TOP=%s; %s' % (flow, flow, run, top, cmd))
 # Freshness, two kinds (R113).  md5_<step>: the content chain, authoritative (common/block.sh blk_chain_check: the step's
 # record of the md5 of what it read and wrote, of the label of out/, = the files now; holds for a run dir copied without
 # its file times, which can make a stale file look fresh to an mtime gate).  fresh_*: file times, kept as a second check
@@ -192,7 +192,9 @@ for k in ('lef', 'obs', 'abutment', 'pg_pins'):
     l = last(s, 'abstract %s ' % k)
     if k == 'abutment' and not l and 'abstract_abutment' not in optin: continue   # opt-in (icc2/abstract.tcl P(ABUT_PAIR))
     n = re.findall(r'\b(?:bad|missing) (-?\d+)', l)
-    gate('abstract_' + k, '-', set(n) == {'0'} if l else None, l or 'no "abstract %s" line in summary.txt' % k)
+    # (abutment, R114; hunt round 15 on f8f6eee: "ok 0 bad 0" of a P(ABUT_PAIR) that matched no port passed) at least one pair
+    pairs = k != 'abutment' or int((re.findall(r'\bpairs ok (\d+)', l) or ['0'])[0]) > 0
+    gate('abstract_' + k, '-', set(n) == {'0'} and pairs if l else None, l or 'no "abstract %s" line in summary.txt' % k)
 # The ICC2 step logs of out/'s label chain (R111; hunt round 13 on 1940fd4: only the abstract's was checked, and an
 # ICC2 step saves its label (qb_done) before qb_icc2 judges the step, so a step that failed on an error under redirect,
 # seen only in its QB_ICC2_MSG count, left a label that the next steps built on): init .. route in the run dir, the ICC2
@@ -202,20 +204,22 @@ for k in ('lef', 'obs', 'abutment', 'pg_pins'):
 for c, st, done, sub in ([(x, x, 'QB_ICC2_DONE ' + x, '') for x in ('init', 'floorplan', 'place', 'cts', 'route')] +
                          [(x, 'eco', 'QB_ICC2_DONE ' + x, 'out/eco/' + x) for x in chain or []] +
                          [(x, x, 'QB_ICC2_DONE %s label %s' % (x, label), '') for x in ('outputs', 'extract')] +
-                         [('abstract', 'abstract', 'QB_ICC2_DONE abstract', '')]):
+                         [('abstract', 'abstract', 'QB_ICC2_DONE abstract label %s' % label, '')]):
     gate('icc2_log', c, *icc2_log(st, done, sub))
 # (R113; hunt round 14 on f9f2580: a partial re-run place .. cts, then a pnr range from outputs, signed off the route
 # label of the layout before, and nothing here saw the order) the steps of that chain completed in chain order: init <
 # floorplan < place < cts < route < each ECO round < outputs < extract of the label of out/, by the completion record
 # (common/env.sh qb_icc2 "icc2_done" lines, in summary.txt line order: content, not file times; common/block.sh
-# blk_done_order)
+# blk_done_order); and the abstract of that label after its outputs (R114; a re-run fill / extract after views leaves the
+# abstract valid, so abstract is ordered against outputs only)
 if chain is None: gate('step_order', '-', None, 'label of out/ %s is not route / eco<n>' % (label or 'missing'))
 else:
-    rc, out = blk_sh('blk_done_order %s' % ' '.join(['%s:%s' % (x, x) for x in ('init', 'floorplan', 'place', 'cts', 'route')] +
-                                                  ['eco:' + x for x in chain] + ['outputs:' + label, 'extract:' + label]))
-    gate('step_order', '-', rc == 0, last(out, 'BLK_ORDER ') or out.strip()[-160:])
-# the content chain (R113, md5 above) of the fill and extract of the label of out/
-md5('fill', '-'); md5('extract', '-')
+    rs = [blk_sh('blk_done_order %s' % o) for o in (' '.join(['%s:%s' % (x, x) for x in ('init', 'floorplan', 'place', 'cts', 'route')] +
+                                                           ['eco:' + x for x in chain] + ['outputs:' + label, 'extract:' + label]),
+                                                  'outputs:%s abstract:%s' % (label, label))]
+    gate('step_order', '-', all(rc == 0 for rc, _ in rs), ' | '.join(last(out, 'BLK_ORDER ') or out.strip()[-160:] for _, out in rs))
+# the content chain (R113, md5 above) of the fill and extract of the label of out/, and (R114) its abstract
+md5('fill', '-'); md5('extract', '-'); md5('abstract', '-')
 # the label the abstract was made from (icc2/abstract.tcl, its last summary line) = the label of out/ (R99)
 m = list(re.finditer(r'^abstract label (\S+) done\b.*$', s, re.M))
 gate('abstract_label', '-', m[-1].group(1) == label if m else None,
@@ -275,16 +279,21 @@ for mode, sub, layout, edits in (('fill', 'fill', g[0], {'QB55_FILL_SED': 'BLK_F
     if rc != 0: bad.append(last(out, 'CAL_DECK ') or out.strip()[-160:])
     gate('deck_' + mode, '-', not bad, '; '.join(bad) or '%s = committed defaults; LAYOUT %s %s; %s' % (' '.join(w[2:]), layout, top, last(out, 'CAL_DECK ')))
 # the LVS source (R106): the deck's SOURCE PATH = the run's calibre/<blk>_src.spi (SOURCE PRIMARY <top>), built from
-# out/<top>_pg.v as it is now (signoff/calibre/lvs_src.sh records the md5 of the netlist it read)
+# out/<top>_pg.v as it is now (signoff/calibre/lvs_src.sh records the md5 of the netlist it read), which (R114; hunt round
+# 15 on f8f6eee: _pg.v was in no outputs record) is the outputs of the label of out/ (common/block.sh blk_out_check: the
+# netlist / DEF / PG netlist md5 of its outputs_md5 line)
 src, srec = 'calibre/%s_src.spi' % blk, 'calibre/%s_src.inputs.txt' % blk
 sp, spr = deck_lines('calibre/lvs/deck.lvs', 'SOURCE PATH'), deck_lines('calibre/lvs/deck.lvs', 'SOURCE PRIMARY')
 pg = 'out/%s_pg.v' % top
-md5 = hashlib.md5(open(os.path.join(run, pg), 'rb').read()).hexdigest() if have(pg) else 'none'
+pg_md5 = hashlib.md5(open(os.path.join(run, pg), 'rb').read()).hexdigest() if have(pg) else 'none'
 r = [l.split() for l in text(srec).splitlines() if l.strip()]
+orc, oout = blk_sh('blk_out_check %s' % (label or 'none'))
 bad = ([] if sp and all(path_is(x, src) for x in sp) and set(spr) == {top} else ['SOURCE PATH %s PRIMARY %s (want %s, %s)' % (sp, spr, src, top)]) + \
-      ([] if len(r) == 1 and len(r[0]) == 4 and r[0][0] == 'input' and path_is(r[0][1], pg) and r[0][2:] == ['md5', md5] else
-       ['%s %s (want one line: input %s md5 %s)' % (srec, ' | '.join(' '.join(x) for x in r) or 'none', pg, md5)])
-gate('lvs_source_netlist', '-', not bad if have('calibre/lvs/deck.lvs') else None, '; '.join(bad) or '%s from %s md5 %s' % (src, pg, md5))
+      ([] if len(r) == 1 and len(r[0]) == 4 and r[0][0] == 'input' and path_is(r[0][1], pg) and r[0][2:] == ['md5', pg_md5] else
+       ['%s %s (want one line: input %s md5 %s)' % (srec, ' | '.join(' '.join(x) for x in r) or 'none', pg, pg_md5)]) + \
+      ([] if orc == 0 else [last(oout, 'OUT_MD5 ') or oout.strip()[-160:]])
+gate('lvs_source_netlist', '-', not bad if have('calibre/lvs/deck.lvs') else None,
+     '; '.join(bad) or '%s from %s md5 %s; %s' % (src, pg, pg_md5, last(oout, 'OUT_MD5 ')))
 fresh('lvs_source', '-', [pg, named('calibre/lvs/deck.lvs', 'SOURCE PATH'), srec, 'calibre/lvs/lvs.rep'])
 
 def names(st):   # gate names of one status, corners grouped: noise@ml,ml_rcb

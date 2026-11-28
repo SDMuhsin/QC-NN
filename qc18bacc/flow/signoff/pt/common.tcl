@@ -343,9 +343,26 @@ proc qb_pt_si_checks {fh rpt {noise_state {}}} {
     puts $fh "signoff $l"
     puts "QB_PT_SIGNOFF $l"
 }
-# qb_pt_noise_viol: validated on real violators, [M] col r94 ml_rcb: its report_noise -all_violators listed 4 violator
-# rows and the count was "noise 4"
-proc qb_pt_noise_viol {rpt} { regexp -all -line {^\s*\S+ \(\S+\)\s+[-0-9.]+\s+[-0-9.]+\s+[-0-9.]+\s*$} $rpt }
+# qb_pt_noise_viol: the violator rows of the report, structured: per "noise_region: <r>" section (above_low and
+# below_high, each exactly once) the rows after its dash line up to the next blank line, each
+# "<pin> (<net>) <width> <height> <slack>" with any blank run between the fields; -1 (never 0) when a region is missing or
+# any row of a section does not parse, so the count always equals the number of rows the report lists (R114; hunt round
+# 15 on f8f6eee: the old pattern wanted exactly one space before "(" and dropped a row it did not match, i.e. counted 0).
+# Validated [M] on real violators (r94 is gone with tau10): col r87 ml_rcb 3 rows below_high -> 3 (logged "noise 3"),
+# r91b ml_rcb 1 row at slack -0.00 -> 1 ("noise 1"), rgr 0 rows -> 0; seeded rows with one space / tabs count, a row
+# with a field missing or a missing region gives -1
+proc qb_pt_noise_viol {rpt} {
+    set n 0; set reg {}; set in 0
+    foreach l [split $rpt "\n"] {
+        if {[regexp {^\s*noise_region:\s*(\S+)\s*$} $l -> r]} { lappend reg $r; set in 0; continue }
+        if {[llength $reg] && [regexp {^\s*-{10,}\s*$} $l]} { set in 1; continue }
+        if {!$in} continue
+        if {[string trim $l] eq ""} { set in 0; continue }
+        if {![regexp {^\s*\S+\s+\(\S+\)\s+-?[0-9.]+\s+-?[0-9.]+\s+-?[0-9.]+\s*$} $l]} { return -1 }
+        incr n
+    }
+    return [expr {[lsort $reg] eq {above_low below_high} ? $n : -1}]
+}
 proc qb_pt_const_hold {corner} {
     set rec {}; set pins {}
     foreach l [split [exec $::env(QC_PY) -I $::QB_PT_DIR/lib_hold_res.py $::QC_LIBDIR/$::QC_LIB($corner).lib] "\n"] {

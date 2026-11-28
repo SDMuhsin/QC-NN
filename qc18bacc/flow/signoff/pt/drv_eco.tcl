@@ -347,7 +347,8 @@ set tot [qb_eco_sum $before {setup hold recovery removal max_tran max_cap}]
 set other [qb_eco_all before_signoff qb_eco_signoff_count]
 foreach ty {max_transition max_capacitance} { qb_eco_all before_$ty "qb_eco_guard $ty scan" }
 qb_eco_noise_state on
-incr tot [qb_eco_sum [qb_eco_all before qb_eco_noise_count] noise]
+set nb [qb_eco_all before qb_eco_noise_count]
+incr tot [qb_eco_sum $nb noise]
 lappend other {*}[qb_eco_all before_signoff_noise qb_eco_signoff_noise_count]
 qb_eco_noise_state off
 # the sign-off's other gates (R103; before, prefix_total 0 was "converged" whatever they said, and the post step failed
@@ -355,6 +356,8 @@ qb_eco_noise_state off
 # catch all noise violations), so they count in prefix_total; every other one is a check no ECO pass fixes (pulse width
 # / period, annotation, coverage, undriven noise drivers, unanalysed act pins): any non-zero one stops the loop
 set unfix {}
+# (R114) a noise report qb_pt_noise_viol could not read (-1) is no count: unfixable, never summed into a smaller total
+foreach {c x} $nb { if {[dict get $x noise] < 0} { incr tot [expr {-[dict get $x noise]}]; lappend unfix "$c:noise_unparsed" } }
 foreach {c x} $other {
     dict for {k v} $x { if {$k eq "act_noise"} { incr tot $v } elseif {$v != 0} { lappend unfix "$c:$k=$v" } }
 }

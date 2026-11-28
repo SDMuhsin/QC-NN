@@ -81,10 +81,12 @@ The block sign-off is the machine verdict `signoff/verdict.sh` (run.sh signoff):
 sign-off corner, the ICC2 step logs and P&R gates, Calibre LVS (+ ERC), DRC and antenna, ETMs and the abstract.  Provenance
 (R113): every ICC2 step that passes appends `icc2_done <step> <label> <epoch>` to summary.txt (common/env.sh qb_icc2), and
 the verdict's step_order gate requires the label chain of out/ to have completed in order (init < floorplan < place < cts
-< route < ECO rounds < outputs < extract; summary.txt line order, not file times), as does a pnr range from outputs for
+< route < ECO rounds < outputs < extract, and outputs < abstract (R114); summary.txt line order, not file times), as does a pnr range from outputs for
 init .. route; each consumer step records the md5 of the files it read and wrote (`chain` lines, common/block.sh
-blk_chain: fill, extract, PT and ETM per corner, LVS / DRC / antenna), and the verdict's md5_<step> gates hold them
-against the files as they are (views: the ETMs of the label of out/).  The file-time fresh_* gates stay as a second check
+blk_chain: fill, extract, PT and ETM per corner, LVS / DRC / antenna, and (R114) the abstract: DEF of the label -> LEF,
+after views checked out/ against the label's `outputs_md5` line, blk_out_check), and the verdict's md5_<step> gates hold them
+against the files as they are (views: the ETMs of the label of out/).  `outputs_md5` covers the netlist, DEF and PG
+netlist (R114); the verdict's lvs_source_netlist holds out/ against it.  The file-time fresh_* gates stay as a second check
 of the links no step records; a run dir copied without its times can only fail them.
 Out of scope by the project owner's decision: formal equivalence checking (LEC / Formality) of the P&R netlist against
 the synthesis netlist; the CAS papers the chip is compared with do not report it.  The netlist checks the flow does make
